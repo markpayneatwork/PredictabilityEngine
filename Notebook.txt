@@ -1,0 +1,104 @@
+==========================================
+Seasonal and Decadel Predictability Engine
+==========================================
+2016.08.31
+Restructured data sources to have a clear distinction between initialised and uninitialised runs
+
+2016.08.28
+Implemented (most of) the uninitialised model extraction and metric calculation - now need to calculate the correlation coefficients and handle this result properly. Also need to find a clean way for the processing chain to distinguish between intialised and uninitialised versions of the models.
+* Add more uninitialised metrics to the calculations
+
+2016-08-26
+Added get.dates() functionality, and passing of metadata around, to make things cleaner
+. PWW and G1 Skills need to be updated to reflect recent changes
+* Add spatial correlation and probabilistic skill maps (one script each to generate for each model, one script to visualise)
+* Add EN4 functionality
+. Unitialised model skill
+
+2016-08-25
+General code tidying. Introduced parent and child classes for the models to allow much more focused extraction of metadata such as the realisation member and the initialisation date. This can be extended later to include specific processing schemes as well. Redesigned the way the spatial grid is handled - the grid is now specified as a configuration option, and everything gets interpolated onto this grid. Wrote functionality to calculate the mean over all realisations as well. 
+- Save meta data from D1 for easy lookup
+- Modify indicator calculation script D2 to use this as well
+* Extend to allow spatial skill maps etc - maybe create a "spatial metrics" set of objects in project configuration as well.
+
+2016-08-24
+Some minor tweaks and polishs here and there to add a show() functionality, and to fix some problems with the OISST download etc. Have run analyses for Bluefin-Sep temperatures as well
+* Run a Bluefin Aug-Sep setup as well
+- Add NCEP into the mix
+* Add uninitialised model skill as well.
+
+2016-08-15 (~)
+A series to steps to define a model class - this contains the specific configuration for that model, and allows for variation between various models. Also implemented and ran the MPI-ESM-ER model.
+* Spatial analysis of skill
+- Add analysis of MPI-NCEP - will probably need to define a CDO object
+* Deal with forecasts more rigorously, inclusing spreads
+* Probabilistic skill measures
+* Historical uninitialised simulations as measure of ultimate skill
+* Use EN4 / HadISST and a longer observational climatology
+* Use RMSE skill metrics
+
+2016-07-15
+Made some big steps here implementing the full configuration system, and we are basically finished with that part of it - we can quickly reconfigure the analysis, which is great.
+* Spatial analysis of skill
+* Add analysis of MPI-NCEP - will probably need to define a CDO object
+
+2016-07-14
+Need to handle multiple configurations and reconfigurations more cleanly. Developed a configuration object that can be passed around easily and started some more work on the cdo functions. Am now working way through processing chain with Eel as an example - seems to be helping a lot and am making good progress.
+* Next on the to-do list is B2.Calculate_CDO_metrics
+
+2016-06-17
+Generalised MPI processing code to work with anything that is supported by CDO. Tested with IPSL decadel prediction data and it appears to work well. Renamed project to the "predictability engine" to reflect the increasingly broad application of the tool. Got B1 working all the way through with IPSL, including on the server. 
+* Now check and run B2
+* Check and modify D1 to incorporate IPSL data
+* Run NCAR/NCEP model as well
+
+2016-06-06
+Anoms look to be calculated correctly. Have handled averaging over realisations by simply averaging the metrics - this is identical for average temperature, and probably not all that important for area. Have calculated metrics - looks like we get good skill out to four years at least.
+* Add persistence and reference forecasts.
+* Anomaly persistence forecasts
+
+2016-06-03
+Developed processing of MPI-OM using exclusively cdo. Awesome. Got the anomalies calculated ok. Now need to check and calculate metrics.
+* Check that we have correctly calculated anoms (do they add to 0?)
+* Decide ifi we need to average over realisations?
+* Calculate metrics
+
+2016-06-02
+Started on MPI-OM analysis now that Daniela has provided baseline-1 hindcasts. CDO is simply awesome - in a few lines I've already got the time-stamps-ROI-level extraction done.
+
+2016-05-25
+Lots of progress today. Implemented metric extraction code for both OISST and NMME, including a landmask, then combined it together to calculate skill metrics. I am essentially finished with the NMME predictability analysis now with some good looking results showing predictability out to at least a year. Some finer details could be used to polish it, but otherwise there. Also added visualisations of model forecasts, so that we have a forecast system ready to push out to the world.
+* Add Persistence forecasts to plots
+* Anomaly persistence forecasts?
+* Taylor diagrams for model skill?
+* Generate an NMME ensemble forecast
+* MPI-OM forecasts and skill
+
+2016-05-24
+Refined and checked Month of Interest Extraction scripts. Appears to be fine. Implemented climatology calculations - easier than thought - and applied to calculate anomalies. Prepared visulations of model-shock.
+* Calculate areas and then metrics.
+* Combine models to produce an NMME forecast
+
+2016-05-23
+Worked on NMME processing today, with some success. Rewrote the download scripts, so that it all runs through R now, including building multiple files into one. Have extracted the August values and written into a raster compatible output file. Now need to bring it all together and calculate climatologies.
+* Check that extraction has worked properly
+* Calculate climatologies
+* Convert to areas
+
+2016-05-20
+Defined a set of common elements. Wrote code to download and combine OISST data into a single file using NCO. Subsequent processing to calculate a climatology and anomaly are done using raster. The processing of the OISST data is therefore more or less complete.
+* Move on to NMME processing
+
+2016-05-19
+Tweaking handling of dates to use the lubridate package, and convert months-since-1960 to normal dates
+
+2016-05-18
+A lot of this has been made redundant, as Daniela is updating the MPI-OM outputs for me. I don't have them yet, so will need to wait and see. Wrote a meta-data oveview script for the NMME data set.
+* Continue with NMME analysis
+
+2016-04-15
+Added Makefile implementation
+
+2016-04-14
+Initial version. After playing a bit with bash scripts, decided the best approach was just to run CDO directly from R - this is generally a lot tidier approach I think, and still achieves the fantastic speed of CDO, with the userfriendliness of R. Next steps:
+* Wrap it all up in a Makefile and run it.
