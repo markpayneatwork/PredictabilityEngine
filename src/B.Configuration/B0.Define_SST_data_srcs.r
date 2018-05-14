@@ -27,7 +27,8 @@
 #IPSL and MPI-MR have basically an identifical structure, both being produced
 #originally by SPECS
 hindcast_mdls <- list()
-hindcast_mdls$IPSL  <- GCM(name="IPSL-CM5A-LR",var="tos",
+hindcast_mdls$IPSL  <- GCM(name="IPSL-CM5A-LR",
+                           var="tos",
                            ensmem_fn=function(f) {
                              underscore_field(f,6)},
                            init_fn=function(f){
@@ -70,7 +71,7 @@ hindcast_mdls$GFDL <-   GCM(name="GFDL-CM2.1",var="tos",
 #Identify models as hindcast models and set the source equal to the name
 for(i in seq(hindcast_mdls)) {
   hindcast_mdls[[i]]@type <- "hindcast"
-  hindcast_mdls[[i]]@source <- hindcast_mdls[[i]]@name
+  hindcast_mdls[[i]]@src.dir <- sprintf("%s-hindcast",hindcast_mdls[[i]]@name)
 }
 
 # ========================================================================
@@ -100,7 +101,7 @@ for(i in seq(uninit_mdls)) {
 # Setup observational data sets
 # ========================================================================
 SST_obs <- list()
-SST_obs$HadISST <- data_src(name="HadISST",source="HadISST",var="sst",type="obs")
-SST_obs$OISST <- data_src(name="OISST",source="OISST",type="obs")
-SST_obs$EN4  <- data_src(name="EN4",source="EN4",type="obs",var="temperature")
+SST_obs$HadISST <- data_src(name="HadISST",src.dir="HadISST",var="sst",type="obs")
+SST_obs$OISST <- data_src(name="OISST",src.dir="OISST",type="obs")
+SST_obs$EN4  <- data_src(name="EN4",src.dir="EN4",type="obs",var="temperature")
 

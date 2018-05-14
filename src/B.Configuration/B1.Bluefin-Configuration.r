@@ -40,7 +40,7 @@ source("src/B.Configuration/B0.Define_SST_data_srcs.r")
 # ========================================================================
 #Global project configuration
 pcfg <- config(name= "Bluefin",
-               ROI=extent(-70,20,40,80),
+               ROI=extent(-70,30,50,80),
                res=0.5,
                MOI=8,  #August
                clim.years=1970:2005,  
@@ -52,9 +52,7 @@ pcfg <- config(name= "Bluefin",
 
 #Setup scratch directory
 pcfg@scratch.dir <- file.path("scratch",pcfg@name)
-if(!dir.exists(pcfg@scratch.dir)) {
-  dir.create(pcfg@scratch.dir)
-}
+define_dir(pcfg@scratch.dir)
 
 #Drop NCEP forced model
 pcfg@hindcast.models <- hindcast_mdls[-which(names(hindcast_mdls)=="MPI-NCEP")]

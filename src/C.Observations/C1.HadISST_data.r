@@ -45,10 +45,9 @@ library(raster)
 HadISST.dat <- "data_srcs/HadISST_sst.nc"
 
 #Working directories
-base.dir <- file.path("processing",pcfg@name)
-dat.dir <- file.path(base.dir,"HadISST")
+dat.dir <- file.path(pcfg@scratch.dir,"HadISST")
 
-options("run.level"= 1)  #1 complete fresh run
+set.run.level(1)  #1 complete fresh run
 
 #/*======================================================================*/
 #'## Process HadISST data
@@ -56,7 +55,7 @@ options("run.level"= 1)  #1 complete fresh run
 log_msg("Subsetting data...\n")
 
 #If doing a clean run, remove directories etc
-if(options("run.level")$run.level<=1) {
+if(get.run.level()<=1) {
   unlink(dat.dir,recursive = TRUE,force=TRUE)
   dir.create(dat.dir)
 }
@@ -64,34 +63,34 @@ if(options("run.level")$run.level<=1) {
 #Extract data spatially using CDO and average
 #First we need to select the grid, before doing the spatial subsetting,
 ROI.fname<- file.path(dat.dir,"observations_ROI.nc")
-run_if(1,annave.cmd <- cdo(csl("sellonlatbox",as.vector(pcfg@ROI)),
+condexec(1,annave.cmd <- cdo(csl("sellonlatbox",as.vector(pcfg@ROI)),
                            "-selgrid,lonlat",
                            HadISST.dat,ROI.fname))
 
 #monthly extraction, and annual averaging
 annave.fname<- file.path(dat.dir,"observations_annave.nc")
-run_if(1,annave.cmd <- cdo("yearmean",
-                           csl("-selmonth",pcfg@MOI),
+condexec(1,annave.cmd <- cdo("yearmean",
+                           csl("-selmon",pcfg@MOI),
                            ROI.fname,annave.fname))
 
 #Remap onto the analysis grid
 log_msg("Remapping...\n")
 remap.fname <- file.path(dat.dir,"observations.nc")
-run_if(2,remap.cmd <- cdo("-f nc", csl("remapbil", pcfg@analysis.grid),
+condexec(2,remap.cmd <- cdo("-f nc", csl("remapbil", pcfg@analysis.grid),
                            annave.fname, remap.fname))
 
 
 #Calculate climatology
 log_msg("Climatology....\n")
 clim.fname <- file.path(dat.dir,"obs_climatology.nc")
-run_if(3,clim.cmd <- cdo("timmean",
+condexec(3,clim.cmd <- cdo("timmean",
                          csl("-selyear",pcfg@clim.years),
                          remap.fname,clim.fname))
 
 #Calculate anomalies
 log_msg("Anomalies...\n")
 anom.fname <- file.path(dat.dir,"obs_anom.nc")
-run_if(4,anom.cmd <- cdo("sub",remap.fname,clim.fname,anom.fname))
+condexec(4,anom.cmd <- cdo("sub",remap.fname,clim.fname,anom.fname))
 
 # #Cross check that this worked corretly using Raster
 # b.anom <- brick(anom.fname)
