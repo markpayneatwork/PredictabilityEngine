@@ -35,7 +35,7 @@ log_msg <- function(fmt,...) {cat(sprintf(fmt,...));
   flush.console();return(invisible(NULL))}
 
 #Do it 
-install.packages("src/PredEng_Package", repos = NULL, type="source")
+install.packages("resources/PredEng_Package", repos = NULL, type="source")
 
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}

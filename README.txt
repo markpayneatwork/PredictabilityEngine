@@ -16,6 +16,10 @@ Data Sources
 ============
 landmask.nc - obtained directly from the NMME archive
 
+Setup
+=====
+* The PredEng package should be available (e.g. via a softlink) in the ./resources/PredEng_Package directory
+
 Workflow (e.g. for updating time series)
 =======================================
 
