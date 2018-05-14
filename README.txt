@@ -18,7 +18,8 @@ landmask.nc - obtained directly from the NMME archive
 
 Setup
 =====
-* The PredEng package should be available (e.g. via a softlink) in the ./resources/PredEng_Package directory
+* The PredEng package should be installed. If not installed in advance, it should be available (e.g. via a softlink) in the ./resources/PredEng_Package directory so that it can be installed using ./src/A1.Install_support_tools.r
+* The ./scratch directory should be configured with lots of space available to serve as storage for intermediate files. This can be, for example, on the HPC scratch.
 
 Workflow (e.g. for updating time series)
 =======================================

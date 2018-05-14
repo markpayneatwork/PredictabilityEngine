@@ -50,11 +50,17 @@ pcfg <- config(name= "Bluefin",
                CMIP5.var="tos",
                uninit.models=uninit_mdls)
 
+#Setup scratch directory
+pcfg@scratch.dir <- file.path("scratch",pcfg@name)
+if(!dir.exists(pcfg@scratch.dir)) {
+  dir.create(pcfg@scratch.dir)
+}
+
 #Drop NCEP forced model
 pcfg@hindcast.models <- hindcast_mdls[-which(names(hindcast_mdls)=="MPI-NCEP")]
 
 #Analysis grid
-pcfg@analysis.grid <- file.path("processing",pcfg@name,"analysis.grid")
+pcfg@analysis.grid <- file.path(pcfg@scratch.dir,"analysis.grid")
 
 # ========================================================================
 # Spatial Configurations
@@ -120,14 +126,14 @@ writeLines(griddes(pcfg),pcfg@analysis.grid)
 
 #Output
 save(pcfg,file="objects/configuration.RData")
-save(pcfg,file=file.path("processing",pcfg@name,"configuration.RData"))
+save(pcfg,file=file.path(pcfg@scratch.dir,"configuration.RData"))
 
 # ========================================================================
 # Done
 # ========================================================================
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
-log_msg("\nAnalysis complete.\n")
+log_msg("\nConfiguration complete.\n")
 
 #' -----------
 #' <small>*This work by Mark R Payne is licensed under a  Creative Commons
