@@ -35,6 +35,7 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 library(PredEng)
 library(tibble)
 library(dplyr)
+load("objects/setup.RData")
 load("objects/configuration.RData")
 
 # ========================================================================
@@ -56,7 +57,7 @@ if(interactive()) {
 src <- pcfg@hindcast.models[[src.no]]
 
 #Directory setup
-src.dir <- file.path("data_srcs",src@src.dir)
+src.dir <- file.path(datasrc.dir,src@src.dir)
 base.dir <- define_dir(pcfg@scratch.dir,src@src.dir)
 remap.dir <- define_dir(base.dir,"1.remapping_wts")
 sel.dir <- define_dir(base.dir,"2.regrid")

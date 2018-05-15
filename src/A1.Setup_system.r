@@ -1,5 +1,5 @@
 #/*##########################################################################*/
-#' Install Support Package
+#' Setup system
 #' ==========================================================================
 #'
 #' by Mark R Payne  
@@ -8,7 +8,8 @@
 #'
 #' Thu Sep  1 14:40:41 2016
 #'
-#' Builds and installs the package of support tools
+#' Builds and installs the package of support tools and sets some common
+#' configuration parameters
 #
 #  This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 #  You are largely free to do what you like with it, so long as you "attribute" 
@@ -36,6 +37,13 @@ log_msg <- function(fmt,...) {cat(sprintf(fmt,...));
 
 #Do it 
 install.packages("resources/PredEng_Package", repos = NULL, type="source")
+
+#/*======================================================================*/
+#  Define common directories etc
+#/*======================================================================*/
+datasrc.dir <- "data_srcs"
+
+save(datasrc.dir,file="objects/setup.RData")
 
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}

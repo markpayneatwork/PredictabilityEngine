@@ -33,6 +33,7 @@ rm(list = ls(all.names=TRUE));  graphics.off();
 
 #Source the common elements
 library(PredEng)
+load("objects/setup.RData")
 source("src/B.Configuration/B0.Define_SST_data_srcs.r")
 
 # ========================================================================
