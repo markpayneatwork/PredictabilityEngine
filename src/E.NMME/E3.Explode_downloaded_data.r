@@ -52,7 +52,7 @@ load("objects/configuration.RData")
 # ========================================================================
 NMME.dat.dir <- file.path(pcfg@scratch.dir,"NMME")
 download.dir <- define_dir(NMME.dat.dir,"0.data")
-fragment.dir <- define_dir(NMME.dat.dir,"1.2D_fragments")
+fragment.dir <- define_dir(NMME.dat.dir,"1.fragments")
 
 set.debug.level(0)  #0 complete fresh run
 

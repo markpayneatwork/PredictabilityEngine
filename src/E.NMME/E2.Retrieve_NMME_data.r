@@ -86,15 +86,15 @@ for(i in seq(nrow(meta))) {
       #Delete it
       unlink(download.full.path)
       #Then download
-      condexec(0,download.cmd)
+      condexec(0,download.cmd,silent=TRUE)
     } #If running at a higher debug level, then don't re-download
   } else {#Download missing file
-    condexec(1,download.cmd)
+    condexec(1,download.cmd,silent=TRUE)
   }
   
   #Set _FillValue
   missval.cmd <- paste("ncrename -a .missing_value,_FillValue",download.full.path)
-  condexec(2,missval.cmd)
+  condexec(2,missval.cmd,silent=TRUE)
   
 }
 
