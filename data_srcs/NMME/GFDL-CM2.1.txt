@@ -1,1 +1,0 @@
-http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.GFDL-CM2p1-aer04/.MONTHLY/.sst/dods 
