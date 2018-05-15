@@ -9,10 +9,7 @@
 #' Mon May 23 10:45:27 2016
 #'
 #' Retrieves a subset of the NMME data directly from the servers using OpenDAP. 
-#' Averaging across ensembles is done on the fly, which may or may not be
-#' an advantage, depending on the application, and what level of uncertainty
-#' one is interested in.
-#
+#' 
 #  This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 #  You are largely free to do what you like with it, so long as you "attribute" 
 #  me for my contribution. See the fine print at the end for exact details.
@@ -57,8 +54,10 @@ set.debug.level(0)  #0 complete fresh run
 NMME.cfg <- read_csv2(NMME.config.fname)
 
 #Define spatial ROI string (for input into NCKS)
+#NMME works on the basis of a 0 to 360 grid, so we need to account for that
+extract.ROI <- ifelse(pcfg@ROI[1:4]<0,pcfg@ROI[1:4]+360,pcfg@ROI[1:4])
 ROI.str <- do.call(sprintf,c("-d X,%.2f,%.2f -d Y,%.2f,%.2f",
-                             as.list(pcfg@ROI[1:4])))
+                             as.list(extract.ROI)))
 
 #Some modifications
 NMME.cfg <- mutate(NMME.cfg,
