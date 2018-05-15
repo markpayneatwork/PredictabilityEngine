@@ -8,7 +8,10 @@
 #'
 #' Mon May 23 10:45:27 2016
 #'
-#' Retrieves a subset of the NMME data directly from the servers using OpenDAP. 
+#' Retrieves a subset of the NMME data directly from the servers using OpenDAP
+#' via NCKS. The approach taken here is to do most of the subsetting locally -
+#' while this is more intensive on storage, in practice it also avoids having
+#' to make endless OpenDAP calls, which are really rather slow.
 #' 
 #  This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 #  You are largely free to do what you like with it, so long as you "attribute" 
@@ -35,50 +38,53 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 library(PredEng)
 library(readr)
 library(dplyr)
+library(tibble)
 load("objects/setup.RData")
 load("objects/configuration.RData")
 
 # ========================================================================
 # Configuration
 # ========================================================================
-NMME.config.fname <- file.path(datasrc.dir,"NMME_urls.csv")
 NMME.dir <- define_dir(pcfg@scratch.dir,"NMME")
 download.dir <- define_dir(NMME.dir,"0.data")
 
-set.debug.level(0)  #0 complete fresh run
+set.debug.level(0)  #0 complete fresh run. 1 downloads missing files
 
 # ========================================================================
-# Download data
+# Setup
 # ========================================================================
-#Import configurations
-NMME.cfg <- read_csv2(NMME.config.fname)
+#Import metadata
+load(file.path(NMME.dir,"NMME_metadata.RData"))
 
 #Define spatial ROI string (for input into NCKS)
 #NMME works on the basis of a 0 to 360 grid, so we need to account for that
+#However, NCKS can take care of the differences
 extract.ROI <- ifelse(pcfg@ROI[1:4]<0,pcfg@ROI[1:4]+360,pcfg@ROI[1:4])
 ROI.str <- do.call(sprintf,c("-d X,%.2f,%.2f -d Y,%.2f,%.2f",
                              as.list(extract.ROI)))
 
-#Some modifications
-NMME.cfg <- mutate(NMME.cfg,
-                   file.stem=sprintf("NMME_%s_%s",Model,type))
-
-#Loop over model configurations
-for(i in seq(nrow(NMME.cfg))) {
-  log_msg("Downloading %s...\n",NMME.cfg$file.stem[i])
-
+# ========================================================================
+# Download data
+# ========================================================================
+#Loop over model data sets
+for(i in seq(nrow(meta))) {
+  mdl.cfg <- meta[i,]
+  mdl.id <- mdl.cfg$mdl.str
+  log_msg("Downloading %s...\n",mdl.id)
+  
   #Setup for download
-  download.fname <- file.path(download.dir,sprintf("%s.nc",NMME.cfg$file.stem[i]))
+  download.fname <- sprintf("NMME_%s.nc",mdl.id)
+  download.full.path <- file.path(download.dir,download.fname)
   download.cmd <- paste("ncks --netcdf4 -D1",
                         ROI.str,
-                        NMME.cfg$URL[i],
-                        download.fname)
+                        mdl.cfg$URL,
+                        download.full.path)
   
   #Handle the case of files already present
-  if(file.exists(download.fname)) {
+  if(file.exists(download.full.path)) {
     if(get.debug.level()<=0) {
       #Delete it
-      unlink(download.fname)
+      unlink(download.full.path)
       #Then download
       condexec(0,download.cmd)
     } #If running at a higher debug level, then don't re-download
@@ -86,17 +92,14 @@ for(i in seq(nrow(NMME.cfg))) {
     condexec(1,download.cmd)
   }
   
-  
-  # #Set record dimension
-  # record.cmd <- paste("ncks --mk_rec_dmn S -O",download.fname,download.fname)
-  # run_if(2,record.cmd)
-
   #Set _FillValue
-  missval.cmd <- paste("ncrename -a .missing_value,_FillValue",download.fname)
+  missval.cmd <- paste("ncrename -a .missing_value,_FillValue",download.full.path)
   condexec(2,missval.cmd)
+  
 }
 
-save(NMME.cfg,file=file.path(download.dir,"NMME_metadata.RData"))
+
+#save(NMME.cfg,file=file.path(download.dir,"NMME_metadata.RData"))
 # ========================================================================
 # Complete
 # ========================================================================
