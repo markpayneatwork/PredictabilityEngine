@@ -45,7 +45,8 @@ load("objects/configuration.RData")
 # Configuration
 # ========================================================================
 NMME.config.fname <- file.path(datasrc.dir,"NMME_urls.csv")
-base.dir <- pcfg@scratch.dir
+NMME.dir <- define_dir(pcfg@scratch.dir,"NMME")
+download.dir <- define_dir(NMME.dir,"0.data")
 
 set.debug.level(0)  #0 complete fresh run
 
@@ -68,15 +69,24 @@ for(i in seq(nrow(NMME.cfg))) {
   log_msg("Downloading %s...\n",NMME.cfg$file.stem[i])
 
   #Setup for download
-  download.dir <- define_dir(pcfg@scratch.dir,"NMME_data")
   download.fname <- file.path(download.dir,sprintf("%s.nc",NMME.cfg$file.stem[i]))
-  
-  #Download
-  download.cmd <- paste("ncks -O --netcdf4 -D1",
+  download.cmd <- paste("ncks --netcdf4 -D1",
                         ROI.str,
                         NMME.cfg$URL[i],
                         download.fname)
-  condexec(1,download.cmd)
+  
+  #Handle the case of files already present
+  if(file.exists(download.fname)) {
+    if(get.debug.level()<=0) {
+      #Delete it
+      unlink(download.fname)
+      #Then download
+      condexec(0,download.cmd)
+    } #If running at a higher debug level, then don't re-download
+  } else {#Download missing file
+    condexec(1,download.cmd)
+  }
+  
   
   # #Set record dimension
   # record.cmd <- paste("ncks --mk_rec_dmn S -O",download.fname,download.fname)
@@ -84,7 +94,7 @@ for(i in seq(nrow(NMME.cfg))) {
 
   #Set _FillValue
   missval.cmd <- paste("ncrename -a .missing_value,_FillValue",download.fname)
-  condexec(4,missval.cmd)
+  condexec(2,missval.cmd)
 }
 
 save(NMME.cfg,file=file.path(download.dir,"NMME_metadata.RData"))

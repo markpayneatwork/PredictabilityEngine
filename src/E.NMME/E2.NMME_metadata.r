@@ -32,35 +32,42 @@ rm(list = ls(all.names=TRUE));  graphics.off();
 start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 
 #Helper functions, externals and libraries
-log_msg <- function(fmt,...) {cat(sprintf(fmt,...));
-                              flush.console();return(invisible(NULL))}
+library(ClimateTools)
 library(ncdf4)
-library(reshape2)
 library(ggplot2)
 library(lubridate)
 library(stringr)
+library(tibble)
+library(reshape2)
+library(magrittr)
+load("objects/setup.RData")
+load("objects/configuration.RData")
 
 # ========================================================================
 # Configuration
 # ========================================================================
 #Parameters
-NMME.fnames <- dir("data/NMME/2.downloads/",pattern="*.nc",full.names = TRUE)
+NMME.dat.dir <- file.path(pcfg@scratch.dir,"NMME","0.data")
+epoch.start <- ymd("1960-01-01")
 
 # ========================================================================
 # Collate meta data
 # ========================================================================
+#Get list of downloaded files
+NMME.fnames <- dir(NMME.dat.dir,pattern="*.nc",full.names = TRUE)
+
 #Data storage
 meta.db.l <- list()
 SL.l <- list()
 #Loop over files
 for(f in NMME.fnames) {
-  log_msg("Now processing %s...\n",f)
+  log_msg("Now retrieving metadata from %s...\n",basename(f))
   #open files
   ncid <- nc_open(f)
   #Extract meta data
-  res <- data.frame(filename=basename(f),
+  res <- tibble(filename=basename(f),
                     forecast_period=ncid$dim$L$len,
-                    realizations=ncid$dim$M$len,
+                    ensemble_members=ncid$dim$M$len,
                     first.start=min(ncid$dim$S$vals),
                     last.start=max(ncid$dim$S$vals),
                     n_starts=ncid$dim$S$len,
@@ -80,34 +87,39 @@ for(f in NMME.fnames) {
 # ========================================================================
 #Collate meta data
 meta <- do.call(rbind,meta.db.l)
-SL <- melt(SL.l)
+meta <- str_match(meta$filename,"^.*?_(.*)_(.*).nc")[,2:3] %>%
+  set_colnames(c("model","type")) %>%
+  cbind(meta) %>%
+  as.tibble() %>%
+  remove_rownames()
 
-#Extract model
-meta$model <- str_match(meta$filename,"^.*_(.*?).nc$")[,2]
-SL$model <- str_match(basename(SL$L1),"^.*_(.*?).nc$")[,2]
+#Collate list of starts and leads
+SL <- melt(SL.l) %>%
+  select(filename=L1,SL=L2,value)
+SL <- str_match(SL$filename,"^.*?_(.*)_(.*).nc")[,2:3] %>%
+  set_colnames(c("model","type")) %>%
+  cbind(SL) %>%
+  as.tibble()
 
 #Correct dates etc
-meta$first.start.date <- meta$last.start.date <-  ymd("1960-01-01") 
-month(meta$first.start.date) <- month(meta$first.start.date) + meta$first.start
-month(meta$last.start.date) <- month(meta$last.start.date) + meta$last.start
+meta$first.start.date <-  epoch.start  + months(meta$first.start)
+meta$last.start.date <-  epoch.start  + months(meta$last.start)
 
 #Plot overview
 g <- ggplot(SL,aes(y=model))+  geom_raster(aes(x=value)) +
-  facet_wrap(~L2,scales="free_x")
+  facet_wrap(~SL,scales="free_x")
 print(g)
 
 #Lead distribution
-g1 <- ggplot(subset(SL,L2=="L"),aes(x=value))+stat_count(width=0.5,col="black") +
+g1 <- ggplot(subset(SL,SL=="L"),aes(x=value))+stat_count(width=0.5,col="black") +
       xlab("Lead time (months)")
 print(g1)
 
 #Start distribution
-plt.dat <- subset(SL,L2=="S")
-plt.dat$start <- ymd("1960-01-01") 
-month(plt.dat$start) <-month(plt.dat$start) +plt.dat$value 
-g2 <- ggplot(plt.dat,aes(x=start))+stat_count(geom="step")
+plt.dat <- subset(SL,SL=="S")
+plt.dat$start.date <- months(plt.dat$value) + epoch.start
+g2 <- ggplot(plt.dat,aes(x=start.date))+stat_count(geom="step")
 print(g2)
-
 
 # ========================================================================
 # Complete
