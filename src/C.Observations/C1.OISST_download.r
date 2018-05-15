@@ -45,7 +45,7 @@ src.url <- "http://www.ncdc.noaa.gov/thredds/dodsC/OISST-V2-AVHRR_agg_combined"
 download.yrs <- 1982:2015
 obs.clim.fname <- file.path(dat.dir,"obs_climatology.nc")
 
-options("run.level"= 1)  #1 complete fresh run, #5 to redefine the climatology years
+set.debug.level(0)  #0complete fresh run, #5 to redefine the climatology years
 
 #Adjust the configurations to lineup with the [0,360] grid range of OISST
 pcfg <- rotate(pcfg)  
@@ -58,7 +58,7 @@ ROI.str <- do.call(sprintf,c("-d lon,%.2f,%.2f -d lat,%.2f,%.2f",
                          as.list(as.vector(pcfg@ROI))))
 
 #If doing a clean run, remove directories etc
-if(options("run.level")$run.level<=1) {
+if(get.debug.level()<=1) {
   unlink(dat.dir,recursive = TRUE,force=TRUE)
   dir.create(dat.dir)
   dir.create(file.path(dat.dir,"daily"))

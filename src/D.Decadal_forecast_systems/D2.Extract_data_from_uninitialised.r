@@ -42,13 +42,13 @@ library(ncdf4)
 #Take input arguments, if any
 if(interactive()) {
   mdl.no <- 1
-  options("run.level"= 0)  #0 complete fresh run
+  set.debug.level(0)  #0 complete fresh run
 } else {
   #Taking inputs from the system environment
   mdl.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
   if(mdl.no=="") stop("Cannot find PBS_ARRAYID")
   #Do everything
-  options("run.level"= 0)  #0 complete fresh run
+  set.debug.level(0)  #0 complete fresh run
 }
 
 #Supported models
@@ -70,7 +70,7 @@ realmean.dir <- define_dir(base.dir,"7.realmean")
 # ========================================================================
 #Get list of files
 fnames <- dir(src.dir,pattern=".nc",full.names = TRUE)
-if(length(fnames)==0 & options("run.level")<=2) stop("Cannot find source files")
+if(length(fnames)==0 & get.debug.level()<=2) stop("Cannot find source files")
 
 #Prepare a set of remapping weights
 log_msg("Preparing weights...")

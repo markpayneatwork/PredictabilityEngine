@@ -42,13 +42,13 @@ library(reshape2)
 #Take input arguments, if any
 if(interactive()) {
   mdl.no <- 0
-  options("run.level"= 0)  #0 complete fresh run
+  set.debug.level(0)  #0 complete fresh run
 } else {
   #Taking inputs from the system environment
   mdl.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
   if(mdl.no=="") stop("Cannot find PBS_ARRAYID")
   #Do everything
-  options("run.level"= 0)  #0 complete fresh run
+  set.debug.level(0)  #0 complete fresh run
 }
 
 #Directory setup

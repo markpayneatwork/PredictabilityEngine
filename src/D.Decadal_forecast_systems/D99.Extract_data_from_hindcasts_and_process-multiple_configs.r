@@ -47,13 +47,13 @@ library(ClimateTools)
 #Take input arguments, if any
 if(interactive()) {
   cfg.no <- 44   #NZ Shelf
-  set.run.level(4)  #0 complete fresh run
+  set.debug.level(0)  #0 complete fresh run
 } else {
   #Taking inputs from the system environment
   cfg.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
   if(cfg.no=="") stop("Cannot find PBS_ARRAYID")
   #Do everything
-  set.run.level(0)  #0 complete fresh run
+  set.debug.level(0)  #0 complete fresh run
 }
 
 #Load the configuration
@@ -80,7 +80,7 @@ split.dir <- define_dir(base.dir,"2.split_by_leads")
 
 #Get list of files
 fnames <- dir(src.dir,pattern=".nc",full.names = TRUE)
-if(length(fnames)==0 & get.run.level()<=2) stop("Cannot find source files")
+if(length(fnames)==0 & get.debug.level()<=2) stop("Cannot find source files")
 
 #Prepare a set of remapping weights
 log_msg("Preparing weights...")

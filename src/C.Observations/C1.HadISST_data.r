@@ -47,7 +47,7 @@ HadISST.dat <- "data_srcs/HadISST_sst.nc"
 #Working directories
 dat.dir <- file.path(pcfg@scratch.dir,"HadISST")
 
-set.run.level(1)  #1 complete fresh run
+set.debug.level(0)  #0 complete fresh run
 
 #/*======================================================================*/
 #'## Process HadISST data
@@ -55,7 +55,7 @@ set.run.level(1)  #1 complete fresh run
 log_msg("Subsetting data...\n")
 
 #If doing a clean run, remove directories etc
-if(get.run.level()<=1) {
+if(get.debug.level()<=1) {
   unlink(dat.dir,recursive = TRUE,force=TRUE)
   dir.create(dat.dir)
 }

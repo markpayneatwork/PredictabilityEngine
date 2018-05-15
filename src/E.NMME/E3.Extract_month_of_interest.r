@@ -54,7 +54,7 @@ MOI.dir  <- file.path(base.dir,"4.MoI")
 clim.dir  <- file.path(base.dir,"5.clim")
 anom.dir  <- file.path(base.dir,"6.anom")
 
-options("run.level"= 1)  #0 complete fresh run
+set.debug.level(0)  #0 complete fresh run
 
 # ========================================================================
 # Perform averaging over the ensemble

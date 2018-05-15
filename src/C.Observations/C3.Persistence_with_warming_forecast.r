@@ -48,7 +48,7 @@ out.dir <- define_dir(base.dir,"indicators")
 obs.dir <- define_dir(base.dir,pcfg@observations[[1]]@name)
 src.obs <- file.path(obs.dir,"observations.nc")
 
-options("run.level"= 0)  #0 complete fresh run
+set.debug.level(0)  #0 complete fresh run
 
 #/*======================================================================*/
 #'## Setup forecast
