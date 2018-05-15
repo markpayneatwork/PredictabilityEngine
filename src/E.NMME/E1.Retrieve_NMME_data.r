@@ -35,69 +35,59 @@ rm(list = ls(all.names=TRUE));  graphics.off();
 start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 
 #Helper functions, externals and libraries
-#Helper functions, externals and libraries
-load("objects/common_elements.RData")
-
-library(reshape2)
-library(stringr)
-library(ncdf4)
-library(raster)
+library(PredEng)
+library(readr)
+library(dplyr)
+load("objects/setup.RData")
+load("objects/configuration.RData")
 
 # ========================================================================
 # Configuration
 # ========================================================================
-base.dir <- "data/NMME"
-cfg.dir <- file.path(base.dir,"1.config")
-download.dir <- file.path(base.dir,"2.downloads")
-mean.dir  <- file.path(base.dir,"3.means")
+NMME.config.fname <- file.path(datasrc.dir,"NMME_urls.csv")
+base.dir <- pcfg@scratch.dir
 
-options("run.level"= 0)  #0 complete fresh run
+set.debug.level(0)  #0 complete fresh run
 
 # ========================================================================
 # Download data
 # ========================================================================
 #Import configurations
-cfg.fnames <- dir(cfg.dir,pattern = "txt$",full.names = TRUE)
+NMME.cfg <- read_csv2(NMME.config.fname)
 
-#Define spatial ROI
+#Define spatial ROI string (for input into NCKS)
 ROI.str <- do.call(sprintf,c("-d X,%.2f,%.2f -d Y,%.2f,%.2f",
-                             as.list(as.vector(extract.ROI))))
-#Loop over configurations
-for(f in cfg.fnames) {
-  #Setup prefixes
-  cfg.prefix <- gsub(".txt$","",basename(f))
-  file.stem <- sprintf("%s_%s",proj.prefix,cfg.prefix)
+                             as.list(pcfg@ROI[1:4])))
+
+#Some modifications
+NMME.cfg <- mutate(NMME.cfg,
+                   file.stem=sprintf("NMME_%s_%s",Model,type))
+
+#Loop over model configurations
+for(i in seq(nrow(NMME.cfg))) {
+  log_msg("Downloading %s...\n",NMME.cfg$file.stem[i])
+
+  #Setup for download
+  download.dir <- define_dir(pcfg@scratch.dir,"NMME_data")
+  download.fname <- file.path(download.dir,sprintf("%s.nc",NMME.cfg$file.stem[i]))
   
   #Download
-  urls <- data.frame(url=readLines(f))
-  urls$download.fname <- file.path(download.dir,
-                                   sprintf("%s_%02i.nc",file.stem,seq(nrow(urls))))
-  for(u in seq(nrow(urls))) {
-    log_msg("\nDownloading %i of %i, %s...\n",u, length(urls),cfg.prefix)
+  download.cmd <- paste("ncks -O --netcdf4 -D1",
+                        ROI.str,
+                        NMME.cfg$URL[i],
+                        download.fname)
+  condexec(1,download.cmd)
+  
+  # #Set record dimension
+  # record.cmd <- paste("ncks --mk_rec_dmn S -O",download.fname,download.fname)
+  # run_if(2,record.cmd)
 
-    #Download
-    download.fname <- urls$download.fname[u]
-    download.cmd <- paste("ncks -O --netcdf4 -D1",
-                          ROI.str,urls$url[u],download.fname)
-    run_if(1,download.cmd)
-    
-    #Set record dimension
-    record.cmd <- paste("ncks --mk_rec_dmn S -O",download.fname,download.fname)
-    run_if(2,record.cmd)
-  }
-  
-  #Concatenate (if necessary)
-  build.fname <- file.path(download.dir,sprintf("%s.nc",file.stem))
-  build.cmd <- paste("ncrcat -D 1 -O -o",build.fname,
-                     paste(urls$download.fname, collapse=" "))
-  run_if(3,build.cmd)
-  unlink(urls$download.fname)  #Remove individual files
-  
   #Set _FillValue
-  missval.cmd <- paste("ncrename -a .missing_value,_FillValue",build.fname)
-  run_if(4,missval.cmd)
+  missval.cmd <- paste("ncrename -a .missing_value,_FillValue",download.fname)
+  condexec(4,missval.cmd)
 }
 
+save(NMME.cfg,file=file.path(download.dir,"NMME_metadata.RData"))
 # ========================================================================
 # Complete
 # ========================================================================
