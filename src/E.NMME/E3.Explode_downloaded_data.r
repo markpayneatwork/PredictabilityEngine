@@ -102,7 +102,7 @@ for(i in seq(nrow(meta))) {
                              sel.2D$S.idx,
                              sel.2D$L.idx,
                              m)
-      explode.cmd <- paste("ncks --netcdf4 -D1",
+      explode.cmd <- ncks("--netcdf4 -D1",
                             "--fortran",   #Use indexing starting at 1, like in R
                             SLM.ROI.str,
                             download.fname,

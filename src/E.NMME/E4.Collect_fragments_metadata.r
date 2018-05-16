@@ -113,6 +113,14 @@ g3 <- ggplot(plt.dat,aes(x=start.date,y=model))+geom_raster()+
   facet_wrap(~lead)
 print(g3)
 
+#Identify suitable climatological period
+g4 <- ggplot(plt.dat,aes(x=forecast.year,fill=forecast.year %in% 1983:2010))+stat_count()+
+      labs(fill="Clim.year")+
+      facet_wrap(~lead)
+plot(g4)
+
+
+
 #==========================================================================
 # Complete
 #==========================================================================
