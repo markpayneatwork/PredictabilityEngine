@@ -1,15 +1,14 @@
 ###########################################################################
-# E5.Climatologies
+# E6.Calculate_anomalies
 # ==========================================================================
 #
 # by Mark R Payne  
 # DTU-Aqua, Kgs. Lyngby, Denmark  
 # http://www.staff.dtu.dk/mpay  
 #
-# Created Wed May 16 08:37:49 2018
+# Created Wed May 16 09:37:48 2018
 # 
-# Calculates the climatologies of the NMME 
-# forecast data, based on the exploded fragments
+# <Description>
 #
 # This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 # You are largely free to do what you like with it, so long as you "attribute" 
@@ -24,7 +23,7 @@
 #==========================================================================
 # Initialise system
 #==========================================================================
-cat(sprintf("\n%s\n","E5.Climatologies"))
+cat(sprintf("\n%s\n","E6.Calculate_anomalies"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Do house cleaning
@@ -42,51 +41,36 @@ load("objects/setup.RData")
 #==========================================================================
 base.dir <- file.path(pcfg@scratch.dir,"NMME")
 lead.clim.dir <- define_dir(base.dir,"4.lead.clims")
+anom.dir <- define_dir(base.dir,"5.anoms")
 
-load(file.path(base.dir,"NMME_fragment_metadata.RData"))
+load(file.path(base.dir,"NMME_anom_metadata.RData"))
 
 set.debug.level(0) #Do all
 
 #==========================================================================
-# Setup
+# Calculate anomalies
 #==========================================================================
-#Modify meta data to include climatology and anomaly filenames
-anom.meta <- mutate(frag.meta,
-                    frag.fname=fname,fname=NULL,
-                    clim.fname=sprintf("NMME_%s_L%s_clim.nc",model,lead),
-                    anom.fname=gsub(".nc","_anom.nc",basename(frag.fname)))
-
-#Define climatology file to use, based on grouping by  lead time and model
-in.clim <- subset(anom.meta,forecast.year %in% pcfg@clim.years)
-clim.files.l <- split(in.clim,in.clim$clim.fname)
-
-#==========================================================================
-# Calculate climatologies
-#==========================================================================
-#Loop over climatological files
-log_msg("Generating climatologies...\n")
-pb <- progress_estimated(length(clim.files.l))
-for(cf in clim.files.l) {
+#This is a pretty simple process - just delete everything from everything
+log_msg("Calculating anomalies...\n")
+pb <- progress_estimated(nrow(anom.meta))
+for(i in seq(nrow(anom.meta))) {
   #Update progress bar
   pb$tick()$print()
+  #Generate command
+  anom.fname <- file.path(anom.dir,anom.meta$anom.fname[i])
+  anom.cmd <- ncdiff("--netcdf4 --overwrite --history",
+                     anom.meta$frag.fname[i],
+                     file.path(lead.clim.dir,anom.meta$clim.fname[i]),
+                     anom.fname)
+  condexec(1,anom.cmd)
   
-  #Setup   
-  clim.out.fname <- file.path(lead.clim.dir,unique(cf$clim.fname))
-
-  #Calculate climatology using nces
-  clim.cmd <- nces("--netcdf4 --overwrite --history ",
-                   cf$frag.fname,
-                   clim.out.fname)
-  condexec(1,clim.cmd)
-  
-  #Apply ncwa to remove degenerate dimensions
-  ncwa.cmd <- ncwa("--overwrite -a sst,S,L,M",
-                   clim.out.fname,clim.out.fname)
-  condexec(1,ncwa.cmd)
+  # #Apply ncwa to remove degenerate dimensions
+  # ncwa.cmd <- ncwa("--overwrite -a sst,S,L,M",
+  #                  anom.fname,anom.fname)
+  # condexec(1,ncwa.cmd)
   
 }
 
-save(anom.meta,file=file.path(base.dir,"NMME_anom_metadata.RData"))
 
 #==========================================================================
 # Complete
