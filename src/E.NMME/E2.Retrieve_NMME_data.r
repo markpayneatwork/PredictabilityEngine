@@ -75,7 +75,7 @@ for(i in seq(nrow(meta))) {
   #Setup for download
   download.fname <- sprintf("NMME_%s.nc",mdl.id)
   download.full.path <- file.path(download.dir,download.fname)
-  download.cmd <- paste("ncks --netcdf4 -D1",
+  download.cmd <- ncks("--netcdf4 -D1",
                         ROI.str,
                         mdl.cfg$URL,
                         download.full.path)
@@ -93,8 +93,14 @@ for(i in seq(nrow(meta))) {
   }
   
   #Set _FillValue
-  missval.cmd <- paste("ncrename -a .missing_value,_FillValue",download.full.path)
+  missval.cmd <- ncrename("-a .missing_value,_FillValue",download.full.path)
   condexec(2,missval.cmd,silent=TRUE)
+  
+  #Convert X axis to [-180,180]
+  correct.lon <- ncap2("--overwrite",
+                     '-s "where (X>180) X=X-360;"',
+                     download.full.path,download.full.path)
+  condexec(3,correct.lon)
   
 }
 
