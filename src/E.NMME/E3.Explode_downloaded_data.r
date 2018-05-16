@@ -86,9 +86,11 @@ for(i in seq(nrow(meta))) {
   MOI.SL <- subset(all.SL,forecast.month %in% pcfg@MOI)
   
   #Now comes the mega loop, where we loop over the start dates and members as well!
+  log_msg("Exploding %s, model  %02i of %02i...\n",mdl.id,i,nrow(meta))
+  pb <- progress_estimated(nrow(MOI.SL))
   for(j in seq(nrow(MOI.SL))) {
+    pb$tick()$print()
     sel.2D <- MOI.SL[j,]
-    log_msg("Exploding %s, slice %03i of %03i...\n",mdl.id,j,nrow(MOI.SL))
     for(m in SLM[["M",mdl.id]]) {
       #Setup for explode
       fragment.fname <- sprintf("NMME_%s_S%s_L%02.1f_r%03i.nc",
@@ -102,34 +104,17 @@ for(i in seq(nrow(meta))) {
                              sel.2D$S.idx,
                              sel.2D$L.idx,
                              m)
-      explode.cmd <- ncks("--netcdf4 -D1",
+      explode.cmd <- ncks("--overwrite --netcdf4 -D1",
                             "--fortran",   #Use indexing starting at 1, like in R
                             SLM.ROI.str,
                             download.fname,
                             fragment.full.path)
-      
-      #Handle the case of files already present
-      if(file.exists(fragment.full.path)) {
-        if(get.debug.level()<=0) {
-          #Delete it
-          unlink(fragment.full.path)
-          #Then download
-          condexec(0,explode.cmd,silent=TRUE)
-        } #If running at a higher debug level, then don't re-explode
-      } else {#Download missing file
-        condexec(1,explode.cmd,silent=TRUE)
-      }
-      
+      condexec(1,explode.cmd,silent=TRUE)
+
     }
   }
-  
-  
-  
-  
-  # #Set record dimension
-  # record.cmd <- paste("ncks --mk_rec_dmn S -O",download.fname,download.fname)
-  # run_if(2,record.cmd)
-  
+  pb$stop()$print
+  log_msg("\n")
 }
 
 
