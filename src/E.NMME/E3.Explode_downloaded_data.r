@@ -60,7 +60,7 @@ set.debug.level(0)  #0 complete fresh run
 # Setup
 # ========================================================================
 #Import metadata
-load(file.path(NMME.dat.dir,"NMME_metadata.RData"))
+load(file.path(NMME.dat.dir,"NMME_archive_metadata.RData"))
 
 # ========================================================================
 # Explode data

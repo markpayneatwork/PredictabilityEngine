@@ -1,5 +1,5 @@
 #/*##########################################################################*/
-#' Retrieve NMME metadata 
+#' Retrieve NMME archive metadata 
 #' ==========================================================================
 #'
 #' by Mark R Payne  
@@ -8,7 +8,7 @@
 #'
 #' Wed May 18 15:58:49 2016
 #'
-#' Retrieves metadata from the NMME servers
+#' Retrieves metadata from the NMME archive
 #
 #  This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 #  You are largely free to do what you like with it, so long as you "attribute" 
@@ -122,7 +122,7 @@ meta$last.start.date <-  epoch.start  + months(meta$last.start)
 # ========================================================================
 # Complete
 # ========================================================================
-save(meta,SLM,epoch.start,file=file.path(NMME.dir,"NMME_metadata.RData"))
+save(meta,SLM,epoch.start,file=file.path(NMME.dir,"NMME_archive_metadata.RData"))
 
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}

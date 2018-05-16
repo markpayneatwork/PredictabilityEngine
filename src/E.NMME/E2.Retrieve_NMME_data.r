@@ -54,7 +54,7 @@ set.debug.level(0)  #0 complete fresh run. 1 downloads missing files
 # Setup
 # ========================================================================
 #Import metadata
-load(file.path(NMME.dir,"NMME_metadata.RData"))
+load(file.path(NMME.dir,"NMME_archive_metadata.RData"))
 
 #Define spatial ROI string (for input into NCKS)
 #NMME works on the basis of a 0 to 360 grid, so we need to account for that
@@ -98,8 +98,6 @@ for(i in seq(nrow(meta))) {
   
 }
 
-
-#save(NMME.cfg,file=file.path(download.dir,"NMME_metadata.RData"))
 # ========================================================================
 # Complete
 # ========================================================================
