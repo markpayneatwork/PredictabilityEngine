@@ -101,7 +101,7 @@ for(i in seq(nrow(meta))) {
     sel.2D <- sel.SL[j,]
     for(m in sel.M) {
       #Setup for explode
-      fragment.fname <- sprintf("NMME_%s_S%s_L%02.1f_r%03i.nc",
+      fragment.fname <- sprintf("%s_S%s_L%02.1f_r%03i.nc",
                                 mdl.id,
                                 format(sel.2D$start.date,"%Y%m%d"),
                                 sel.2D$L.val,

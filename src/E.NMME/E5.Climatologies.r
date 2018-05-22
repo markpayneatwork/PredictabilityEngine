@@ -53,7 +53,7 @@ set.debug.level(0) #Do all
 #Modify meta data to include climatology and anomaly filenames
 anom.meta <- mutate(frag.meta,
                     frag.fname=fname,fname=NULL,
-                    clim.fname=sprintf("NMME_%s_L%s_clim.nc",model,lead),
+                    clim.fname=sprintf("%s_L%s_clim.nc",model,lead),
                     anom.fname=gsub(".nc","_anom.nc",basename(frag.fname)))
 
 #Define climatology file to use, based on grouping by  lead time and model

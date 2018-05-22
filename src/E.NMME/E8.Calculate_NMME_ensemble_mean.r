@@ -67,7 +67,7 @@ for(em.gp in ensmean.group) {
   pb$tick()$print()
   
   #Build commands
-  ensmean.fname <- unique(sprintf("NMME_ensmean_all_%s_%s_ensmean_anom.nc",
+  ensmean.fname <- unique(sprintf("NMME-ensmean_all_%s_%s_ensmean_anom.nc",
                                   underscore_field(em.gp$realmean.fname,4),
                                   underscore_field(em.gp$realmean.fname,5)))
   ensmean.cmd <- nces("--overwrite --netcdf4 --history",
