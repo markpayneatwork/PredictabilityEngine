@@ -41,13 +41,13 @@ library(readr)
 library(tibble)
 library(reshape2)
 library(magrittr)
+library(reshape2)
 load("objects/setup.RData")
 load("objects/configuration.RData")
 
 # ========================================================================
 # Configuration
 # ========================================================================
-NMME.config.fname <- file.path(datasrc.dir,"NMME_urls.csv")
 NMME.dir <- define_dir(pcfg@scratch.dir,"NMME")
 
 epoch.start <- ymd("1960-01-01")
@@ -57,8 +57,12 @@ set.debug.level(0)  #0 complete fresh run
 # ========================================================================
 # Retrieve meta data
 # ========================================================================
-#Import configurations
-NMME.cfg <- read_csv2(NMME.config.fname) %>%
+#Import configurations from config object
+NMME.cfg <- lapply(pcfg@NMME.models,function(d) {
+                      tibble(Model=d@name,
+                             type=names(d@source),
+                             URL=d@source)}) %>%
+            bind_rows %>%
             mutate(mdl.str=sprintf("%s_%s",Model,type))
 
 #Data storage

@@ -69,10 +69,11 @@ load(file.path(NMME.dat.dir,"NMME_archive_metadata.RData"))
 for(i in seq(nrow(meta))) {
   mdl.cfg <- meta[i,]
   mdl.id <- mdl.cfg$mdl.str
+  GCM.obj <- pcfg@NMME.models[[mdl.cfg$Model]]
   download.fname <- file.path(download.dir,
                               sprintf("NMME_%s.nc",mdl.id))
 
-  #Figure out what's available, and what we actually want to download
+  #Figure out what's available, and what we actually want to extract
   all.SL <- expand.grid(S.idx=seq(SLM[["S",mdl.id]]),
                         L.idx=seq(SLM[["L",mdl.id]])) %>%
     as.tibble() %>%
@@ -83,15 +84,22 @@ for(i in seq(nrow(meta))) {
            forecast.month=month(forecast.date))
   
   #Now restrict to the relevant months
-  MOI.SL <- subset(all.SL,forecast.month %in% pcfg@MOI)
-  
+  sel.SL <- subset(all.SL,forecast.month %in% pcfg@MOI)
+
+  #Select realisations to explode  
+  if(any(GCM.obj@realizations==0)){
+    sel.M <- SLM[["M",mdl.id]]
+  } else {
+    sel.M <- GCM.obj@realizations
+  }
+
   #Now comes the mega loop, where we loop over the start dates and members as well!
   log_msg("Exploding %s, model  %02i of %02i...\n",mdl.id,i,nrow(meta))
-  pb <- progress_estimated(nrow(MOI.SL))
-  for(j in seq(nrow(MOI.SL))) {
+  pb <- progress_estimated(nrow(sel.SL))
+  for(j in seq(nrow(sel.SL))) {
     pb$tick()$print()
-    sel.2D <- MOI.SL[j,]
-    for(m in SLM[["M",mdl.id]]) {
+    sel.2D <- sel.SL[j,]
+    for(m in sel.M) {
       #Setup for explode
       fragment.fname <- sprintf("NMME_%s_S%s_L%02.1f_r%03i.nc",
                                 mdl.id,
@@ -110,7 +118,6 @@ for(i in seq(nrow(meta))) {
                             download.fname,
                             fragment.full.path)
       condexec(1,explode.cmd,silent=TRUE)
-
     }
   }
   pb$stop()$print

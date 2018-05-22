@@ -49,7 +49,8 @@ pcfg <- config(name= "Bluefin",
                landmask="data_srcs/NMME/landmask.nc",
                observations=SST_obs[c("HadISST")],
                CMIP5.var="tos",
-               uninit.models=uninit_mdls)
+               uninit.models=uninit_mdls,
+               NMME.models=NMME.sst.l)
 
 #Setup scratch directory
 pcfg@scratch.dir <- file.path("scratch",pcfg@name)
