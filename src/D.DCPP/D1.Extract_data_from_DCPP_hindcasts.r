@@ -1,5 +1,5 @@
 #/*##########################################################################*/
-#' Extract CDO compatable data
+#' Extract data from DCPP-like archive
 #' ==========================================================================
 #'
 #' by Mark R Payne  
@@ -8,7 +8,7 @@
 #'
 #' Thu Jun  2 15:10:05 2016
 #'
-#' Extracts hindcast data that is stored in a CDO compatable format
+#' Extracts hindcast data from DCPP-like outputs and that is stored in a CDO compatable format
 #
 #  This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 #  You are largely free to do what you like with it, so long as you "attribute" 
@@ -44,8 +44,8 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  src.no <- 1
-  set.debug.level(7)  #0 complete fresh run
+  src.no <- 4
+  set.debug.level(0)  #0 complete fresh run
   set.condexec.silent(TRUE)
 } else {
   #Taking inputs from the system environment
@@ -57,7 +57,7 @@ if(interactive()) {
 }
 
 #Supported models
-src <- pcfg@hindcast.models[[src.no]]
+src <- pcfg@DCPP.hindcasts[[src.no]]
 
 #Directory setup
 src.dir <- file.path(datasrc.dir,src@source)

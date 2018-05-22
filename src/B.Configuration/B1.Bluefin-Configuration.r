@@ -49,7 +49,7 @@ pcfg <- config(name= "Bluefin",
                landmask="data_srcs/NMME/landmask.nc",
                observations=SST_obs[c("HadISST")],
                CMIP5.var="tos",
-               uninit.models=uninit_mdls,
+               DCPP.uninit = uninit_mdls,
                NMME.models=NMME.sst.l)
 
 #Setup scratch directory
@@ -57,7 +57,12 @@ pcfg@scratch.dir <- file.path("scratch",pcfg@name)
 define_dir(pcfg@scratch.dir)
 
 #Drop NCEP forced model
-pcfg@hindcast.models <- hindcast_mdls[-which(names(hindcast_mdls)=="MPI-NCEP")]
+pcfg@DCPP.hindcasts <- hindcast_mdls[-which(names(hindcast_mdls)=="MPI-NCEP")]
+
+#If working locally, only keep the simplest two models
+if(Sys.info()["nodename"]=="mpayne-Latitude-E7240") {
+  pcfg@DCPP.hindcasts <- pcfg@DCPP.hindcasts[c(1,4)]
+}
 
 #Analysis grid
 pcfg@analysis.grid <- file.path(pcfg@scratch.dir,"analysis.grid")
