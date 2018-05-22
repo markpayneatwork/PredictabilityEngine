@@ -96,7 +96,7 @@ frag.meta <- bind_rows(meta.db.l) %>%
          forecast.year=year(forecast.date)) %>%
   add_column(fname=frag.fnames$fname) 
 
-save(frag.meta,file=file.path(NMME.dat.dir,"NMME_fragment_metadata.RData"))
+save(frag.meta,file=file.path(NMME.dat.dir,"Fragment_metadata.RData"))
 
 #==========================================================================
 # Complete

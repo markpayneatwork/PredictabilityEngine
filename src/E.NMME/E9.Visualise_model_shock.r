@@ -45,7 +45,7 @@ load("objects/setup.RData")
 base.dir <- file.path(pcfg@scratch.dir,"NMME")
 lead.clim.dir <- define_dir(base.dir,"4.lead.clims")
 
-load(file.path(base.dir,"NMME_anom_metadata.RData"))
+load(file.path(base.dir,"Anom_metadata.RData"))
 
 set.debug.level(0) #Do all
 

@@ -43,7 +43,7 @@ base.dir <- file.path(pcfg@scratch.dir,"NMME")
 anom.dir <- define_dir(base.dir,"A.anoms")
 realmean.dir <- define_dir(base.dir,"B.realmean")
 
-load(file.path(base.dir,"NMME_anom_metadata.RData"))
+load(file.path(base.dir,"Anom_metadata.RData"))
 
 set.debug.level(0) #Do all
 
@@ -84,7 +84,7 @@ for(rl.gp in realmean.group) {
 
 #Form meta data
 realmean.meta <- bind_rows(realmean.meta.l)
-save(realmean.meta,file=file.path(base.dir,"NMME_realmean_metadata.RData"))
+save(realmean.meta,file=file.path(base.dir,"Realmean_metadata.RData"))
 
 #==========================================================================
 # Complete

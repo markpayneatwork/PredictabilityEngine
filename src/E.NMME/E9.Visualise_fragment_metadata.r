@@ -54,7 +54,7 @@ set.debug.level(0)  #0 complete fresh run
 # Overview of metadata
 # ========================================================================
 #Setup
-load(file.path(NMME.dat.dir,"NMME_fragment_metadata.RData"))
+load(file.path(NMME.dat.dir,"Fragment_metadata.RData"))
 
 #Start distribution
 plt.dat <- unique(frag.meta[,c("model","start","lead","start.date","forecast.year")])
