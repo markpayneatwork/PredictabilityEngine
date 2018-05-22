@@ -71,7 +71,7 @@ hindcast_mdls$GFDL <-   GCM(name="GFDL-CM2.1",var="tos",
 #Identify models as hindcast models and set the source equal to the name
 for(i in seq(hindcast_mdls)) {
   hindcast_mdls[[i]]@type <- "hindcast"
-  hindcast_mdls[[i]]@source <- sprintf("%s-hindcast",hindcast_mdls[[i]]@name)
+  hindcast_mdls[[i]]@source <- sprintf("%s-decadal",hindcast_mdls[[i]]@name)
 }
 
 # ========================================================================
