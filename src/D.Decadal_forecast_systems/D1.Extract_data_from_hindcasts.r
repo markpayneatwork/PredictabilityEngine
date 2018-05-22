@@ -21,9 +21,9 @@
 #    where it can be compiled in a meaningful manner
 #/*##########################################################################*/
 
-# ========================================================================
-# Initialise system
-# ========================================================================
+#'========================================================================
+# Initialise system ####
+#'========================================================================
 cat(sprintf("\n%s\n","Extract CDO Compatable data"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
@@ -35,174 +35,243 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 library(PredEng)
 library(tibble)
 library(dplyr)
+library(ncdf4)
 load("objects/setup.RData")
 load("objects/configuration.RData")
 
-# ========================================================================
-# Configuration
-# ========================================================================
+#'========================================================================
+# Configuration ####
+#'========================================================================
 #Take input arguments, if any
 if(interactive()) {
   src.no <- 1
-  set.debug.level(4)  #0 complete fresh run
+  set.debug.level(7)  #0 complete fresh run
+  set.condexec.silent(TRUE)
 } else {
   #Taking inputs from the system environment
   src.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
   if(src.no=="") stop("Cannot find PBS_ARRAYID")
-  #Do everything
+  #Do everything and tell us all about it
   set.debug.level(0)  #0 complete fresh run
+  set.condexec.silent(FALSE)
 }
 
 #Supported models
 src <- pcfg@hindcast.models[[src.no]]
 
 #Directory setup
-src.dir <- file.path(datasrc.dir,src@src.dir)
-base.dir <- define_dir(pcfg@scratch.dir,src@src.dir)
+src.dir <- file.path(datasrc.dir,src@source)
+base.dir <- define_dir(pcfg@scratch.dir,src@source)
 remap.dir <- define_dir(base.dir,"1.remapping_wts")
 sel.dir <- define_dir(base.dir,"2.regrid")
-split.dir <- define_dir(base.dir,"3.leads")
+frag.dir <- define_dir(base.dir,"3.fragments")
 lead.clim.dir <- define_dir(base.dir,"4.lead.clims")
-anom.dir <- define_dir(base.dir,"5.anom")
-realmean.dir <- define_dir(base.dir,"6.realmean")
+anom.dir <- define_dir(base.dir,"A.anom")
+realmean.dir <- define_dir(base.dir,"B.realmean")
 
-# ========================================================================
-# Extract data
-# ========================================================================
+#'========================================================================
+# Extract data ####
+#'========================================================================
 #Get list of files
 fnames <- dir(src.dir,pattern=".nc",full.names = TRUE)
 if(length(fnames)==0 & get.debug.level()<=2) stop("Cannot find source files")
 
 #Prepare a set of remapping weights
-log_msg("Preparing weights...")
+log_msg("Preparing weights...\n")
 remapping.wts <- file.path(remap.dir,sprintf("%s_remapping_wts.nc",src@name))
 condexec(1,wts.cmd <- cdo(csl("genbil",pcfg@analysis.grid),fnames[1],
                         remapping.wts))
 
 #Loop over Files
+log_msg("\nLooping over files...\n")
+pb <- progress_estimated(length(fnames),-1)
 for(i in seq(fnames)) {
+  #Update progress bar
+  pb$tick()$print()
+  
   #Extract file
   f <- fnames[i]
-  log_msg("%s...",basename(f))
-  
+  temp.stem <- tempfile()
+
   #Subset out the layer(s) from the field of interest
-  log_msg("Select and remap...\n")
-  sellev.fname <- tempfile(fileext=".nc")
+  #log_msg("Select and remap...")
+  temp.in <- f
+  temp.out <- sprintf("%s_sellevidx",temp.stem)
   condexec(2,sellev.cmd <- cdo(csl("sellevidx",src@levels),
-                             f,sellev.fname))
+                             temp.in,temp.out))
   
   #Average over the layers
-  levmean.fname <- sprintf("%s_levmean.nc",sellev.fname)
-  condexec(2,levmean.cmd <- cdo("vertmean",sellev.fname,levmean.fname))
+  temp.in <- temp.out
+  temp.out <- sprintf("%s_vertmean",temp.in)
+  condexec(2,levmean.cmd <- cdo("vertmean",temp.in,temp.out))
   
   #Select the field of interest, just to be sure
-  selname.fname <- tempfile(fileext=".nc")
-  condexec(2,selname.cmd <- cdo(csl("selname",src@var),levmean.fname,selname.fname))
+  temp.in <- temp.out
+  temp.out <- sprintf("%s_selname",temp.in)
+  condexec(2,selname.cmd <- cdo(csl("selname",src@var),temp.in,temp.out))
 
   #Select the months of interest 
-  selmon.fname <- tempfile(fileext=".nc")
+  temp.in <- temp.out
+  temp.out <- sprintf("%s_selmon",temp.in)
   condexec(2,selmon.cmd <- cdo(csl("selmon", pcfg@MOI),
-                              selname.fname,selmon.fname))
+                               temp.in,temp.out))
   
-  #Average over time
-  yearmean.fname <- tempfile(fileext=".nc")
-  condexec(2,yearmean.cmd <- cdo( "yearmean", selmon.fname,yearmean.fname))
+  #Average over time - only necessary when considering multiple target months
+  temp.in <- temp.out
+  temp.out <- sprintf("%s_yearmean",temp.in)
+  condexec(2,yearmean.cmd <- cdo( "yearmean", temp.in,temp.out))
   
   #Remap
+  temp.in <- temp.out
   regrid.fname <- file.path(sel.dir,basename(f))
   condexec(2,regrid.cmd <- cdo("-f nc",
                                csl("remap", pcfg@analysis.grid, remapping.wts),
-                               yearmean.fname, regrid.fname))
-  unlink(c(sellev.fname, selname.fname, selmon.fname, yearmean.fname))
+                               temp.in, regrid.fname))
+  
+  #Fragment (split) into individual lead times
+  #Note that the splitting indexing is something decided by cdo, not here, and
+  #doesn't necessarily relate to the actual lead times in months/years.
+  this.frag.fname <- file.path(frag.dir,
+                           gsub(".nc$","_L",basename(f)))
+  condexec(3,frag.cmd <- cdo("splitsel,1",regrid.fname,this.frag.fname))
 
-  #Split into individual lead times
-  log_msg("Splitting...\n")
-  split.fname <- file.path(split.dir,
-                           gsub(".nc$","_lead",basename(f)))
-  condexec(3,split.cmd <- cdo("splitsel,1",regrid.fname,split.fname))
+  #Remove the temporary files to tidy up
+  tmp.fnames <- dir(dirname(temp.stem),pattern=basename(temp.stem),full.names = TRUE)
+  del.err <- unlink(tmp.fnames)
+  if(del.err!=0) stop("Error deleting temp files")
   
 }
+pb$stop()
+print(pb)
+rm(pb)
+log_msg("\n")
 
-# ========================================================================
-# Calculate climatologies
-# ========================================================================
+#'========================================================================
+# Collate fragment metadata  ####
+#'========================================================================
 #Get meta information 
 log_msg("Collating meta information...\n")
-lead.meta.df <- tibble(lead.fname=dir(split.dir,pattern="*.nc",full.names = TRUE))
-lead.dates.l<- lapply(lead.meta.df$lead.fname,function(f) src@date_fn(f))
-lead.meta.df$forecast.date <- do.call(c,lead.dates.l)
-lead.meta.df$lead.ts <- str_match(basename(lead.meta.df$lead.fname),
-                                     "^.*?lead([0-9]+).nc$")[,2]
+if(get.debug.level()<=4) {
+  #Extract metadata from the files - this is controlled by the
+  #various functions associated with the src model, and may
+  #involving loading data from the file
+  frag.fnames <- dir(frag.dir,pattern="*.nc",full.names = TRUE)
+  frag.dates.l<- list()
+  pb <- progress_estimated(length(frag.fnames))
+  for(i in seq(frag.fnames)) {
+    pb$tick()$print()
+    frag.dates.l[[i]] <- src@date_fn(frag.fnames[i])
+  }
+  
+  #Now build up a meta-data catalogue
+  frag.meta <- tibble(model=src@name,
+                      start.date=src@init_fn(frag.fnames),
+                      forecast.date=do.call(c,frag.dates.l),
+                      lead.ts=str_match(basename(frag.fnames),"^.*?_L([0-9]+).nc$")[,2],
+                      realization=src@ensmem_fn(frag.fnames),
+                      fname=frag.fnames)
+  save(frag.meta,file=file.path(base.dir,"Fragment_metadata.RData"))
+  
+  pb$stop()
+  print(pb)
+  rm(pb)
+  log_msg("\n")
+  
+} else {
+  load(file.path(base.dir,"Fragment_metadata.RData"))
+}
 
+#'========================================================================
+# Calculate climatologies ####
+#'========================================================================
+log_msg("Calculating climatologies...\n")
 #Break into chunks for climatology calculation
-lead.meta.df$in.clim <- year(lead.meta.df$forecast.date) %in% pcfg@clim.years
-lead.clim.files <- subset(lead.meta.df,in.clim)
+frag.meta$in.clim <- year(frag.meta$forecast.date) %in% pcfg@clim.years
+lead.clim.files <- subset(frag.meta,in.clim)
 lead.clim.files.l <- split(lead.clim.files,lead.clim.files$lead.ts)
 
 #Calculate climatologies per lead
+pb <- progress_estimated(length(lead.clim.files.l),-1)
 for(l in names(lead.clim.files.l)) {
-  log_msg("Climatology for lead %s...\n",l)
+  pb$tick()$print()
   lf.df <- lead.clim.files.l[[l]]
   lead.clim.fname <- file.path(lead.clim.dir,
-                               sprintf("clim_lead%s.nc",l))
-  condexec(4,lead.clim.cmd <- cdo("-O ensmean",
-                                  lf.df$lead.fname,lead.clim.fname))
+                               sprintf("%s_L%s_clim.nc",src@name,l))
+  condexec(5,lead.clim.cmd <- cdo("-O ensmean",
+                                  lf.df$fname,lead.clim.fname))
 }
 
-# ========================================================================
-# Calculate anomalies 
-# ========================================================================
+pb$stop()
+print(pb)
+rm(pb)
+log_msg("\n")
+
+#'========================================================================
+# Calculate anomalies ####
+#'========================================================================
+log_msg("Calculating anomalies...\n")
 #Simple loop over files
-lead.meta.df$anom.fname <- file.path(anom.dir,
-                        gsub(".nc$","_anom.nc",basename(lead.meta.df$lead.fname)))
-lead.meta.df$clim.fname <- file.path(lead.clim.dir,
-                        sprintf("clim_lead%s.nc",lead.meta.df$lead.ts))
-for(k in seq(nrow(lead.meta.df))){
-  condexec(5,anom.cmd <- cdo("sub",lead.meta.df$lead.fname[k],
-                           lead.meta.df$clim.fname[k],
-                           lead.meta.df$anom.fname[k]))
+anom.meta <- mutate(frag.meta,
+                       anom.fname=file.path(anom.dir,
+                                            sprintf("%s_S%s_L%s_%s_anom.nc",
+                                                    src@name,
+                                                    format(start.date,"%Y%m%d"),
+                                                    lead.ts,
+                                                    realization)),
+                       clim.fname=file.path(lead.clim.dir,
+                                            sprintf("%s_L%s_clim.nc",src@name,lead.ts)))
+pb <- progress_estimated(nrow(anom.meta))
+for(k in seq(nrow(anom.meta))){
+  pb$tick()$print()
+  condexec(6,anom.cmd <- cdo("sub",anom.meta$fname[k],
+                             anom.meta$clim.fname[k],
+                             anom.meta$anom.fname[k]))
 }
 
-# ========================================================================
-# Calculate realisation means 
-# ========================================================================
+pb$stop()
+print(pb)
+rm(pb)
+log_msg("\n")
+
+save(anom.meta,file=file.path(base.dir,"Anom_metadata.RData"))
+
+#'========================================================================
+# Calculate realisation means ####
+#'========================================================================
 log_msg("Realisation means...\n")
 #Break into chunks per lead time and forecast date
-realmean.files.l <- split(lead.meta.df,
-                          lead.meta.df[,c("lead.ts","forecast.date")],
+realmean.meta <- mutate(anom.meta,
+                        realmean.fname=file.path(realmean.dir,
+                                                 str_replace(basename(anom.fname),
+                                                             realization,
+                                                             "realmean")))
+realmean.files.l <- split(realmean.meta,
+                          realmean.meta[,c("lead.ts","forecast.date")],
                           drop=TRUE)
 
 #Average over the individual realisations at given lead time
+pb <- progress_estimated(length(realmean.files.l),-1)
 for(l in realmean.files.l) {
-  realmean.fname <- gsub(src@ensmem_fn(l$anom.fname[1]),
-                         "realmean",basename(l$anom.fname[1]))
-  condexec(6,realmean.cmd <- cdo( "-O ensmean", l$anom.fname,
-                                file.path(realmean.dir,realmean.fname)))
+  pb$tick()$print()
+  realmean.fname <- unique(l$realmean.fname)
+  condexec(7,realmean.cmd <- cdo( "-O ensmean", l$anom.fname,realmean.fname))
 }
 
-# ========================================================================
-# Meta data handling
-# ========================================================================
-#Extract meta data for the realisation means
-log_msg("Meta data handling...")
-realmean.meta.df <- tibble(fname=dir(realmean.dir,pattern="*.nc",
-                                         full.names = TRUE))
-realmean.dates.l<- lapply(realmean.meta.df$fname,function(f) src@date_fn(f))
-realmean.meta.df$forecast.date <- do.call(c,realmean.dates.l)
-realmean.meta.df$lead.ts <- str_match(basename(realmean.meta.df$fname),
-                             "^.*?lead([0-9]+)_anom.nc$")[,2]
-realmean.meta.df$real <- "realmean"
+pb$stop()
+print(pb)
+rm(pb)
+log_msg("\n")
 
-#Polish the anomaly file meta data into a more useable format
-meta.df <- mutate(lead.meta.df,fname=anom.fname,
-                     real=src@ensmem_fn(lead.meta.df$anom.fname))
-meta.df <- rbind(meta.df[,colnames(realmean.meta.df)],realmean.meta.df)
-meta.df$forecast.init <- src@init_fn(meta.df$fname)
-save(meta.df,file=file.path(base.dir,"metadata.RData"))
+#Compile into metadata catalogue
+realmean.meta <- mutate(realmean.meta,
+                        realization="realmean") %>%
+                 select(model,start.date,forecast.date,lead.ts,
+                        realization,fname=realmean.fname)
+save(realmean.meta,file=file.path(base.dir,"Realmean_metadata.RData"))
 
-# ========================================================================
-# Complete
-# ========================================================================
+#'========================================================================
+# Complete 
+#'========================================================================
 #+ results='asis'
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
