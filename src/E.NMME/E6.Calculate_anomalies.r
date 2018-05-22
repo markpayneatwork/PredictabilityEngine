@@ -41,7 +41,7 @@ load("objects/setup.RData")
 #==========================================================================
 base.dir <- file.path(pcfg@scratch.dir,"NMME")
 lead.clim.dir <- define_dir(base.dir,"4.lead.clims")
-anom.dir <- define_dir(base.dir,"5.anoms")
+anom.dir <- define_dir(base.dir,"A.anoms")
 
 load(file.path(base.dir,"NMME_anom_metadata.RData"))
 
@@ -62,7 +62,7 @@ for(i in seq(nrow(anom.meta))) {
                      anom.meta$frag.fname[i],
                      file.path(lead.clim.dir,anom.meta$clim.fname[i]),
                      anom.fname)
-  condexec(1,anom.cmd)
+  condexec(1,anom.cmd,silent=TRUE)
   
   # #Apply ncwa to remove degenerate dimensions
   # ncwa.cmd <- ncwa("--overwrite -a sst,S,L,M",

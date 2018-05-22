@@ -40,7 +40,7 @@ load("objects/setup.RData")
 # Configure
 #==========================================================================
 base.dir <- file.path(pcfg@scratch.dir,"NMME")
-realmean.dir <- define_dir(base.dir,"6.realmean")
+realmean.dir <- define_dir(base.dir,"B.realmean")
 ensmean.dir <- define_dir(base.dir,"C.ensmean")
 
 load(file.path(base.dir,"NMME_realmean_metadata.RData"))
