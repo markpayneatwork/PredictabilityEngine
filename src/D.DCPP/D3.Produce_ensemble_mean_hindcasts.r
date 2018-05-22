@@ -8,7 +8,7 @@
 #'
 #' Sat Sep  3 15:14:02 2016
 #'
-#' Produces ensemble mean hindcasts from the hindcast data
+#' Produces ensemble mean hindcasts from the decadal hindcast data
 #
 #  This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 #  You are largely free to do what you like with it, so long as you "attribute" 
@@ -21,9 +21,9 @@
 #    where it can be compiled in a meaningful manner
 #/*##########################################################################*/
 
-# ========================================================================
-# Initialise system
-# ========================================================================
+#'========================================================================
+# Initialise system ####
+#'========================================================================
 cat(sprintf("\n%s\n","Produce ensemble mean hindcasts"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
@@ -33,14 +33,18 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 
 #Helper functions, externals and libraries
 library(PredEng)
+library(dplyr)
+library(tibble)
+library(lubridate)
 load("objects/configuration.RData")
 
-# ========================================================================
-# Configuration
-# ========================================================================
+#'========================================================================
+# Configuration ####
+#'========================================================================
 #Take input arguments, if any
 if(interactive()) {
   set.debug.level(0)  #0 complete fresh run
+  set.condexec.silent()
 } else {
   #Taking inputs from the system environment
 #  mdl.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
@@ -50,81 +54,88 @@ if(interactive()) {
 }
 
 #Directory setup
-base.dir <- define_dir("processing",pcfg@name)
-ensmean.dir <- define_dir(base.dir,"Ensmean-hindcast")
-nc.dir <- define_dir(ensmean.dir,"1.anoms")
+base.dir <- define_dir(pcfg@scratch.dir)
+ensmean.dir <- define_dir(base.dir,"Decadal-Ensmean")
+anom.dir <- define_dir(ensmean.dir,"A.anoms")
 
-# ========================================================================
-# Setup ensemble averaging
-# ========================================================================
+#'========================================================================
+# Setup ensemble averaging ####
+#'========================================================================
 #Start by loading the metadata associated with each of the hindcast
 #models that we have in our configuration
-metadat.l <- lapply(pcfg@hindcast.models,function(mdl){
-                load(file.path(base.dir,sprintf("%s-hindcast",mdl@name),
-                               "metadata.RData"))
-                meta.df$src <- mdl@name
-                return(meta.df)
-})
-metadat.all <- do.call(rbind,metadat.l)
+metadat.l <- list()
+for(m in pcfg@DCPP.hindcasts){
+  load(file.path(base.dir,m@source,"Realmean_metadata.RData"))
+  metadat.l[[m@name]] <- realmean.meta
+}
+metadat.all <- bind_rows(metadat.l)
 
 #Now, start stripping out the files that we won't include in the ensemble mean
 #The basic criteria is that they have to  represent the mean across realisations
 #for that model. We could also apply criteria about having to have all models
 #present and ensuring a uniform coverage of lead-times/forecast-dates, but 
 #its probably easier just to let the user figure that aspect out. Cavet emptor.
-metadat <- subset(metadat.all,real=="realmean") 
+#NB: This is a bit of a hangover from previous versions of the script where 
+#we have all of the metadata lumped together. This is no longer necesssary. We 
+#retain it here mainly for the note above.
+metadat <- subset(metadat.all,realization=="realmean") 
 
 #Now split into groups by leadtime and forecast year
+#We could do the split directly on the forecast.date, but this is a bit
+#risky - different models tend to handle and leap-years differently, so the
+#forecast.date for one model might be 1964.08.15 and for another 1964.08.16
+#even though they both represent the same thing.
 metadat$forecast.yr <- year(metadat$forecast.date)
 grp.l <- split(metadat,metadat[,c("lead.ts","forecast.yr")],drop=TRUE)
 
-# ========================================================================
-# Perform averaging
-# ========================================================================
+#'========================================================================
+# Perform averaging ####
+#'========================================================================
 #Setup somewhere to store metadat
 ensmean.meta.l <- list()
+pb <- progress_estimated(length(grp.l))
+log_msg("Performing averaging...\n")
 #Loop over groupings
 for(i in seq(grp.l)) {
+  pb$tick()$print()
+
   #Extract grouping
-  log_msg("Processing %i of %i....\n",i,length(grp.l))
   d <- grp.l[[i]]
   
   #Build up meta data
-  grp.meta <- data.frame(fname=NA,
+  grp.meta <- tibble(model="Decadal-Ensmean",
                          forecast.date=mean(d$forecast.date),
-                         forecast.init=mean(d$forecast.init),
+                         start.date=mean(d$start.date),
                          lead.ts=unique(d$lead.ts), 
-                         real="ensmean",src="Ensmean")
-  grp.meta$fname <- file.path(nc.dir,
-                              sprintf("Ensmean_%i_lead%s.nc",
-                                      year(grp.meta$forecast.date),grp.meta$lead.ts))
-                       
+                         realization="ensmean")
+  ensmean.fname <- sprintf("Decadal-ensmean_S%s_L%s_ensmean_anom.nc",
+                           format(grp.meta$start.date,"%Y%m%d"),
+                           grp.meta$lead.ts)
+  grp.meta$fname <- file.path(anom.dir,ensmean.fname)
+
   #Average over individual files
   temp.fname <- tempfile(fileext = ".nc")
-  run_if(1,ensmean.cmd <- cdo( "-O -ensmean", d$fname,temp.fname))
+  condexec(1,ensmean.cmd <- cdo( "-O -ensmean", d$fname,temp.fname))
   
   #Set date
-  run_if(2,date.cmd <- cdo(csl("setdate",format(grp.meta$forecast.date,"%Y-%m-%d")),
-                            "-setreftime,1850-01-01,00:00:00,days",
-                            "-setcalendar,proleptic_gregorian",
-                           temp.fname,grp.meta$fname))
+  condexec(2,date.cmd <- cdo(csl("setdate",
+                                 format(grp.meta$forecast.date,"%Y-%m-%d")),
+                                "-setreftime,1850-01-01,00:00:00,days",
+                                "-setcalendar,proleptic_gregorian",
+                               temp.fname,grp.meta$fname))
   unlink(temp.fname)
   
   #Store meta
   ensmean.meta.l[[i]] <- grp.meta
 }
 
-# ========================================================================
-# Meta data handling
-# ========================================================================
 #Polish the anomaly file meta data into a more useable format
-log_msg("Meta data handling...")
-meta.df <- do.call(rbind,ensmean.meta.l)
-save(meta.df,file=file.path(ensmean.dir,"metadata.RData"))
+ensmean.meta <- bind_rows(ensmean.meta.l)
+save(ensmean.meta,file=file.path(ensmean.dir,"Ensmean_metadata.RData"))
 
-# ========================================================================
+#'========================================================================
 # Complete
-# ========================================================================
+#'========================================================================
 #+ results='asis'
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
