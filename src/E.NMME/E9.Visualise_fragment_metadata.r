@@ -1,5 +1,5 @@
 ###########################################################################
-# Collect fragements metadata
+# Visualise fragements metadata
 # ==========================================================================
 #
 # by Mark R Payne  
@@ -8,9 +8,7 @@
 #
 # Created Tue May 15 21:48:28 2018
 # 
-# Collates metadata from the local database - the script is more or
-# less the same as the version oriented to the online version, but focuses
-# on the local fragments instead
+# Visualises the results of the local fragment database
 #
 # This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 # You are largely free to do what you like with it, so long as you "attribute" 
@@ -25,7 +23,7 @@
 #==========================================================================
 # Initialise system
 #==========================================================================
-cat(sprintf("\n%s\n","E4.Collate_local_files_metadata"))
+cat(sprintf("\n%s\n","Visualise fragment metadata"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Do house cleaning
@@ -52,51 +50,43 @@ epoch.start <- ymd("1960-01-01")
 
 set.debug.level(0)  #0 complete fresh run
 
-#==========================================================================
-# Collate data
-#==========================================================================
-#Get list of files
-frag.fnames <- tibble(fname=dir(fragment.dir,
-                              pattern = ".nc$",
-                              full.names = TRUE))
-frag.fnames$model <- str_match(basename(frag.fnames$fname),"^.*?_(.*?)_.*.nc$")[,2]
-
-#Data storage
-meta.db.l <- list()
-pb <- progress_estimated(nrow(frag.fnames))
-log_msg("Collating fragment metadata...\n")
-#Loop over files
-for(i in seq(nrow(frag.fnames))) {
-  pb$tick()$print()
-  #open file via ncdf4
-  ncid <- nc_open(frag.fnames$fname[i])
-  #Get contents
-  d <- ncvar_get(ncid)
-  #Extract meta data
-  res <- tibble(start=ncid$dim$S$vals,
-                lead=ncid$dim$L$vals,
-                realization=ncid$dim$M$vals,
-                percent.na=mean(is.na(d))) 
-  meta.db.l[[i]] <- res
-
-  #Close file
-  nc_close(ncid)
-}
-pb$stop()$print()
-
 # ========================================================================
-# Process meta data
+# Overview of metadata
 # ========================================================================
-#Collate meta data
-frag.meta <- bind_rows(meta.db.l) %>%
-  add_column(model=frag.fnames$model,.before = 1) %>%
-  mutate(start.date=epoch.start  + months(start),
-         forecast.date=start.date+months(floor(lead)),
-         forecast.month=month(forecast.date),
-         forecast.year=year(forecast.date)) %>%
-  add_column(fname=frag.fnames$fname) 
+#Setup
+load(file.path(NMME.dat.dir,"NMME_fragment_metadata.RData"))
 
-save(frag.meta,file=file.path(NMME.dat.dir,"NMME_fragment_metadata.RData"))
+#Start distribution
+plt.dat <- unique(frag.meta[,c("model","start","lead","start.date","forecast.year")])
+g2 <- ggplot(plt.dat,aes(x=forecast.year,y=lead))+geom_raster()+
+      facet_wrap(~model)
+print(g2)
+
+#Start-lead distributions
+g3 <- ggplot(plt.dat,aes(x=start.date,y=model))+geom_raster()+
+  facet_wrap(~lead)
+print(g3)
+
+#Identify suitable climatological period
+g4 <- ggplot(plt.dat,aes(x=forecast.year,fill=forecast.year %in% 1983:2010))+stat_count()+
+      labs(fill="Clim.year")+
+      facet_wrap(~lead)
+plot(g4)
+
+#Look at proportion NA
+g5 <- ggplot(frag.meta,aes(start.date,y=percent.na,group=realization))+
+      geom_line()+
+      facet_wrap(~model)+
+  theme_bw()
+print(g5)
+
+mdl.dat <- subset(frag.meta,grepl("NASA",frag.meta$model))
+g6 <- ggplot(frag.meta,aes(start.date,y=realization,colour=percent.na))+
+      geom_point()+
+      facet_wrap(~model,scales="free_y")+
+      theme_bw()
+print(g6)
+
 
 #==========================================================================
 # Complete
