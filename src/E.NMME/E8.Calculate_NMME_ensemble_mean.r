@@ -68,21 +68,21 @@ for(em.gp in ensmean.group) {
   
   #Build commands
   ensmean.fname <- unique(sprintf("NMME-ensmean_all_%s_%s_ensmean_anom.nc",
-                                  underscore_field(em.gp$realmean.fname,4),
-                                  underscore_field(em.gp$realmean.fname,5)))
+                                  underscore_field(em.gp$fname,4),
+                                  underscore_field(em.gp$fname,5)))
   # ensmean.cmd <- nces("--overwrite --netcdf4 --history",
   #                      file.path(realmean.dir,em.gp$realmean.fname),
   #                      file.path(ensmean.dir,ensmean.fname))
   ensmean.cmd <- cdo("-ensmean",
-                      file.path(realmean.dir,em.gp$realmean.fname),
+                      file.path(realmean.dir,em.gp$fname),
                       file.path(ensmean.dir,ensmean.fname))
   condexec(1,ensmean.cmd)
   
   #Store new meta data
   res <- em.gp %>%
-    select(-realmean.fname,-n.reals) %>%
+    select(-fname,-n.reals) %>%
     mutate(n.mdls=nrow(em.gp),
-           ensmean.fname=ensmean.fname)
+           fname=ensmean.fname)
   ensmean.meta.l[[ensmean.fname]] <- res[1,]
   
 }

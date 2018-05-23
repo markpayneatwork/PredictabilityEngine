@@ -91,7 +91,7 @@ for(i in seq(nrow(anom.meta))) {
   condexec(2,regrid.cmd <- cdo("-f nc",
                                csl("remap", pcfg@analysis.grid, anom.meta$remapping.wts[i]),
                                anom.temp, 
-                               file.path(anom.dir,anom.meta$anom.fname[i])))
+                               file.path(anom.dir,anom.meta$fname[i])))
   
 }
 

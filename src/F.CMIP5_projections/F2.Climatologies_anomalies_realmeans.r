@@ -132,7 +132,8 @@ log_msg("Calculating climatologies...\n")
 
 #Setup metadata table for next round of processing (climatologies and anoms)
 anom.meta <-  mutate(frag.meta,
-                     anom.fname=file.path(anom.dir,sprintf("%s_%s_%s_anom.nc",model,expt,realization)),
+                     frag.fname=fname,
+                     fname=file.path(anom.dir,sprintf("%s_%s_%s_anom.nc",model,expt,realization)),
                      clim.fname=file.path(clim.dir,sprintf("%s_clim.nc",model)))
 
 #Now select the files to work with

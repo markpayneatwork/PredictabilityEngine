@@ -54,7 +54,7 @@ if(interactive()) {
 }
 
 #Directory setup
-base.dir <- define_dir(pcfg@scratch.dir)
+base.dir <- define_dir(pcfg@scratch.dir,"DCPP-hindcasts")
 ensmean.dir <- define_dir(base.dir,"Decadal-Ensmean")
 anom.dir <- define_dir(ensmean.dir,"A.anoms")
 

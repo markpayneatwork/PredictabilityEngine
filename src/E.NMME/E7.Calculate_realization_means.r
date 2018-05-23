@@ -67,20 +67,20 @@ for(rl.gp in realmean.group) {
   pb$tick()$print()
   
   #Build commands
-  realmean.fname <- unique(gsub("_r.*?_anom.nc","_rmean_anom.nc",rl.gp$anom.fname))
+  realmean.fname <- unique(gsub("_r.*?_anom.nc","_rmean_anom.nc",rl.gp$fname))
   # realmean.cmd <- nces("--overwrite --netcdf4 --history",
   #                      file.path(anom.dir,rl.gp$anom.fname),
   #                      file.path(realmean.dir,realmean.fname))
   realmean.cmd <- cdo("-ensmean",
-                       file.path(anom.dir,rl.gp$anom.fname),
+                       file.path(anom.dir,rl.gp$fname),
                        file.path(realmean.dir,realmean.fname))
   condexec(1,realmean.cmd)
   
   #Store new meta data
   res <- rl.gp %>%
-    select(-realization,-frag.fname,-clim.fname,-anom.fname) %>%
+    select(-realization,-frag.fname,-clim.fname,-fname) %>%
     mutate(n.reals=nrow(rl.gp),
-           realmean.fname=realmean.fname)
+           fname=realmean.fname)
   realmean.meta.l[[realmean.fname]] <- res[1,]
 
 }

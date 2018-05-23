@@ -61,7 +61,7 @@ src <- pcfg@DCPP.hindcasts[[src.no]]
 
 #Directory setup
 src.dir <- file.path(datasrc.dir,src@source)
-base.dir <- define_dir(pcfg@scratch.dir,src@source)
+base.dir <- define_dir(define_dir(pcfg@scratch.dir,"DCPP-hindcasts"),src@source)
 remap.dir <- define_dir(base.dir,"1.remapping_wts")
 sel.dir <- define_dir(base.dir,"2.regrid")
 frag.dir <- define_dir(base.dir,"3.fragments")
@@ -212,20 +212,21 @@ log_msg("\n")
 log_msg("Calculating anomalies...\n")
 #Simple loop over files
 anom.meta <- mutate(frag.meta,
-                       anom.fname=file.path(anom.dir,
-                                            sprintf("%s_S%s_L%s_%s_anom.nc",
-                                                    src@name,
-                                                    format(start.date,"%Y%m%d"),
-                                                    lead.ts,
-                                                    realization)),
-                       clim.fname=file.path(lead.clim.dir,
-                                            sprintf("%s_L%s_clim.nc",src@name,lead.ts)))
+                    frag.fname=fname,
+                    fname=file.path(anom.dir,
+                                    sprintf("%s_S%s_L%s_%s_anom.nc",
+                                            src@name,
+                                            format(start.date,"%Y%m%d"),
+                                            lead.ts,
+                                            realization)),
+                    clim.fname=file.path(lead.clim.dir,
+                                         sprintf("%s_L%s_clim.nc",src@name,lead.ts)))
 pb <- progress_estimated(nrow(anom.meta))
 for(k in seq(nrow(anom.meta))){
   pb$tick()$print()
-  condexec(6,anom.cmd <- cdo("sub",anom.meta$fname[k],
+  condexec(6,anom.cmd <- cdo("sub",anom.meta$frag.fname[k],
                              anom.meta$clim.fname[k],
-                             anom.meta$anom.fname[k]))
+                             anom.meta$fname[k]))
 }
 
 pb$stop()
@@ -241,7 +242,8 @@ save(anom.meta,file=file.path(base.dir,"Anom_metadata.RData"))
 log_msg("Realisation means...\n")
 #Break into chunks per lead time and forecast date
 realmean.meta <- mutate(anom.meta,
-                        realmean.fname=file.path(realmean.dir,
+                        anom.fname=fname,
+                        fname=file.path(realmean.dir,
                                                  str_replace(basename(anom.fname),
                                                              realization,
                                                              "realmean")))
@@ -253,7 +255,7 @@ realmean.files.l <- split(realmean.meta,
 pb <- progress_estimated(length(realmean.files.l),-1)
 for(l in realmean.files.l) {
   pb$tick()$print()
-  realmean.fname <- unique(l$realmean.fname)
+  realmean.fname <- unique(l$fname)
   condexec(7,realmean.cmd <- cdo( "-O ensmean", l$anom.fname,realmean.fname))
 }
 
