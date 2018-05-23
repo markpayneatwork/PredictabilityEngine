@@ -25,9 +25,9 @@
 #    where it can be compiled in a meaningful manner
 #/*##########################################################################*/
 
-# ========================================================================
-# Initialise system
-# ========================================================================
+#'========================================================================
+# Initialise system ####
+#'========================================================================
 cat(sprintf("\n%s\n","Explode Downloaded Data"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
@@ -47,24 +47,26 @@ library(dplyr)
 load("objects/setup.RData")
 load("objects/configuration.RData")
 
-# ========================================================================
-# Configuration
-# ========================================================================
+#'========================================================================
+# Configuration ####
+#'========================================================================
 NMME.dat.dir <- file.path(pcfg@scratch.dir,"NMME")
 download.dir <- define_dir(NMME.dat.dir,"0.data")
 fragment.dir <- define_dir(NMME.dat.dir,"1.fragments")
 
 set.debug.level(0)  #0 complete fresh run
+set.nco.defaults("--overwrite --netcdf4")
+set.condexec.silent()
 
-# ========================================================================
-# Setup
-# ========================================================================
+#'========================================================================
+# Setup ####
+#'========================================================================
 #Import metadata
 load(file.path(NMME.dat.dir,"NMME_archive_metadata.RData"))
 
-# ========================================================================
-# Explode data
-# ========================================================================
+#'========================================================================
+# Explode data ####
+#'========================================================================
 #Loop over model data sets
 for(i in seq(nrow(meta))) {
   mdl.cfg <- meta[i,]
@@ -101,7 +103,7 @@ for(i in seq(nrow(meta))) {
     sel.2D <- sel.SL[j,]
     for(m in sel.M) {
       #Setup for explode
-      fragment.fname <- sprintf("%s_S%s_L%02.1f_r%03i.nc",
+      fragment.fname <- sprintf("NMME_%s_S%s_L%02.1f_r%03i.nc",
                                 mdl.id,
                                 format(sel.2D$start.date,"%Y%m%d"),
                                 sel.2D$L.val,
@@ -112,24 +114,31 @@ for(i in seq(nrow(meta))) {
                              sel.2D$S.idx,
                              sel.2D$L.idx,
                              m)
-      explode.cmd <- ncks("--overwrite --netcdf4 -D1",
-                            "--fortran",   #Use indexing starting at 1, like in R
+      explode.cmd <- ncks("--fortran",   #Use indexing starting at 1, like in R
                             SLM.ROI.str,
                             download.fname,
                             fragment.full.path)
-      condexec(1,explode.cmd,silent=TRUE)
+      condexec(1,explode.cmd)
+      
+      #Now apply ncwa to reduce the dimensionality so that we end
+      #up with something compatable with CDO
+      #We choose to drop the realization dimnension, to end with 
+      #a 4D variable
+      ncwa.cmd <- ncwa(sprintf("-a %s,M",GCM.obj@var),
+                       fragment.full.path,fragment.full.path)
+      condexec(1,ncwa.cmd)
     }
   }
-  pb$stop()$print
+  Sys.sleep(0.1)
+  print(pb$stop())
   log_msg("\n")
 }
 
 
 
-
-# ========================================================================
-# Complete
-# ========================================================================
+#'========================================================================
+# Complete 
+#'========================================================================
 #+ results='asis'
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}

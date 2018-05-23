@@ -1,6 +1,6 @@
-###########################################################################
+#'##########################################################################
 # E6.Calculate_anomalies
-# ==========================================================================
+#'==========================================================================
 #
 # by Mark R Payne  
 # DTU-Aqua, Kgs. Lyngby, Denmark  
@@ -18,11 +18,11 @@
 #
 # Notes:
 #
-###########################################################################
+#'##########################################################################
 
-#==========================================================================
-# Initialise system
-#==========================================================================
+#'==========================================================================
+# Initialise system ####
+#'==========================================================================
 cat(sprintf("\n%s\n","E6.Calculate_anomalies"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
@@ -36,50 +36,74 @@ library(dplyr)
 load("objects/configuration.RData")
 load("objects/setup.RData")
 
-#==========================================================================
-# Configure
-#==========================================================================
+#'==========================================================================
+# Configure ####
+#'==========================================================================
 base.dir <- file.path(pcfg@scratch.dir,"NMME")
 lead.clim.dir <- define_dir(base.dir,"4.lead.clims")
+remap.dir <- define_dir(base.dir,"5.remap_wts")
 anom.dir <- define_dir(base.dir,"A.anoms")
 
 load(file.path(base.dir,"Anom_metadata.RData"))
-
 set.debug.level(0) #Do all
+set.condexec.silent()
+set.cdo.defaults("-s -O")
 
-#==========================================================================
-# Calculate anomalies
-#==========================================================================
-#This is a pretty simple process - just delete everything from everything
+#'==========================================================================
+# Remapping weights ####
+#'==========================================================================
+#This is a pretty simple process - just subtract everything from everything
+#But we also need to take care of the remapping as well, and this is a 
+#good place to do it. Remapping weights are therefore setup first
+
+log_msg("Calculating remapping weights...\n")
+
+#Get list of files to act as source
+anom.meta$remapping.wts <- file.path(remap.dir,
+                                     sprintf("NMME_%s.nc",anom.meta$model))
+mdl.reps <- subset(anom.meta,!duplicated(model))
+
+#Loop over models
+for(m in seq(nrow(mdl.reps))) {
+  condexec(1,wts.cmd <- cdo(csl("genbil",pcfg@analysis.grid),
+                            mdl.reps$frag.fname[m],
+                            mdl.reps$remapping.wts[m]))
+}
+
+#'==========================================================================
+# Anomalies, remapping ####
+#'==========================================================================
 log_msg("Calculating anomalies...\n")
 pb <- progress_estimated(nrow(anom.meta))
 for(i in seq(nrow(anom.meta))) {
   #Update progress bar
   pb$tick()$print()
-  #Generate command
-  anom.fname <- file.path(anom.dir,anom.meta$anom.fname[i])
+  
+  #Calculate anomaly
+  anom.temp <- tempfile(fileext = ".nc")
   anom.cmd <- ncdiff("--netcdf4 --overwrite --history",
                      anom.meta$frag.fname[i],
                      file.path(lead.clim.dir,anom.meta$clim.fname[i]),
-                     anom.fname)
-  condexec(1,anom.cmd,silent=TRUE)
+                     anom.temp)
+  condexec(1,anom.cmd)
   
-  # #Apply ncwa to remove degenerate dimensions
-  # ncwa.cmd <- ncwa("--overwrite -a sst,S,L,M",
-  #                  anom.fname,anom.fname)
-  # condexec(1,ncwa.cmd)
+  #Remap
+  condexec(2,regrid.cmd <- cdo("-f nc",
+                               csl("remap", pcfg@analysis.grid, anom.meta$remapping.wts[i]),
+                               anom.temp, 
+                               file.path(anom.dir,anom.meta$anom.fname[i])))
   
 }
 
 
-#==========================================================================
+#'==========================================================================
 # Complete
-#==========================================================================
+#'==========================================================================
 #Turn off the lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
-# -----------
+#'-----------
 # This work by Mark R Payne is licensed under a  Creative Commons
 # Attribution-NonCommercial-ShareAlike 3.0 Unported License. 
 # For details, see http://creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US
@@ -92,5 +116,5 @@ log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::
 #
 # This work should also be considered as BEER-WARE. For details, see
 # http://en.wikipedia.org/wiki/Beerware
-# -----------
+#'-----------
 

@@ -75,7 +75,7 @@ for(i in seq(nrow(frag.fnames))) {
   #Extract meta data
   res <- tibble(start=ncid$dim$S$vals,
                 lead=ncid$dim$L$vals,
-                realization=ncid$dim$M$vals,
+                realization=underscore_field(frag.fnames$fname[i],6),
                 percent.na=mean(is.na(d))) 
   meta.db.l[[i]] <- res
 

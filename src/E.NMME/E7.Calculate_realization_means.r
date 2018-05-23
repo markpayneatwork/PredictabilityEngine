@@ -68,7 +68,10 @@ for(rl.gp in realmean.group) {
   
   #Build commands
   realmean.fname <- unique(gsub("_r.*?_anom.nc","_rmean_anom.nc",rl.gp$anom.fname))
-  realmean.cmd <- nces("--overwrite --netcdf4 --history",
+  # realmean.cmd <- nces("--overwrite --netcdf4 --history",
+  #                      file.path(anom.dir,rl.gp$anom.fname),
+  #                      file.path(realmean.dir,realmean.fname))
+  realmean.cmd <- cdo("-ensmean",
                        file.path(anom.dir,rl.gp$anom.fname),
                        file.path(realmean.dir,realmean.fname))
   condexec(1,realmean.cmd)

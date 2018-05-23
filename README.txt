@@ -23,4 +23,5 @@ Setup
 
 Workflow (e.g. for updating time series)
 =======================================
+The basic approach applied here is to take a whole lot of disparate datasets from different sources and bring them together in a common format, expressed in terms of anomalies. 
 
