@@ -39,6 +39,7 @@ library(tidyverse)
 library(PredEng)
 library(dplyr)
 library(lubridate)
+library(ncdf4)
 load("objects/configuration.RData")
 
 #'========================================================================
@@ -46,9 +47,9 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  # mdl.no <- 5
-  set.debug.level(0)  #0 complete fresh run
+  set.debug.level()  #0 complete fresh run
   set.condexec.silent()
+  set.cdo.defaults("-s -O")
 } else {
   #Taking inputs from the system environment
   #  mdl.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
@@ -84,31 +85,35 @@ if(length(frag.fnames)==0) stop("Cannot find fragment files")
 log_msg("Loading date metadata...\n")
 
 #Loop over the individual files getting the date information
-date.meta.l  <- list()
-pb <- progress_estimated(length(frag.fnames))
-for(f in frag.fnames) {
-  pb$tick()$print()
-  #Doing it with a NetCDF read is faster, but doesn't
-  #do a very good job of parsing the dates correctly
-  #We use raster instead
-  b <- brick(f)
-  b.dates <- getZ(b)
-  date.meta.l[[f]] <-  tibble(start.date= min(b.dates),
-                              n.dates=length(b.dates),
-                              end.date=max(b.dates))
+if(get.debug.level()<=0) {
+  date.meta.l  <- list()
+  pb <- progress_estimated(length(frag.fnames))
+  for(f in frag.fnames) {
+    pb$tick()$print()
+    #Doing it with a NetCDF read is faster, but doesn't
+    #do a very good job of parsing the dates correctly
+    #We use raster instead
+    b <- brick(f)
+    b.dates <- getZ(b)
+    date.meta.l[[f]] <-  tibble(start.date= min(b.dates),
+                                n.dates=length(b.dates),
+                                end.date=max(b.dates))
+  }
+  Sys.sleep(0.1)
+  print(pb$stop())
+  log_msg("\n")
+  
+  #Form metadata table
+  frag.meta <- tibble(model=underscore_field(frag.fnames,1),
+                      expt=underscore_field(frag.fnames,2),
+                      realization=underscore_field(frag.fnames,3)) %>%
+    bind_cols(bind_rows(date.meta.l)) %>%
+    add_column(fname=frag.fnames)
+  
+  save(frag.meta,file=file.path(base.dir,"Fragment_metadata.RData"))
+} else {
+  load(file.path(base.dir,"Fragment_metadata.RData"))
 }
-Sys.sleep(0.1)
-print(pb$stop())
-log_msg("\n")
-
-#Form metadata table
-frag.meta <- tibble(model=underscore_field(frag.fnames,1),
-                     expt=underscore_field(frag.fnames,2),
-                     realization=underscore_field(frag.fnames,3)) %>%
-                  bind_cols(bind_rows(date.meta.l)) %>%
-                  add_column(fname=frag.fnames)
-
-save(frag.meta,file=file.path(base.dir,"Fragment_metadata.RData"))
 
 #'========================================================================
 # Calculate climatologies ####
@@ -187,6 +192,83 @@ print(pb$stop())
 log_msg("\n")
 
 save(anom.meta,file=file.path(base.dir,"Anom_metadata.RData"))
+
+#'========================================================================
+# Calculate realisation means ####
+# This should be simple, because we have everything in place. However,
+# the length of some of the files varies, so we need to deal with this by
+# cropping everything down to a common setup, and then going from there
+#'========================================================================
+
+log_msg("Realisation means...\n")
+
+#Break into chunks per model, experiment
+realmean.files.l <- split(anom.meta,
+                          anom.meta[,c("model","expt")],
+                          drop=TRUE)
+
+#Average over the individual realisations at given lead time
+realmean.meta.l <- list()
+pb <- progress_estimated(length(realmean.files.l))
+for(l in realmean.files.l) {
+  pb$tick()$print()
+  
+  #Check that all files have the same start date to begin with
+  #If not, we have a problem
+  if(length(unique(l$start.date))!=1) stop("Differening start dates between files")
+  
+  #Now loop over the run lengths
+  run.lens <- sort(unique(l$n.dates))
+  for(k in run.lens) {
+    #Select suitable data sets
+    realmean.src <- subset(l,n.dates>=k)
+    realmean.src$is.temp <- FALSE
+    
+    #All datasets that are not already of the appropriate length need to
+    #be clipped accordingly
+    too.long.idxs <- which(realmean.src$n.dates!=k)
+    for(j in too.long.idxs) {
+      #Crop
+      crop.fname <- tempfile()
+      condexec(7,crop.cmd <- cdo(csl("seltimestep",1:k),
+                                 realmean.src$fname[j],
+                                 crop.fname))
+      
+      #Overwrite temporary file info
+      realmean.src$anom.fname[j] <- crop.fname
+      realmean.src$is.temp[j] <- TRUE
+    }
+    
+    #Perform averaging
+    realmean.fname.base <- with(realmean.src,sprintf("%s_%s_L%i_realmean_anom.nc",model,expt,k))
+    realmean.fname <- file.path(realmean.dir,unique(realmean.fname.base))
+    condexec(7,realmean.cmd <- cdo("-O ensmean", 
+                                    realmean.src$anom.fname,
+                                    realmean.fname))
+    
+    #Remove temporary files (and only temp files)
+    unlink(realmean.src$anom.fname[realmean.src$is.temp])
+    
+    #Store metadata
+    this.meta <- subset(realmean.src,n.dates==k)[1,] %>%
+                  transmute(model,expt,
+                              realization="realmean",
+                              start.date,n.dates,end.date,
+                              fname=realmean.fname) 
+    realmean.meta.l[[realmean.fname]] <- this.meta
+    
+  }
+  
+}
+
+Sys.sleep(0.1)
+print(pb$stop())
+log_msg("\n")
+
+#Merge realmeta data
+realmean.meta <- bind_rows(realmean.meta.l)
+save(realmean.meta,file=file.path(base.dir,"Realmean_metadata.RData"))
+
 
 #'========================================================================
 # Complete ####
