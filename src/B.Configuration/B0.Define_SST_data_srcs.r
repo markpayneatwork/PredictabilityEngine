@@ -128,4 +128,9 @@ for(mdl.name in names(NMME.mdls)){
 NMME.sst.l[["NASA-GEOS5"]]@realizations <- 1:11  #12th realization is very intermittant
 NMME.sst.l[["NCEP-CFSv2"]]@realizations <- 1:24  #Forecast has 32 but hindcast 24. Restrict to be the same for simplicity
 
+# ========================================================================
+# Setup CMIP5 models
+# ========================================================================
+CMIP5.mdls <- list(new("GCM",name="CMIP5-tos",type="CMIP5",var="tos",
+                  source=file.path(datasrc.dir,"CMIP5")))
   

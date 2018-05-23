@@ -44,11 +44,11 @@ pcfg <- config(name= "Bluefin",
                ROI=extent(-70,30,50,80),
                res=0.5,
                MOI=8,  #August
-               clim.years=1983:2010,  
+               clim.years=1983:2005,  
                comp.years=1961:2012,
                landmask="data_srcs/NMME/landmask.nc",
                observations=SST_obs[c("HadISST")],
-               CMIP5.var="tos",
+               CMIP5.models=CMIP5.mdls,
                DCPP.uninit = uninit_mdls,
                NMME.models=NMME.sst.l)
 
