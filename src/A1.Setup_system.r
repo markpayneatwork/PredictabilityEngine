@@ -37,6 +37,7 @@ log_msg <- function(fmt,...) {cat(sprintf(fmt,...));
 
 #Do it 
 install.packages("resources/PredEng_Package", repos = NULL, type="source")
+install.packages("resources/ClimateTools", repos = NULL, type="source")
 
 #/*======================================================================*/
 #  Define common directories etc
