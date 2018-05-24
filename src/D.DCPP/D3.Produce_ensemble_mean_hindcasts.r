@@ -45,6 +45,7 @@ load("objects/configuration.RData")
 if(interactive()) {
   set.debug.level(0)  #0 complete fresh run
   set.condexec.silent()
+  set.cdo.defaults("--silent -O --no_warnings")
 } else {
   #Taking inputs from the system environment
 #  mdl.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
@@ -54,8 +55,8 @@ if(interactive()) {
 }
 
 #Directory setup
-base.dir <- define_dir(pcfg@scratch.dir,"DCPP-hindcasts")
-ensmean.dir <- define_dir(base.dir,"Decadal-Ensmean")
+base.dir <- define_dir(pcfg@scratch.dir)
+ensmean.dir <- define_dir(base.dir,"DCPP-hindcasts","DCPP-ensmean")
 anom.dir <- define_dir(ensmean.dir,"A.anoms")
 
 #'========================================================================

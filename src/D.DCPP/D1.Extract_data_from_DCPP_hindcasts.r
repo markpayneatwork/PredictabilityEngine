@@ -24,7 +24,7 @@
 #'========================================================================
 # Initialise system ####
 #'========================================================================
-cat(sprintf("\n%s\n","Extract CDO Compatable data"))
+cat(sprintf("\n%s\n","Extract DCPP-like data"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Configure markdown style, do house cleaning
@@ -44,9 +44,10 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  src.no <- 4
+  src.no <- 2
   set.debug.level(0)  #0 complete fresh run
-  set.condexec.silent(TRUE)
+  set.condexec.silent()
+  set.cdo.defaults("--silent --no_warnings -O")
 } else {
   #Taking inputs from the system environment
   src.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
@@ -54,6 +55,7 @@ if(interactive()) {
   #Do everything and tell us all about it
   set.debug.level(0)  #0 complete fresh run
   set.condexec.silent(FALSE)
+  set.cdo.defaults()
 }
 
 #Supported models
@@ -61,7 +63,7 @@ src <- pcfg@DCPP.hindcasts[[src.no]]
 
 #Directory setup
 src.dir <- file.path(datasrc.dir,src@source)
-base.dir <- define_dir(define_dir(pcfg@scratch.dir,"DCPP-hindcasts"),src@source)
+base.dir <- define_dir(pcfg@scratch.dir,src@source)
 remap.dir <- define_dir(base.dir,"1.remapping_wts")
 sel.dir <- define_dir(base.dir,"2.regrid")
 frag.dir <- define_dir(base.dir,"3.fragments")
@@ -72,6 +74,8 @@ realmean.dir <- define_dir(base.dir,"B.realmean")
 #'========================================================================
 # Extract data ####
 #'========================================================================
+log_msg("Processing data source %s...\n",src@name)
+
 #Get list of files
 fnames <- dir(src.dir,pattern=".nc",full.names = TRUE)
 if(length(fnames)==0 & get.debug.level()<=2) stop("Cannot find source files")
@@ -267,8 +271,7 @@ log_msg("\n")
 #Compile into metadata catalogue
 realmean.meta <- mutate(realmean.meta,
                         realization="realmean") %>%
-                 select(model,start.date,forecast.date,lead.ts,
-                        realization,fname=realmean.fname)
+                 select(model,start.date,forecast.date,lead.ts,realization,fname)
 save(realmean.meta,file=file.path(base.dir,"Realmean_metadata.RData"))
 
 #'========================================================================
