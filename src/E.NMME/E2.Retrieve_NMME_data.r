@@ -73,7 +73,7 @@ for(i in seq(nrow(meta))) {
   log_msg("Downloading %s...\n",mdl.id)
   
   #Setup for download
-  download.fname <- sprintf("NMME_%s.nc",mdl.id)
+  download.fname <- sprintf("%s.nc",mdl.id)
   download.full.path <- file.path(download.dir,download.fname)
   download.cmd <- ncks("--netcdf4 -D1",
                         ROI.str,

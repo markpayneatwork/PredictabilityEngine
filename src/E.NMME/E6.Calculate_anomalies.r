@@ -47,7 +47,7 @@ anom.dir <- define_dir(base.dir,"A.anoms")
 load(file.path(base.dir,"Anom_metadata.RData"))
 set.debug.level(0) #Do all
 set.condexec.silent()
-set.cdo.defaults("-s -O")
+set.cdo.defaults("--silent --no_warnings -O")
 
 #'==========================================================================
 # Remapping weights ####
@@ -60,8 +60,9 @@ log_msg("Calculating remapping weights...\n")
 
 #Get list of files to act as source
 anom.meta$remapping.wts <- file.path(remap.dir,
-                                     sprintf("NMME_%s.nc",anom.meta$model))
-mdl.reps <- subset(anom.meta,!duplicated(model))
+                                     sprintf("%s.nc",anom.meta$model))
+mdl.reps <- subset(anom.meta,year(start.date)==2018 ) %>%
+            subset(!duplicated(model))
 
 #Loop over models
 for(m in seq(nrow(mdl.reps))) {

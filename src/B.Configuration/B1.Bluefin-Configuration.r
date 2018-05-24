@@ -46,10 +46,10 @@ pcfg <- config(name= "Bluefin",
                MOI=8,  #August
                clim.years=1983:2005,  
                comp.years=1961:2012,
-               landmask="data_srcs/NMME/landmask.nc",
+               landmask="data_srcs/landmask.nc",
                observations=SST_obs[c("HadISST")],
                CMIP5.models=CMIP5.mdls,
-               DCPP.uninit = uninit_mdls,
+#               DCPP.uninit = uninit_mdls,
                NMME.models=NMME.sst.l)
 
 #Setup scratch directory
@@ -84,40 +84,47 @@ south.iceland.sp <- as(extent(-50,-10,55,70),"SpatialPolygons")
 # plot(iceland.basin.sp,add=TRUE,border="white")
 # plot(norwegian.coast.sp,add=TRUE,border="white")
 # map("world",add=TRUE,fill=TRUE)
+
 # ========================================================================
 # Inidcator Configurations
 # ========================================================================
 #Area above temperature indicator
 ind.l <- list()
-ind.l$South.Iceland <- above.threshold(name="South of Iceland",
+ind.l$South.Iceland <- above.threshold(name="South of Iceland area",
                                  threshold=11,
                                  poly.ROI=south.iceland.sp)
 
-ind.l$IS.area <- above.threshold(name="Irminger Sea",
+ind.l$IS.area <- above.threshold(name="Irminger Sea area",
                                  threshold=11,
                                  poly.ROI=irminger.sea.sp)
 
-ind.l$IB.area <- above.threshold(name="Iceland Basin",
-                             threshold=11,
+ind.l$IB.area <- above.threshold(name="Iceland Basin area",
+                                 threshold=11,
                              poly.ROI=iceland.basin.sp)
-ind.l$norway.area <- above.threshold(name="Norwegian Coast",
+ind.l$norway.area <- above.threshold(name="Norwegian Coast area",
                                      threshold=11,
                                      poly.ROI=norwegian.coast.sp)
 
 #Time series
-ind.l$irminger.mean <- spatial.mean(name="Irminger Sea",
-              poly.ROI=irminger.sea.sp)
-ind.l$iceland.mean <- spatial.mean(name="Iceland Basin",
-              poly.ROI=iceland.basin.sp)
-ind.l$norway.mean <- spatial.mean(name="Norwegian Coast",
-                    poly.ROI=norwegian.coast.sp)
+ind.l$irminger.mean <- spatial.mean(name="Irminger Sea mean",
+                                    poly.ROI=irminger.sea.sp)
+ind.l$iceland.mean <- spatial.mean(name="Iceland Basin mean",
+                                   poly.ROI=iceland.basin.sp)
+ind.l$norway.mean <- spatial.mean(name="Norwegian Coast mean",
+                                  poly.ROI=norwegian.coast.sp)
 
 #Northward extent
-ind.l$norway.north <-isoline.lat(name="Norwegian Coast",
-                                    threshold=11,
-                                    poly.ROI=norwegian.coast.sp)
+ind.l$norway.north <-isoline.lat(name="Norwegian Coast isoline",
+                                 threshold=11,
+                                 poly.ROI=norwegian.coast.sp)
 
+#Set source for all
+ind.l <- lapply(ind.l,function(x){
+  x@source <- c("realmean","ensmean")
+  return(x)
+} )
 #Merge it all in
+
 pcfg@indicators <- ind.l
 
 # ========================================================================

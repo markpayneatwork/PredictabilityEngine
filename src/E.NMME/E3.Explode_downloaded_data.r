@@ -73,7 +73,7 @@ for(i in seq(nrow(meta))) {
   mdl.id <- mdl.cfg$mdl.str
   GCM.obj <- pcfg@NMME.models[[mdl.cfg$Model]]
   download.fname <- file.path(download.dir,
-                              sprintf("NMME_%s.nc",mdl.id))
+                              sprintf("%s.nc",mdl.id))
 
   #Figure out what's available, and what we actually want to extract
   all.SL <- expand.grid(S.idx=seq(SLM[["S",mdl.id]]),
@@ -103,7 +103,7 @@ for(i in seq(nrow(meta))) {
     sel.2D <- sel.SL[j,]
     for(m in sel.M) {
       #Setup for explode
-      fragment.fname <- sprintf("NMME_%s_S%s_L%02.1f_r%03i.nc",
+      fragment.fname <- sprintf("%s_S%s_L%02.1f_r%03i.nc",
                                 mdl.id,
                                 format(sel.2D$start.date,"%Y%m%d"),
                                 sel.2D$L.val,
