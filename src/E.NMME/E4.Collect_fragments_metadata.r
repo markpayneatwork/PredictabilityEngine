@@ -25,7 +25,7 @@
 #==========================================================================
 # Initialise system
 #==========================================================================
-cat(sprintf("\n%s\n","E4.Collate_local_files_metadata"))
+cat(sprintf("\n%s\n","E4.Collate fragments metadata"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Do house cleaning
@@ -56,10 +56,11 @@ set.debug.level(0)  #0 complete fresh run
 # Collate data
 #==========================================================================
 #Get list of files
-frag.fnames <- tibble(fname=dir(fragment.dir,
+frag.fnames <- tibble(model=NA,
+                      fname=dir(fragment.dir,
                               pattern = ".nc$",
                               full.names = TRUE))
-frag.fnames$model <- str_match(basename(frag.fnames$fname),"^.*?_(.*?)_.*.nc$")[,2]
+frag.fnames$model <- str_match(basename(frag.fnames$fname),"^(.*?)_.*.nc$")[,2]
 
 #Data storage
 meta.db.l <- list()
@@ -75,14 +76,16 @@ for(i in seq(nrow(frag.fnames))) {
   #Extract meta data
   res <- tibble(start=ncid$dim$S$vals,
                 lead=ncid$dim$L$vals,
-                realization=underscore_field(frag.fnames$fname[i],6),
+                realization=underscore_field(frag.fnames$fname[i],5),
                 percent.na=mean(is.na(d))) 
   meta.db.l[[i]] <- res
 
   #Close file
   nc_close(ncid)
 }
-pb$stop()$print()
+Sys.sleep(0.1)
+print(pb$stop())
+log_msg("\n")
 
 # ========================================================================
 # Process meta data

@@ -64,6 +64,21 @@ if(Sys.info()["nodename"]=="mpayne-Latitude-E7240") {
   pcfg@DCPP.hindcasts <- pcfg@DCPP.hindcasts[c(1,4)]
 }
 
+#Add in the ensembles
+pcfg@DCPP.hindcasts <- c(pcfg@DCPP.hindcasts,
+                         GCM(name="Decadal-ensmean",
+                                            source="DCPP-hindcasts/ensmean",
+                                            type="ensmean"))
+pcfg@NMME.models <- c(pcfg@NMME.models,
+                         GCM(name="NMME-ensmean",
+                             source="NMME",
+                             type="ensmean"))
+#Not implemented yet
+# pcfg@CMIP5.models <- c(pcfg@CMIP5.models,
+#                        GCM(name="CMIP5-ensmean",
+#                            source="CMIP5",
+#                            type="ensmean"))
+
 #Analysis grid
 pcfg@analysis.grid <- file.path(pcfg@scratch.dir,"analysis.grid")
 
@@ -118,9 +133,9 @@ ind.l$norway.north <-isoline.lat(name="Norwegian Coast isoline",
                                  threshold=11,
                                  poly.ROI=norwegian.coast.sp)
 
-#Set source for all
+#Set type of data to use for all
 ind.l <- lapply(ind.l,function(x){
-  x@source <- c("realmean","ensmean")
+  x@data.type <- c("means")
   return(x)
 } )
 #Merge it all in

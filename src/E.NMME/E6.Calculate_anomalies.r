@@ -61,7 +61,7 @@ log_msg("Calculating remapping weights...\n")
 #Get list of files to act as source
 anom.meta$remapping.wts <- file.path(remap.dir,
                                      sprintf("%s.nc",anom.meta$model))
-mdl.reps <- subset(anom.meta,year(start.date)==2018 ) %>%
+mdl.reps <- subset(anom.meta,year(start.date)==2011 ) %>%
             subset(!duplicated(model))
 
 #Loop over models
@@ -79,20 +79,26 @@ pb <- progress_estimated(nrow(anom.meta))
 for(i in seq(nrow(anom.meta))) {
   #Update progress bar
   pb$tick()$print()
+  am <- anom.meta[i,]
   
   #Calculate anomaly
   anom.temp <- tempfile(fileext = ".nc")
-  anom.cmd <- ncdiff("--netcdf4 --overwrite --history",
-                     anom.meta$frag.fname[i],
-                     file.path(lead.clim.dir,anom.meta$clim.fname[i]),
+  # anom.cmd <- ncdiff("--netcdf4 --overwrite --history",
+  #                    anom.meta$frag.fname[i],
+  #                    file.path(lead.clim.dir,anom.meta$clim.fname[i]),
+  #                    anom.temp)
+  anom.cmd <- cdo("sub",
+                     am$frag.fname,
+                     file.path(lead.clim.dir,am$clim.fname),
                      anom.temp)
+  
   condexec(1,anom.cmd)
   
   #Remap
   condexec(2,regrid.cmd <- cdo("-f nc",
-                               csl("remap", pcfg@analysis.grid, anom.meta$remapping.wts[i]),
+                               csl("remap", pcfg@analysis.grid, am$remapping.wts),
                                anom.temp, 
-                               file.path(anom.dir,anom.meta$fname[i])))
+                               file.path(anom.dir,am$fname)))
   
 }
 

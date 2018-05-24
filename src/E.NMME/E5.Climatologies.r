@@ -74,16 +74,19 @@ for(cf in clim.files.l) {
   clim.out.fname <- file.path(lead.clim.dir,unique(cf$clim.fname))
 
   #Calculate climatology using nces
-  clim.cmd <- nces("--netcdf4 --overwrite --history ",
+  # clim.cmd <- nces("--netcdf4 --overwrite --history ",
+  #                  cf$frag.fname,
+  #                  clim.out.fname)
+  clim.cmd <- cdo("ensmean",
                    cf$frag.fname,
                    clim.out.fname)
   condexec(1,clim.cmd)
   
   #Apply ncwa to remove degenerate dimensions
-  ncwa.cmd <- ncwa("--overwrite -a sst,S,L,M",
-                   clim.out.fname,clim.out.fname)
-  condexec(1,ncwa.cmd)
-  
+  # ncwa.cmd <- ncwa("--overwrite -a sst,S,L,M",
+  #                  clim.out.fname,clim.out.fname)
+  # condexec(1,ncwa.cmd)
+  # 
 }
 Sys.sleep(0.1)
 print(pb$stop())

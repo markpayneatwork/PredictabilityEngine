@@ -54,10 +54,12 @@ if(interactive()) {
   set.debug.level(0)  #0 complete fresh run
 }
 
+#Ensemble mean source
+ensmean.src <- pcfg@DCPP.hindcasts[["Decadal-ensmean"]]
+
 #Directory setup
-base.dir <- define_dir(pcfg@scratch.dir)
-ensmean.dir <- define_dir(base.dir,"DCPP-hindcasts","DCPP-ensmean")
-anom.dir <- define_dir(ensmean.dir,"A.anoms")
+base.dir <- define_dir(pcfg@scratch.dir,ensmean.src@source)
+ensmean.dir <- define_dir(base.dir,"C.ensmean")
 
 #'========================================================================
 # Setup ensemble averaging ####
@@ -66,8 +68,10 @@ anom.dir <- define_dir(ensmean.dir,"A.anoms")
 #models that we have in our configuration
 metadat.l <- list()
 for(m in pcfg@DCPP.hindcasts){
-  load(file.path(base.dir,m@source,"Realmean_metadata.RData"))
-  metadat.l[[m@name]] <- realmean.meta
+  if(m@type=="DCPP-hindcast") {
+    load(file.path(pcfg@scratch.dir,m@source,"Realmean_metadata.RData"))
+    metadat.l[[m@name]] <- realmean.meta
+  }
 }
 metadat.all <- bind_rows(metadat.l)
 
@@ -104,15 +108,16 @@ for(i in seq(grp.l)) {
   d <- grp.l[[i]]
   
   #Build up meta data
-  grp.meta <- tibble(model="Decadal-Ensmean",
+  grp.meta <- tibble(model=ensmean.src@name,
                          forecast.date=mean(d$forecast.date),
                          start.date=mean(d$start.date),
                          lead.ts=unique(d$lead.ts), 
                          realization="ensmean")
-  ensmean.fname <- sprintf("Decadal-ensmean_S%s_L%s_ensmean_anom.nc",
+  ensmean.fname <- sprintf("%s_S%s_L%s_ensmean_anom.nc",
+                           ensmean.src@name,
                            format(grp.meta$start.date,"%Y%m%d"),
                            grp.meta$lead.ts)
-  grp.meta$fname <- file.path(anom.dir,ensmean.fname)
+  grp.meta$fname <- file.path(ensmean.dir,ensmean.fname)
 
   #Average over individual files
   temp.fname <- tempfile(fileext = ".nc")
@@ -132,7 +137,7 @@ for(i in seq(grp.l)) {
 
 #Polish the anomaly file meta data into a more useable format
 ensmean.meta <- bind_rows(ensmean.meta.l)
-save(ensmean.meta,file=file.path(ensmean.dir,"Ensmean_metadata.RData"))
+save(ensmean.meta,file=file.path(base.dir,"Ensmean_metadata.RData"))
 
 #'========================================================================
 # Complete

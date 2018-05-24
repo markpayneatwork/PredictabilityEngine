@@ -1,14 +1,14 @@
 #/*##########################################################################*/
-#' Calculate Indicators from the CMIP5 ensemble
+#' Calculate Indicators
 #' ==========================================================================
 #'
 #' by Mark R Payne  
 #' DTU-Aqua, Charlottenlund, Denmark  
 #' http://www.staff.dtu.dk/mpay  
 #'
-#' Tue Sep 13 21:50:06 2016
+#' Mon Jun  6 12:43:20 2016
 #'
-#' Calculates the various indicators for the CMIP5 files
+#' Calculates the various indicators for files that are compatable with CDO
 #
 #  This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 #  You are largely free to do what you like with it, so long as you "attribute" 
@@ -24,7 +24,7 @@
 # ========================================================================
 # Initialise system
 # ========================================================================
-cat(sprintf("\n%s\n","Calculate CMIP5 indicators"))
+cat(sprintf("\n%s\n","Calculate CDO indicators"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Configure markdown style, do house cleaning
@@ -33,7 +33,6 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 
 #Helper functions, externals and libraries
 library(PredEng)
-library(ClimateTools)
 load("objects/configuration.RData")
 
 # ========================================================================
@@ -41,33 +40,39 @@ load("objects/configuration.RData")
 # ========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  # mdl.no <- 8
+  mdl.no <- 8
   set.debug.level(0)  #0 complete fresh run
 } else {
   #Taking inputs from the system environment
-  # mdl.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
-  # if(mdl.no=="") stop("Cannot find PBS_ARRAYID")
+  mdl.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
+  if(mdl.no=="") stop("Cannot find PBS_ARRAYID")
   #Do everything
   set.debug.level(0)  #0 complete fresh run
 }
 
+#Supported models
+if(mdl.no==0) {
+  mdl <- GCM(name="Ensmean",type="hindcast")
+} else {
+  mdl <- c(pcfg@hindcast.models,pcfg@uninit.models)[[mdl.no]]  
+}
+
+
 #Directory setup
-base.dir <- file.path("processing",pcfg@name)
-anom.dir <- file.path(base.dir,"CMIP5", "6.anom")
-realmean.dir <- file.path(base.dir,"CMIP5","4.realmean")
+base.dir <- define_dir("processing",pcfg@name)
+obs.dir <- define_dir(base.dir,pcfg@observations[[1]]@name)
 out.dir <- define_dir(base.dir,"indicators")
+
+#Load metadata
+load(file.path(base.dir,sprintf("%s-%s",mdl@name,mdl@type),"metadata.RData"))
 
 # ========================================================================
 # Setup 
 # ========================================================================
-#Setup observation data, if required
-has.obs <- length(pcfg@observations)>0
-if(has.obs) {
-  obs.dir <- file.path(base.dir,pcfg@observations[[1]]@name)
-  obs.clim.fname <- file.path(obs.dir,"obs_climatology.nc")
-  obs.clim.full <- raster(obs.clim.fname)
-  obs.clim <- crop(obs.clim.full,pcfg@ROI)  #Crop down to size
-}
+#Setup observation data
+obs.clim.fname <- file.path(obs.dir,"obs_climatology.nc")
+obs.clim.full <- raster(obs.clim.fname)
+obs.clim <- crop(obs.clim.full,pcfg@ROI)  #Crop down to size
 
 #Setup landmask by regridding
 landmask.fname <- file.path(base.dir,"landmask_regridded.nc")
@@ -76,31 +81,15 @@ run_if(NA,landmask.cmd <- cdo("-f nc",
                               pcfg@landmask, landmask.fname))
 landmask <- raster(landmask.fname)
 
-#Get list of files to process - if there are observations
-#defined, use the anomalies, otherwise need to adjust accordingly 
-# and just use the modelled values (without any bias correction)
-if(has.obs) { #use anomalies
-  meta.df <- data.frame(fname=dir(anom.dir,pattern="*.nc",full.names = TRUE))
-} else { #Use realisation means
-  meta.df <- data.frame(fname=dir(realmean.dir,pattern="*.nc",full.names = TRUE))
-}
-meta.df$src <- gsub("^(.*?_.*?)_.*$","\\1",basename(meta.df$fname))
-
 #Result storage
 ind.l <- list()
-
-#Setup a fake model object
-mdl <-GCM(type="CMIP5",var=pcfg@CMIP5.var)
 
 # ========================================================================
 # Calculate indicators per file 
 # ========================================================================
 #Loop over anomaly files
 for(i in seq(nrow(meta.df))) {
-  log_msg("File %05i of %05i... ",i,nrow(meta.df))
-  
-  #Create a model object
-  mdl@name <- meta.df$src[i]
+  log_msg("Model %i, File %05i of %05i... ",mdl.no,i,nrow(meta.df))
   
   #Import model anom as a brick 
   f <- meta.df$fname[i]
@@ -120,12 +109,8 @@ for(i in seq(nrow(meta.df))) {
   #grid have largely rendered this step irrelevant
   
   #Build up the modelled temperature by combining the observational climatology
-  #with the modelled anomaly - but only if we have observations in the first place
-  if(has.obs) {
-    mdl.temp <- obs.clim + mdl.anom
-  } else {
-    mdl.temp <- mdl.anom
-  }
+  #with the modelled anomaly.
+  mdl.temp <- obs.clim + mdl.anom
   
   #Apply the land mask 
   log_msg("Masking... ")
@@ -139,7 +124,7 @@ for(i in seq(nrow(meta.df))) {
   # #Finally, drop layers that are completely blank
   # blank.layer <- cellStats(is.na(masked),sum)==ncell(masked)
   # no.blanks <- masked[[which(!blank.layer)]]
-
+  
   #And we're ready. Lets calculate some indicators
   log_msg("indicators... ")
   ind.l[[i]] <- lapply(pcfg@indicators,eval.indicator,x=masked)
@@ -153,17 +138,29 @@ for(i in seq(nrow(meta.df))) {
 # Aggregate and tidy-up 
 # ========================================================================
 #Aggregate indicator list
-mdl.inds <- do.call(rbind,ind.l)
+mdl.inds.df <- do.call(rbind,ind.l)
 
 #Merge in metadata as required
-mdl.inds$type <- "CMIP5"
-mdl.inds$src <- gsub("^(.*?_.*?)_.*$","\\1",basename(mdl.inds$fname))
-mdl.inds$forecast.init <- mdl.inds$date
-mdl.inds$real <- NA
+mdl.inds <- merge(mdl.inds.df,
+                  meta.df[,c("fname","forecast.init","real")],
+                  all=TRUE)
 mdl.inds$fname <- NULL
+mdl.inds$src <-  mdl@name
+mdl.inds$type <- mdl@type
+
+# #Average over realisations
+# mdl.inds.ave.mat <- tapply(mdl.inds.r$value,
+#                            mdl.inds.r[,c("indicator","forecast.init","date")],
+#                           mean,drop=TRUE)
+# mdl.inds.ave <- subset(melt(mdl.inds.ave.mat),!is.na(value))
+# mdl.inds.ave$forecast.init <- ymd(mdl.inds.ave$forecast.init)
+# mdl.inds.ave$date <- ymd(mdl.inds.ave$date)
+# mdl.inds.ave$src <- class(mdl)
+# mdl.inds.ave$real <- "realmean"
 
 #Save indicators
-save(mdl.inds,file=file.path(out.dir,"CMIP5.RData"))
+save(mdl.inds,file=file.path(out.dir,
+                             sprintf("%s_%s.RData",mdl@name,mdl@type)))
 
 # ========================================================================
 # Complete

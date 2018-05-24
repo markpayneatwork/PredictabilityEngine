@@ -47,7 +47,7 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  set.debug.level()  #0 complete fresh run
+  set.debug.level(7)  #0 complete fresh run
   set.condexec.silent()
   set.cdo.defaults("-s -O")
 } else {
@@ -183,10 +183,8 @@ log_msg("Anomalies...\n")
 pb <- progress_estimated(nrow(anom.meta))
 for(m in seq(nrow(anom.meta))){
   pb$tick()$print()
-  condexec(6,anom.cmd <- cdo("sub",
-                           anom.meta$fname[m],
-                           anom.meta$clim.fname[m],
-                           file.path(anom.dir,basename(anom.meta$anom.fname)[m])))
+  am <- anom.meta[m,]
+  condexec(6,anom.cmd <- cdo("sub",am$frag.fname,am$clim.fname,am$fname))
 }
 Sys.sleep(0.1)
 print(pb$stop())
@@ -204,8 +202,12 @@ save(anom.meta,file=file.path(base.dir,"Anom_metadata.RData"))
 log_msg("Realisation means...\n")
 
 #Break into chunks per model, experiment
-realmean.files.l <- split(anom.meta,
-                          anom.meta[,c("model","expt")],
+realmean.meta <- anom.meta %>%
+                 mutate(anom.fname=fname,
+                        fname=NULL,
+                        frag.fname=NULL)
+realmean.files.l <- split(realmean.meta,
+                          realmean.meta[,c("model","expt")],
                           drop=TRUE)
 
 #Average over the individual realisations at given lead time
@@ -232,7 +234,7 @@ for(l in realmean.files.l) {
       #Crop
       crop.fname <- tempfile()
       condexec(7,crop.cmd <- cdo(csl("seltimestep",1:k),
-                                 realmean.src$fname[j],
+                                 realmean.src$anom.fname[j],
                                  crop.fname))
       
       #Overwrite temporary file info

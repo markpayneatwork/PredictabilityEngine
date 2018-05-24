@@ -48,6 +48,7 @@ if(interactive()) {
  # mdl.no <- 5
   set.debug.level(0)  #0 complete fresh run
   set.condexec.silent()
+  set.cdo.defaults("--silent --no_warnings -O")
 } else {
   #Taking inputs from the system environment
 #  mdl.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
@@ -79,8 +80,9 @@ CMIP5.meta <- tibble(model=CMIP5_model(fnames),
 #Check that there is only one model in CMIP5.models - in
 #principle we should be able to handle this, but we need to
 #check the code first
-if(length(pcfg@CMIP5.models)!=1) stop("Can currently only handle 1 CMIP5 model specification ")
-CMIP5.var <- pcfg@CMIP5.models[[1]]@var
+mdl.types <- sapply(pcfg@CMIP5.models,slot,"type")
+if(sum(mdl.types=="CMIP5")!=1) stop("Can currently only handle 1 CMIP5 model specification ")
+CMIP5.var <- pcfg@CMIP5.models[[which(mdl.types=="CMIP5")]]@var
 
 #'========================================================================
 # Extract data ####
@@ -154,7 +156,7 @@ log_msg("\n")
 # and then apply the monthly averaging to produce the fragments that 
 # we are actually looking for
 #'========================================================================
-log_msg("Merging and averaging files...\n")
+log_msg("Merging files...\n")
 
 
 # #Setup filenames
