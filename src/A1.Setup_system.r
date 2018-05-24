@@ -36,6 +36,7 @@ log_msg <- function(fmt,...) {cat(sprintf(fmt,...));
   flush.console();return(invisible(NULL))}
 
 #Do it 
+install.packages("resources/ClimateTools", repos = NULL, type="source")
 install.packages("resources/PredEng_Package", repos = NULL, type="source")
 
 #/*======================================================================*/
