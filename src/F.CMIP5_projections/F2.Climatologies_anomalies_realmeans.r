@@ -35,7 +35,6 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 log.msg <- function(fmt,...) {cat(sprintf(fmt,...));
   flush.console();return(invisible(NULL))}
 
-library(tidyverse)
 library(PredEng)
 library(dplyr)
 library(lubridate)
