@@ -37,6 +37,7 @@ library(ClimateTools)
 library(ncdf4)
 library(dplyr)
 library(tibble)
+library(tidyr)
 load("objects/configuration.RData")
 
 
@@ -74,10 +75,18 @@ fnames <- dir(src.dir,pattern=".nc",full.names = TRUE,recursive=TRUE)
 if(length(fnames)==0) stop("Cannot find source files")
 
 #Extract metadata
-CMIP5.meta <- tibble(model=CMIP5_model(fnames),
+CMIP5.meta.all <- tibble(model=CMIP5_model(fnames),
                     expt=CMIP5_experiment(fnames),
                     realization=CMIP5_realisation(fnames),
                     fname=fnames)
+
+#Check for perturbed physics runs and differing initialisation methods
+#Generally, I don't know how to interpret these, so we just drop them
+CMIP5.meta.all <- bind_cols(CMIP5.meta.all,
+                        extract(CMIP5.meta.all,realization,
+                                c("realization.r","realization.i","realization.p"),
+                                "r([0-9]+)i([0-9]+)p([0-9]+)")) 
+CMIP5.meta <- subset(CMIP5.meta.all,realization.i=="1" &realization.p=="1")
 
 #Check that there is only one model in CMIP5.models - in
 #principle we should be able to handle this, but we need to
@@ -203,7 +212,7 @@ log_msg("\n")
 # Complete ####
 #'========================================================================
 #Save the metadata
-save(CMIP5.meta,file=file.path(base.dir,"CMIP5files_metadata.RData"))
+save(CMIP5.meta,CMIP5.meta.all,file=file.path(base.dir,"CMIP5files_metadata.RData"))
 
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
