@@ -1,4 +1,4 @@
-#/*##########################################################################*/
+#*##########################################################################*/
 #' Extract data from CMIP5 projections
 #' ==========================================================================
 #'
@@ -49,12 +49,14 @@ if(interactive()) {
   set.debug.level(0)  #0 complete fresh run
   set.condexec.silent()
   set.cdo.defaults("--silent --no_warnings -O")
+  set.log_msg.silent()
 } else {
   #Taking inputs from the system environment
 #  mdl.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
   #if(mdl.no=="") stop("Cannot find PBS_ARRAYID")
   #Do everything
   set.debug.level(0)  #0 complete fresh run
+  set.log_msg.silent(silent=FALSE)
 }
 
 #Directory setup
@@ -100,7 +102,7 @@ for(mdl in names(mdl.l)) {
 }
 
 #Loop over files and extract the key data from each file
-log_msg("Extracting data...\n")
+log_msg("Extracting data...\n",silent=FALSE)
 pb <- progress_estimated(nrow(CMIP5.meta))
 for(i in seq(nrow(CMIP5.meta))) {
   pb$tick()$print()
@@ -108,7 +110,8 @@ for(i in seq(nrow(CMIP5.meta))) {
   #Extract file
   f <- CMIP5.meta$fname[i]
   temp.stem <- tempfile()
-  
+  log_msg("Processsing %s...\n",basename(f),silenceable = TRUE)
+ 
   #Subset out the surface layer from the field of interest
   #TODO: Note that we will probably need to change this in the future
   #to allow sub-surface properties - however, this is a bit of work

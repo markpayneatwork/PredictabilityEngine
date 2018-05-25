@@ -49,12 +49,14 @@ if(interactive()) {
   set.debug.level(7)  #0 complete fresh run
   set.condexec.silent()
   set.cdo.defaults("-s -O")
+  set.log_msg.silent()
 } else {
   #Taking inputs from the system environment
   #  mdl.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
   #if(mdl.no=="") stop("Cannot find PBS_ARRAYID")
   #Do everything
   set.debug.level(0)  #0 complete fresh run
+  set.log_msg.silent(FALSE)
 }
 
 #Directory setup
@@ -89,6 +91,8 @@ if(get.debug.level()<=0) {
   pb <- progress_estimated(length(frag.fnames))
   for(f in frag.fnames) {
     pb$tick()$print()
+    log_msg("Processing metadata for %s...\n",basename(f),silenceable = TRUE)
+
     #Doing it with a NetCDF read is faster, but doesn't
     #do a very good job of parsing the dates correctly
     #We use raster instead
@@ -183,6 +187,8 @@ pb <- progress_estimated(nrow(anom.meta))
 for(m in seq(nrow(anom.meta))){
   pb$tick()$print()
   am <- anom.meta[m,]
+  log_msg("Processing anomalies for %s...\n",basename(am$fname),silenceable = TRUE)
+
   condexec(6,anom.cmd <- cdo("sub",am$frag.fname,am$clim.fname,am$fname))
 }
 Sys.sleep(0.1)
@@ -214,7 +220,7 @@ realmean.meta.l <- list()
 pb <- progress_estimated(length(realmean.files.l))
 for(l in realmean.files.l) {
   pb$tick()$print()
-  
+
   #Check that all files have the same start date to begin with
   #If not, we have a problem
   if(length(unique(l$start.date))!=1) stop("Differening start dates between files")
