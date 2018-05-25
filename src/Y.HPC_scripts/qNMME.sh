@@ -1,7 +1,6 @@
 #!/bin/bash -x
 #Set default job name
-#PBS -N HindcastCDO 
-#PBS -t 1-4
+#PBS -N PE_NMME 
 #Set mail address
 #PBS -M mpay@aqua.dtu.dk
 
@@ -17,9 +16,20 @@ echo "Working directory : $(pwd)"
 echo "Target script     : $(readlink runme)"
 echo "=========================================================="
 
-#Run R
+#Setup
 module load cdo
-Rscript src/D.Decadal_forecast_systems/D1.Extract_data_from_hindcasts.r 
+module load gcc/8.1.0
+
+#Run R 
+set -e 
+Rscript src/E.NMME/E1.Retrieve_NMME_archive_metadata.r
+Rscript src/E.NMME/E2.Retrieve_NMME_data.r
+Rscript src/E.NMME/E3.Explode_downloaded_data.r
+Rscript src/E.NMME/E4.Collect_fragments_metadata.r
+Rscript src/E.NMME/E5.Climatologies.r
+Rscript src/E.NMME/E6.Calculate_anomalies.r
+Rscript src/E.NMME/E7.Calculate_realization_means.r
+Rscript src/E.NMME/E8.Calculate_NMME_ensemble_mean.r
 
 #Error check
 if [ "$?" -eq 0 ]; 

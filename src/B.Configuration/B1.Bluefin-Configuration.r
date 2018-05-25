@@ -49,7 +49,7 @@ pcfg <- config(name= "Bluefin",
                landmask="data_srcs/landmask.nc",
                observations=SST_obs[c("HadISST")],
                CMIP5.models=CMIP5.mdls,
-#               DCPP.uninit = uninit_mdls,
+#               decadal.uninit = uninit_mdls,
                NMME.models=NMME.sst.l)
 
 #Setup scratch directory
@@ -57,17 +57,17 @@ pcfg@scratch.dir <- file.path("scratch",pcfg@name)
 define_dir(pcfg@scratch.dir)
 
 #Drop NCEP forced model
-pcfg@DCPP.hindcasts <- hindcast_mdls[-which(names(hindcast_mdls)=="MPI-NCEP")]
+pcfg@decadal.hindcasts <- hindcast_mdls[-which(names(hindcast_mdls)=="MPI-NCEP")]
 
 #If working locally, only keep the simplest two models
 if(Sys.info()["nodename"]=="mpayne-Latitude-E7240") {
-  pcfg@DCPP.hindcasts <- pcfg@DCPP.hindcasts[c(1,4)]
+  pcfg@decadal.hindcasts <- pcfg@decadal.hindcasts[c(1,4)]
 }
 
 #Add in the ensembles
-pcfg@DCPP.hindcasts <- c(pcfg@DCPP.hindcasts,
+pcfg@decadal.hindcasts <- c(pcfg@decadal.hindcasts,
                          GCM(name="Decadal-ensmean",
-                                            source="DCPP-hindcasts/ensmean",
+                                            source="Decadal-hindcasts/ensmean",
                                             type="ensmean"))
 pcfg@NMME.models <- c(pcfg@NMME.models,
                          GCM(name="NMME-ensmean",

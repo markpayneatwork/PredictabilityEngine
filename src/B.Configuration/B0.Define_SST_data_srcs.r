@@ -68,7 +68,7 @@ hindcast_mdls$"MPI-NCEP" <- GCM(name="MPI-NCEP-forced",
 
 #GFDL is largely in CMIP5 format
 hindcast_mdls$GFDL <-   GCM(name="GFDL-CM2.1",
-                            source="GFDL-GM2.1",
+                            source="GFDL-CM2.1",
                             var="tos",
                              ensmem_fn=CMIP5_realisation,
                              init_fn=function(f){

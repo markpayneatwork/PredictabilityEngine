@@ -49,8 +49,8 @@ load("objects/configuration.RData")
 if(interactive()) {
   set.debug.level(0)  #0 complete fresh run
   set.condexec.silent()
-  set.cdo.defaults("-s -O")
-  set.log_msg.silent()
+  set.cdo.defaults("--silent -O --no_warnings")
+  set.log_msg.silent(TRUE)
 } else {
   #Taking inputs from the system environment
   #  mdl.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
@@ -152,11 +152,17 @@ clim.grp.l <- split(hist.meta,hist.meta[,c("model")])
 #the historical runs, we will have to do something different
 #but have added an error check for this.
 pb <- progress_estimated(length(clim.grp.l))
-for(g in clim.grp.l) {
+for(i in seq(clim.grp.l)) {
   pb$tick()$print()
+  log_msg("Processing climatology %i of %i...\n",i,length(clim.grp.l),silenceable = TRUE)
+  g <- clim.grp.l[[i]]
   
-  #Check that all realizations have the same length
-  if(length(unique(g$n.dates))!=1) stop("Not all realizations have the same length")
+  #Check that all realizations have the same length. If not, keep the most popular
+  #length
+  unique.dates <- table(g$n.dates)
+  if(length(unique.dates)!=1) {
+    g <- subset(g,n.dates==names(unique.dates)[which.max(unique.dates)])
+  }
   
   #Calculate the realization mean first
   real.mean.fname <- tempfile()
@@ -219,12 +225,20 @@ realmean.files.l <- split(realmean.meta,
 #Average over the individual realisations at given lead time
 realmean.meta.l <- list()
 pb <- progress_estimated(length(realmean.files.l))
-for(l in realmean.files.l) {
+for(i in seq(realmean.files.l)) {
   pb$tick()$print()
-
-  #Check that all files have the same start date to begin with
-  #If not, we have a problem
-  if(length(unique(l$start.date))!=1) stop("Differening start dates between files")
+  l <- realmean.files.l[[i]]
+  log_msg("Calculating realmean %i of %i, %s-%s...\n",
+          i,length(realmean.files.l),
+          unique(l$model),unique(l$expt),
+          silenceable = TRUE)
+  
+  #Check that all files have the same start date to begin with. If not, 
+  #keep the most popular length
+  unique.start.dates <- table(l$start.date)
+  if(length(unique.dates)!=1) {
+    l <- subset(l,start.date==names(unique.start.dates)[which.max(unique.start.dates)])
+  }
   
   #Now loop over the run lengths
   run.lens <- sort(unique(l$n.dates))

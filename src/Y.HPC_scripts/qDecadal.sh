@@ -1,6 +1,8 @@
 #!/bin/bash -x
 #Set default job name
-#PBS -N PE_CMIP5 
+#PBS -N PE_Decadal
+#Set number of tasks and their ID
+#PBS -t 1
 #Set mail address
 #PBS -M mpay@aqua.dtu.dk
 
@@ -16,14 +18,11 @@ echo "Working directory : $(pwd)"
 echo "Target script     : $(readlink runme)"
 echo "=========================================================="
 
-#Setup
+#Run R
 module load cdo
-module load gcc/8.1.0
-
-#R script
-set -e 
-#Rscript src/F.CMIP5_projections/F1.Fragment_CMIP5.r 
-Rscript src/F.CMIP5_projections/F2.Climatologies_anomalies_realmeans.r
+module load gcc/8.1.0 
+#Rscript src/D.Decadal/D1.Extract_data_from_decadal_hindcasts.r 
+Rscript src/D.Decadal/D3.Produce_ensemble_mean_hindcasts.r 
 
 #Error check
 if [ "$?" -eq 0 ]; 
