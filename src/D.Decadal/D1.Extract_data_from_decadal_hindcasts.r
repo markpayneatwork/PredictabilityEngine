@@ -44,7 +44,7 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  src.no <- 2
+  src.no <- 4
   set.debug.level(0)  #0 complete fresh run
   set.condexec.silent()
   set.cdo.defaults("--silent --no_warnings -O")
@@ -79,7 +79,7 @@ realmean.dir <- define_dir(base.dir,"B.realmean")
 log_msg("Processing data source %s...\n",src@name)
 
 #Get list of files
-fnames <- dir(src.dir,pattern=".nc",full.names = TRUE)
+fnames <- dir(src.dir,pattern="\\.nc$",full.names = TRUE)
 if(length(fnames)==0 & get.debug.level()<=2) stop("Cannot find source files")
 
 #Prepare a set of remapping weights
