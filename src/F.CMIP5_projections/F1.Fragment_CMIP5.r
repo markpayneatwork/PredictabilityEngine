@@ -82,10 +82,10 @@ CMIP5.meta.all <- tibble(model=CMIP5_model(fnames),
 
 #Check for perturbed physics runs and differing initialisation methods
 #Generally, I don't know how to interpret these, so we just drop them
-CMIP5.meta.all <- bind_cols(CMIP5.meta.all,
-                        extract(CMIP5.meta.all,realization,
+CMIP5.meta.all <- extract(CMIP5.meta.all,realization,
                                 c("realization.r","realization.i","realization.p"),
-                                "r([0-9]+)i([0-9]+)p([0-9]+)")) 
+                                "r([0-9]+)i([0-9]+)p([0-9]+)",
+                                remove=FALSE)
 CMIP5.meta <- subset(CMIP5.meta.all,realization.i=="1" &realization.p=="1")
 
 #Check that there is only one model in CMIP5.models - in
