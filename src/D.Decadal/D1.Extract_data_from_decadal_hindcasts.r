@@ -48,6 +48,7 @@ if(interactive()) {
   set.debug.level(0)  #0 complete fresh run
   set.condexec.silent()
   set.cdo.defaults("--silent --no_warnings -O")
+  set.log_msg.silent()
 } else {
   #Taking inputs from the system environment
   src.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
@@ -56,6 +57,7 @@ if(interactive()) {
   set.debug.level(0)  #0 complete fresh run
   set.condexec.silent(FALSE)
   set.cdo.defaults()
+  set.log_msg.silent(FALSE)
 }
 
 #Supported models
@@ -95,6 +97,7 @@ for(i in seq(fnames)) {
   
   #Extract file
   f <- fnames[i]
+  log_msg("Extracting from %s...\n",basename(f),silenceable = TRUE)
   temp.stem <- tempfile()
 
   #Subset out the layer(s) from the field of interest
@@ -164,6 +167,8 @@ if(get.debug.level()<=4) {
   pb <- progress_estimated(length(frag.fnames))
   for(i in seq(frag.fnames)) {
     pb$tick()$print()
+    log_msg("Collating metadata from fragment %s...\n",basename(frag.fnames[i]),silenceable = TRUE)
+    
     frag.dates.l[[i]] <- src@date_fn(frag.fnames[i])
   }
   
@@ -228,6 +233,7 @@ anom.meta <- mutate(frag.meta,
 pb <- progress_estimated(nrow(anom.meta))
 for(k in seq(nrow(anom.meta))){
   pb$tick()$print()
+  log_msg("Calculating anomaly %s...\n",basename(anom.meta$fname[k]),silenceable = TRUE)
   condexec(6,anom.cmd <- cdo("sub",anom.meta$frag.fname[k],
                              anom.meta$clim.fname[k],
                              anom.meta$fname[k]))
@@ -260,6 +266,7 @@ pb <- progress_estimated(length(realmean.files.l),-1)
 for(l in realmean.files.l) {
   pb$tick()$print()
   realmean.fname <- unique(l$fname)
+  log_msg("Calculating realmean %s...\n",basename(realmean.fname),silenceable = TRUE)
   condexec(7,realmean.cmd <- cdo( "-O ensmean", l$anom.fname,realmean.fname))
 }
 
