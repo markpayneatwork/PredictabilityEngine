@@ -59,14 +59,15 @@ if(interactive()) {
 
 #Directory setup
 base.dir <- pcfg@scratch.dir
-obs.dir <- file.path(base.dir,pcfg@observations[[1]]@name)
+obs.dir <- define_dir(file.path(base.dir,pcfg@observations@source))
 ind.dir <- define_dir(base.dir,"indicators")
 
 #'========================================================================
 # Setup ####
 #'========================================================================
 #Supported models
-dat.srcs <- c(pcfg@DCPP.hindcasts,pcfg@DCPP.uninit,pcfg@NMME.models,pcfg@CMIP5.models)
+dat.srcs <- c(pcfg@DCPP.hindcasts,pcfg@DCPP.uninit,
+              pcfg@NMME.models,pcfg@CMIP5.models)
 src <- dat.srcs[[src.no]]
 log_msg("Processing (%s) %s, number %i of %i available data sources\n\n",
         src@type,src@name,src.no,length(dat.srcs))
