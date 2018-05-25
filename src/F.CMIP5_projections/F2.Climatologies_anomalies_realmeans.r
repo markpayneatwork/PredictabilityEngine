@@ -47,7 +47,7 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  set.debug.level(7)  #0 complete fresh run
+  set.debug.level(0)  #0 complete fresh run
   set.condexec.silent()
   set.cdo.defaults("-s -O")
   set.log_msg.silent()
@@ -160,7 +160,7 @@ for(g in clim.grp.l) {
   
   #Calculate the realization mean first
   real.mean.fname <- tempfile()
-  condexec(5,realmean.cmd <- cdo("-O ensmean",g$fname,real.mean.fname))
+  condexec(5,realmean.cmd <- cdo("-O ensmean",g$frag.fname,real.mean.fname))
   
   #Calculate the climatology across the years of interest 
   condexec(5,clim.cmd <- cdo("timmean",
