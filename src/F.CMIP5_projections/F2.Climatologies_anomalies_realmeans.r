@@ -39,6 +39,7 @@ library(PredEng)
 library(dplyr)
 library(lubridate)
 library(ncdf4)
+library(tibble)
 load("objects/configuration.RData")
 
 #'========================================================================
