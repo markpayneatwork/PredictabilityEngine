@@ -28,6 +28,7 @@
 #originally by SPECS
 hindcast_mdls <- list()
 hindcast_mdls$IPSL  <- GCM(name="IPSL-CM5A-LR",
+                           source="IPSL-CM5A-LR",
                            var="tos",
                            ensmem_fn=function(f) {
                              underscore_field(f,6)},
@@ -36,10 +37,13 @@ hindcast_mdls$IPSL  <- GCM(name="IPSL-CM5A-LR",
                              init.date <- ymd(init.str)
                              return(init.date)})
 
-hindcast_mdls$"MPI-MR" <-  new("GCM",hindcast_mdls$IPSL,name="MPI-ESM-MR")
+hindcast_mdls$"MPI-MR" <-  new("GCM",hindcast_mdls$IPSL,
+                               name="MPI-ESM-MR",
+                               source="MPI-ESM-MR")
 
 #MPI-LR is different,
 hindcast_mdls$"MPI-LR" <-  GCM(name="MPI-ESM-LR",var="thetao",
+                               source="MPI-ESM-LR_MiKlip-b1",
                              ensmem_fn=CMIP5_realisation,
                              init_fn=function(f){
                                init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
@@ -47,7 +51,9 @@ hindcast_mdls$"MPI-LR" <-  GCM(name="MPI-ESM-LR",var="thetao",
                                return(init.date)})
 
 #MPI - NCEP requires all three to be specified
-hindcast_mdls$"MPI-NCEP" <- GCM(name="MPI-NCEP-forced",var="var2",
+hindcast_mdls$"MPI-NCEP" <- GCM(name="MPI-NCEP-forced",
+                                source="MPI-ESM-LR_NCEP-forced",
+                                var="var2",
                              ensmem_fn=function(f){return(rep("r1",length(f)))},
                              date_fn=function(f){
                                dates.str <- getZ(brick(f))
@@ -61,7 +67,9 @@ hindcast_mdls$"MPI-NCEP" <- GCM(name="MPI-NCEP-forced",var="var2",
                                return(init.date)})
 
 #GFDL is largely in CMIP5 format
-hindcast_mdls$GFDL <-   GCM(name="GFDL-CM2.1",var="tos",
+hindcast_mdls$GFDL <-   GCM(name="GFDL-CM2.1",
+                            source="GFDL-GM2.1",
+                            var="tos",
                              ensmem_fn=CMIP5_realisation,
                              init_fn=function(f){
                                init.yr <- str_match(basename(f),"^.*?_decadal([0-9]{4})_r.*$")[,2]
@@ -70,8 +78,8 @@ hindcast_mdls$GFDL <-   GCM(name="GFDL-CM2.1",var="tos",
 
 #Identify models as hindcast models and set the source equal to the name
 for(i in seq(hindcast_mdls)) {
-  hindcast_mdls[[i]]@type <- "DCPP-hindcast"
-  hindcast_mdls[[i]]@source <- file.path("DCPP-hindcasts",sprintf("%s",hindcast_mdls[[i]]@name))
+  hindcast_mdls[[i]]@type <- "Decadal-hindcast"
+  hindcast_mdls[[i]]@source <- file.path("Decadal-hindcasts",hindcast_mdls[[i]]@source)
 }
 
 # ========================================================================

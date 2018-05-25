@@ -1,5 +1,5 @@
 #/*##########################################################################*/
-#' Extract data from DCPP-like archive
+#' Extract data from Decadal hindcast archive
 #' ==========================================================================
 #'
 #' by Mark R Payne  
@@ -24,7 +24,7 @@
 #'========================================================================
 # Initialise system ####
 #'========================================================================
-cat(sprintf("\n%s\n","Extract DCPP-like data"))
+cat(sprintf("\n%s\n","Extract Decadal hindcast data"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Configure markdown style, do house cleaning
@@ -59,7 +59,7 @@ if(interactive()) {
 }
 
 #Supported models
-src <- pcfg@DCPP.hindcasts[[src.no]]
+src <- pcfg@decadal.hindcasts[[src.no]]
 
 #Directory setup
 src.dir <- file.path(datasrc.dir,src@source)

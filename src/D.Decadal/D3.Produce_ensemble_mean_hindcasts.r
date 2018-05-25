@@ -55,7 +55,7 @@ if(interactive()) {
 }
 
 #Ensemble mean source
-ensmean.src <- pcfg@DCPP.hindcasts[["Decadal-ensmean"]]
+ensmean.src <- pcfg@decadal.hindcasts[["Decadal-ensmean"]]
 
 #Directory setup
 base.dir <- define_dir(pcfg@scratch.dir,ensmean.src@source)
@@ -67,8 +67,8 @@ ensmean.dir <- define_dir(base.dir,"C.ensmean")
 #Start by loading the metadata associated with each of the hindcast
 #models that we have in our configuration
 metadat.l <- list()
-for(m in pcfg@DCPP.hindcasts){
-  if(m@type=="DCPP-hindcast") {
+for(m in pcfg@decadal.hindcasts){
+  if(m@type=="Decadal-hindcast") {
     load(file.path(pcfg@scratch.dir,m@source,"Realmean_metadata.RData"))
     metadat.l[[m@name]] <- realmean.meta
   }
