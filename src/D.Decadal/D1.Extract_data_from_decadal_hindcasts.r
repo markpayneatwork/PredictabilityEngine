@@ -65,7 +65,7 @@ src <- pcfg@decadal.hindcasts[[src.no]]
 
 #Directory setup
 src.dir <- file.path(datasrc.dir,src@source)
-base.dir <- define_dir(pcfg@scratch.dir,src@source)
+base.dir <- define_dir(pcfg@scratch.dir,src@out.dir)
 remap.dir <- define_dir(base.dir,"1.remapping_wts")
 sel.dir <- define_dir(base.dir,"2.regrid")
 frag.dir <- define_dir(base.dir,"3.fragments")

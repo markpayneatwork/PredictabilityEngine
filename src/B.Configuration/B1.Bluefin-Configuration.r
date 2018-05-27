@@ -46,7 +46,7 @@ pcfg <- config(name= "Bluefin",
                MOI=8,  #August
                clim.years=1983:2005,  
                comp.years=1961:2012,
-               landmask="data_srcs/landmask.nc",
+               landmask="data_srcs/NMME/landmask.nc",
                observations=SST_obs[[c("HadISST")]],
                CMIP5.models=CMIP5.mdls,
 #               decadal.uninit = uninit_mdls,
@@ -68,10 +68,12 @@ if(Sys.info()["nodename"]=="mpayne-Latitude-E7240") {
 pcfg@decadal.hindcasts <- c(pcfg@decadal.hindcasts,
                          GCM(name="Decadal-ensmean",
                                             source="Decadal-hindcasts/ensmean",
+                                            out.dir="Decadal-hindcasts/ensmean",
                                             type="ensmean"))
 pcfg@NMME.models <- c(pcfg@NMME.models,
                          GCM(name="NMME-ensmean",
                              source="NMME",
+                             out.dir="NMME",
                              type="ensmean"))
 #Not implemented yet
 # pcfg@CMIP5.models <- c(pcfg@CMIP5.models,
@@ -150,6 +152,14 @@ pcfg <- update(pcfg)
 
 #Write CDO grid descriptor
 writeLines(griddes(pcfg),pcfg@analysis.grid)
+
+#Setup regridded landmask
+regrid.landmask <- file.path(pcfg@scratch.dir,"landmask_regridded.nc")
+exec(landmask.cmd <- cdo("-f nc", 
+                         csl("remapnn", pcfg@analysis.grid),
+                         pcfg@landmask, 
+                         regrid.landmask))
+pcfg@landmask <- regrid.landmask
 
 #Output
 save(pcfg,file="objects/configuration.RData")

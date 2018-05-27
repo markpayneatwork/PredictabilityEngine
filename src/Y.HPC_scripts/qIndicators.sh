@@ -1,7 +1,7 @@
 #!/bin/bash -x
 #Set default job name
-#PBS -N Indicators
-#PBS -t 0-8
+#PBS -N PE_Indicators
+#PBS -t 1-14
 #Set mail address
 #PBS -M mpay@aqua.dtu.dk
 
@@ -19,7 +19,7 @@ echo "=========================================================="
 
 #Run R
 module load cdo
-Rscript src/D.Decadal_forecast_systems/D4.Calculate_indicators.r
+Rscript src/H1.Calculate_indicators.r
 
 #Error check
 if [ "$?" -eq 0 ]; 

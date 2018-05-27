@@ -69,7 +69,7 @@ ensmean.dir <- define_dir(base.dir,"C.ensmean")
 metadat.l <- list()
 for(m in pcfg@decadal.hindcasts){
   if(m@type=="Decadal-hindcast") {
-    load(file.path(pcfg@scratch.dir,m@source,"Realmean_metadata.RData"))
+    load(file.path(pcfg@scratch.dir,m@out.dir,"Realmean_metadata.RData"))
     metadat.l[[m@name]] <- realmean.meta
   }
 }

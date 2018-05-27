@@ -79,7 +79,8 @@ hindcast_mdls$GFDL <-   GCM(name="GFDL-CM2.1",
 #Identify models as hindcast models and set the source equal to the name
 for(i in seq(hindcast_mdls)) {
   hindcast_mdls[[i]]@type <- "Decadal-hindcast"
-  hindcast_mdls[[i]]@source <- file.path("Decadal-hindcasts",hindcast_mdls[[i]]@source)
+  hindcast_mdls[[i]]@source<- file.path("Decadal-hindcasts",hindcast_mdls[[i]]@source)
+  hindcast_mdls[[i]]@out.dir <- hindcast_mdls[[i]]@source
 }
 
 # ========================================================================
@@ -112,6 +113,10 @@ SST_obs <- list()
 SST_obs$HadISST <- data_src(name="HadISST",source="HadISST",var="sst",type="obs")
 SST_obs$OISST <- data_src(name="OISST",source="OISST",type="obs")
 SST_obs$EN4  <- data_src(name="EN4",source="EN4",type="obs",var="temperature")
+for(i in seq(SST_obs)){
+  SST_obs[[i]]@source <- file.path("Observations",SST_obs[[i]]@source)
+  SST_obs[[i]]@out.dir <- SST_obs[[i]]@source
+}
 
 # ========================================================================
 # Setup NMME models
@@ -128,7 +133,8 @@ for(mdl.name in names(NMME.mdls)){
              name=sprintf("NMME-%s",mdl.name),
              type="NMME",
              var="sst",
-             source=mdl.src)  
+             source=mdl.src,
+             out.dir="NMME")  
   NMME.sst.l[[mdl.name]] <- obj
 }
 
@@ -140,5 +146,5 @@ NMME.sst.l[["NCEP-CFSv2"]]@realizations <- 1:24  #Forecast has 32 but hindcast 2
 # Setup CMIP5 models
 # ========================================================================
 CMIP5.mdls <- list(new("GCM",name="CMIP5-tos",type="CMIP5",var="tos",
-                  source="CMIP5"))
+                  source="CMIP5",out.dir="CMIP5"))
   

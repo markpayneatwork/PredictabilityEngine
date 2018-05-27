@@ -1,6 +1,13 @@
 ==========================================
 Seasonal and Decadel Predictability Engine
 ==========================================
+TODO:
+* CMIP5 fragments are not consistent with the rest, in that they contain multiple dates. Need to explode them in a way similar to NMME
+* Redefine a fragment to be a 3D array lat-lon-realization at a given model, lead, date
+* Break NMME processing into individual models to allow parallelisation. Get it working on the HPC
+* Create a spatial field tools, including probabilities
+* Rename out.dir to something more appropriate
+
 2018.05.14
 Restarted work on this code set by shifting everything to Git. Worked fine. Need to do some line by line review of the code base to make sure that we have everything under control, and to bring it into a more intuitive data frame work
 . NextAction: Allow specification of the data source directory in the object, to improve transparency and avoid having a horrible array of nested directories. The IRODS store directory structure should ultimately mirror this structure

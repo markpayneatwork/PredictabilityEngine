@@ -40,6 +40,7 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 library(PredEng)
 library(dplyr)
 library(tibble)
+library(ncdf4)
 load("objects/configuration.RData")
 
 #'========================================================================
@@ -47,8 +48,9 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  src.no <- 12
+  src.no <- 5
   set.debug.level(1)  #Non-zero lets us run with just a few points
+  set.cdo.defaults("--silent --no_warnings")
 } else {
   #Taking inputs from the system environment
   src.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
@@ -59,14 +61,14 @@ if(interactive()) {
 
 #Directory setup
 base.dir <- pcfg@scratch.dir
-obs.dir <- define_dir(file.path(base.dir,pcfg@observations@source))
+obs.dir <- define_dir(file.path(base.dir,pcfg@observations@out.dir))
 ind.dir <- define_dir(base.dir,"indicators")
 
 #'========================================================================
 # Setup ####
 #'========================================================================
 #Supported models
-dat.srcs <- c(pcfg@DCPP.hindcasts,pcfg@DCPP.uninit,
+dat.srcs <- c(pcfg@decadal.hindcasts,pcfg@decadal.uninit,
               pcfg@NMME.models,pcfg@CMIP5.models)
 src <- dat.srcs[[src.no]]
 log_msg("Processing (%s) %s, number %i of %i available data sources\n\n",
@@ -78,11 +80,7 @@ obs.clim.full <- raster(obs.clim.fname)
 obs.clim <- crop(obs.clim.full,pcfg@ROI)  #Crop down to size
 
 #Setup landmask by regridding
-landmask.fname <- file.path(base.dir,"landmask_regridded.nc")
-exec(landmask.cmd <- cdo("-f nc", 
-                         csl("remapnn", pcfg@analysis.grid),
-                         pcfg@landmask, landmask.fname))
-landmask <- raster(landmask.fname)
+landmask <- raster(pcfg@landmask)
 
 #Result storage
 ind.l <- list()
@@ -100,11 +98,11 @@ for(j in seq(pcfg@indicators)) {
   
   #Load the appropriate metadata
   if(src@type=="ensmean") {
-    metadat.fname <- file.path(src@source,"Ensmean_metadata.RData")
+    metadat.fname <- file.path(src@out.dir,"Ensmean_metadata.RData")
   } else if(ind@data.type=="means") {
-    metadat.fname <- file.path(src@source,"Realmean_metadata.RData")
+    metadat.fname <- file.path(src@out.dir,"Realmean_metadata.RData")
   } else if(ind@data.type=="realizations") {
-    metadat.fname <- file.path(src@source,"Anom_metadata.RData")
+    metadat.fname <- file.path(src@out.dir,"Anom_metadata.RData")
   } else {
     stop("Unknown data type")
   }
@@ -115,6 +113,23 @@ for(j in seq(pcfg@indicators)) {
     metadat <- metadat[1:10,]
   }
   
+  #Tweaks for NMME and ensmean 
+  #TODO
+  #This should really be fixed at the NMME level, but we will deal with it here
+  #to start with. In particular, need to make sure that the filenames in the metadata
+  #for all types also includes the path
+  #Also should probably consider redefining the meaning of src@type so that it indicates
+  #the datasource type. But then I don't really know how to deal with declaring that it is
+  #an ensemble mean model... unles we create a separate class dedicated to it or similar
+  if(src@type=="NMME"){
+    metadat <- subset(metadat,model==src@name)
+    metadat$fname <- file.path(pcfg@scratch.dir,src@out.dir,
+                               "B.realmean",basename(metadat$fname))
+  } else if(src@type=="ensmean") {
+    metadat$fname <- file.path(pcfg@scratch.dir,src@out.dir,
+                               "C.ensmean",basename(metadat$fname))
+  }
+  
   #Setup for looping
   res.l <- list()
   pb <- progress_estimated(nrow(metadat))
@@ -122,11 +137,18 @@ for(j in seq(pcfg@indicators)) {
   #Then loop over  files
   for(i in seq(nrow(metadat))) {
     pb$tick()$print()
-    
-    #Import model anom as a brick 
     m <- metadat[i,]
     f <- m$fname
-    mdl.anom <- raster(f)  #Ideally this should be a brick, but that's not working for some reason
+    log_msg("Processing indicator %s, file %s...\n",ind@name,basename(f),silenceable = TRUE)    
+    
+    #Import model anom as a brick 
+    #TODO
+    #This is also a mess, due to the error found in raster. Currently hacking it
+    if(src@type=="CMIP5") {
+      mdl.anom <- brick(f)  #Ideally this should be a brick, but that's not working for some reason
+    } else  {
+      mdl.anom <- raster(f)  
+    }
     
     #The resolutions of the observational climatology and the modelled anomaly match 
     #automatically, because an earlier step involves the interpolations of both the 
@@ -157,7 +179,7 @@ for(j in seq(pcfg@indicators)) {
     #Doing the bind diretly like this is ok when we are dealing with
     #rasterLayer fragments, but we will need to be caseful when dealing with 
     #bricks, for example
-    res.l[[i]] <- bind_cols(m,res)  
+    res.l[[i]] <- as.tibble(cbind(m,res))
   }
   
   Sys.sleep(0.1)
