@@ -40,7 +40,6 @@ load("objects/setup.RData")
 # Configure
 #==========================================================================
 base.dir <- file.path(pcfg@scratch.dir,"NMME")
-anom.dir <- define_dir(base.dir,"A.anoms")
 realmean.dir <- define_dir(base.dir,"B.realmean")
 
 load(file.path(base.dir,"Anom_metadata.RData"))
@@ -67,13 +66,12 @@ for(rl.gp in realmean.group) {
   pb$tick()$print()
   
   #Build commands
-  realmean.fname <- unique(gsub("_r.*?_anom.nc","_rmean_anom.nc",rl.gp$fname))
+  realmean.fname <- file.path(realmean.dir,
+                              unique(gsub("_r.*?_anom.nc","_rmean_anom.nc",rl.gp$fname)))
   # realmean.cmd <- nces("--overwrite --netcdf4 --history",
   #                      file.path(anom.dir,rl.gp$anom.fname),
   #                      file.path(realmean.dir,realmean.fname))
-  realmean.cmd <- cdo("-ensmean",
-                       file.path(anom.dir,rl.gp$fname),
-                       file.path(realmean.dir,realmean.fname))
+  realmean.cmd <- cdo("-ensmean",rl.gp$fname,realmean.fname)
   condexec(1,realmean.cmd)
   
   #Store new meta data

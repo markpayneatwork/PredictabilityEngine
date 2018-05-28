@@ -42,6 +42,7 @@ load("objects/setup.RData")
 #==========================================================================
 base.dir <- file.path(pcfg@scratch.dir,"NMME")
 lead.clim.dir <- define_dir(base.dir,"4.lead.clims")
+anom.dir <- define_dir(base.dir,"A.anoms")
 
 load(file.path(base.dir,"Fragment_metadata.RData"))
 
@@ -54,7 +55,7 @@ set.debug.level(0) #Do all
 anom.meta <- mutate(frag.meta,
                     frag.fname=fname, #fname is now applied to anom files
                     clim.fname=sprintf("%s_L%s_clim.nc",model,lead),
-                    fname=gsub(".nc","_anom.nc",basename(frag.fname)))
+                    fname=file.path(anom.dir,gsub(".nc","_anom.nc",basename(frag.fname))))
 
 #Define climatology file to use, based on grouping by  lead time and model
 in.clim <- subset(anom.meta,forecast.year %in% pcfg@clim.years)

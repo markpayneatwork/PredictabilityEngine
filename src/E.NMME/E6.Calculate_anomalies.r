@@ -42,7 +42,6 @@ load("objects/setup.RData")
 base.dir <- file.path(pcfg@scratch.dir,"NMME")
 lead.clim.dir <- define_dir(base.dir,"4.lead.clims")
 remap.dir <- define_dir(base.dir,"5.remap_wts")
-anom.dir <- define_dir(base.dir,"A.anoms")
 
 load(file.path(base.dir,"Anom_metadata.RData"))
 set.debug.level(0) #Do all
@@ -97,8 +96,7 @@ for(i in seq(nrow(anom.meta))) {
   #Remap
   condexec(2,regrid.cmd <- cdo("-f nc",
                                csl("remap", pcfg@analysis.grid, am$remapping.wts),
-                               anom.temp, 
-                               file.path(anom.dir,am$fname)))
+                               anom.temp,am$fname))
   
 }
 
