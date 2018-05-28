@@ -40,14 +40,13 @@ library(tibble)
 library(tidyr)
 load("objects/configuration.RData")
 
-
 #'========================================================================
 # Configuration ####
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
  # mdl.no <- 5
-  set.debug.level(4)  #0 complete fresh run
+  set.debug.level(0)  #0 complete fresh run
   set.condexec.silent()
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
@@ -70,6 +69,9 @@ frag.dir <- define_dir(base.dir,"3.fragments")
 #'========================================================================
 # Setup ####
 #'========================================================================
+#Error checking
+if(length(pcfg@MOI)!=1) stop("CMIP5 processing currently only supports single month extraction")
+
 #Get list of files
 fnames <- dir(src.dir,pattern=".nc",full.names = TRUE,recursive=TRUE)
 if(length(fnames)==0) stop("Cannot find source files")
@@ -117,7 +119,8 @@ for(i in seq(nrow(CMIP5.meta))) {
   pb$tick()$print()
   
   #Extract file
-  f <- CMIP5.meta$fname[i]
+  cm <- CMIP5.meta[i,]
+  f <- cm$fname
   temp.stem <- tempfile()
   log_msg("Processsing %s...\n",basename(f),silenceable = TRUE)
  
@@ -152,6 +155,12 @@ for(i in seq(nrow(CMIP5.meta))) {
   tmp.fnames <- dir(dirname(temp.stem),pattern=basename(temp.stem),full.names = TRUE)
   del.err <- unlink(tmp.fnames)
   if(del.err!=0) stop("Error deleting temp files")
+  
+  #Now finally split into fragments 
+  frag.prefix <- file.path(frag.dir,
+                with(cm,sprintf("%s_%s_%s_",model,expt,realization)))
+  condexec(3,frag.cmd <- cdo("splityear",remap.fname,frag.prefix))
+
 }
 
 Sys.sleep(0.1)
@@ -167,6 +176,9 @@ log_msg("\n")
 # files broken into individual files for a given realisation and experiment,
 # and then apply the monthly averaging to produce the fragments that 
 # we are actually looking for
+#
+# This step is now redundant due to the fact that we are fragmenting to 2D
+# fields.
 #'========================================================================
 log_msg("Merging files...\n")
 
@@ -181,32 +193,32 @@ log_msg("Merging files...\n")
 # src.meta.df$realmean.fname <- file.path(realmean.dir,src.meta.df$realmean.fname)
 
 # Split into individual experiments and realisations
-yearmean.l <- split(CMIP5.meta,
-                    CMIP5.meta[,c("model","expt","realization")],drop=TRUE)
-
-#Now loop over the merging groups
-pb <- progress_estimated(length(yearmean.l))
-for(ym in yearmean.l){
-  pb$tick()$print()
-  
-  #Merge into single files
-  remap.fnames <- file.path(remap.dir,basename(ym$fname))
-  merge.tmp.fname <- tempfile(fileext="_mergetime.nc")
-  merge.cmd <- cdo("-O mergetime",remap.fnames,merge.tmp.fname)
-  condexec(3,merge.cmd)
-  
-  #Now perform averaging over the month
-  frag.fname <- file.path(frag.dir,
-                          with(ym[1,],sprintf("%s_%s_%s.nc",model,expt,realization)))
-  condexec(3,yearmean.cmd <- cdo("yearmean", merge.tmp.fname,frag.fname))
-  unlink(merge.tmp.fname)
-}
-
-pb$stop()
-print(pb)
-rm(pb)
-log_msg("\n")
-
+# yearmean.l <- split(CMIP5.meta,
+#                     CMIP5.meta[,c("model","expt","realization")],drop=TRUE)
+# 
+# #Now loop over the merging groups
+# pb <- progress_estimated(length(yearmean.l))
+# for(ym in yearmean.l){
+#   pb$tick()$print()
+#   
+#   #Merge into single files
+#   remap.fnames <- file.path(remap.dir,basename(ym$fname))
+#   merge.tmp.fname <- tempfile(fileext="_mergetime.nc")
+#   merge.cmd <- cdo("-O mergetime",remap.fnames,merge.tmp.fname)
+#   condexec(3,merge.cmd)
+#   
+#   #Now perform averaging over the month
+#   frag.fname <- file.path(frag.dir,
+#                           with(ym[1,],sprintf("%s_%s_%s.nc",model,expt,realization)))
+#   condexec(3,yearmean.cmd <- cdo("yearmean", merge.tmp.fname,frag.fname))
+#   unlink(merge.tmp.fname)
+# }
+# 
+# pb$stop()
+# print(pb)
+# rm(pb)
+# log_msg("\n")
+# 
 
 #'========================================================================
 # Complete ####

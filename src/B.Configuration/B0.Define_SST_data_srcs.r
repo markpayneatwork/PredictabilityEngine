@@ -145,6 +145,6 @@ NMME.sst.l[["NCEP-CFSv2"]]@realizations <- 1:24  #Forecast has 32 but hindcast 2
 # ========================================================================
 # Setup CMIP5 models
 # ========================================================================
-CMIP5.mdls <- list(new("GCM",name="CMIP5-tos",type="CMIP5",var="tos",
-                  source="CMIP5",out.dir="CMIP5"))
+CMIP5.mdls <- new("GCM",name="CMIP5-tos",type="CMIP5",var="tos",
+                  source="CMIP5",out.dir="CMIP5")
   
