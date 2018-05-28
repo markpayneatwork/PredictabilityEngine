@@ -28,7 +28,7 @@
 #originally by SPECS
 hindcast_mdls <- list()
 hindcast_mdls$IPSL  <- GCM(name="IPSL-CM5A-LR",
-                           source="IPSL-CM5A-LR",
+                           data.source="IPSL-CM5A-LR",
                            var="tos",
                            ensmem_fn=function(f) {
                              underscore_field(f,6)},
@@ -39,11 +39,11 @@ hindcast_mdls$IPSL  <- GCM(name="IPSL-CM5A-LR",
 
 hindcast_mdls$"MPI-MR" <-  new("GCM",hindcast_mdls$IPSL,
                                name="MPI-ESM-MR",
-                               source="MPI-ESM-MR")
+                               data.source="MPI-ESM-MR")
 
 #MPI-LR is different,
 hindcast_mdls$"MPI-LR" <-  GCM(name="MPI-ESM-LR",var="thetao",
-                               source="MPI-ESM-LR_MiKlip-b1",
+                               data.source="MPI-ESM-LR_MiKlip-b1",
                              ensmem_fn=CMIP5_realisation,
                              init_fn=function(f){
                                init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
@@ -52,7 +52,7 @@ hindcast_mdls$"MPI-LR" <-  GCM(name="MPI-ESM-LR",var="thetao",
 
 #MPI - NCEP requires all three to be specified
 hindcast_mdls$"MPI-NCEP" <- GCM(name="MPI-NCEP-forced",
-                                source="MPI-ESM-LR_NCEP-forced",
+                                data.source="MPI-ESM-LR_NCEP-forced",
                                 var="var2",
                              ensmem_fn=function(f){return(rep("r1",length(f)))},
                              date_fn=function(f){
@@ -68,7 +68,7 @@ hindcast_mdls$"MPI-NCEP" <- GCM(name="MPI-NCEP-forced",
 
 #GFDL is largely in CMIP5 format
 hindcast_mdls$GFDL <-   GCM(name="GFDL-CM2.1",
-                            source="GFDL-CM2.1",
+                            data.source="GFDL-CM2.1",
                             var="tos",
                              ensmem_fn=CMIP5_realisation,
                              init_fn=function(f){
@@ -79,8 +79,8 @@ hindcast_mdls$GFDL <-   GCM(name="GFDL-CM2.1",
 #Identify models as hindcast models and set the source equal to the name
 for(i in seq(hindcast_mdls)) {
   hindcast_mdls[[i]]@type <- "Decadal-hindcast"
-  hindcast_mdls[[i]]@source<- file.path("Decadal-hindcasts",hindcast_mdls[[i]]@source)
-  hindcast_mdls[[i]]@out.dir <- hindcast_mdls[[i]]@source
+  hindcast_mdls[[i]]@data.source<- file.path("Decadal-hindcasts",hindcast_mdls[[i]]@data.source)
+  hindcast_mdls[[i]]@base.dir <- hindcast_mdls[[i]]@data.source
 }
 
 # ========================================================================
@@ -110,12 +110,12 @@ for(i in seq(uninit_mdls)) {
 # Setup observational data sets
 # ========================================================================
 SST_obs <- list()
-SST_obs$HadISST <- data_src(name="HadISST",source="HadISST",var="sst",type="obs")
-SST_obs$OISST <- data_src(name="OISST",source="OISST",type="obs")
-SST_obs$EN4  <- data_src(name="EN4",source="EN4",type="obs",var="temperature")
+SST_obs$HadISST <- data_src(name="HadISST",data.source="HadISST",var="sst",type="obs")
+SST_obs$OISST <- data_src(name="OISST",data.source="OISST",type="obs")
+SST_obs$EN4  <- data_src(name="EN4",data.source="EN4",type="obs",var="temperature")
 for(i in seq(SST_obs)){
-  SST_obs[[i]]@source <- file.path("Observations",SST_obs[[i]]@source)
-  SST_obs[[i]]@out.dir <- SST_obs[[i]]@source
+  SST_obs[[i]]@data.source <- file.path("Observations",SST_obs[[i]]@data.source)
+  SST_obs[[i]]@base.dir <- SST_obs[[i]]@data.source
 }
 
 # ========================================================================
@@ -133,8 +133,8 @@ for(mdl.name in names(NMME.mdls)){
              name=sprintf("NMME-%s",mdl.name),
              type="NMME",
              var="sst",
-             source=mdl.src,
-             out.dir="NMME")  
+             data.source=mdl.src,
+             base.dir="NMME")  
   NMME.sst.l[[mdl.name]] <- obj
 }
 
@@ -146,5 +146,5 @@ NMME.sst.l[["NCEP-CFSv2"]]@realizations <- 1:24  #Forecast has 32 but hindcast 2
 # Setup CMIP5 models
 # ========================================================================
 CMIP5.mdls <- new("GCM",name="CMIP5-tos",type="CMIP5",var="tos",
-                  source="CMIP5",out.dir="CMIP5")
+                  data.source="CMIP5",base.dir="CMIP5")
   

@@ -60,8 +60,8 @@ set.debug.level(0)  #0 complete fresh run
 #Import configurations from config object
 NMME.cfg <- lapply(pcfg@NMME.models,function(d) {
                       tibble(Model=d@name,
-                             type=names(d@source),
-                             URL=d@source)}) %>%
+                             type=names(d@data.source),
+                             URL=d@data.source)}) %>%
             bind_rows %>%
             mutate(mdl.str=sprintf("%s_%s",Model,type))
 

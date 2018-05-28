@@ -48,7 +48,7 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  src.no <- 5
+  src.no <- 12
   set.debug.level(1)  #Non-zero lets us run with just a few points
   set.cdo.defaults("--silent --no_warnings")
 } else {
@@ -61,7 +61,7 @@ if(interactive()) {
 
 #Directory setup
 base.dir <- pcfg@scratch.dir
-obs.dir <- define_dir(file.path(base.dir,pcfg@observations@out.dir))
+obs.dir <- define_dir(file.path(base.dir,pcfg@observations@base.dir))
 ind.dir <- define_dir(base.dir,"indicators")
 
 #'========================================================================
@@ -98,11 +98,11 @@ for(j in seq(pcfg@indicators)) {
   
   #Load the appropriate metadata
   if(src@type=="ensmean") {
-    metadat.fname <- file.path(src@out.dir,"Ensmean_metadata.RData")
+    metadat.fname <- file.path(src@base.dir,"Ensmean_metadata.RData")
   } else if(ind@data.type=="means") {
-    metadat.fname <- file.path(src@out.dir,"Realmean_metadata.RData")
+    metadat.fname <- file.path(src@base.dir,"Realmean_metadata.RData")
   } else if(ind@data.type=="realizations") {
-    metadat.fname <- file.path(src@out.dir,"Anom_metadata.RData")
+    metadat.fname <- file.path(src@base.dir,"Anom_metadata.RData")
   } else {
     stop("Unknown data type")
   }
@@ -123,10 +123,10 @@ for(j in seq(pcfg@indicators)) {
   #an ensemble mean model... unles we create a separate class dedicated to it or similar
   if(src@type=="NMME"){
     metadat <- subset(metadat,model==src@name)
-    metadat$fname <- file.path(pcfg@scratch.dir,src@out.dir,
+    metadat$fname <- file.path(pcfg@scratch.dir,src@base.dir,
                                "B.realmean",basename(metadat$fname))
   } else if(src@type=="ensmean") {
-    metadat$fname <- file.path(pcfg@scratch.dir,src@out.dir,
+    metadat$fname <- file.path(pcfg@scratch.dir,src@base.dir,
                                "C.ensmean",basename(metadat$fname))
   }
   

@@ -66,19 +66,16 @@ if(Sys.info()["nodename"]=="mpayne-Latitude-E7240") {
 
 #Add in the ensembles
 pcfg@decadal.hindcasts <- c(pcfg@decadal.hindcasts,
-                         GCM(name="Decadal-ensmean",
-                                            source="Decadal-hindcasts/ensmean",
-                                            out.dir="Decadal-hindcasts/ensmean",
-                                            type="ensmean"))
+                            GCM(name="Decadal-ensmean",
+                                base.dir="Decadal-hindcasts/ensmean",
+                                type="ensmean"))
 pcfg@NMME.models <- c(pcfg@NMME.models,
-                         GCM(name="NMME-ensmean",
-                             source="NMME",
-                             out.dir="NMME",
-                             type="ensmean"))
+                      GCM(name="NMME-ensmean",
+                          base.dir="NMME",
+                          type="ensmean"))
 #Not implemented yet
 # pcfg@CMIP5.models <- c(pcfg@CMIP5.models,
 #                        GCM(name="CMIP5-ensmean",
-#                            source="CMIP5",
 #                            type="ensmean"))
 
 #Analysis grid
