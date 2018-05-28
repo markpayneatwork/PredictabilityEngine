@@ -44,7 +44,7 @@ realmean.dir <- define_dir(base.dir,"B.realmean")
 
 load(file.path(base.dir,"Anom_metadata.RData"))
 
-set.debug.level(0) #Do all
+set.debug.level(10000) #Do all
 set.cdo.defaults("--silent --no_warnings -O")
 
 #==========================================================================
@@ -68,7 +68,9 @@ for(rl.gp in realmean.group) {
   
   #Build commands
   realmean.fname <- file.path(realmean.dir,
-                              unique(gsub("_r.*?_anom.nc","_rmean_anom.nc",rl.gp$fname)))
+                              unique(gsub("_r.*?_anom.nc",
+                                          "_rmean_anom.nc",
+                                          basename(rl.gp$fname))))
   # realmean.cmd <- nces("--overwrite --netcdf4 --history",
   #                      file.path(anom.dir,rl.gp$anom.fname),
   #                      file.path(realmean.dir,realmean.fname))
