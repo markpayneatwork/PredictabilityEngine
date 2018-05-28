@@ -45,6 +45,7 @@ ensmean.dir <- define_dir(base.dir,"C.ensmean")
 load(file.path(base.dir,"Realmean_metadata.RData"))
 
 set.debug.level(0) #Do all
+set.cdo.defaults("--silent --no_warnings -O")
 
 #==========================================================================
 # Setup

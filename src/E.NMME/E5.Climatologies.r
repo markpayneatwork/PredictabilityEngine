@@ -47,6 +47,7 @@ anom.dir <- define_dir(base.dir,"A.anoms")
 load(file.path(base.dir,"Fragment_metadata.RData"))
 
 set.debug.level(0) #Do all
+set.cdo.defaults("--silent --no_warnings -O")
 
 #==========================================================================
 # Setup

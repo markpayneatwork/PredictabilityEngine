@@ -45,6 +45,7 @@ realmean.dir <- define_dir(base.dir,"B.realmean")
 load(file.path(base.dir,"Anom_metadata.RData"))
 
 set.debug.level(0) #Do all
+set.cdo.defaults("--silent --no_warnings -O")
 
 #==========================================================================
 # Setup
