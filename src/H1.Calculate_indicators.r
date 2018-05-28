@@ -97,11 +97,11 @@ for(j in seq(pcfg@indicators)) {
   log_msg("Processing %s indicator, number %i of %i...\n",ind@name,j,length(pcfg@indicators))
   
   #Load the appropriate metadata
-  if(src@type=="ensmean") {
+  if(src@type=="ensmean") { #Obviously only going to use ensmean data
     metadat.fname <- file.path(src@base.dir,"Ensmean_metadata.RData")
-  } else if(ind@data.type=="means") {
+  } else if(ind@data.type=="means") { #Use realmeans
     metadat.fname <- file.path(src@base.dir,"Realmean_metadata.RData")
-  } else if(ind@data.type=="realizations") {
+  } else if(ind@data.type=="realizations") { #Use individual realizations
     metadat.fname <- file.path(src@base.dir,"Anom_metadata.RData")
   } else {
     stop("Unknown data type")
@@ -111,23 +111,6 @@ for(j in seq(pcfg@indicators)) {
   
   if(get.debug.level()!=0) {
     metadat <- metadat[1:10,]
-  }
-  
-  #Tweaks for NMME and ensmean 
-  #TODO
-  #This should really be fixed at the NMME level, but we will deal with it here
-  #to start with. In particular, need to make sure that the filenames in the metadata
-  #for all types also includes the path
-  #Also should probably consider redefining the meaning of src@type so that it indicates
-  #the datasource type. But then I don't really know how to deal with declaring that it is
-  #an ensemble mean model... unles we create a separate class dedicated to it or similar
-  if(src@type=="NMME"){
-    metadat <- subset(metadat,model==src@name)
-    metadat$fname <- file.path(pcfg@scratch.dir,src@base.dir,
-                               "B.realmean",basename(metadat$fname))
-  } else if(src@type=="ensmean") {
-    metadat$fname <- file.path(pcfg@scratch.dir,src@base.dir,
-                               "C.ensmean",basename(metadat$fname))
   }
   
   #Setup for looping
@@ -144,10 +127,13 @@ for(j in seq(pcfg@indicators)) {
     #Import model anom as a brick 
     #TODO
     #This is also a mess, due to the error found in raster. Currently hacking it
-    if(src@type=="CMIP5") {
-      mdl.anom <- brick(f)  #Ideally this should be a brick, but that's not working for some reason
+    if(ind@data.type=="realizations") {
+      mdl.anom <- brick(f)  
+      stop("working with realizations currently not supported")
+      #The problem is essentially when we get to the storage of the results
+      #but should be easy to solve
     } else  {
-      mdl.anom <- raster(f)  
+      mdl.anom <- raster(f) #Ideally this should be a brick, but that's not working for some reason 
     }
     
     #The resolutions of the observational climatology and the modelled anomaly match 
