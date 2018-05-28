@@ -19,6 +19,7 @@ echo "=========================================================="
 #Setup
 module load cdo
 module load gcc/8.1.0
+module load nco
 
 #R script
 set -e 

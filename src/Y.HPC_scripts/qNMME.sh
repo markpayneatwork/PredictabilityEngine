@@ -19,13 +19,14 @@ echo "=========================================================="
 #Setup
 module load cdo
 module load gcc/8.1.0
+module load nco
 
 #Run R 
 set -e 
-Rscript src/E.NMME/E1.Retrieve_NMME_archive_metadata.r
-Rscript src/E.NMME/E2.Retrieve_NMME_data.r
-Rscript src/E.NMME/E3.Explode_downloaded_data.r
-Rscript src/E.NMME/E4.Collect_fragments_metadata.r
+#Rscript src/E.NMME/E1.Retrieve_NMME_archive_metadata.r
+#Rscript src/E.NMME/E2.Retrieve_NMME_data.r
+#Rscript src/E.NMME/E3.Explode_downloaded_data.r
+#Rscript src/E.NMME/E4.Collect_fragments_metadata.r
 Rscript src/E.NMME/E5.Climatologies.r
 Rscript src/E.NMME/E6.Calculate_anomalies.r
 Rscript src/E.NMME/E7.Calculate_realization_means.r
