@@ -122,7 +122,7 @@ for(i in seq(nrow(CMIP5.meta))) {
   cm <- CMIP5.meta[i,]
   f <- cm$fname
   temp.stem <- tempfile()
-  log_msg("Processsing %s...\n",basename(f),silenceable = TRUE)
+  log_msg("Fragmenting %s...\n",basename(f),silenceable = TRUE)
  
   #Subset out the surface layer from the field of interest
   #TODO: Note that we will probably need to change this in the future
@@ -180,7 +180,7 @@ log_msg("\n")
 # This step is now redundant due to the fact that we are fragmenting to 2D
 # fields.
 #'========================================================================
-log_msg("Merging files...\n")
+# log_msg("Merging files...\n")
 
 
 # #Setup filenames

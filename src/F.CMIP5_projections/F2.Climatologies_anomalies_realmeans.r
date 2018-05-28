@@ -152,7 +152,7 @@ fragstack.meta.l <- list()
 for(i in seq(fragstack.grp)) {
   pb$tick()$print()
   grp <- fragstack.grp[[i]]
-  log_msg("Processing fragstack %i of %i...\n",i,
+  log_msg("Building fragstack %i of %i...\n",i,
           length(fragstack.grp),silenceable = TRUE)
   
   #Stack
@@ -216,7 +216,7 @@ clim.grp.l <- split(hist.meta,hist.meta[,c("model")])
 pb <- progress_estimated(length(clim.grp.l))
 for(i in seq(clim.grp.l)) {
   pb$tick()$print()
-  log_msg("Processing climatology %i of %i...\n",i,
+  log_msg("Calculating climatology %i of %i...\n",i,
           length(clim.grp.l),silenceable = TRUE)
   g <- clim.grp.l[[i]]
   
@@ -254,7 +254,7 @@ pb <- progress_estimated(nrow(anom.meta))
 for(m in seq(nrow(anom.meta))){
   pb$tick()$print()
   am <- anom.meta[m,]
-  log_msg("Processing anomalies for %s...\n",
+  log_msg("Calculating anomalies for %s...\n",
           basename(am$fname),silenceable = TRUE)
 
   #Calculate the anomaly
