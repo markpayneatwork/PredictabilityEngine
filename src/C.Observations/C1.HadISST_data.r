@@ -34,81 +34,114 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 #Helper functions, externals and libraries
 library(PredEng)
 load("objects/configuration.RData")
+load("objects/setup.RData")
 
 library(lubridate)
 library(raster)
+library(tibble)
+library(dplyr)
 
 #/*======================================================================*/
 #  Configuration
 #/*======================================================================*/
 #Data source
-HadISST.dat <- "data_srcs/HadISST_sst.nc"
+HadISST.dat <- file.path(datasrc.dir,"Observations/HadISST","HadISST_sst.nc")
 
 #Working directories
-dat.dir <- file.path(pcfg@scratch.dir,"HadISST")
+base.dir <- define_dir(define_dir(file.path(pcfg@scratch.dir,"Observations")),
+                       "HadISST")
+anom.dir <- define_dir(base.dir,"A.anoms")
 
 set.debug.level(0)  #0 complete fresh run
+set.cdo.defaults("--silent --no_warnings")
 
 #/*======================================================================*/
 #'## Process HadISST data
 #/*======================================================================*/
-log_msg("Subsetting data...\n")
 
 #If doing a clean run, remove directories etc
 if(get.debug.level()<=1) {
-  unlink(dat.dir,recursive = TRUE,force=TRUE)
-  dir.create(dat.dir)
+  unlink(base.dir,recursive = TRUE,force=TRUE)
+  dir.create(base.dir)
+  define_dir(anom.dir)
 }
 
 #Extract data spatially using CDO and average
 #First we need to select the grid, before doing the spatial subsetting,
-ROI.fname<- file.path(dat.dir,"observations_ROI.nc")
+log_msg("Subsetting data...\n")
+in.fname <- HadISST.dat
+temp.stem <- tempfile()
+out.fname <- temp.stem
 condexec(1,annave.cmd <- cdo(csl("sellonlatbox",as.vector(pcfg@ROI)),
                            "-selgrid,lonlat",
-                           HadISST.dat,ROI.fname))
+                           in.fname,out.fname))
 
-#monthly extraction, and annual averaging
-annave.fname<- file.path(dat.dir,"observations_annave.nc")
+#monthly extraction, and then annual averaging
+log_msg("Monthly extraction...\n")
+in.fname <- out.fname
+out.fname <- paste0(in.fname,"_annave")
 condexec(1,annave.cmd <- cdo("yearmean",
                            csl("-selmon",pcfg@MOI),
-                           ROI.fname,annave.fname))
+                           in.fname,out.fname))
 
 #Remap onto the analysis grid
 log_msg("Remapping...\n")
-remap.fname <- file.path(dat.dir,"observations.nc")
+in.fname <- out.fname
+out.fname <- paste0(in.fname,"_remapped")
 condexec(2,remap.cmd <- cdo("-f nc", csl("remapbil", pcfg@analysis.grid),
-                           annave.fname, remap.fname))
+                           in.fname,out.fname))
 
+#/*======================================================================*/
+#  Move on to second step of anomalies, clims, fragments
+#/*======================================================================*/
+frag.src <- out.fname
 
 #Calculate climatology
 log_msg("Climatology....\n")
-clim.fname <- file.path(dat.dir,"obs_climatology.nc")
+clim.fname <- file.path(base.dir,"obs_climatology.nc")
 condexec(3,clim.cmd <- cdo("timmean",
                          csl("-selyear",pcfg@clim.years),
-                         remap.fname,clim.fname))
+                         frag.src,clim.fname))
 
 #Calculate anomalies
 log_msg("Anomalies...\n")
-anom.fname <- file.path(dat.dir,"obs_anom.nc")
-condexec(4,anom.cmd <- cdo("sub",remap.fname,clim.fname,anom.fname))
+anom.fname <- file.path(base.dir,"obs_anom.nc")
+condexec(4,anom.cmd <- cdo("sub",frag.src,clim.fname,anom.fname))
 
-# #Cross check that this worked corretly using Raster
-# b.anom <- brick(anom.fname)
-# b.clim <- brick(clim.fname)
-# b.obs <- brick(annave.fname)
-# b.obs.rec <- b.anom+b.clim  #Reconstructed
-# b.diff <- b.obs - b.obs.rec
-# #Check anomaly summation over the cliamtological period
-# clim.yr.idxs <- which(year(getZ(b.anom)) %in% pcfg@clim.years)
-# b.anom.sum <- sum(b.anom[[clim.yr.idxs]])
+#Explode the fragment
+log_msg("Exploding...\n")
+frag.prefix <- file.path(anom.dir,sprintf("%s_",pcfg@observations@name))
+condexec(3,frag.cmd <- cdo("splityear",frag.src,frag.prefix))
+
+#Remove the temporary files to tidy up
+tmp.fnames <- dir(dirname(temp.stem),pattern=basename(temp.stem),full.names = TRUE)
+del.err <- unlink(tmp.fnames)
+if(del.err!=0) stop("Error deleting temp files")
+
 
 #/*======================================================================*/
-#  Make some analyses to check the validity
+#  Create (pseudo) metadata
 #/*======================================================================*/
-# #Annual data coverage
-# b <- brick(ROI.fname)
-# missing <- cellStats(is.na(b),stat = "mean")
-# 
+log_msg("Creating pseudo metadata...\n")
+
+#Fragment fnames
+frag.fnames <- dir(anom.dir,pattern=".nc",full.names = TRUE)
+
+#Extract dates
+meta.dat.l <- list()
+for(f in frag.fnames) {
+  r <- raster(f)
+  meta.dat.l[[f]] <- tibble(date=getZ(r))
+}
+
+#Build metadata
+anom.meta <- bind_rows(meta.dat.l,.id="fname") %>%
+             mutate(n.realizations=1,data.src="HadISST")
+save(anom.meta,file=file.path(base.dir,"Anomaly_metadata.RData"))
+realmean.meta <- anom.meta
+save(realmean.meta,file=file.path(base.dir,"Realmean_metadata.RData"))
+
+
 # #/*======================================================================*/
 #  Complete
 #/*======================================================================*/
