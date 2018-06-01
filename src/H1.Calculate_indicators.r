@@ -48,9 +48,11 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  src.no <- 12
-  set.debug.level(1)  #Non-zero lets us run with just a few points
+  src.no <- 13
+  set.debug.level(0)  #Non-zero lets us run with just a few points
   set.cdo.defaults("--silent --no_warnings")
+  set.condexec.silent()
+  set.log_msg.silent()
 } else {
   #Taking inputs from the system environment
   src.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
@@ -69,7 +71,7 @@ ind.dir <- define_dir(base.dir,"indicators")
 #'========================================================================
 #Supported models
 dat.srcs <- c(pcfg@decadal.hindcasts,pcfg@decadal.uninit,
-              pcfg@NMME.models,pcfg@CMIP5.models)
+              pcfg@NMME.models,pcfg@CMIP5.models,pcfg@observations)
 src <- dat.srcs[[src.no]]
 log_msg("Processing (%s) %s, number %i of %i available data sources\n\n",
         src@type,src@name,src.no,length(dat.srcs))
@@ -94,7 +96,8 @@ ind.l <- list()
 #compensated for by the fact that it is much simpler programmatically.
 for(j in seq(pcfg@indicators)) {
   ind <- pcfg@indicators[[j]]
-  log_msg("Processing %s indicator, number %i of %i...\n",ind@name,j,length(pcfg@indicators))
+  log_msg("Processing '%s' indicator, number %i of %i...\n",
+          ind@name,j,length(pcfg@indicators))
   
   #Load the appropriate metadata
   if(src@type=="ensmean") { #Obviously only going to use ensmean data
@@ -122,7 +125,8 @@ for(j in seq(pcfg@indicators)) {
     pb$tick()$print()
     m <- metadat[i,]
     f <- m$fname
-    log_msg("Processing indicator %s, file %s...\n",ind@name,basename(f),silenceable = TRUE)    
+    log_msg("Processing indicator %s, file %s...\n",
+            ind@name,basename(f),silenceable = TRUE)    
     
     #Import model anom as a brick 
     #TODO
