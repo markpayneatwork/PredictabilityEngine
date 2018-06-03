@@ -111,7 +111,7 @@ condexec(4,anom.cmd <- cdo("sub",frag.src,clim.fname,anom.fname))
 #Explode the fragment
 log_msg("Exploding...\n")
 frag.prefix <- file.path(anom.dir,sprintf("%s_",pcfg@observations@name))
-condexec(3,frag.cmd <- cdo("splityear",frag.src,frag.prefix))
+condexec(3,frag.cmd <- cdo("splityear",anom.fname,frag.prefix))
 
 #Remove the temporary files to tidy up
 tmp.fnames <- dir(dirname(temp.stem),pattern=basename(temp.stem),full.names = TRUE)
@@ -135,11 +135,23 @@ for(f in frag.fnames) {
 }
 
 #Build metadata
-anom.meta <- bind_rows(meta.dat.l,.id="fname") %>%
-             mutate(n.realizations=1,data.src="HadISST")
+anom.meta <- bind_rows(meta.dat.l) %>%
+             add_column(data.src=pcfg@observations@name,.before=1) %>%
+             add_column(data.type=pcfg@observations@type,.after=1) %>%
+             mutate(start.date=NA,
+                    n.realizations=1,
+                    fname=frag.fnames) 
 save(anom.meta,file=file.path(base.dir,"Anomaly_metadata.RData"))
 realmean.meta <- anom.meta
 save(realmean.meta,file=file.path(base.dir,"Realmean_metadata.RData"))
+
+# * data.src - name of the datasource
+# * data.type - the type of data. For CMIP5 variables, includes the expt e.g. CMIP5.rcp85
+# * date - of the forecast/observation/projection, not of the model initialisation
+# * start.date - when the forecast is initialisation
+# * n.realizations - the number of realizations stored in the fragment / fragstack
+# * fname - including the full path relative to the project directory
+
 
 
 # #/*======================================================================*/
