@@ -50,7 +50,8 @@ pcfg <- config(name= "Bluefin",
                observations=SST_obs[[c("HadISST")]],
                CMIP5.models=CMIP5.mdls,
 #               decadal.uninit = uninit_mdls,
-               NMME.models=NMME.sst.l)
+               NMME.models=NMME.sst.l,
+               spatial.forecasts=as.Date("2018-08-15"))
 
 #Setup scratch directory
 pcfg@scratch.dir <- file.path("scratch",pcfg@name)
@@ -80,6 +81,13 @@ pcfg@NMME.models <- c(pcfg@NMME.models,
 
 #Analysis grid
 pcfg@analysis.grid <- file.path(pcfg@scratch.dir,"analysis.grid")
+
+#A simple point-wise extraction point (corresponding to the point of capture)
+pt <- data.frame(lat=65 +42/60, 
+             lon=-(30+50/60),
+             date=as.Date(c("2012-08-22","2014-08-15")))
+coordinates(pt) <- ~ lon +lat
+pcfg@spacetime.extraction <- pt
 
 # ========================================================================
 # Spatial Configurations
