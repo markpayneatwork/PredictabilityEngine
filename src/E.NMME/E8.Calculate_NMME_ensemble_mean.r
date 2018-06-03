@@ -87,7 +87,8 @@ for(em.gp in ensmean.group) {
 }
 
 #Form meta data
-ensmean.meta <- bind_rows(ensmean.meta.l)
+ensmean.meta <- bind_rows(ensmean.meta.l) %>%
+                mutate(name="NMME-ensmean")
 save(ensmean.meta,file=file.path(base.dir,"Ensmean_metadata.RData"))
 
 #==========================================================================

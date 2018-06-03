@@ -48,7 +48,7 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  src.no <- 1
+  src.no <- 13
   set.debug.level(0)  #Non-zero lets us run with just a few points
   set.cdo.defaults("--silent --no_warnings")
   set.condexec.silent()
@@ -110,9 +110,25 @@ for(j in seq(pcfg@indicators)) {
   } else {
     stop("Unknown data type")
   }
-  metadat.varname <- load(file.path(base.dir,src@type,src@name,metadat.fname))
+
+  #Tweaks for NMME, CMIP
+  if(src@type %in% c("NMME","CMIP5")) {
+	#NMME and CMIP data are not separated by model name
+      metadat.path <- file.path(base.dir,src@type,metadat.fname)
+  } else {
+      metadat.path <- file.path(base.dir,src@type,src@name,metadat.fname)
+  }
+
+  metadat.varname <- load(metadat.path)
   metadat <- get(metadat.varname)
   
+  #NMME is however processed individually, so we need to restrict the
+  #metadata to the particular momdel
+  if(src@type=="NMME" & class(src)=="data.source") {
+     metadat <- subset(metadat,name==src@name)
+  }
+
+  #Subset to make it run a bit quicker
   if(get.debug.level()!=0) {
     metadat <- metadat[1:10,]
   }
@@ -156,7 +172,7 @@ for(j in seq(pcfg@indicators)) {
     #Set the dates of the raster to be processed to be the same as those in the
     #original source file - these processing steps don't always propigate them
     #correctly
-    masked <- setZ(masked,src@date_fn(f))
+    masked <- setZ(masked,getZ(mdl.anom))
     
     # #Finally, drop layers that are completely blank
     # blank.layer <- cellStats(is.na(masked),sum)==ncell(masked)

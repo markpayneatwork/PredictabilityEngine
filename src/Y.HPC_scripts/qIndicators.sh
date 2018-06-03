@@ -1,7 +1,7 @@
 #!/bin/bash -x
 #Set default job name
 #PBS -N PE_Indicators
-#PBS -t 1-14
+#PBS -t 1-15
 #Set mail address
 #PBS -M mpay@aqua.dtu.dk
 

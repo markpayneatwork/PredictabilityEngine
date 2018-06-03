@@ -70,7 +70,7 @@ ensmean.dir <- define_dir(base.dir,ensmean.src@name,"C.ensmean")
 metadat.l <- list()
 for(m in ensmean.src@members){
   if(class(m)=="data.source") {
-    load(file.path(base.dir,m@source,"Realmean_metadata.RData"))
+    load(file.path(base.dir,m@name,"Realmean_metadata.RData"))
     metadat.l[[m@name]] <- realmean.meta
   }
 }
@@ -138,7 +138,8 @@ for(i in seq(grp.l)) {
 
 #Polish the anomaly file meta data into a more useable format
 ensmean.meta <- bind_rows(ensmean.meta.l)
-save(ensmean.meta,file=file.path(base.dir,"Ensmean_metadata.RData"))
+save(ensmean.meta,file=file.path(base.dir,ensmean.src@name,
+                                 "Ensmean_metadata.RData"))
 
 #'========================================================================
 # Complete
