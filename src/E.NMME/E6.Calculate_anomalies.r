@@ -59,9 +59,9 @@ log_msg("Calculating remapping weights...\n")
 
 #Get list of files to act as source
 anom.meta$remapping.wts <- file.path(remap.dir,
-                                     sprintf("%s.nc",anom.meta$model))
+                                     sprintf("%s.nc",anom.meta$data.src))
 mdl.reps <- subset(anom.meta,year(start.date)==2011 ) %>%
-            subset(!duplicated(model))
+            subset(!duplicated(data.src))
 
 #Loop over models
 for(m in seq(nrow(mdl.reps))) {

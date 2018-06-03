@@ -94,7 +94,7 @@ log_msg("\n")
 frag.meta <- bind_rows(meta.db.l) %>%
   add_column(model=frag.fnames$model,.before = 1) %>%
   mutate(start.date=epoch.start  + months(start),
-         forecast.date=start.date+months(floor(lead)),
+         forecast.date=start.date+months(floor(lead))+days(15),  #Force it to 15th of month
          forecast.month=month(forecast.date),
          forecast.year=year(forecast.date)) %>%
   add_column(fname=frag.fnames$fname) 

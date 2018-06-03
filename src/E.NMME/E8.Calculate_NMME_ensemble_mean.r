@@ -79,7 +79,7 @@ for(em.gp in ensmean.group) {
   
   #Store new meta data
   res <- em.gp %>%
-    select(-fname,-n.reals) %>%
+    select(-fname,-n.realizations) %>%
     mutate(n.mdls=nrow(em.gp),
            fname=ensmean.fname)
   ensmean.meta.l[[ensmean.fname]] <- res[1,]

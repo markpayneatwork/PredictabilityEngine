@@ -54,9 +54,13 @@ set.cdo.defaults("--silent --no_warnings -O")
 #==========================================================================
 #Modify meta data to include climatology and anomaly filenames
 anom.meta <- mutate(frag.meta,
+                    data.src=model,
+                    data.type="NMME",
+                    date=forecast.date,
                     frag.fname=fname, #fname is now applied to anom files
                     clim.fname=sprintf("%s_L%s_clim.nc",model,lead),
-                    fname=file.path(anom.dir,gsub(".nc","_anom.nc",basename(frag.fname))))
+                    fname=file.path(anom.dir,gsub(".nc","_anom.nc",basename(frag.fname))),
+                    model=NULL,forecast.date=NULL)
 
 #Define climatology file to use, based on grouping by  lead time and model
 in.clim <- subset(anom.meta,forecast.year %in% pcfg@clim.years)

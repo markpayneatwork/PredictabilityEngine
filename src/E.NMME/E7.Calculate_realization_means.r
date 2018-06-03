@@ -44,7 +44,7 @@ realmean.dir <- define_dir(base.dir,"B.realmean")
 
 load(file.path(base.dir,"Anom_metadata.RData"))
 
-set.debug.level(10000) #Do all
+set.debug.level(0) #Do all
 set.cdo.defaults("--silent --no_warnings -O")
 
 #==========================================================================
@@ -52,7 +52,7 @@ set.cdo.defaults("--silent --no_warnings -O")
 #==========================================================================
 #Split files into processing chunks, where the common factor is that 
 #everything is the same apart from the realisation
-realmean.group <- split(anom.meta,anom.meta[,c("model","start","lead")],
+realmean.group <- split(anom.meta,anom.meta[,c("data.src","start","lead")],
                         drop=TRUE,sep="_")
 
 #==========================================================================
@@ -80,7 +80,7 @@ for(rl.gp in realmean.group) {
   #Store new meta data
   res <- rl.gp %>%
     select(-realization,-frag.fname,-clim.fname,-fname) %>%
-    mutate(n.reals=nrow(rl.gp),
+    mutate(n.realizations=nrow(rl.gp),
            fname=realmean.fname)
   realmean.meta.l[[realmean.fname]] <- res[1,]
 
