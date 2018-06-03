@@ -84,7 +84,6 @@ hindcast_mdls$GFDL <-   data.source(name="GFDL-CM2.1",
 #Identify models as hindcast models and set the source equal to the name
 for(i in seq(hindcast_mdls)) {
   hindcast_mdls[[i]]@type <- "Decadal"
-  hindcast_mdls[[i]]@source<- hindcast_mdls[[i]]@name
 }
 
 # ========================================================================

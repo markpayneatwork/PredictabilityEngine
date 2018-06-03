@@ -138,7 +138,8 @@ for(i in seq(grp.l)) {
 
 #Polish the anomaly file meta data into a more useable format
 ensmean.meta <- bind_rows(ensmean.meta.l)
-save(ensmean.meta,file=file.path(base.dir,"Ensmean_metadata.RData"))
+save(ensmean.meta,file=file.path(base.dir,ensmean.src@name,
+                                 "Ensmean_metadata.RData"))
 
 #'========================================================================
 # Complete

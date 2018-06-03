@@ -36,6 +36,7 @@ library(PredEng)
 library(tibble)
 library(dplyr)
 library(ncdf4)
+library(lubridate)
 load("objects/setup.RData")
 load("objects/configuration.RData")
 
@@ -44,7 +45,7 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  src.no <- 1
+  src.no <- 3
   set.debug.level(Inf)  #0 complete fresh run
   set.condexec.silent()
   set.cdo.defaults("--silent --no_warnings -O")
@@ -64,7 +65,7 @@ if(interactive()) {
 src <- pcfg@decadal.hindcasts[[src.no]]
 
 #Directory setup
-src.dir <- file.path(datasrc.dir,"Decadal",src@name)
+src.dir <- file.path(datasrc.dir,"Decadal",src@source)
 base.dir <- define_dir(pcfg@scratch.dir,"Decadal",src@name)
 remap.dir <- define_dir(base.dir,"1.remapping_wts")
 sel.dir <- define_dir(base.dir,"2.regrid")
