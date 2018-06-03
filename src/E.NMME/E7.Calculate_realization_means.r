@@ -44,7 +44,7 @@ realmean.dir <- define_dir(base.dir,"B.realmean")
 
 load(file.path(base.dir,"Anom_metadata.RData"))
 
-set.debug.level(0) #Do all
+set.debug.level(Inf) #Do all
 set.cdo.defaults("--silent --no_warnings -O")
 
 #==========================================================================
@@ -52,7 +52,7 @@ set.cdo.defaults("--silent --no_warnings -O")
 #==========================================================================
 #Split files into processing chunks, where the common factor is that 
 #everything is the same apart from the realisation
-realmean.group <- split(anom.meta,anom.meta[,c("data.src","start","lead")],
+realmean.group <- split(anom.meta,anom.meta[,c("name","start","lead")],
                         drop=TRUE,sep="_")
 
 #==========================================================================

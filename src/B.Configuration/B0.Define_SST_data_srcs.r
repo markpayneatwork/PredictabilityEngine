@@ -27,8 +27,9 @@
 #IPSL and MPI-MR have basically an identifical structure, both being produced
 #originally by SPECS
 hindcast_mdls <- list()
-hindcast_mdls$IPSL  <- GCM(name="IPSL-CM5A-LR",
-                           data.source="IPSL-CM5A-LR",
+hindcast_mdls$IPSL  <- data.source(name="IPSL-CM5A-LR",
+                                   type="Decadal",
+                           source="IPSL-CM5A-LR",
                            var="tos",
                            ensmem_fn=function(f) {
                              underscore_field(f,6)},
@@ -37,13 +38,15 @@ hindcast_mdls$IPSL  <- GCM(name="IPSL-CM5A-LR",
                              init.date <- ymd(init.str)
                              return(init.date)})
 
-hindcast_mdls$"MPI-MR" <-  new("GCM",hindcast_mdls$IPSL,
+hindcast_mdls$"MPI-MR" <-  new("data.source",hindcast_mdls$IPSL,
                                name="MPI-ESM-MR",
-                               data.source="MPI-ESM-MR")
+                               source="MPI-ESM-MR")
 
 #MPI-LR is different,
-hindcast_mdls$"MPI-LR" <-  GCM(name="MPI-ESM-LR",var="thetao",
-                               data.source="MPI-ESM-LR_MiKlip-b1",
+hindcast_mdls$"MPI-LR" <-  data.source(name="MPI-ESM-LR",
+                                       type="Decadal",
+                                       var="thetao",
+                               source="MPI-ESM-LR_MiKlip-b1",
                              ensmem_fn=CMIP5_realisation,
                              init_fn=function(f){
                                init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
@@ -51,8 +54,9 @@ hindcast_mdls$"MPI-LR" <-  GCM(name="MPI-ESM-LR",var="thetao",
                                return(init.date)})
 
 #MPI - NCEP requires all three to be specified
-hindcast_mdls$"MPI-NCEP" <- GCM(name="MPI-NCEP-forced",
-                                data.source="MPI-ESM-LR_NCEP-forced",
+hindcast_mdls$"MPI-NCEP" <- data.source(name="MPI-NCEP-forced",
+                                type="Decadal",
+                                source="MPI-ESM-LR_NCEP-forced",
                                 var="var2",
                              ensmem_fn=function(f){return(rep("r1",length(f)))},
                              date_fn=function(f){
@@ -67,8 +71,9 @@ hindcast_mdls$"MPI-NCEP" <- GCM(name="MPI-NCEP-forced",
                                return(init.date)})
 
 #GFDL is largely in CMIP5 format
-hindcast_mdls$GFDL <-   GCM(name="GFDL-CM2.1",
-                            data.source="GFDL-CM2.1",
+hindcast_mdls$GFDL <-   data.source(name="GFDL-CM2.1",
+                            type="Decadal",
+                            source="GFDL-CM2.1",
                             var="tos",
                              ensmem_fn=CMIP5_realisation,
                              init_fn=function(f){
@@ -78,44 +83,43 @@ hindcast_mdls$GFDL <-   GCM(name="GFDL-CM2.1",
 
 #Identify models as hindcast models and set the source equal to the name
 for(i in seq(hindcast_mdls)) {
-  hindcast_mdls[[i]]@type <- "Decadal-hindcast"
-  hindcast_mdls[[i]]@data.source<- file.path("Decadal-hindcasts",hindcast_mdls[[i]]@data.source)
-  hindcast_mdls[[i]]@base.dir <- hindcast_mdls[[i]]@data.source
+  hindcast_mdls[[i]]@type <- "Decadal"
+  hindcast_mdls[[i]]@source<- file.path("Decadal-hindcasts",hindcast_mdls[[i]]@source)
 }
 
 # ========================================================================
 # Setup uninitialised models
 # These should largely be the same...
 # ========================================================================
-uninit_mdls <- hindcast_mdls
-
-#As these are uninitalised runs, the idea of a initialisation date doesn't
-#make much sense, so we set all init_fn to NA
-for(i in seq(uninit_mdls)) {
-  uninit_mdls[[i]]@init_fn <- function(f) {rep(NA,length(f))}
-}
-
-#MPI-NCEP-forced doesn't have any uninitialised runs
-uninit_mdls$`MPI-NCEP` <- NULL
-
-
-#For all other models, we use the standard CMIP5 products
-for(i in seq(uninit_mdls)) {
-  uninit_mdls[[i]]@ensmem_fn <- CMIP5_realisation
-  uninit_mdls[[i]]@var <- "tos"
-  uninit_mdls[[i]]@type <- "uninit"
-}
+# uninit_mdls <- hindcast_mdls
+# 
+# #As these are uninitalised runs, the idea of a initialisation date doesn't
+# #make much sense, so we set all init_fn to NA
+# for(i in seq(uninit_mdls)) {
+#   uninit_mdls[[i]]@init_fn <- function(f) {rep(NA,length(f))}
+# }
+# 
+# #MPI-NCEP-forced doesn't have any uninitialised runs
+# uninit_mdls$`MPI-NCEP` <- NULL
+# 
+# 
+# #For all other models, we use the standard CMIP5 products
+# for(i in seq(uninit_mdls)) {
+#   uninit_mdls[[i]]@ensmem_fn <- CMIP5_realisation
+#   uninit_mdls[[i]]@var <- "tos"
+#   uninit_mdls[[i]]@type <- "uninit"
+# }
 
 # ========================================================================
 # Setup observational data sets
 # ========================================================================
 SST_obs <- list()
-SST_obs$HadISST <- data_src(name="HadISST",data.source="HadISST",var="sst",type="obs")
-SST_obs$OISST <- data_src(name="OISST",data.source="OISST",type="obs")
-SST_obs$EN4  <- data_src(name="EN4",data.source="EN4",type="obs",var="temperature")
+SST_obs$HadISST <- data.source(name="HadISST",var="sst")
+SST_obs$OISST <- data.source(name="OISST")
+SST_obs$EN4  <- data.source(name="EN4",var="temperature")
 for(i in seq(SST_obs)){
-  SST_obs[[i]]@data.source <- file.path("Observations",SST_obs[[i]]@data.source)
-  SST_obs[[i]]@base.dir <- SST_obs[[i]]@data.source
+  SST_obs[[i]]@source <- file.path("Observations",SST_obs[[i]]@name)
+  SST_obs[[i]]@type <- "Observations"
 }
 
 # ========================================================================
@@ -129,12 +133,10 @@ for(mdl.name in names(NMME.mdls)){
   mdl <- NMME.mdls[[mdl.name]]
   mdl.src <- mdl$URL
   names(mdl.src) <- mdl$type
-  obj <- new("GCM",
-             name=sprintf("NMME-%s",mdl.name),
+  obj <- data.source(name=mdl.name,#sprintf("NMME-%s",mdl.name),
              type="NMME",
              var="sst",
-             data.source=mdl.src,
-             base.dir="NMME")  
+             source=mdl.src)  
   NMME.sst.l[[mdl.name]] <- obj
 }
 
@@ -145,6 +147,6 @@ NMME.sst.l[["NCEP-CFSv2"]]@realizations <- 1:24  #Forecast has 32 but hindcast 2
 # ========================================================================
 # Setup CMIP5 models
 # ========================================================================
-CMIP5.mdls <- new("GCM",name="CMIP5-tos",type="CMIP5",var="tos",
-                  data.source="CMIP5",base.dir="CMIP5")
+CMIP5.mdls <- data.source(name="CMIP5-tos",type="CMIP5",var="tos",
+                  source="CMIP5")
   

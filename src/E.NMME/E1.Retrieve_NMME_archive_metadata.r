@@ -42,6 +42,7 @@ library(tibble)
 library(reshape2)
 library(magrittr)
 library(reshape2)
+library(dplyr)
 load("objects/setup.RData")
 load("objects/configuration.RData")
 
@@ -57,11 +58,15 @@ set.debug.level(0)  #0 complete fresh run
 # ========================================================================
 # Retrieve meta data
 # ========================================================================
+#Restrict NMME models to individual data products, dropping the Ensmean
+indiv.NMME.models <- which(sapply(pcfg@NMME.models,class)=="data.source")
+
 #Import configurations from config object
-NMME.cfg <- lapply(pcfg@NMME.models,function(d) {
+NMME.cfg <- lapply(pcfg@NMME.models[indiv.NMME.models],
+                   function(d) {
                       tibble(Model=d@name,
-                             type=names(d@data.source),
-                             URL=d@data.source)}) %>%
+                             type=names(d@source),
+                             URL=d@source)}) %>%
             bind_rows %>%
             mutate(mdl.str=sprintf("%s_%s",Model,type))
 

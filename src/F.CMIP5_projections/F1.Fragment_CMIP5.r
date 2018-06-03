@@ -46,7 +46,7 @@ load("objects/configuration.RData")
 #Take input arguments, if any
 if(interactive()) {
  # mdl.no <- 5
-  set.debug.level(0)  #0 complete fresh run
+  set.debug.level(Inf)  #0 complete fresh run
   set.condexec.silent()
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()

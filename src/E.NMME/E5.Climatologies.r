@@ -46,7 +46,7 @@ anom.dir <- define_dir(base.dir,"A.anoms")
 
 load(file.path(base.dir,"Fragment_metadata.RData"))
 
-set.debug.level(0) #Do all
+set.debug.level(Inf) #Do all
 set.cdo.defaults("--silent --no_warnings -O")
 
 #==========================================================================
@@ -54,11 +54,9 @@ set.cdo.defaults("--silent --no_warnings -O")
 #==========================================================================
 #Modify meta data to include climatology and anomaly filenames
 anom.meta <- mutate(frag.meta,
-                    data.src=model,
-                    data.type="NMME",
-                    date=forecast.date,
+                    type="NMME",
                     frag.fname=fname, #fname is now applied to anom files
-                    clim.fname=sprintf("%s_L%s_clim.nc",model,lead),
+                    clim.fname=sprintf("%s_L%s_clim.nc",name,lead),
                     fname=file.path(anom.dir,gsub(".nc","_anom.nc",basename(frag.fname))),
                     model=NULL,forecast.date=NULL)
 

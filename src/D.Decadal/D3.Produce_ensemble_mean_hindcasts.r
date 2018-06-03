@@ -55,21 +55,22 @@ if(interactive()) {
 }
 
 #Ensemble mean source
-ensmean.src <- pcfg@decadal.hindcasts[["Decadal-ensmean"]]
+src.types <- sapply(pcfg@decadal.hindcasts,class)
+ensmean.src <- pcfg@decadal.hindcasts[[which(src.types=="data.ensemble")]]
 
 #Directory setup
-base.dir <- define_dir(pcfg@scratch.dir,ensmean.src@data.source)
-ensmean.dir <- define_dir(base.dir,"C.ensmean")
+base.dir <- define_dir(pcfg@scratch.dir,"Decadal")
+ensmean.dir <- define_dir(base.dir,ensmean.src@name,"C.ensmean")
 
 #'========================================================================
 # Setup ensemble averaging ####
 #'========================================================================
 #Start by loading the metadata associated with each of the hindcast
-#models that we have in our configuration
+#models that we have chosen to use in our ensmean configuration
 metadat.l <- list()
-for(m in pcfg@decadal.hindcasts){
-  if(m@type=="Decadal-hindcast") {
-    load(file.path(pcfg@scratch.dir,m@base.dir,"Realmean_metadata.RData"))
+for(m in ensmean.src@members){
+  if(class(m)=="data.source") {
+    load(file.path(base.dir,m@name,"Realmean_metadata.RData"))
     metadat.l[[m@name]] <- realmean.meta
   }
 }
@@ -86,11 +87,11 @@ metadat.all <- bind_rows(metadat.l)
 metadat <- subset(metadat.all,realization=="realmean") 
 
 #Now split into groups by leadtime and forecast year
-#We could do the split directly on the forecast.date, but this is a bit
+#We could do the split directly on the date, but this is a bit
 #risky - different models tend to handle and leap-years differently, so the
-#forecast.date for one model might be 1964.08.15 and for another 1964.08.16
+#date for one model might be 1964.08.15 and for another 1964.08.16
 #even though they both represent the same thing.
-metadat$forecast.yr <- year(metadat$forecast.date)
+metadat$forecast.yr <- year(metadat$date)
 grp.l <- split(metadat,metadat[,c("lead.ts","forecast.yr")],drop=TRUE)
 
 #'========================================================================
@@ -108,8 +109,8 @@ for(i in seq(grp.l)) {
   d <- grp.l[[i]]
   
   #Build up meta data
-  grp.meta <- tibble(model=ensmean.src@name,
-                         forecast.date=mean(d$forecast.date),
+  grp.meta <- tibble(name=ensmean.src@name,
+                         date=mean(d$date),
                          start.date=mean(d$start.date),
                          lead.ts=unique(d$lead.ts), 
                          realization="ensmean")
@@ -125,7 +126,7 @@ for(i in seq(grp.l)) {
   
   #Set date
   condexec(2,date.cmd <- cdo(csl("setdate",
-                                 format(grp.meta$forecast.date,"%Y-%m-%d")),
+                                 format(grp.meta$date,"%Y-%m-%d")),
                                 "-setreftime,1850-01-01,00:00:00,days",
                                 "-setcalendar,proleptic_gregorian",
                                temp.fname,grp.meta$fname))

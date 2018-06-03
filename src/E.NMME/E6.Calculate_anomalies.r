@@ -44,7 +44,7 @@ lead.clim.dir <- define_dir(base.dir,"4.lead.clims")
 remap.dir <- define_dir(base.dir,"5.remap_wts")
 
 load(file.path(base.dir,"Anom_metadata.RData"))
-set.debug.level(0) #Do all
+set.debug.level(Inf) #Do all
 set.condexec.silent()
 set.cdo.defaults("--silent --no_warnings -O")
 
@@ -57,11 +57,11 @@ set.cdo.defaults("--silent --no_warnings -O")
 
 log_msg("Calculating remapping weights...\n")
 
-#Get list of files to act as source
+#Get list of files to act as representative sources
 anom.meta$remapping.wts <- file.path(remap.dir,
-                                     sprintf("%s.nc",anom.meta$data.src))
+                                     sprintf("%s.nc",anom.meta$name))
 mdl.reps <- subset(anom.meta,year(start.date)==2011 ) %>%
-            subset(!duplicated(data.src))
+            subset(!duplicated(name))
 
 #Loop over models
 for(m in seq(nrow(mdl.reps))) {

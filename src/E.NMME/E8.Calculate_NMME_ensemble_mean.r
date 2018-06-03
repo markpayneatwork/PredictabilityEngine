@@ -44,7 +44,7 @@ ensmean.dir <- define_dir(base.dir,"C.ensmean")
 
 load(file.path(base.dir,"Realmean_metadata.RData"))
 
-set.debug.level(0) #Do all
+set.debug.level(0) #0 Do all
 set.cdo.defaults("--silent --no_warnings -O")
 
 #==========================================================================
@@ -69,8 +69,8 @@ for(em.gp in ensmean.group) {
   #Build commands
   ensmean.fname <- file.path(ensmean.dir,
                              unique(sprintf("NMME-ensmean_all_%s_%s_ensmean_anom.nc",
-                                  underscore_field(em.gp$fname,4),
-                                  underscore_field(em.gp$fname,5))))
+                                  underscore_field(em.gp$fname,3),
+                                  underscore_field(em.gp$fname,4))))
   # ensmean.cmd <- nces("--overwrite --netcdf4 --history",
   #                      file.path(realmean.dir,em.gp$realmean.fname),
   #                      file.path(ensmean.dir,ensmean.fname))

@@ -136,8 +136,8 @@ for(f in frag.fnames) {
 
 #Build metadata
 anom.meta <- bind_rows(meta.dat.l) %>%
-             add_column(data.src=pcfg@observations@name,.before=1) %>%
-             add_column(data.type=pcfg@observations@type,.after=1) %>%
+             add_column(name=pcfg@observations@name,.before=1) %>%
+             add_column(type=pcfg@observations@type,.after=1) %>%
              mutate(start.date=NA,
                     n.realizations=1,
                     fname=frag.fnames) 

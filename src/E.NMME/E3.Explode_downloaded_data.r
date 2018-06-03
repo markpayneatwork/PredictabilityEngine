@@ -71,7 +71,7 @@ load(file.path(NMME.dat.dir,"NMME_archive_metadata.RData"))
 for(i in seq(nrow(meta))) {
   mdl.cfg <- meta[i,]
   mdl.id <- mdl.cfg$mdl.str
-  GCM.obj <- pcfg@NMME.models[[mdl.cfg$Model]]
+  NMME.obj <- pcfg@NMME.models[[mdl.cfg$Model]]
   download.fname <- file.path(download.dir,
                               sprintf("%s.nc",mdl.id))
 
@@ -89,10 +89,10 @@ for(i in seq(nrow(meta))) {
   sel.SL <- subset(all.SL,forecast.month %in% pcfg@MOI)
 
   #Select realisations to explode  
-  if(any(GCM.obj@realizations==0)){
+  if(any(NMME.obj@realizations==0)){
     sel.M <- SLM[["M",mdl.id]]
   } else {
-    sel.M <- GCM.obj@realizations
+    sel.M <- NMME.obj@realizations
   }
 
   #Now comes the mega loop, where we loop over the start dates and members as well!
@@ -124,7 +124,7 @@ for(i in seq(nrow(meta))) {
       #up with something compatable with CDO
       #We choose to drop the realization dimnension, to end with 
       #a 4D variable
-      ncwa.cmd <- ncwa(sprintf("-a %s,M",GCM.obj@var),
+      ncwa.cmd <- ncwa(sprintf("-a %s,M",NMME.obj@var),
                        fragment.full.path,fragment.full.path)
       condexec(1,ncwa.cmd)
     }

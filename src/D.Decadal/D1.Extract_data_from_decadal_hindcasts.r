@@ -44,8 +44,8 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  src.no <- 4
-  set.debug.level(0)  #0 complete fresh run
+  src.no <- 1
+  set.debug.level(Inf)  #0 complete fresh run
   set.condexec.silent()
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
@@ -64,8 +64,8 @@ if(interactive()) {
 src <- pcfg@decadal.hindcasts[[src.no]]
 
 #Directory setup
-src.dir <- file.path(datasrc.dir,src@data.source)
-base.dir <- define_dir(pcfg@scratch.dir,src@base.dir)
+src.dir <- file.path(datasrc.dir,"Decadal",src@name)
+base.dir <- define_dir(pcfg@scratch.dir,"Decadal",src@name)
 remap.dir <- define_dir(base.dir,"1.remapping_wts")
 sel.dir <- define_dir(base.dir,"2.regrid")
 frag.dir <- define_dir(base.dir,"3.fragments")
@@ -173,9 +173,9 @@ if(get.debug.level()<=4) {
   }
   
   #Now build up a meta-data catalogue
-  frag.meta <- tibble(model=src@name,
+  frag.meta <- tibble(name=src@name,
                       start.date=src@init_fn(frag.fnames),
-                      forecast.date=do.call(c,frag.dates.l),
+                      date=do.call(c,frag.dates.l),
                       lead.ts=str_match(basename(frag.fnames),"^.*?_L([0-9]+).nc$")[,2],
                       realization=src@ensmem_fn(frag.fnames),
                       fname=frag.fnames)
@@ -195,7 +195,7 @@ if(get.debug.level()<=4) {
 #'========================================================================
 log_msg("Calculating climatologies...\n")
 #Break into chunks for climatology calculation
-frag.meta$in.clim <- year(frag.meta$forecast.date) %in% pcfg@clim.years
+frag.meta$in.clim <- year(frag.meta$date) %in% pcfg@clim.years
 lead.clim.files <- subset(frag.meta,in.clim)
 lead.clim.files.l <- split(lead.clim.files,lead.clim.files$lead.ts)
 
@@ -258,7 +258,7 @@ realmean.meta <- mutate(anom.meta,
                                                              realization,
                                                              "realmean")))
 realmean.files.l <- split(realmean.meta,
-                          realmean.meta[,c("lead.ts","forecast.date")],
+                          realmean.meta[,c("lead.ts","date")],
                           drop=TRUE)
 
 #Average over the individual realisations at given lead time
@@ -278,7 +278,7 @@ log_msg("\n")
 #Compile into metadata catalogue
 realmean.meta <- mutate(realmean.meta,
                         realization="realmean") %>%
-                 select(model,start.date,forecast.date,lead.ts,realization,fname)
+                 select(name,start.date,date,lead.ts,realization,fname)
 save(realmean.meta,file=file.path(base.dir,"Realmean_metadata.RData"))
 
 #'========================================================================

@@ -66,13 +66,13 @@ if(Sys.info()["nodename"]=="mpayne-Latitude-E7240") {
 
 #Add in the ensembles
 pcfg@decadal.hindcasts <- c(pcfg@decadal.hindcasts,
-                            GCM(name="Decadal-ensmean",
-                                base.dir="Decadal-hindcasts/ensmean",
-                                type="ensmean"))
+                            data.ensemble(name="Decadal-ensmean",
+                                          type="Decadal",
+                                          members=pcfg@decadal.hindcasts))
 pcfg@NMME.models <- c(pcfg@NMME.models,
-                      GCM(name="NMME-ensmean",
-                          base.dir="NMME",
-                          type="ensmean"))
+                      data.ensemble(name="NMME-ensmean",
+                                    type="NMME",
+                                    members=pcfg@NMME.models))
 #Not implemented yet
 # pcfg@CMIP5.models <- c(pcfg@CMIP5.models,
 #                        GCM(name="CMIP5-ensmean",
@@ -104,33 +104,37 @@ south.iceland.sp <- as(extent(-50,-10,55,70),"SpatialPolygons")
 # ========================================================================
 #Area above temperature indicator
 ind.l <- list()
-ind.l$South.Iceland <- above.threshold(name="South of Iceland area",
+ind.l$South.Iceland <- area.above.threshold(name="South of Iceland area",
                                  threshold=11,
                                  poly.ROI=south.iceland.sp)
 
-ind.l$IS.area <- above.threshold(name="Irminger Sea area",
+ind.l$IS.area <- area.above.threshold(name="Irminger Sea area",
                                  threshold=11,
                                  poly.ROI=irminger.sea.sp)
 
-ind.l$IB.area <- above.threshold(name="Iceland Basin area",
+ind.l$IB.area <- area.above.threshold(name="Iceland Basin area",
                                  threshold=11,
                              poly.ROI=iceland.basin.sp)
-ind.l$norway.area <- above.threshold(name="Norwegian Coast area",
-                                     threshold=11,
-                                     poly.ROI=norwegian.coast.sp)
+# ind.l$norway.area <- above.threshold(name="Norwegian Coast area",
+#                                      threshold=11,
+#                                      poly.ROI=norwegian.coast.sp)
 
 #Time series
 ind.l$irminger.mean <- spatial.mean(name="Irminger Sea mean",
                                     poly.ROI=irminger.sea.sp)
 ind.l$iceland.mean <- spatial.mean(name="Iceland Basin mean",
                                    poly.ROI=iceland.basin.sp)
-ind.l$norway.mean <- spatial.mean(name="Norwegian Coast mean",
-                                  poly.ROI=norwegian.coast.sp)
+ind.l$South.Iceland.mean <- spatial.mean(name="South of Iceland mean",
+                                       poly.ROI=south.iceland.sp)
+
+# ind.l$norway.mean <- spatial.mean(name="Norwegian Coast mean",
+#                                   poly.ROI=norwegian.coast.sp)
 
 #Northward extent
-ind.l$norway.north <-isoline.lat(name="Norwegian Coast isoline",
-                                 threshold=11,
-                                 poly.ROI=norwegian.coast.sp)
+# ind.l$norway.north <-isoline.lat(name="Norwegian Coast isoline",
+#                                  threshold=11,
+#                                  poly.ROI=norwegian.coast.sp)
+# 
 
 #Set type of data to use for all
 ind.l <- lapply(ind.l,function(x){

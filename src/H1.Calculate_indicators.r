@@ -48,7 +48,7 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  src.no <- 13
+  src.no <- 1
   set.debug.level(0)  #Non-zero lets us run with just a few points
   set.cdo.defaults("--silent --no_warnings")
   set.condexec.silent()
@@ -63,7 +63,8 @@ if(interactive()) {
 
 #Directory setup
 base.dir <- pcfg@scratch.dir
-obs.dir <- define_dir(file.path(base.dir,pcfg@observations@base.dir))
+obs.dir <- define_dir(file.path(base.dir,pcfg@observations@type,
+                                pcfg@observations@name))
 ind.dir <- define_dir(base.dir,"indicators")
 
 #'========================================================================
@@ -100,16 +101,16 @@ for(j in seq(pcfg@indicators)) {
           ind@name,j,length(pcfg@indicators))
   
   #Load the appropriate metadata
-  if(src@type=="ensmean") { #Obviously only going to use ensmean data
-    metadat.fname <- file.path(src@base.dir,"Ensmean_metadata.RData")
+  if(class(src)=="data.ensemble") { #Obviously only going to use ensmean data
+    metadat.fname <- "Ensmean_metadata.RData"
   } else if(ind@data.type=="means") { #Use realmeans
-    metadat.fname <- file.path(src@base.dir,"Realmean_metadata.RData")
+    metadat.fname <- "Realmean_metadata.RData"
   } else if(ind@data.type=="realizations") { #Use individual realizations
-    metadat.fname <- file.path(src@base.dir,"Anom_metadata.RData")
+    metadat.fname <- "Anom_metadata.RData"
   } else {
     stop("Unknown data type")
   }
-  metadat.varname <- load(file.path(base.dir,metadat.fname))
+  metadat.varname <- load(file.path(base.dir,src@type,src@name,metadat.fname))
   metadat <- get(metadat.varname)
   
   if(get.debug.level()!=0) {
@@ -178,10 +179,9 @@ for(j in seq(pcfg@indicators)) {
   #Tidy up results a bit more
   ind.res <- bind_rows(res.l) %>% 
               as.tibble() %>%
-              add_column(indicator=ind@name,.before=1)
-  # %>%
-  #             add_column(indicator.type=class(ind),.after=1) %>%
-  #             add_column(indicator.data.type=ind@data.type,.after=2)
+              add_column(indicator.name=ind@name,.before=1) %>%
+              add_column(indicator.type=class(ind),.after=1) %>%
+              add_column(indicator.data.type=ind@data.type,.after=2)
   #Store results
   save.fname <- gsub(" ","-",sprintf("%s_%s.RData",src@name,ind@name))
   save(ind.res,file=file.path(ind.dir,save.fname))

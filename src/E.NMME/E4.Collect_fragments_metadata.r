@@ -50,7 +50,7 @@ fragment.dir <- define_dir(NMME.dat.dir,"1.fragments")
 
 epoch.start <- ymd("1960-01-01")
 
-set.debug.level(0)  #0 complete fresh run
+set.debug.level(Inf)  #0 complete fresh run
 
 #==========================================================================
 # Collate data
@@ -92,11 +92,11 @@ log_msg("\n")
 # ========================================================================
 #Collate meta data
 frag.meta <- bind_rows(meta.db.l) %>%
-  add_column(model=frag.fnames$model,.before = 1) %>%
+  add_column(name=frag.fnames$model,.before = 1) %>%
   mutate(start.date=epoch.start  + months(start),
-         forecast.date=start.date+months(floor(lead))+days(15),  #Force it to 15th of month
-         forecast.month=month(forecast.date),
-         forecast.year=year(forecast.date)) %>%
+         date=start.date+months(floor(lead))+days(14),  #Force it to 15th of month
+         forecast.month=month(date),
+         forecast.year=year(date)) %>%
   add_column(fname=frag.fnames$fname) 
 
 save(frag.meta,file=file.path(NMME.dat.dir,"Fragment_metadata.RData"))

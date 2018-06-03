@@ -48,7 +48,7 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  set.debug.level(0)  #0 complete fresh run
+  set.debug.level(Inf)  #0 complete fresh run
   set.condexec.silent()
   set.cdo.defaults("--silent -O --no_warnings")
   set.log_msg.silent(TRUE)
@@ -115,7 +115,7 @@ log_msg("Preparing metadata\n")
 # log_msg("\n")
 
 #Form metadata table
-frag.meta <- tibble(model=underscore_field(frag.fnames,1),
+frag.meta <- tibble(name=underscore_field(frag.fnames,1),
                     expt=underscore_field(frag.fnames,2),
                     realization=underscore_field(frag.fnames,3),
                     date=as.Date(ISOdate(underscore_field(frag.fnames,4),
@@ -131,7 +131,7 @@ frag.meta <- extract(frag.meta,"realization",
              mutate(realization.r =as.numeric(realization.r))
 
 #Sort, for good measure
-frag.meta <- arrange(frag.meta,model,expt,date,realization.r)
+frag.meta <- arrange(frag.meta,name,expt,date,realization.r)
 
 save(frag.meta,file=file.path(base.dir,"Fragment_metadata.RData"))
 
@@ -144,7 +144,7 @@ save(frag.meta,file=file.path(base.dir,"Fragment_metadata.RData"))
 log_msg("Building fragstacks...\n")
 # Group data into the fragment stacks
 fragstack.grp <- split(frag.meta,
-                       frag.meta[,c("date","expt","model")],drop=TRUE)
+                       frag.meta[,c("date","expt","name")],drop=TRUE)
 
 #Loop over groups and build the stacks
 pb <- progress_estimated(length(fragstack.grp))
@@ -159,7 +159,7 @@ for(i in seq(fragstack.grp)) {
   fragstack.fname <- file.path(fragstack.dir,
                                with(grp[1,],
                                     sprintf("%s_%s_%s_fragstack.nc",
-                                            model,expt,year(date))))
+                                            name,expt,year(date))))
   # condexec(1,fragstack.cmd <- cdo("merge",
   #                                 grp$fname,
   #                                 fragstack.fname))
@@ -198,14 +198,15 @@ log_msg("Calculating climatologies...\n")
 
 #Setup metadata table for next round of processing (climatologies and anoms)
 anom.meta <-  mutate(fragstack.meta,
+                     type=sprintf("%s.%s","CMIP5",expt),
                      fragstack.fname=fname,
-                     fname=file.path(anom.dir,sprintf("%s_%s_%s_anom.nc",model,expt,year(date))),
-                     clim.fname=file.path(clim.dir,sprintf("%s_clim.nc",model)))
+                     fname=file.path(anom.dir,sprintf("%s_%s_%s_anom.nc",name,expt,year(date))),
+                     clim.fname=file.path(clim.dir,sprintf("%s_clim.nc",name)))
 
 #Now select the files to work with. As we have fragstacks, we can select for
 #both year and experiment simultaneously
 hist.meta <- subset(anom.meta,expt=="historical" & year(date) %in% pcfg@clim.years)
-clim.grp.l <- split(hist.meta,hist.meta[,c("model")])
+clim.grp.l <- split(hist.meta,hist.meta[,c("name")])
 
 # Calculate climatologies
 # Calculating the climatology could be complicated by the fact
