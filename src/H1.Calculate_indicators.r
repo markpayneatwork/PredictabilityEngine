@@ -120,7 +120,7 @@ for(j in seq(pcfg@indicators)) {
   res.l <- list()
   pb <- progress_estimated(nrow(metadat))
   
-  #Then loop over  files
+  #Then loop over files
   for(i in seq(nrow(metadat))) {
     pb$tick()$print()
     m <- metadat[i,]
@@ -162,8 +162,7 @@ for(j in seq(pcfg@indicators)) {
     # no.blanks <- masked[[which(!blank.layer)]]
     
     #And we're ready. Lets calculate some indicators
-    res <- eval.indicator(x=masked,m=ind)  %>%
-            add_column(indicator=ind@name,.before=1) 
+    res <- eval.indicator(x=masked,m=ind) 
     
     #Add in the metadata and store the results
     #Doing the bind diretly like this is ok when we are dealing with
@@ -176,8 +175,14 @@ for(j in seq(pcfg@indicators)) {
   print(pb$stop())
   log_msg("\n")
   
+  #Tidy up results a bit more
+  ind.res <- bind_rows(res.l) %>% 
+              as.tibble() %>%
+              add_column(indicator=ind@name,.before=1)
+  # %>%
+  #             add_column(indicator.type=class(ind),.after=1) %>%
+  #             add_column(indicator.data.type=ind@data.type,.after=2)
   #Store results
-  ind.res <- bind_rows(res.l) %>% as.tibble()
   save.fname <- gsub(" ","-",sprintf("%s_%s.RData",src@name,ind@name))
   save(ind.res,file=file.path(ind.dir,save.fname))
 }
