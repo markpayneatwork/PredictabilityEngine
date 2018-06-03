@@ -43,7 +43,7 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  src.no <- 4
+  src.no <- 12
   set.debug.level(0)  #Non-zero lets us run with just a few points
   set.condexec.silent()
   set.log_msg.silent()
@@ -84,8 +84,22 @@ if(class(src)=="data.ensemble") { #Obviously only going to use ensmean data
 } else  { #Use realmeans
   metadat.fname <- "Realmean_metadata.RData"
 }
-metadat.varname <- load(file.path(base.dir,src@type,src@name,metadat.fname))
+#Tweaks for NMME, CMIP
+if(src@type %in% c("NMME","CMIP5")) {
+  #NMME and CMIP data are not separated by model name
+  metadat.path <- file.path(base.dir,src@type,metadat.fname)
+} else {
+  metadat.path <- file.path(base.dir,src@type,src@name,metadat.fname)
+}
+
+metadat.varname <- load(metadat.path)
 metadat.all <- get(metadat.varname)
+
+#NMME is however processed individually, so we need to restrict the
+#metadata to the particular momdel
+if(src@type=="NMME" & class(src)=="data.source") {
+  metadat.all <- subset(metadat.all,name==src@name)
+}
 
 #Now we need to filter out the long list of all possible files to only
 #look at the ones of interest. We assert a precision here corresponding
@@ -95,7 +109,6 @@ metadat.all <- get(metadat.varname)
 metadat.all$date.floor <- floor_date(metadat.all$date,"month")
 extract.spdf <- pcfg@spacetime.extraction
 extract.spdf$date.floor=floor_date(extract.spdf$date,"month")
-extract.spdf$point.index <- seq(nrow(extract.spdf))
 metadat <- subset(metadat.all,date.floor %in% extract.spdf$date.floor)
 
 #Filter to make debugging easier
@@ -143,7 +156,7 @@ for(i in seq(nrow(metadat))) {
   #Doing the bind diretly like this is ok when we are dealing with
   #rasterLayer fragments, but we will need to be caseful when dealing with 
   #bricks, for example
-  res.l[[i]] <- cbind(m,tibble(point.index=res$point.index,value=res$layer))
+  res.l[[i]] <- cbind(m,tibble(ID=res$ID,value=res$layer))
 }
 
 Sys.sleep(0.1)

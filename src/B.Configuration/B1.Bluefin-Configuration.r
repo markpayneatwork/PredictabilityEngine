@@ -88,6 +88,7 @@ pt <- data.frame(lat=65 +42/60,
              date=as.Date(c("2012-08-22","2014-08-15")))
 coordinates(pt) <- ~ lon +lat
 pcfg@spacetime.extraction <- pt
+pcfg@spacetime.extraction$ID <- seq(nrow(pcfg@spacetime.extraction))
 
 # ========================================================================
 # Spatial Configurations
