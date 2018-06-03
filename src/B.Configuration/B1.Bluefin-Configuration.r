@@ -120,12 +120,12 @@ ind.l$IB.area <- area.above.threshold(name="Iceland Basin area",
 #                                      poly.ROI=norwegian.coast.sp)
 
 #Time series
-ind.l$irminger.mean <- spatial.mean(name="Irminger Sea mean",
-                                    poly.ROI=irminger.sea.sp)
-ind.l$iceland.mean <- spatial.mean(name="Iceland Basin mean",
-                                   poly.ROI=iceland.basin.sp)
-ind.l$South.Iceland.mean <- spatial.mean(name="South of Iceland mean",
-                                       poly.ROI=south.iceland.sp)
+#ind.l$irminger.mean <- spatial.mean(name="Irminger Sea mean",
+#                                    poly.ROI=irminger.sea.sp)
+#ind.l$iceland.mean <- spatial.mean(name="Iceland Basin mean",
+#                                   poly.ROI=iceland.basin.sp)
+#ind.l$South.Iceland.mean <- spatial.mean(name="South of Iceland mean",
+#                                       poly.ROI=south.iceland.sp)
 
 # ind.l$norway.mean <- spatial.mean(name="Norwegian Coast mean",
 #                                   poly.ROI=norwegian.coast.sp)

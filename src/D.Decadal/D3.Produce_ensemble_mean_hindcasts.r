@@ -70,7 +70,7 @@ ensmean.dir <- define_dir(base.dir,ensmean.src@name,"C.ensmean")
 metadat.l <- list()
 for(m in ensmean.src@members){
   if(class(m)=="data.source") {
-    load(file.path(base.dir,m@name,"Realmean_metadata.RData"))
+    load(file.path(base.dir,m@source,"Realmean_metadata.RData"))
     metadat.l[[m@name]] <- realmean.meta
   }
 }
