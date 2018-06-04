@@ -60,7 +60,7 @@ ensmean.src <- pcfg@decadal.hindcasts[[which(src.types=="data.ensemble")]]
 
 #Directory setup
 base.dir <- define_dir(pcfg@scratch.dir,"Decadal")
-ensmean.dir <- define_dir(base.dir,ensmean.src@name,"C.ensmean")
+ensmean.dir <- define_dir(define_dir(base.dir,ensmean.src@name),"C.ensmean")
 
 #'========================================================================
 # Setup ensemble averaging ####
