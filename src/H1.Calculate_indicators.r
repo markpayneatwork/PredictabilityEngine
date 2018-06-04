@@ -67,12 +67,22 @@ obs.dir <- define_dir(file.path(base.dir,pcfg@observations@type,
                                 pcfg@observations@name))
 ind.dir <- define_dir(base.dir,"indicators")
 
+#Split up CMIP5 job
+n.CMIP5.nodes <- 10
+
 #'========================================================================
 # Setup ####
 #'========================================================================
+#Setup CMIP5 to spread across nodes
+CMIP5.chunks <- unlist(rep(list(pcfg@CMIP5.models),n.CMIP5.nodes))
+for(i in seq(n.CMIP5.nodes)) {
+  CMIP5.chunks[[i]]@name <- sprintf("%s-%02i",CMIP5.chunks[[i]]@name,i)
+}
+
 #Supported models
 dat.srcs <- c(pcfg@decadal.hindcasts,pcfg@decadal.uninit,
-              pcfg@NMME.models,pcfg@CMIP5.models,pcfg@observations)
+              pcfg@NMME.models,pcfg@observations,
+              unlist(CMIP5.chunks))
 src <- dat.srcs[[src.no]]
 log_msg("Processing (%s) %s, number %i of %i available data sources\n\n",
         src@type,src@name,src.no,length(dat.srcs))
@@ -126,6 +136,13 @@ for(j in seq(pcfg@indicators)) {
   #metadata to the particular momdel
   if(src@type=="NMME" & class(src)=="data.source") {
      metadat <- subset(metadat,name==src@name)
+  }
+  
+  #Subset the CMIP5 data
+  if(src@type=="CMIP5") {
+    metadat$CMIP5.chunk <- rep(sapply(CMIP5.reps,slot,"name"),
+                               length.out=nrow(metadat))
+    metadat <- subset(metadat,CMIP5.chunk==src@name)
   }
 
   #Subset to make it run a bit quicker
