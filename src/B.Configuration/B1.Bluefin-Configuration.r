@@ -79,6 +79,9 @@ pcfg@NMME.models <- c(pcfg@NMME.models,
 #                        GCM(name="CMIP5-ensmean",
 #                            type="ensmean"))
 
+#Add in a persistence forcast
+pcfg@persistence <- new("data.source",SST_obs[[c("HadISST")]],type="Persistence")
+
 #Analysis grid
 pcfg@analysis.grid <- file.path(pcfg@scratch.dir,"analysis.grid")
 
