@@ -199,6 +199,7 @@ log_msg("Calculating climatologies...\n")
 #Setup metadata table for next round of processing (climatologies and anoms)
 anom.meta <-  mutate(fragstack.meta,
                      type=sprintf("%s.%s","CMIP5",expt),
+                     start.date=NA,
                      fragstack.fname=fname,
                      fname=file.path(anom.dir,sprintf("%s_%s_%s_anom.nc",name,expt,year(date))),
                      clim.fname=file.path(clim.dir,sprintf("%s_clim.nc",name)))

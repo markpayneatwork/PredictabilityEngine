@@ -199,7 +199,7 @@ for(j in seq(pcfg@indicators)) {
               add_column(indicator.type=class(ind),.after=1) %>%
               add_column(indicator.data.type=ind@data.type,.after=2)
   #Store results
-  save.fname <- gsub(" ","-",sprintf("%s_%s.RData",src@name,ind@name))
+  save.fname <- gsub(" ","-",sprintf("%s_%s_%s.RData",src@type,src@name,ind@name))
   save(ind.res,file=file.path(ind.dir,save.fname))
 }
 

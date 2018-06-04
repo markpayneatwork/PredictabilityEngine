@@ -175,6 +175,7 @@ if(get.debug.level()<=4) {
   
   #Now build up a meta-data catalogue
   frag.meta <- tibble(name=src@name,
+                      type=src@type,
                       start.date=src@init_fn(frag.fnames),
                       date=do.call(c,frag.dates.l),
                       lead.ts=str_match(basename(frag.fnames),"^.*?_L([0-9]+).nc$")[,2],
