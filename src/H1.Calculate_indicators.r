@@ -172,7 +172,7 @@ for(j in seq(pcfg@indicators)) {
     #Set the dates of the raster to be processed to be the same as those in the
     #original source file - these processing steps don't always propigate them
     #correctly
-    masked <- setZ(masked,getZ(mdl.anom))
+  #  masked <- setZ(masked,getZ(mdl.anom))
     
     # #Finally, drop layers that are completely blank
     # blank.layer <- cellStats(is.na(masked),sum)==ncell(masked)

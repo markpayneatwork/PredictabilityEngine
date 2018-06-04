@@ -110,6 +110,7 @@ for(i in seq(grp.l)) {
   
   #Build up meta data
   grp.meta <- tibble(name=ensmean.src@name,
+                     type=ensmean.src@type,
                          date=mean(d$date),
                          start.date=mean(d$start.date),
                          lead.ts=unique(d$lead.ts), 
