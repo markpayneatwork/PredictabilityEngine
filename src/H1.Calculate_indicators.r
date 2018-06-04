@@ -68,7 +68,7 @@ obs.dir <- define_dir(file.path(base.dir,pcfg@observations@type,
 ind.dir <- define_dir(base.dir,"indicators")
 
 #Split up CMIP5 job
-n.CMIP5.nodes <- 10
+n.CMIP5.nodes <- 20
 
 #'========================================================================
 # Setup ####
@@ -140,7 +140,7 @@ for(j in seq(pcfg@indicators)) {
   
   #Subset the CMIP5 data
   if(src@type=="CMIP5") {
-    metadat$CMIP5.chunk <- rep(sapply(CMIP5.reps,slot,"name"),
+    metadat$CMIP5.chunk <- rep(sapply(CMIP5.chunks,slot,"name"),
                                length.out=nrow(metadat))
     metadat <- subset(metadat,CMIP5.chunk==src@name)
   }
