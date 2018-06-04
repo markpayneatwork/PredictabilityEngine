@@ -81,7 +81,8 @@ for(i in seq(n.CMIP5.nodes)) {
 
 #Supported models
 dat.srcs <- c(pcfg@decadal.hindcasts,pcfg@decadal.uninit,
-              pcfg@NMME.models,pcfg@observations,
+              pcfg@NMME.models,
+              pcfg@observations,pcfg@persistence,
               unlist(CMIP5.chunks))
 src <- dat.srcs[[src.no]]
 log_msg("Processing (%s) %s, number %i of %i available data sources\n\n",
