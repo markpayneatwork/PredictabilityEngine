@@ -253,14 +253,14 @@ save(anom.meta,file=file.path(base.dir,"Anom_metadata.RData"))
 #'========================================================================
 log_msg("Realisation means...\n")
 #Break into chunks per lead time and forecast date
-realmean.meta <- mutate(anom.meta,
+realmean.files <- mutate(anom.meta,
                         anom.fname=fname,
                         fname=file.path(realmean.dir,
                                                  str_replace(basename(anom.fname),
                                                              realization,
                                                              "realmean")))
-realmean.files.l <- split(realmean.meta,
-                          realmean.meta[,c("lead.ts","date")],
+realmean.files.l <- split(realmean.files,
+                          realmean.files[,c("lead.ts","date")],
                           drop=TRUE)
 
 #Average over the individual realisations at given lead time
@@ -277,10 +277,10 @@ print(pb)
 rm(pb)
 log_msg("\n")
 
-#Compile into metadata catalogue
-realmean.meta <- mutate(realmean.meta,
-                        realization="realmean") %>%
-                 select(name,start.date,date,lead.ts,realization,fname)
+#Compile into metadata catalogue by taking the first line in each groupling
+realmean.meta <- bind_rows(lapply(realmean.files.l,head,n=1)) %>%
+                 mutate(realization="realmean") %>%
+                 select(name,type,start.date,date,lead.ts,realization,fname)
 save(realmean.meta,file=file.path(base.dir,"Realmean_metadata.RData"))
 
 #'========================================================================
