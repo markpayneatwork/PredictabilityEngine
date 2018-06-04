@@ -1,5 +1,5 @@
 #'========================================================================
-# I.Calculate_skill_metrics
+# H2. Calculate_skill_metrics
 #'========================================================================
 #
 # by Mark R Payne
@@ -23,7 +23,7 @@
 #'========================================================================
 # Initialise system ####
 #'========================================================================
-cat(sprintf("\n%s\n","I.Calculate_skill_metrics"))
+cat(sprintf("\n%s\n","H2. Calculate_skill_metrics"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Do house cleaning
@@ -36,6 +36,7 @@ library(tibble)
 library(dplyr)
 library(reshape2)
 library(lubridate)
+library(udunits2)
 load("objects/configuration.RData")
   
 #'========================================================================
@@ -73,58 +74,73 @@ ind.res.colnames <- lapply(ind.met.l,names)
 col.tbl <- melt(sort(table(unlist(ind.res.colnames))/length(ind.met.l)))
 print(col.tbl)
 
-#Choosing the variables gets a bit messy, and highlights the fact that my 
-#programming is not at all systematic :-( Nevertheless, there are some 
-#consistent values that we want to keep. We express this in terms of a
-#list of synonyms, that will be merged at a later date. 
-keep.cols <- list(data.src=c("data.src","model"),
-                  "data.type",
-                  date=c("forecast.date","date"),
-                  "start.date",
-                  "realization",
-                  "indicator","value","fname")
-keep.tbl <- melt(keep.cols,value.name="from.col") %>%
-            mutate(to.col=ifelse(L1=="",from.col,L1),
-                   L1=NULL)
-print(subset(col.tbl,!(Var1 %in% keep.tbl$from.col)))
+# #Choosing the variables gets a bit messy, and highlights the fact that my 
+# #programming is not at all systematic :-( Nevertheless, there are some 
+# #consistent values that we want to keep. We express this in terms of a
+# #list of synonyms, that will be merged at a later date. 
+# keep.cols <- list(data.src=c("data.src","model"),
+#                   "data.type",
+#                   date=c("forecast.date","date"),
+#                   "start.date",
+#                   "realization",
+#                   "indicator","value","fname")
+# keep.tbl <- melt(keep.cols,value.name="from.col") %>%
+#             mutate(to.col=ifelse(L1=="",from.col,L1),
+#                    L1=NULL)
+# print(subset(col.tbl,!(Var1 %in% keep.tbl$from.col)))
+# 
+# #Now we loop over the data sets doing the merging as appropriate
+# common.cols.l <- ind.met.l
+# for(i in seq(common.cols.l)){
+#   im <- common.cols.l[[i]]
+#   #Drop all columns that are not in the wish-list
+#   col.present <- has_name(im,keep.tbl$from.col)
+#   im <- im[,keep.tbl$from.col[col.present]] 
+#   #Rename retained columns
+#   new.names <- keep.tbl$to.col[col.present]
+#   if(any(duplicated(new.names))) {
+#     stop("Duplicated names")
+#   }
+#   colnames(im) <- new.names  
+#   #Now, what about the missing names. These should be added as NAs
+#   missing.cols <- keep.tbl$to.col[!has_name(im,keep.tbl$to.col)]
+#   for(n in missing.cols){
+#     im[,n] <- NA
+#   }
+#   #Store the results
+#   common.cols.l[[i]] <- im
+#   
+# }
 
-#Now we loop over the data sets doing the merging as appropriate
-common.cols.l <- ind.met.l
-for(i in seq(common.cols.l)){
-  im <- common.cols.l[[i]]
-  #Drop all columns that are not in the wish-list
-  col.present <- has_name(im,keep.tbl$from.col)
-  im <- im[,keep.tbl$from.col[col.present]] 
-  #Rename retained columns
-  new.names <- keep.tbl$to.col[col.present]
-  if(any(duplicated(new.names))) {
-    stop("Duplicated names")
-  }
-  colnames(im) <- new.names  
-  #Now, what about the missing names. These should be added as NAs
-  missing.cols <- keep.tbl$to.col[!has_name(im,keep.tbl$to.col)]
-  for(n in missing.cols){
-    im[,n] <- NA
-  }
-  #Store the results
-  common.cols.l[[i]] <- im
-  
-}
+#Big improvements to the metadata handling have rendered the hard-earned code above
+#largely useless - we can now just take what we want
+keep.cols <- c("name","date",
+               "type",
+               "start.date",
+               "indicator.data.type","indicator.name","indicator.type","value")
+common.cols.l <- lapply(ind.met.l,"[",keep.cols)
 
 #Merge into one big object and add meta information
-all.res <- bind_rows(common.cols.l) %>% 
-            mutate(year=year(date),
-                   lead=as.numeric(round(difftime(date,start.date,units="days") /15)*15))
+all.ind <- bind_rows(common.cols.l) %>% 
+            mutate(year=year(date))
+
+#Calculate lead time using udunits
+ud.from <- "days since 1970-01-01"
+ud.to <- "months since 1900-01-01"
+all.ind$lead.raw <- as.numeric(ud.convert(all.ind$date,ud.from,ud.to))-
+                  as.numeric(ud.convert(all.ind$start.date,ud.from,ud.to))
+all.ind$lead <- round(all.ind$lead.raw/0.5)*0.5
+  
 
 #'========================================================================
 # Split and Merge ####
 #'========================================================================
 #Drop years that are not to be included in the evaluation of skill metrics
-sel.res <-  all.res %>% filter(year %in% pcfg@comp.years) 
+sel.res <-  all.ind %>% filter(year %in% pcfg@comp.years) 
 
 #Extract out the observational data
-obs.dat <- subset(sel.res,data.type=="obs") %>%
-           select(year,indicator,value)
+obs.dat <- subset(sel.res,type=="Observations") %>%
+           select(year,indicator.name,value)
 
 #And merge it back into the comparison dataframe. This way we have both the
 #modelled and the observed results together in the same dataframe. We note
@@ -132,7 +148,7 @@ obs.dat <- subset(sel.res,data.type=="obs") %>%
 #situations where we envisage using PredEnd i.e. one data point per year - but
 #we need to be aware that this is not exactly the case 
 comp.dat <- left_join(sel.res,obs.dat,
-                      by=c("year","indicator"),
+                      by=c("year","indicator.name"),
                       suffix=c(".mdl",".obs"))
 
 #'========================================================================
@@ -141,7 +157,7 @@ comp.dat <- left_join(sel.res,obs.dat,
 #Now calculate the metrics
 RMSE <- function(x,y) { sqrt(mean((x-y)^2))}
 skill.m <- comp.dat %>%
-           group_by(data.src,indicator,lead) %>%
+           group_by(name,type,indicator.name,lead) %>%
            summarize(cor=cor(value.mdl,value.obs,use="pairwise.complete"),
                      RMSE=RMSE(value.mdl,value.obs))
 
@@ -151,7 +167,7 @@ skill.m <- comp.dat %>%
 #'========================================================================
 #Save results
 save(skill.m, file=file.path(base.dir,"Skill_metrics.RData"))
-save(all.res, file=file.path(base.dir,"All_indicators.RData"))
+save(all.ind, file=file.path(base.dir,"All_indicators.RData"))
 
 
 #Turn off the lights
