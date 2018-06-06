@@ -45,15 +45,15 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
- # mdl.no <- 5
+  chunk.no <- 1
   set.debug.level(Inf)  #0 complete fresh run
   set.condexec.silent()
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
 } else {
   #Taking inputs from the system environment
-#  mdl.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
-  #if(mdl.no=="") stop("Cannot find PBS_ARRAYID")
+  chunk.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
+  if(chunk.no=="") stop("Cannot find PBS_ARRAYID")
   #Do everything
   set.debug.level(0)  #0 complete fresh run
   set.log_msg.silent(silent=FALSE)
@@ -65,6 +65,9 @@ base.dir <- define_dir(pcfg@scratch.dir,"CMIP5")
 wts.dir <- define_dir(base.dir,"1.remapping_wts")
 remap.dir <- define_dir(base.dir,"2.remap")
 frag.dir <- define_dir(base.dir,"3.fragments")
+
+#Split up CMIP5 job
+n.CMIP5.nodes <- 20
 
 #'========================================================================
 # Setup ####
@@ -90,16 +93,13 @@ CMIP5.meta.all <- extract(CMIP5.meta.all,realization,
                                 remove=FALSE)
 CMIP5.meta <- subset(CMIP5.meta.all,realization.i=="1" &realization.p=="1")
 
-#Check that there is only one model in CMIP5.models - in
-#principle we should be able to handle this, but we need to
-#check the code first
-mdl.types <- sapply(pcfg@CMIP5.models,slot,"type")
-if(sum(mdl.types=="CMIP5")!=1) stop("Can currently only handle 1 CMIP5 model specification ")
-CMIP5.var <- pcfg@CMIP5.models[[which(mdl.types=="CMIP5")]]@var
-
 #'========================================================================
 # Extract data ####
 #'========================================================================
+#Subset the CMIP5 data
+CMIP5.meta$CMIP5.chunk <- rep(1:chunk.no,length.out=nrow(CMIP5.meta))
+CMIP5.meta <- subset(CMIP5.meta,CMIP5.chunk==chunk.no)
+
 #Split into models
 mdl.l <- split(CMIP5.meta,CMIP5.meta$model)
 
@@ -135,7 +135,7 @@ for(i in seq(nrow(CMIP5.meta))) {
   #Select the field of interest, just to be sure
   temp.in <- temp.out
   temp.out <- sprintf("%s_selname",temp.in)
-  condexec(2,selname.cmd <- cdo(csl("selname",CMIP5.var),temp.in,temp.out))
+  condexec(2,selname.cmd <- cdo(csl("selname",pcfg@CMIP5.models@var),temp.in,temp.out))
 
   #Select the months of interest 
   temp.in <- temp.out
