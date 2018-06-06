@@ -48,8 +48,8 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  chunk.no <- 1
-  set.debug.level(Inf)  #0 complete fresh run
+  chunk.no <- 3
+  set.debug.level(5)  #0 complete fresh run
   set.condexec.silent()
   set.cdo.defaults("--silent -O --no_warnings")
   set.log_msg.silent(TRUE)
@@ -238,8 +238,9 @@ for(i in seq(clim.grp.l)) {
   #Note that we need to do the averaging with ncwa rather than ncra so 
   #anomaly creation via ncdiff works properly
   realclim.tmp <- tempfile()
-  condexec(5,realclim.cmd <- nces(g$fragstack.fname,realclim.tmp))
-  condexec(5,clim.cmd <- ncwa(realclim.tmp,unique(g$clim.fname)))
+  condexec(5,realclim.cmd <- ncra(g$fragstack.fname,realclim.tmp))
+  condexec(5,clim.cmd2 <- ncwa("-a tos,realization", 
+                               realclim.tmp,unique(g$clim.fname)))
   
 }
 
