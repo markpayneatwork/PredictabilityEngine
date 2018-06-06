@@ -48,14 +48,15 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
+  chunk.no <- 1
   set.debug.level(Inf)  #0 complete fresh run
   set.condexec.silent()
   set.cdo.defaults("--silent -O --no_warnings")
   set.log_msg.silent(TRUE)
 } else {
   #Taking inputs from the system environment
-  #  mdl.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
-  #if(mdl.no=="") stop("Cannot find PBS_ARRAYID")
+  chunk.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
+  if(chunk.no=="") stop("Cannot find PBS_ARRAYID")
   #Do everything
   set.debug.level(0)  #0 complete fresh run
   set.log_msg.silent(FALSE)
@@ -65,7 +66,7 @@ set.nco.defaults("--netcdf4 --overwrite --history")
 
 #Directory setup
 src.dir <- file.path("data_srcs","CMIP5")
-base.dir <- define_dir(pcfg@scratch.dir,"CMIP5")
+base.dir <- define_dir(define_dir(pcfg@scratch.dir,"CMIP5"),sprintf("%02i",chunk.no))
 frag.dir <- define_dir(base.dir,"3.fragments")
 fragstack.dir <- define_dir(base.dir,"4.fragstacks")
 clim.dir <- define_dir(base.dir,"5.clim")

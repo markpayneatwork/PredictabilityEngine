@@ -61,13 +61,13 @@ if(interactive()) {
 
 #Directory setup
 src.dir <- file.path("data_srcs","CMIP5")
-base.dir <- define_dir(pcfg@scratch.dir,"CMIP5")
+base.dir <- define_dir(define_dir(pcfg@scratch.dir,"CMIP5"),sprintf("%02i",chunk.no))
 wts.dir <- define_dir(base.dir,"1.remapping_wts")
 remap.dir <- define_dir(base.dir,"2.remap")
 frag.dir <- define_dir(base.dir,"3.fragments")
 
 #Split up CMIP5 job
-n.CMIP5.nodes <- 20
+n.CMIP5.chunks <- 3
 
 #'========================================================================
 # Setup ####
@@ -97,8 +97,8 @@ CMIP5.meta <- subset(CMIP5.meta.all,realization.i=="1" &realization.p=="1")
 # Extract data ####
 #'========================================================================
 #Subset the CMIP5 data
-CMIP5.meta$CMIP5.chunk <- rep(1:chunk.no,length.out=nrow(CMIP5.meta))
-CMIP5.meta <- subset(CMIP5.meta,CMIP5.chunk==chunk.no)
+CMIP5.meta$CMIP5.chunk <- as.numeric(factor(CMIP5.meta$model)) %% n.CMIP5.chunks
+CMIP5.meta <- subset(CMIP5.meta,CMIP5.chunk == (chunk.no-1))
 
 #Split into models
 mdl.l <- split(CMIP5.meta,CMIP5.meta$model)
