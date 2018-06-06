@@ -142,13 +142,6 @@ for(j in seq(pcfg@indicators)) {
      metadat <- subset(metadat,name==src@name)
   }
   
-  #Subset the CMIP5 data
-  if(src@type=="CMIP5") {
-    metadat$CMIP5.chunk <- rep(sapply(CMIP5.chunks,slot,"name"),
-                               length.out=nrow(metadat))
-    metadat <- subset(metadat,CMIP5.chunk==src@name)
-  }
-
   #Subset to make it run a bit quicker
   if(get.debug.level()!=0) {
     metadat <- metadat[1:10,]
