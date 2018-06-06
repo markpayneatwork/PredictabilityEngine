@@ -48,7 +48,7 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  src.no <- 13
+  src.no <- 14
   set.debug.level(0)  #Non-zero lets us run with just a few points
   set.cdo.defaults("--silent --no_warnings")
   set.condexec.silent()
@@ -67,16 +67,16 @@ obs.dir <- define_dir(file.path(base.dir,pcfg@observations@type,
                                 pcfg@observations@name))
 ind.dir <- define_dir(base.dir,"indicators")
 
-#Split up CMIP5 job
-n.CMIP5.nodes <- 20
-
 #'========================================================================
 # Setup ####
 #'========================================================================
 #Setup CMIP5 to spread across nodes
-CMIP5.chunks <- unlist(rep(list(pcfg@CMIP5.models),n.CMIP5.nodes))
-for(i in seq(n.CMIP5.nodes)) {
-  CMIP5.chunks[[i]]@name <- sprintf("%s-%02i",CMIP5.chunks[[i]]@name,i)
+CMIP5.dirs <- dir(file.path(pcfg@scratch.dir,pcfg@CMIP5.models@source),
+                 include.dirs = TRUE)
+CMIP5.chunks <- unlist(rep(list(pcfg@CMIP5.models),length(CMIP5.dirs)))
+for(i in seq(CMIP5.dirs)) {
+  CMIP5.chunks[[i]]@name <- sprintf("%s-%s",CMIP5.chunks[[i]]@name,CMIP5.dirs[i])
+  CMIP5.chunks[[i]]@source <- file.path(CMIP5.chunks[[i]]@source,CMIP5.dirs[i])
 }
 
 #Supported models
@@ -123,13 +123,16 @@ for(j in seq(pcfg@indicators)) {
   }
 
   #Tweaks for NMME, CMIP
-  if(src@type %in% c("NMME","CMIP5")) {
-	#NMME and CMIP data are not separated by model name
-      metadat.path <- file.path(base.dir,src@type,metadat.fname)
+  if(src@type=="NMME") {
+    #NMME  data is not separated by model name
+    metadat.path <- file.path(base.dir,src@type,metadat.fname)
+  } else if(src@type=="CMIP5") {
+    #CMIP data are stored by chunks 
+    metadat.path <- file.path(base.dir,src@source,metadat.fname)
   } else {
-      metadat.path <- file.path(base.dir,src@type,src@name,metadat.fname)
+    metadat.path <- file.path(base.dir,src@type,src@name,metadat.fname)
   }
-
+  
   metadat.varname <- load(metadat.path)
   metadat <- get(metadat.varname)
   
