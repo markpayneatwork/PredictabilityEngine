@@ -22,9 +22,9 @@
 #    where it can be compiled in a meaningful manner
 #/*##########################################################################*/
 
-# ========================================================================
+#'========================================================================
 # Initialise system
-# ========================================================================
+#'========================================================================
 cat(sprintf("\n%s\n","Bluefin Configuration"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
@@ -36,29 +36,27 @@ library(PredEng)
 load("objects/setup.RData")
 source("src/B.Configuration/B0.Define_SST_data_srcs.r")
 
-# ========================================================================
-# Configuration
-# ========================================================================
+#'========================================================================
+# Project Configuration ####
+#'========================================================================
 #Global project configuration
-pcfg <- config(name= "Bluefin",
-               ROI=extent(-70,30,50,80),
-               res=0.5,
+pcfg <- project.config(project.name= "Bluefin",
                MOI=8,  #August
+               average.months=FALSE,
                clim.years=1983:2005,  
-               comp.years=1961:2012,
+               comp.years=1970:2012,
                landmask="data_srcs/NMME/landmask.nc",
                observations=SST_obs[[c("HadISST")]],
                CMIP5.models=CMIP5.mdls,
 #               decadal.uninit = uninit_mdls,
-               NMME.models=NMME.sst.l,
-               spatial.forecasts=as.Date("2018-08-15"))
+               NMME.models=NMME.sst.l)
 
 #Setup scratch directory
-pcfg@scratch.dir <- file.path("scratch",pcfg@name)
+pcfg@scratch.dir <- file.path("scratch",pcfg@project.name)
 define_dir(pcfg@scratch.dir)
 
 #Drop NCEP forced model
-pcfg@decadal.hindcasts <- hindcast_mdls[-which(names(hindcast_mdls)=="MPI-NCEP")]
+pcfg@decadal.hindcasts <- hindcast_mdls[-which(names(hindcast_mdls)=="MPI-NCEP-forced")]
 
 #If working locally, only keep the simplest two models
 if(Sys.info()["nodename"]=="mpayne-Latitude-E7240") {
@@ -66,36 +64,40 @@ if(Sys.info()["nodename"]=="mpayne-Latitude-E7240") {
 }
 
 #Add in the ensembles
-pcfg@decadal.hindcasts <- c(pcfg@decadal.hindcasts,
-                            data.ensemble(name="Decadal-ensmean",
-                                          type="Decadal",
-                                          members=pcfg@decadal.hindcasts))
-pcfg@NMME.models <- c(pcfg@NMME.models,
-                      data.ensemble(name="NMME-ensmean",
-                                    type="NMME",
-                                    members=pcfg@NMME.models))
-#Not implemented yet
-# pcfg@CMIP5.models <- c(pcfg@CMIP5.models,
-#                        GCM(name="CMIP5-ensmean",
-#                            type="ensmean"))
+pcfg@decadal.hindcasts <- PredEng.list(c(pcfg@decadal.hindcasts,
+                                         data.ensemble(name="Decadal-ensmean",
+                                                       type="Decadal",
+                                                       members=pcfg@decadal.hindcasts)))
+pcfg@NMME.models <- PredEng.list(c(pcfg@NMME.models,
+                                   data.ensemble(name="NMME-ensmean",
+                                                 type="NMME",
+                                                 members=pcfg@NMME.models)))
 
 #Add in a persistence forcast
 pcfg@persistence <- new("data.source",SST_obs[[c("HadISST")]],type="Persistence")
 
+#'========================================================================
+# Spatial Configurations ####
+#'========================================================================
 #Analysis grid
-pcfg@analysis.grid <- file.path(pcfg@scratch.dir,"analysis.grid")
+sp.obj <- spatial.config(name="North Atlantic",
+                         ROI=extent(-70,30,50,80),
+                         res=0.5,
+                         spatial.forecasts=as.Date("2018-08-15"),
+                         analysis.grid= file.path(pcfg@scratch.dir,"analysis.grid"))
 
 #A simple point-wise extraction point (corresponding to the point of capture)
 pt <- data.frame(lat=65 +42/60, 
-             lon=-(30+50/60),
-             date=as.Date(c("2012-08-22","2014-08-15")))
+                 lon=-(30+50/60),
+                 date=as.Date(c("2012-08-22","2014-08-15")))
 coordinates(pt) <- ~ lon +lat
-pcfg@spacetime.extraction <- pt
-pcfg@spacetime.extraction$ID <- seq(nrow(pcfg@spacetime.extraction))
+sp.obj@spacetime.extraction <- pt
+sp.obj@spacetime.extraction$ID <- seq(nrow(sp.obj@spacetime.extraction))
 
-# ========================================================================
-# Spatial Configurations
-# ========================================================================
+#'========================================================================
+# Inidcator Configurations ####
+#'========================================================================
+#Indicator ROIs
 irminger.sea.sp <- as.SpatialPolygons.matrix(rbind(c(-45,58),c(-45,66),
                                                    c(-20,66),c(-32,58)))
 iceland.basin.sp <- as.SpatialPolygons.matrix(rbind(c(-20,66),c(-32,58),
@@ -104,18 +106,9 @@ norwegian.coast.xy <- rbind(c(-5,62),c(10,62),c(20,70),c(20,73),c(12,73))
 norwegian.coast.sp <- as.SpatialPolygons.matrix(norwegian.coast.xy)
 south.iceland.sp <- as(extent(-50,-10,55,70),"SpatialPolygons")
 
-# r <- crop(raster("~/Documents/common_data/ETOPO/ETOPO15_mean_bath.nc"),pcfg@ROI)
-# image(r)
-# plot(irminger.sea.sp,add=TRUE,border="white")
-# plot(iceland.basin.sp,add=TRUE,border="white")
-# plot(norwegian.coast.sp,add=TRUE,border="white")
-# map("world",add=TRUE,fill=TRUE)
 
-# ========================================================================
-# Inidcator Configurations
-# ========================================================================
 #Area above temperature indicator
-ind.l <- list()
+ind.l <- PredEng.list()
 ind.l$South.Iceland <- area.above.threshold(name="South of Iceland area",
                                  threshold=11,
                                  poly.ROI=south.iceland.sp)
@@ -149,38 +142,36 @@ ind.l$IB.area <- area.above.threshold(name="Iceland Basin area",
 # 
 
 #Set type of data to use for all
-ind.l <- lapply(ind.l,function(x){
-  x@data.type <- c("means")
-  return(x)
-} )
+for(i in seq(ind.l)){
+  ind.l[[i]]@data.type <- "means"
+}
+
 #Merge it all in
+sp.obj@indicators <- ind.l
 
-pcfg@indicators <- ind.l
+#'========================================================================
+# Output ####
+#'========================================================================
+pcfg@spatial <- PredEng.list(list(sp.obj))
 
-# ========================================================================
-# Output
-# ========================================================================
-#Update everything
-pcfg <- update(pcfg)
-
-#Write CDO grid descriptor
-writeLines(griddes(pcfg),pcfg@analysis.grid)
-
-#Setup regridded landmask
-regrid.landmask <- file.path(pcfg@scratch.dir,"landmask_regridded.nc")
-exec(landmask.cmd <- cdo("-f nc", 
-                         csl("remapnn", pcfg@analysis.grid),
-                         pcfg@landmask, 
-                         regrid.landmask))
-pcfg@landmask <- regrid.landmask
+# # #Write CDO grid descriptor
+# # writeLines(griddes(pcfg),pcfg@analysis.grid)
+# 
+# #Setup regridded landmask
+# regrid.landmask <- file.path(pcfg@scratch.dir,"landmask_regridded.nc")
+# exec(landmask.cmd <- cdo("-f nc", 
+#                          csl("remapnn", pcfg@analysis.grid),
+#                          pcfg@landmask, 
+#                          regrid.landmask))
+# pcfg@landmask <- regrid.landmask
 
 #Output
 save(pcfg,file="objects/configuration.RData")
 save(pcfg,file=file.path(pcfg@scratch.dir,"configuration.RData"))
 
-# ========================================================================
+#'========================================================================
 # Done
-# ========================================================================
+#'========================================================================
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
 log_msg("\nConfiguration complete.\n")

@@ -26,7 +26,7 @@
 # ========================================================================
 #IPSL and MPI-MR have basically an identifical structure, both being produced
 #originally by SPECS
-hindcast_mdls <- list()
+hindcast_mdls <- PredEng.list()
 hindcast_mdls$IPSL  <- data.source(name="IPSL-CM5A-LR",
                                    type="Decadal",
                            source="IPSL-CM5A-LR",
@@ -112,7 +112,7 @@ for(i in seq(hindcast_mdls)) {
 # ========================================================================
 # Setup observational data sets
 # ========================================================================
-SST_obs <- list()
+SST_obs <- PredEng.list()
 SST_obs$HadISST <- data.source(name="HadISST",var="sst")
 SST_obs$OISST <- data.source(name="OISST")
 SST_obs$EN4  <- data.source(name="EN4",var="temperature")
@@ -127,7 +127,7 @@ for(i in seq(SST_obs)){
 library(readr)
 NMME.cfg <- read_csv2(file.path(datasrc.dir,"NMME","NMME_SST_urls.csv"))
 NMME.mdls <- split(NMME.cfg,NMME.cfg$Model)
-NMME.sst.l <- list()
+NMME.sst.l <- PredEng.list()
 for(mdl.name in names(NMME.mdls)){
   mdl <- NMME.mdls[[mdl.name]]
   mdl.src <- mdl$URL
