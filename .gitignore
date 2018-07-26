@@ -6,6 +6,6 @@
 *.nc
 .Rd
 *.Rproj
-scratch/
+scratch
 PE_*
 *.sh
