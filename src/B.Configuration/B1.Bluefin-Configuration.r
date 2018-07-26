@@ -80,6 +80,7 @@ if(Sys.info()["nodename"]=="mpayne-Latitude-E7240") {
 # Spatial Configurations ####
 #'========================================================================
 #Set global variables
+pcfg@use.global.ROI <- TRUE
 pcfg@global.ROI <- extent(-70,30,50,80)
 pcfg@global.res  <- 0.5
 
