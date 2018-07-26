@@ -56,104 +56,88 @@ pcfg@scratch.dir <- file.path("scratch",pcfg@project.name)
 define_dir(pcfg@scratch.dir)
 
 #Drop NCEP forced model
-pcfg@decadal.hindcasts <- hindcast_mdls[-which(names(hindcast_mdls)=="MPI-NCEP-forced")]
+pcfg@decadal.models <- hindcast_mdls[-which(names(hindcast_mdls)=="MPI-NCEP-forced")]
 
 #If working locally, only keep the simplest two models
 if(Sys.info()["nodename"]=="mpayne-Latitude-E7240") {
-  pcfg@decadal.hindcasts <- pcfg@decadal.hindcasts[c(1,4)]
+  pcfg@decadal.models <- pcfg@decadal.models[c(1,4)]
 }
 
-#Add in the ensembles
-pcfg@decadal.hindcasts <- PredEng.list(c(pcfg@decadal.hindcasts,
-                                         data.ensemble(name="Decadal-ensmean",
-                                                       type="Decadal",
-                                                       members=pcfg@decadal.hindcasts)))
-pcfg@NMME.models <- PredEng.list(c(pcfg@NMME.models,
-                                   data.ensemble(name="NMME-ensmean",
-                                                 type="NMME",
-                                                 members=pcfg@NMME.models)))
+# #Add in the ensembles
+# pcfg@decadal.models <- PredEng.list(c(pcfg@decadal.models,
+#                                          data.ensemble(name="Decadal-ensmean",
+#                                                        type="Decadal",
+#                                                        members=pcfg@decadal.models)))
+# pcfg@NMME.models <- PredEng.list(c(pcfg@NMME.models,
+#                                    data.ensemble(name="NMME-ensmean",
+#                                                  type="NMME",
+#                                                  members=pcfg@NMME.models)))
 
 #Add in a persistence forcast
-pcfg@persistence <- new("data.source",SST_obs[[c("HadISST")]],type="Persistence")
+# pcfg@persistence <- new("data.source",SST_obs[[c("HadISST")]],type="Persistence")
 
 #'========================================================================
 # Spatial Configurations ####
 #'========================================================================
-#Analysis grid
-sp.obj <- spatial.config(name="North Atlantic",
-                         ROI=extent(-70,30,50,80),
-                         res=0.5,
-                         spatial.forecasts=as.Date("2018-08-15"),
-                         analysis.grid= file.path(pcfg@scratch.dir,"analysis.grid"))
+#Set global variables
+pcfg@global.ROI <- extent(-70,30,50,80)
+pcfg@global.res  <- 0.5
+
+#Polygons
+sp.objs <- PredEng.list()
+sp.objs$irminger.sea <- spatial.subdomain(name="Irminger Sea",
+                                     polygon=as.SpatialPolygons.matrix(rbind(c(-45,58),c(-45,66),
+                                                   c(-20,66),c(-32,58))))
+sp.objs$iceland.basin <- spatial.subdomain(name="Icealand Basin",
+                                      polygon=as.SpatialPolygons.matrix(rbind(c(-20,66),c(-32,58),
+                                                    c(-15,58),c(-15,66))))
+sp.objs$no.coast <- spatial.subdomain(name="Norwegian Coast",
+                                        polygon=as.SpatialPolygons.matrix(rbind(c(-5,62),c(10,62),
+                                                                                c(20,70),c(20,73),
+                                                                                c(12,73))))
+sp.objs$s.iceland <- spatial.subdomain(name="South of Iceland",
+                                       ROI=extent(-50,-10,55,70))
+
+#Add to object
+pcfg@spatial.subdomains <- sp.objs
+
+
+#'========================================================================
+# Extraction configuration ####
+#'========================================================================
+extr <- list()
+extr$spatial.forecasts <- as.Date("2018-08-15")
 
 #A simple point-wise extraction point (corresponding to the point of capture)
 pt <- data.frame(lat=65 +42/60, 
                  lon=-(30+50/60),
                  date=as.Date(c("2012-08-22","2014-08-15")))
+pt$ID <- seq(nrow(pt))
 coordinates(pt) <- ~ lon +lat
-sp.obj@spacetime.extraction <- pt
-sp.obj@spacetime.extraction$ID <- seq(nrow(sp.obj@spacetime.extraction))
+extr$spacetime.extraction <- pt
+
+pcfg@extraction <- extr
 
 #'========================================================================
-# Inidcator Configurations ####
+# Summary statistics ####
 #'========================================================================
-#Indicator ROIs
-irminger.sea.sp <- as.SpatialPolygons.matrix(rbind(c(-45,58),c(-45,66),
-                                                   c(-20,66),c(-32,58)))
-iceland.basin.sp <- as.SpatialPolygons.matrix(rbind(c(-20,66),c(-32,58),
-                                                    c(-15,58),c(-15,66)))
-norwegian.coast.xy <- rbind(c(-5,62),c(10,62),c(20,70),c(20,73),c(12,73))
-norwegian.coast.sp <- as.SpatialPolygons.matrix(norwegian.coast.xy)
-south.iceland.sp <- as(extent(-50,-10,55,70),"SpatialPolygons")
-
-
-#Area above temperature indicator
-ind.l <- PredEng.list()
-ind.l$South.Iceland <- area.above.threshold(name="South of Iceland area",
-                                 threshold=11,
-                                 poly.ROI=south.iceland.sp)
-
-ind.l$IS.area <- area.above.threshold(name="Irminger Sea area",
-                                 threshold=11,
-                                 poly.ROI=irminger.sea.sp)
-
-ind.l$IB.area <- area.above.threshold(name="Iceland Basin area",
-                                 threshold=11,
-                             poly.ROI=iceland.basin.sp)
-# ind.l$norway.area <- above.threshold(name="Norwegian Coast area",
-#                                      threshold=11,
-#                                      poly.ROI=norwegian.coast.sp)
-
-#Time series
-#ind.l$irminger.mean <- spatial.mean(name="Irminger Sea mean",
-#                                    poly.ROI=irminger.sea.sp)
-#ind.l$iceland.mean <- spatial.mean(name="Iceland Basin mean",
-#                                   poly.ROI=iceland.basin.sp)
-#ind.l$South.Iceland.mean <- spatial.mean(name="South of Iceland mean",
-#                                       poly.ROI=south.iceland.sp)
-
-# ind.l$norway.mean <- spatial.mean(name="Norwegian Coast mean",
-#                                   poly.ROI=norwegian.coast.sp)
-
-#Northward extent
-# ind.l$norway.north <-isoline.lat(name="Norwegian Coast isoline",
-#                                  threshold=11,
-#                                  poly.ROI=norwegian.coast.sp)
-# 
+#Configure summary stats
+statsum.l <- PredEng.list()
+statsum.l[[1]] <- area.above.threshold(threshold=11)
+#statsum.l[[2]]  <- spatial.mean()
+#statsum.l[[3]] <-isoline.lat(threshold=11)
 
 #Set type of data to use for all
-for(i in seq(ind.l)){
-  ind.l[[i]]@data.type <- "means"
+for(i in seq(statsum.l)){
+  statsum.l[[i]]@data.type <- "means"
 }
 
 #Merge it all in
-sp.obj@indicators <- ind.l
+pcfg@summary.statistics <- statsum.l
 
 #'========================================================================
 # Output ####
 #'========================================================================
-pcfg@spatial <- PredEng.list(list(sp.obj))
-
 # # #Write CDO grid descriptor
 # # writeLines(griddes(pcfg),pcfg@analysis.grid)
 # 
