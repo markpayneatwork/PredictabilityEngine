@@ -3,6 +3,8 @@
 #PBS -N PE_CMIP5 
 #Set mail address
 #PBS -M mpay@aqua.dtu.dk
+#Set number of tasks and their ID
+#PBS -t 1-20
 
 #Run job in current working directory
 cd $PBS_O_WORKDIR
@@ -23,7 +25,7 @@ module load nco
 
 #R script
 set -e 
-#Rscript src/F.CMIP5_projections/F1.Fragment_CMIP5.r 
+Rscript src/F.CMIP5_projections/F1.Fragment_CMIP5.r 
 Rscript src/F.CMIP5_projections/F2.Climatologies_anomalies_realmeans.r
 
 #Error check

@@ -7,3 +7,5 @@
 .Rd
 *.Rproj
 scratch/
+PE_*
+*.sh
