@@ -45,8 +45,8 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  chunk.no <- 1
-  set.debug.level(Inf)  #0 complete fresh run
+  chunk.no <- 3
+  set.debug.level(0)  #0 complete fresh run
   set.condexec.silent()
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()

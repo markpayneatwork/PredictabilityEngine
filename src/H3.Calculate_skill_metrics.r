@@ -1,5 +1,5 @@
 #'========================================================================
-# H2. Collate indicators
+# H2. Calculate_skill_metrics
 #'========================================================================
 #
 # by Mark R Payne
@@ -8,7 +8,7 @@
 #
 # Created Fri Jun  1 15:53:49 2018
 #
-# Collates indicators generated previously into a single metric
+# Calculates indicator skill metrics based on the database of indicators
 #
 # This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 # You are largely free to do what you like with it, so long as you "attribute"
@@ -23,7 +23,7 @@
 #'========================================================================
 # Initialise system ####
 #'========================================================================
-cat(sprintf("\n%s\n","H2. Collate indicators"))
+cat(sprintf("\n%s\n","H2. Calculate_skill_metrics"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Do house cleaning
@@ -70,11 +70,49 @@ for(f in ind.met.fnames){
 #Now we have one big list of indicator data. We could try and merge it
 #all together straight away, but there will be a problem with the names of the 
 #various columns. Lets see what they have in common and retain them
-# ind.res.colnames <- lapply(ind.met.l,names)
-# col.tbl <- melt(sort(table(unlist(ind.res.colnames))/length(ind.met.l)))
-# print(col.tbl)
+ind.res.colnames <- lapply(ind.met.l,names)
+col.tbl <- melt(sort(table(unlist(ind.res.colnames))/length(ind.met.l)))
+print(col.tbl)
 
-#Big improvements to the metadata handling have rendered previous hard-earned code 
+# #Choosing the variables gets a bit messy, and highlights the fact that my 
+# #programming is not at all systematic :-( Nevertheless, there are some 
+# #consistent values that we want to keep. We express this in terms of a
+# #list of synonyms, that will be merged at a later date. 
+# keep.cols <- list(data.src=c("data.src","model"),
+#                   "data.type",
+#                   date=c("forecast.date","date"),
+#                   "start.date",
+#                   "realization",
+#                   "indicator","value","fname")
+# keep.tbl <- melt(keep.cols,value.name="from.col") %>%
+#             mutate(to.col=ifelse(L1=="",from.col,L1),
+#                    L1=NULL)
+# print(subset(col.tbl,!(Var1 %in% keep.tbl$from.col)))
+# 
+# #Now we loop over the data sets doing the merging as appropriate
+# common.cols.l <- ind.met.l
+# for(i in seq(common.cols.l)){
+#   im <- common.cols.l[[i]]
+#   #Drop all columns that are not in the wish-list
+#   col.present <- has_name(im,keep.tbl$from.col)
+#   im <- im[,keep.tbl$from.col[col.present]] 
+#   #Rename retained columns
+#   new.names <- keep.tbl$to.col[col.present]
+#   if(any(duplicated(new.names))) {
+#     stop("Duplicated names")
+#   }
+#   colnames(im) <- new.names  
+#   #Now, what about the missing names. These should be added as NAs
+#   missing.cols <- keep.tbl$to.col[!has_name(im,keep.tbl$to.col)]
+#   for(n in missing.cols){
+#     im[,n] <- NA
+#   }
+#   #Store the results
+#   common.cols.l[[i]] <- im
+#   
+# }
+
+#Big improvements to the metadata handling have rendered the hard-earned code above
 #largely useless - we can now just take what we want
 keep.cols <- c("name","date",
                "type",
@@ -83,55 +121,30 @@ keep.cols <- c("name","date",
 common.cols.l <- lapply(ind.met.l,"[",keep.cols)
 
 #Merge into one big object and add meta information
-all.ind.raw <- bind_rows(common.cols.l) %>%
-               mutate(ym=sprintf("%i-%02i",year(date),month(date))) 
+all.ind <- bind_rows(common.cols.l) %>% 
+            mutate(year=year(date))
 
 #'========================================================================
 # Persistence forecasts ####
 #'========================================================================
-#Extract persistence and observation data
-obs.ind <- subset(all.ind.raw,type=="Observations")
-persis.ind <- subset(all.ind.raw,type=="Persistence") %>%
-              select(-start.date)  %>%
-              mutate(ym.date=sprintf("%i-%02i",year(date),month(date))) 
 
-#Generate the forecast grid
-lead.times <- c(1:11,seq(7,127,by=12))
-#lead.times <- 1:120
-persis.forecast.grid <- expand.grid(date=unique(obs.ind$date),
-                                    lead=lead.times) %>%
-                        as.tibble() %>%
-                        mutate(start.date=date-months(lead),
-                               ym.start=sprintf("%i-%02i",year(start.date),month(start.date)))
-persis.forecast.ind <- left_join(persis.forecast.grid,
-                                 persis.ind,
-                                 by=c("ym.start"="ym.date") ) %>%
-                        mutate(date=date.x,
-                               date.x=NULL,date.y=NULL,ym.start=NULL,lead=NULL,
-                               ym=sprintf("%i-%02i",year(date),month(date)))
-
-#Add it back to the indicator list
-all.ind <- rbind(subset(all.ind.raw,type!="Persistence"),
-                 persis.forecast.ind)
 
 #Calculate lead time using udunits
 ud.from <- "days since 1970-01-01"
 ud.to <- "months since 1900-01-01"
 all.ind$lead.raw <- as.numeric(ud.convert(all.ind$date,ud.from,ud.to))-
-                    as.numeric(ud.convert(all.ind$start.date,ud.from,ud.to))
+  as.numeric(ud.convert(all.ind$start.date,ud.from,ud.to))
 all.ind$lead <- round(all.ind$lead.raw/0.5)*0.5
 
 #'========================================================================
 # Split and Merge ####
 #'========================================================================
 #Drop years that are not to be included in the evaluation of skill metrics
-#and drop CMIP5 as well (not interested in the skill)
-sel.res <-  all.ind %>% 
-            filter(year(date) %in% pcfg@comp.years,
-                   !grepl("CMIP5",type)) 
+sel.res <-  all.ind %>% filter(year %in% pcfg@comp.years) 
 
 #Extract out the observational data
-obs.dat <- obs.ind %>% select(ym,indicator.name,value)
+obs.dat <- subset(sel.res,type=="Observations") %>%
+           select(year,indicator.name,value)
 
 #And merge it back into the comparison dataframe. This way we have both the
 #modelled and the observed results together in the same dataframe. We note
@@ -139,7 +152,7 @@ obs.dat <- obs.ind %>% select(ym,indicator.name,value)
 #situations where we envisage using PredEnd i.e. one data point per year - but
 #we need to be aware that this is not exactly the case 
 comp.dat <- left_join(sel.res,obs.dat,
-                      by=c("ym","indicator.name"),
+                      by=c("year","indicator.name"),
                       suffix=c(".mdl",".obs"))
 
 #'========================================================================
