@@ -7,6 +7,14 @@ TODO:
 - Done for CMIP5, need to do for NMME and Decadal
 * Break NMME processing into individual models to allow parallelisation. Get it working on the HPC
 * Create a spatial field tools, including probabilities
+* Rename out.dir to something more appropriate
+* Break downloads of NMME data into chunks by start date, thereby allowing updates to be downloaded without having to get the whole thing..
+* Modify definition of climatology to be lead and startdate dependent
+
+2018.06.05
+Found a problem in the MPI-ESM-LR with the dates - the following two files have corrupted date tags, and hae been removed from the database. I remember something about this previously but didn't correct for it.
+thetao_Omon_MPI-ESM-LR_decs4e1996_r5i1p1_199701-200612.nc
+thetao_Omon_MPI-ESM-LR_decs4e1964_r3i1p1_196501-197412.
 
 2018.06.01
 Finally back into it on the plane to ECCWO. Made good progress implementing the SST extraction for HadISST in the fragment format, and then calculating skill metrics. Next steps:
