@@ -3,7 +3,8 @@ Blue Fin Tuna Predictability v2
 =========================
 
 Mark R. Payne
-DTU-Aqua, Charlottenlund, DK
+Technical University of Denmark (DTU-Aqua)
+Kgs. Lyngby, DK
 http://www.staff.dtu.dk/mpay
 
 Last updated : Thu Apr 14 17:57:39 CEST 2016
