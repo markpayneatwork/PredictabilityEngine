@@ -86,6 +86,9 @@ for(i in seq(hindcast_mdls)) {
   hindcast_mdls[[i]]@type <- "Decadal"
 }
 
+#Set list names
+names(hindcast_mdls) <- sapply(hindcast_mdls,slot,"name")
+
 # ========================================================================
 # Setup uninitialised models
 # These should largely be the same...
@@ -141,7 +144,8 @@ for(mdl.name in names(NMME.mdls)){
 
 #Restrict some realisations
 NMME.sst.l[["NASA-GEOS5"]]@realizations <- 1:11  #12th realization is very intermittant
-NMME.sst.l[["NCEP-CFSv2"]]@realizations <- 1:24  #Forecast has 32 but hindcast 24. Restrict to be the same for simplicity
+NMME.sst.l[["NCEP-CFSv2"]]@realizations <- 1:24  #Forecast has 32 but hindcast 24. 
+                                                  #Restrict to be the same for simplicity
 
 # ========================================================================
 # Setup CMIP5 models

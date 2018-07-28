@@ -71,9 +71,10 @@ if(pcfg@use.global.ROI) { #only need to use one single global ROI
   this.src <- pcfg@decadal.models[[src.no]]
   this.sp  <- spatial.subdomain(pcfg@global.ROI,name="")  
 } else { #Working with subdomains
-  cfgs <- expand.grid(src=pcfg@decadal.models,sp=pcfg@spatial.subdomains)
-  this.src <- cfgs$src[[src.no]]
-  this.sp <- cfgs$sp[[src.no]]
+  cfgs <- expand.grid(src=names(pcfg@decadal.models),
+                      sp=names(pcfg@spatial.subdomains))
+  this.src <- pcfg@decadal.models[[cfgs$src[src.no]]]
+  this.sp <- pcfg@spatial.subdomains[[cfgs$sp[src.no]]]
 }
 
 #Directory setup
