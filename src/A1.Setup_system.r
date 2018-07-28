@@ -38,14 +38,16 @@ log_msg <- function(fmt,...) {cat(sprintf(fmt,...));
 #Do it 
 install.packages("resources/ClimateTools", repos = NULL, type="source")
 install.packages("resources/PredEng_Package", repos = NULL, type="source")
-install.packages("resources/ClimateTools", repos = NULL, type="source")
 
 #/*======================================================================*/
 #  Define common directories etc
 #/*======================================================================*/
-datasrc.dir <- "data_srcs"
+PE.cfg <- list()
+PE.cfg$datasrc.dir <- "data_srcs"
+PE.cfg$analysis.grid.fname <- "analysis.grid"
+PE.cfg$remapping.wts.fname <- "remapping_wts.nc"
 
-save(datasrc.dir,file="objects/setup.RData")
+save(PE.cfg,file="objects/PredEng_config.RData")
 
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
