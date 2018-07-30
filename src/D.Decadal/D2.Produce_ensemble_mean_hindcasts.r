@@ -37,30 +37,39 @@ library(dplyr)
 library(tibble)
 library(lubridate)
 load("objects/configuration.RData")
+load("objects/PredEng_config.RData")
 
 #'========================================================================
 # Configuration ####
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  set.debug.level(0)  #0 complete fresh run
+  src.no <- 1
+  set.debug.level(5)  #0 complete fresh run
   set.condexec.silent()
-  set.cdo.defaults("--silent -O --no_warnings")
+  set.cdo.defaults("--silent --no_warnings -O")
+  set.log_msg.silent()
+  set.nco.defaults("--ovewrite")
 } else {
   #Taking inputs from the system environment
-#  mdl.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
- # if(mdl.no=="") stop("Cannot find PBS_ARRAYID")
-  #Do everything
+  src.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
+  if(src.no=="") stop("Cannot find PBS_ARRAYID")
+  #Do everything and tell us all about it
   set.debug.level(0)  #0 complete fresh run
+  set.condexec.silent(FALSE)
+  set.cdo.defaults()
+  set.log_msg.silent(FALSE)
+}
+#Extract configurations
+if(pcfg@use.global.ROI) { #only need to use one single global ROI
+  this.sp  <- ""
+} else { #Working with subdomains
+  this.sp <- names(pcfg@spatial.subdomains)[[src.no]]
 }
 
-#Ensemble mean source
-src.types <- sapply(pcfg@decadal.hindcasts,class)
-ensmean.src <- pcfg@decadal.hindcasts[[which(src.types=="data.ensemble")]]
-
 #Directory setup
-base.dir <- define_dir(pcfg@scratch.dir,"Decadal")
-ensmean.dir <- define_dir(define_dir(base.dir,ensmean.src@name),"C.ensmean")
+base.dir <- define_dir(pcfg@scratch.dir,this.sp,"Decadal")
+ensmean.dir <- define_dir(base.dir,PE.cfg$ensmean.name)
 
 #'========================================================================
 # Setup ensemble averaging ####
@@ -68,7 +77,7 @@ ensmean.dir <- define_dir(define_dir(base.dir,ensmean.src@name),"C.ensmean")
 #Start by loading the metadata associated with each of the hindcast
 #models that we have chosen to use in our ensmean configuration
 metadat.l <- list()
-for(m in ensmean.src@members){
+for(m in pcfg@decadal.models){
   if(class(m)=="data.source") {
     load(file.path(base.dir,m@name,"Realmean_metadata.RData"))
     metadat.l[[m@name]] <- realmean.meta

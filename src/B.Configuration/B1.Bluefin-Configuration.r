@@ -84,7 +84,8 @@ sp.objs$no.coast <- spatial.subdomain("Norwegian_Coast",
                                                                                 c(12,73))))
 sp.objs$s.iceland <- spatial.subdomain("South_of_Iceland",extent(-50,-10,55,70))
 
-#Add to object
+#Correct names and add to object
+names(sp.objs) <- sapply(sp.objs,slot,"name")
 pcfg@spatial.subdomains <- sp.objs
 
 
