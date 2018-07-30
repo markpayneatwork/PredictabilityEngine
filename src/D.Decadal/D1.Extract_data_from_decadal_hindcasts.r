@@ -47,7 +47,7 @@ load("objects/configuration.RData")
 #Take input arguments, if any
 if(interactive()) {
   src.no <- 1
-  set.debug.level(5)  #0 complete fresh run
+  set.debug.level(7)  #0 complete fresh run
   set.condexec.silent()
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
@@ -355,7 +355,20 @@ for(i in seq(nrow(realmean.meta))) {
   pb$tick()$print()
   log_msg("Calculating realmean %s...\n",
           basename(realmean.meta$fname[i]),silenceable = TRUE)
-  condexec(7,realmean.cmd <- ncra( realmean.meta$anom.fname[i],realmean.meta$fname[i]))
+  realmean.tmp <- tempfile()
+  condexec(7,realmean.cmd <- ncra(realmean.meta$anom.fname[i],realmean.tmp))
+  
+  #Rename into a format suitable for combining into an ensmean
+  realmean.tmp2 <- tempfile()
+  condexec(7,rename.cmd <- ncrename(sprintf("-v %s,%s",this.src@var,PE.cfg$VOI.name),
+                                              realmean.tmp,realmean.tmp2))
+  
+  #And retain only this variable (and associated dimensions)
+  condexec(7,drop.cmd <- ncks(sprintf("-v %s",PE.cfg$VOI.name),
+                                    realmean.tmp2,realmean.meta$fname[i]))
+  
+  unlink(c(realmean.tmp,realmean.tmp2))
+  
 }
 
 pb$stop()

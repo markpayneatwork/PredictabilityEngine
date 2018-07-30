@@ -45,11 +45,11 @@ load("objects/PredEng_config.RData")
 #Take input arguments, if any
 if(interactive()) {
   src.no <- 1
-  set.debug.level(5)  #0 complete fresh run
+  set.debug.level(0)  #0 complete fresh run
   set.condexec.silent()
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
-  set.nco.defaults("--ovewrite")
+  set.nco.defaults("--overwrite")
 } else {
   #Taking inputs from the system environment
   src.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
@@ -93,7 +93,8 @@ metadat.all <- bind_rows(metadat.l)
 #NB: This is a bit of a hangover from previous versions of the script where 
 #we have all of the metadata lumped together. This is no longer necesssary. We 
 #retain it here mainly for the note above.
-metadat <- subset(metadat.all,realization=="realmean") 
+#metadat <- subset(metadat.all,realization=="realmean") 
+metadat <- metadat.all
 
 #Now split into groups by leadtime and forecast year
 #We could do the split directly on the date, but this is a bit
@@ -101,7 +102,7 @@ metadat <- subset(metadat.all,realization=="realmean")
 #date for one model might be 1964.08.15 and for another 1964.08.16
 #even though they both represent the same thing.
 metadat$forecast.yr <- year(metadat$date)
-grp.l <- split(metadat,metadat[,c("lead.ts","forecast.yr")],drop=TRUE)
+grp.l <- split(metadat,metadat[,c("lead.idx","forecast.yr")],drop=TRUE)
 
 #'========================================================================
 # Perform averaging ####
@@ -118,29 +119,32 @@ for(i in seq(grp.l)) {
   d <- grp.l[[i]]
   
   #Build up meta data
-  grp.meta <- tibble(name=ensmean.src@name,
-                     type=ensmean.src@type,
+  grp.meta <- tibble(name=PE.cfg$ensmean.name,
+                     type="Decadal",
                          date=mean(d$date),
                          start.date=mean(d$start.date),
-                         lead.ts=unique(d$lead.ts), 
+                         lead.idx=unique(d$lead.idx), 
                          realization="ensmean")
-  ensmean.fname <- sprintf("%s_S%s_L%s_ensmean_anom.nc",
-                           ensmean.src@name,
+  ensmean.fname <- sprintf("S%s_L%s_ensmean.nc",
                            format(grp.meta$start.date,"%Y%m%d"),
-                           grp.meta$lead.ts)
+                           grp.meta$lead.idx)
   grp.meta$fname <- file.path(ensmean.dir,ensmean.fname)
 
-  #Average over individual files
-  temp.fname <- tempfile(fileext = ".nc")
-  condexec(1,ensmean.cmd <- cdo( "-O -ensmean", d$fname,temp.fname))
+  #Average over realisation means
+  condexec(1,ensmean.cmd <- nces(d$fname,grp.meta$fname))
   
-  #Set date
-  condexec(2,date.cmd <- cdo(csl("setdate",
-                                 format(grp.meta$date,"%Y-%m-%d")),
-                                "-setreftime,1850-01-01,00:00:00,days",
-                                "-setcalendar,proleptic_gregorian",
-                               temp.fname,grp.meta$fname))
-  unlink(temp.fname)
+  
+  #Average over individual files
+  # temp.fname <- tempfile(fileext = ".nc")
+  # condexec(1,ensmean.cmd <- cdo( "-O -ensmean", d$fname,temp.fname))
+  # 
+  # #Set date
+  # condexec(2,date.cmd <- cdo(csl("setdate",
+  #                                format(grp.meta$date,"%Y-%m-%d")),
+  #                               "-setreftime,1850-01-01,00:00:00,days",
+  #                               "-setcalendar,proleptic_gregorian",
+  #                              temp.fname,grp.meta$fname))
+  # unlink(temp.fname)
   
   #Store meta
   ensmean.meta.l[[i]] <- grp.meta
@@ -148,7 +152,7 @@ for(i in seq(grp.l)) {
 
 #Polish the anomaly file meta data into a more useable format
 ensmean.meta <- bind_rows(ensmean.meta.l)
-save(ensmean.meta,file=file.path(base.dir,ensmean.src@name,
+save(ensmean.meta,file=file.path(base.dir,PE.cfg$ensmean.name,
                                  "Ensmean_metadata.RData"))
 
 #'========================================================================

@@ -1,8 +1,8 @@
 #!/bin/bash -x
 #Set default job name
-#PBS -N PE_Decadal
+#PBS -N PE_EnsmeanDecadal
 #Set number of tasks and their ID
-#PBS -t 1-16
+#PBS -t 1-4
 #Set mail address
 #PBS -M mpay@aqua.dtu.dk
 
@@ -22,8 +22,7 @@ echo "=========================================================="
 module load cdo
 module load nco
 module load gcc/8.1.0 
-Rscript src/D.Decadal/D1.Extract_data_from_decadal_hindcasts.r 
-#Rscript src/D.Decadal/D3.Produce_ensemble_mean_hindcasts.r 
+Rscript src/D.Decadal/D2.Produce_ensemble_mean_hindcasts.r 
 
 #Error check
 if [ "$?" -eq 0 ]; 
