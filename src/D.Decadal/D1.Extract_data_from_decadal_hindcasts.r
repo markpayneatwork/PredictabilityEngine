@@ -47,7 +47,7 @@ load("objects/configuration.RData")
 #Take input arguments, if any
 if(interactive()) {
   src.no <- 1
-  set.debug.level(7)  #0 complete fresh run
+  set.debug.level(6)  #0 complete fresh run
   set.condexec.silent()
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
@@ -266,12 +266,12 @@ log_msg("Calculating climatologies...\n")
 fragstack.meta <- mutate(fragstack.meta,
                          in.clim=year(date) %in% pcfg@clim.years,
                          start.month=month(start.date),
-                         lead.month.idx=sprintf("%s.S%02i",lead.idx,start.month),
+                         clim.idx=sprintf("S%02i.L%s",start.month,lead.idx),
                          clim.fname=file.path(lead.clim.dir,
-                                              sprintf("%s_L%s_clim.nc",
-                                                      this.src@name,lead.month.idx)))
+                                              sprintf("%s_%s_clim.nc",
+                                                      this.src@name,clim.idx)))
 lead.clim.files <- subset(fragstack.meta,in.clim)
-lead.clim.files.l <- split(lead.clim.files,lead.clim.files$lead.month.idx)
+lead.clim.files.l <- split(lead.clim.files,lead.clim.files$clim.idx)
 
 #Calculate climatologies per lead and start mnth
 pb <- progress_estimated(length(lead.clim.files.l),-1)
@@ -292,8 +292,8 @@ for(l in names(lead.clim.files.l)) {
   #Note that we need to do the averaging with ncwa rather than ncra so 
   #anomaly creation via ncdiff works properly
   realclim.tmp <- tempfile()
-  condexec(5,realclim.cmd <- nces(lf.df$fname,realclim.tmp))
-  condexec(5,clim.cmd2 <- ncwa("-a realization", 
+  condexec(6,realclim.cmd <- nces(lf.df$fname,realclim.tmp))
+  condexec(6,clim.cmd2 <- ncwa("-a realization", 
                                realclim.tmp,unique(lf.df$clim.fname)))
 
 }
@@ -314,9 +314,7 @@ anom.meta <- mutate(fragstack.meta,
                                     sprintf("%s_S%s_L%s_anom.nc",
                                             name,
                                             format(start.date,"%Y%m%d"),
-                                            lead.idx)),
-                    clim.fname=file.path(lead.clim.dir,
-                                         sprintf("%s_L%s_clim.nc",name,lead.month.idx)))
+                                            lead.idx)))
 pb <- progress_estimated(nrow(anom.meta))
 for(k in seq(nrow(anom.meta))){
   pb$tick()$print()
@@ -324,7 +322,7 @@ for(k in seq(nrow(anom.meta))){
   # condexec(6,anom.cmd <- cdo("sub",anom.meta$fragstack.fname[k],
   #                            anom.meta$clim.fname[k],
   #                            anom.meta$fname[k]))
-  condexec(6,anom.cmd <- ncdiff(anom.meta$fragstack.fname[k],
+  condexec(7,anom.cmd <- ncdiff(anom.meta$fragstack.fname[k],
                              anom.meta$clim.fname[k],
                              anom.meta$fname[k]))
 }
@@ -356,15 +354,15 @@ for(i in seq(nrow(realmean.meta))) {
   log_msg("Calculating realmean %s...\n",
           basename(realmean.meta$fname[i]),silenceable = TRUE)
   realmean.tmp <- tempfile()
-  condexec(7,realmean.cmd <- ncra(realmean.meta$anom.fname[i],realmean.tmp))
+  condexec(8,realmean.cmd <- ncra(realmean.meta$anom.fname[i],realmean.tmp))
   
   #Rename into a format suitable for combining into an ensmean
   realmean.tmp2 <- tempfile()
-  condexec(7,rename.cmd <- ncrename(sprintf("-v %s,%s",this.src@var,PE.cfg$VOI.name),
+  condexec(8,rename.cmd <- ncrename(sprintf("-v %s,%s",this.src@var,PE.cfg$VOI.name),
                                               realmean.tmp,realmean.tmp2))
   
   #And retain only this variable (and associated dimensions)
-  condexec(7,drop.cmd <- ncks(sprintf("-v %s",PE.cfg$VOI.name),
+  condexec(8,drop.cmd <- ncks(sprintf("-v %s",PE.cfg$VOI.name),
                                     realmean.tmp2,realmean.meta$fname[i]))
   
   unlink(c(realmean.tmp,realmean.tmp2))
