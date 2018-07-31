@@ -92,22 +92,16 @@ for(this.sp in this.sps) {
   #Working directories
   subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)
   base.dir <- define_dir(subdomain.dir,"Observations","HadISST")
-  anom.dir <- define_dir(base.dir,"A.anoms")
+  work.dir <- define_dir(base.dir,"1.Working_files")
+  anom.dir <- define_dir(base.dir,"B.anoms")
+  clim.dir <- define_dir(base.dir,"A.climatologies")
   analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$analysis.grid.fname)
   
 
   #/*======================================================================*/
   #'## Process HadISST data
   #/*======================================================================*/
-  
-  #If doing a clean run, remove directories etc
-  if(get.debug.level()<=1) {
-    unlink(base.dir,recursive = TRUE,force=TRUE)
-    dir.create(base.dir)
-    define_dir(anom.dir)
-  }
-  
-  #Extract data spatially using CDO and average
+    #Extract data spatially using CDO and average
   #First we need to select the grid, before doing the spatial subsetting,
   #This step is not really necessary, as the analysis grid remapping will
   #take care of it much more robustly
@@ -118,7 +112,13 @@ for(this.sp in this.sps) {
   # condexec(1,annave.cmd <- cdo(csl("sellonlatbox",as.vector(this.ROI)),
   #                              "-selgrid,lonlat",
   #                              in.fname,out.fname))
-  out.fname <- HadISST.dat
+
+  #Remap onto the analysis grid
+  log_msg("Remapping...")
+  in.fname <- HadISST.dat
+  out.fname <- file.path(work.dir,paste0(basename(in.fname),"_remapped"))
+  condexec(2,remap.cmd <- cdo("-f nc", csl("remapbil", analysis.grid.fname),
+                              in.fname,out.fname))
   
   #monthly extraction
   log_msg("Monthly extraction...")
@@ -134,34 +134,36 @@ for(this.sp in this.sps) {
     condexec(1,yearmean.cmd <- cdo( "yearmean", in.fname,out.fname))
   }
   
-  #Remap onto the analysis grid
-  log_msg("Remapping...")
-  in.fname <- out.fname
-  out.fname <- paste0(in.fname,"_remapped")
-  condexec(2,remap.cmd <- cdo("-f nc", csl("remapbil", analysis.grid.fname),
-                              in.fname,out.fname))
-  
+   
   #/*======================================================================*/
   #  Move on to second step of anomalies, clims, fragments
   #/*======================================================================*/
   frag.src <- out.fname
   
-  #Calculate climatology - one for each month
+  #Calculate climatology 
   log_msg("Climatology....")
-  clim.fname <- file.path(base.dir,"obs_climatology.nc")
+  clim.fname <- paste0(frag.src,"_climatology")
   condexec(3,clim.cmd <- cdo("monmean",
                              csl("-selyear",pcfg@clim.years),
                              frag.src,clim.fname))
   
   #Calculate anomalies
   log_msg("Anomalies...")
-  anom.fname <- file.path(base.dir,"obs_anom.nc")
+  anom.fname <- paste0(frag.src,"_anom")
   condexec(4,anom.cmd <- cdo("sub",frag.src,clim.fname,anom.fname))
-  
-  #Explode the fragment
+
+  #'========================================================================
+  # Explode into fragments ####
+  #'========================================================================
+  #Explode the climatologies fragment into year/months
   log_msg("Exploding...")
-  frag.prefix <- file.path(anom.dir,sprintf("%s_",pcfg@observations@name))
-  condexec(3,frag.cmd <- cdo("splityear",anom.fname,frag.prefix))
+  clim.frag.prefix <- file.path(clim.dir,sprintf("%s_climatology_",pcfg@observations@name))
+  condexec(3,frag.cmd <- cdo("splitmon",clim.fname,clim.frag.prefix))
+  
+  #Explode the anomalies fragment into year/months
+  log_msg("Exploding...")
+  anom.frag.prefix <- file.path(anom.dir,sprintf("%s_",pcfg@observations@name))
+  condexec(3,frag.cmd <- cdo("splityearmon",anom.fname,anom.frag.prefix))
   
   #Remove the temporary files to tidy up
   # tmp.fnames <- dir(dirname(temp.stem),pattern=basename(temp.stem),full.names = TRUE)
@@ -170,7 +172,7 @@ for(this.sp in this.sps) {
   # 
   
   #/*======================================================================*/
-  #  Create (pseudo) metadata
+  #  Create (pseudo) metadata for anomalies
   #/*======================================================================*/
   log_msg("Creating pseudo metadata...\n")
   
@@ -195,12 +197,36 @@ for(this.sp in this.sps) {
   realmean.meta <- anom.meta
   save(realmean.meta,file=file.path(base.dir,"Realmean_metadata.RData"))
   
+  #/*======================================================================*/
+  #  And similarly for the climatological files
+  #/*======================================================================*/
+  log_msg("Creating climatology pseudo metadata...\n")
+  
+  #Fragment fnames
+  clim.frag.fnames <- dir(clim.dir,pattern=".nc",full.names = TRUE)
+  
+  #Extract dates
+  clim.meta.dat.l <- list()
+  for(f in clim.frag.fnames) {
+    r <- raster(f)
+    clim.meta.dat.l[[f]] <- tibble(month=month(getZ(r)))
+  }
+  
+  #Build metadata
+  clim.meta <- bind_rows(clim.meta.dat.l) %>%
+    add_column(name=pcfg@observations@name,.before=1) %>%
+    mutate(type="Climatology",.after=1) %>%
+    mutate(fname=clim.frag.fnames) 
+  save(clim.meta,file=file.path(base.dir,"Climatology_metadata.RData"))
+
   # * data.src - name of the datasource
   # * data.type - the type of data. For CMIP5 variables, includes the expt e.g. CMIP5.rcp85
   # * date - of the forecast/observation/projection, not of the model initialisation
   # * start.date - when the forecast is initialisation
   # * n.realizations - the number of realizations stored in the fragment / fragstack
   # * fname - including the full path relative to the project directory
+  
+  
   
 }
 
