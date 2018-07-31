@@ -48,6 +48,7 @@ PE.cfg$analysis.grid.fname <- "analysis.grid"
 PE.cfg$remapping.wts.fname <- "remapping_wts.nc"
 PE.cfg$ensmean.name <- "Ensmean"
 PE.cfg$VOI.name <- "Variable_of_interest"
+PE.cfg$ROI.extraction.buffer <- 2  #Degrees
 
 save(PE.cfg,file="objects/PredEng_config.RData")
 

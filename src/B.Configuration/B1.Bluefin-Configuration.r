@@ -129,12 +129,14 @@ pcfg@summary.statistics <- statsum.l
 base.dir <- define_dir(pcfg@scratch.dir)
 if(pcfg@use.global.ROI){
   log_msg("Writing Global Grid Descriptor...\n")
-  writeLines(griddes(pcfg),file.path(base.dir,PE.cfg$analysis.grid.fname))
+  this.ROI <- extend(pcfg@global.ROI,PE.cfg$ROI.extraction.buffer)
+  writeLines(griddes(this.ROI,res=pcfg@global.res),file.path(base.dir,PE.cfg$analysis.grid.fname))
 } else { #Loop over spatial subdomains
   for(sp in pcfg@spatial.subdomains){
     log_msg("Writing Grid Descriptor for %s...\n",sp@name)
     sp.dir <- define_dir(base.dir,sp@name)
-    griddes.txt <- griddes(sp,res=pcfg@global.res) 
+    this.ROI <- extend(extent(sp),PE.cfg$ROI.extraction.buffer)
+    griddes.txt <- griddes(this.ROI,res=pcfg@global.res) 
     writeLines(griddes.txt,file.path(sp.dir,PE.cfg$analysis.grid.fname))
   }  
 }
