@@ -128,7 +128,7 @@ for(i in seq(SST_obs)){
 # Setup NMME models
 # ========================================================================
 library(readr)
-NMME.cfg <- read_csv2(file.path(PE.cfg$datasrc.dir,"NMME","NMME_SST_urls.csv"))
+NMME.cfg <- read_csv2(file.path(PE.cfg$dirs$datasrc,"NMME","NMME_SST_urls.csv"))
 NMME.mdls <- split(NMME.cfg,NMME.cfg$Model)
 NMME.sst.l <- PredEng.list()
 for(mdl.name in names(NMME.mdls)){

@@ -69,8 +69,9 @@ if(pcfg@use.global.ROI) { #only need to use one single global ROI
 
 #Directory setup
 base.dir <- define_dir(pcfg@scratch.dir,this.sp,"Decadal")
-ensmean.dir <- define_dir(base.dir,PE.cfg$ensmean.name)
+ensmean.dir <- define_dir(base.dir,PE.cfg$files$ensmean.name)
 
+pcfg@decadal.models <- pcfg@decadal.models[1]
 #'========================================================================
 # Setup ensemble averaging ####
 #'========================================================================
@@ -79,7 +80,7 @@ ensmean.dir <- define_dir(base.dir,PE.cfg$ensmean.name)
 metadat.l <- list()
 for(m in pcfg@decadal.models){
   if(class(m)=="data.source") {
-    load(file.path(base.dir,m@name,"Realmean_metadata.RData"))
+    load(file.path(base.dir,m@name,PE.cfg$files$realmean.meta))
     metadat.l[[m@name]] <- realmean.meta
   }
 }
@@ -119,7 +120,7 @@ for(i in seq(grp.l)) {
   d <- grp.l[[i]]
   
   #Build up meta data
-  grp.meta <- tibble(name=PE.cfg$ensmean.name,
+  grp.meta <- tibble(name=PE.cfg$files$ensmean.name,
                      type="Decadal",
                          date=mean(d$date),
                          start.date=mean(d$start.date),
@@ -152,8 +153,8 @@ for(i in seq(grp.l)) {
 
 #Polish the anomaly file meta data into a more useable format
 ensmean.meta <- bind_rows(ensmean.meta.l)
-save(ensmean.meta,file=file.path(base.dir,PE.cfg$ensmean.name,
-                                 "Ensmean_metadata.RData"))
+save(ensmean.meta,file=file.path(base.dir,PE.cfg$files$ensmean.name,
+                                 PE.cfg$files$realmean.meta))
 
 #'========================================================================
 # Complete

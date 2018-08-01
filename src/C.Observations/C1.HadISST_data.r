@@ -53,7 +53,7 @@ if(interactive()) {
   set.log_msg.silent()
   set.nco.defaults("--overwrite")
   do.all <- TRUE #Choose whether to partition out the work, or do it all in a single session
-  
+
 } else {
   #Taking inputs from the system environment
   src.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
@@ -80,7 +80,7 @@ if(pcfg@use.global.ROI) { #only need to use one single global ROI
 }
 
 #Data source
-HadISST.dat <- file.path(PE.cfg$datasrc.dir,"Observations/HadISST","HadISST_sst.nc")
+HadISST.dat <- file.path(PE.cfg$dirs$datasrc,"Observations/HadISST","HadISST_sst.nc")
 
 #'========================================================================
 # Setup Looping ####
@@ -93,10 +93,10 @@ for(this.sp in this.sps) {
   subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)
   base.dir <- define_dir(subdomain.dir,"Observations","HadISST")
   work.dir <- tempdir()
-  misc.meta.dir <- define_dir(base.dir,PE.cfg$dir$Misc.meta)
-  mon.clim.dir <- define_dir(base.dir,"A.climatologies")
+  misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
+  mon.clim.dir <- define_dir(base.dir,"A.monthly_climatologies")
   mon.anom.dir <- define_dir(base.dir,"B.monthly_anom")
-  analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$analysis.grid.fname)
+  analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$files$analysis.grid)
 
   #/*======================================================================*/
   #'## Extract HadISST data
@@ -167,13 +167,14 @@ for(this.sp in this.sps) {
     
     #Now do averaging
     MOIave.anom <- MOI.average(this.src)
-    MOIave.clim <- MOI.average(mon.clim.fname)
+    MOIave.yearmean <- MOI.average(mon.clim.fname)
     
     #Now need to do the complete mean on MOIave.clim and move it 
     #to the appropriate directory
+    MOIave.clim <- file.path(MOIave.clim.dir,"MOIave_climatology.nc")
     condexec(5,clim.cmd <- ncwa("-a time", 
-                                MOIave.clim,
-                                file.path(MOIave.clim.dir,"MOIave_climatology.nc")))
+                                MOIave.yearmean,
+                                MOIave.clim))
     
   }
 
@@ -236,7 +237,7 @@ for(this.sp in this.sps) {
   #First generate all monthly metadata anomalies - we need this for the persistence
   #forecast anyway
   mon.anom.meta <- generate.metadata(mon.anom.dir)
-  save(mon.anom.meta,file=file.path(base.dir,PE.cfg$Obs.monthly.anom.metadata))
+  save(mon.anom.meta,file=file.path(base.dir,PE.cfg$files$Obs.monthly.anom.metadata))
 
   #Now, setup rest of metadata accordingly
   if(pcfg@average.months) {
@@ -254,12 +255,22 @@ for(this.sp in this.sps) {
   save(realmean.meta,file=file.path(base.dir,"Realmean_metadata.RData"))
   
   #And now for the climatologies
-  if(!pcfg@average.months) {
+  if(pcfg@average.months) {
+    #Only a single clim file - generate by hand
+    clim.meta <- tibble(name=pcfg@observations@name,
+                        type="Climatology",
+                        date=as.Date(ISOdate(9999,pcfg@MOI,15)),
+                        start.date=NA,
+                        n.realizations=1,
+                         fname=MOIave.clim)
+    
+  } else {
+    #Generate a climatology 
     clim.meta <- generate.metadata(mon.clim.dir)
     clim.meta$type <- "Climatology"
-    save(clim.meta,file=file.path(misc.meta.dir,"Climatology_metadata.RData"))
   }
-
+  save(clim.meta,file=file.path(base.dir,PE.cfg$files$Obs.climatology.metadata))
+  
   #Remove the temporary files to tidy up
   tmp.fnames <- dir(work.dir,pattern=work.dir,full.names = TRUE)
   del.err <- unlink(tmp.fnames)

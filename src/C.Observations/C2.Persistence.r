@@ -68,7 +68,8 @@ for(this.sp in this.sps) {
   base.dir <- define_dir(subdomain.dir,"Persistence")
 
   #Load the monthly anomaly data
-  load(file.path(subdomain.dir,"Observations",pcfg@observations@name,PE.cfg$Obs.monthly.anom.metadata))
+  load(file.path(subdomain.dir,"Observations",pcfg@observations@name,
+                 PE.cfg$files$Obs.monthly.anom.metadata))
   
   #Some tweaks
   anom.meta <- mutate(mon.anom.meta,

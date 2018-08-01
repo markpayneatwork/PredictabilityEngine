@@ -47,7 +47,7 @@ load("objects/configuration.RData")
 #Take input arguments, if any
 if(interactive()) {
   src.no <- 1
-  set.debug.level(4)  #0 complete fresh run
+  set.debug.level(0)  #0 complete fresh run
   set.condexec.silent()
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
@@ -78,7 +78,7 @@ if(pcfg@use.global.ROI) { #only need to use one single global ROI
 }
 
 #Directory setup
-src.dir <- file.path(PE.cfg$datasrc.dir,"Decadal",this.src@source)
+src.dir <- file.path(PE.cfg$dirs$datasrc,"Decadal",this.src@source)
 subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)
 base.dir <- define_dir(subdomain.dir,"Decadal",this.src@name)
 remap.dir <- define_dir(base.dir,"1.remapping_wts")
@@ -88,8 +88,8 @@ fragstack.dir <- define_dir(base.dir,"4.fragstacks")
 lead.clim.dir <- define_dir(base.dir,"5.lead.clims")
 anom.dir <- define_dir(base.dir,"A.anom")
 realmean.dir <- define_dir(base.dir,"B.realmean")
-misc.meta.dir <- define_dir(base.dir,PE.cfg$dir$Misc.meta)
-analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$analysis.grid.fname)
+misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
+analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$files$analysis.grid)
 
 #'========================================================================
 # Extract data ####
@@ -102,7 +102,7 @@ if(length(fnames)==0 & get.debug.level()<=2) stop("Cannot find source files")
 
 #Prepare a set of remapping weights
 log_msg("Preparing weights...\n")
-remapping.wts <- file.path(remap.dir,PE.cfg$remapping.wts.fname)
+remapping.wts <- file.path(remap.dir,PE.cfg$files$remapping.wts)
 condexec(1,wts.cmd <- cdo(csl("genbil",analysis.grid.fname),fnames[1],
                         remapping.wts))
 
@@ -201,7 +201,7 @@ if(get.debug.level()<=4) {
                       lead.idx=str_match(basename(frag.fnames),"^.*?_L([0-9]+).nc$")[,2],
                       realization=this.src@ensmem_fn(frag.fnames),
                       fname=frag.fnames)
-  save(frag.meta,file=file.path(misc.meta.dir,"Fragment_metadata.RData"))
+  save(frag.meta,file=file.path(base.dir,PE.cfg$files$fragment.meta))
   
   pb$stop()
   print(pb)
@@ -209,7 +209,7 @@ if(get.debug.level()<=4) {
   log_msg("\n")
   
 } else {
-  load(file.path(misc.meta.dir,"Fragment_metadata.RData"))
+  load(file.path(base.dir,PE.cfg$files$fragment.meta))
 }
 
 #'========================================================================
@@ -257,10 +257,10 @@ if(get.debug.level()<=5) {
   #Save metadata
   fragstack.meta <- bind_rows(fragstack.meta.l) %>%
     select(-starts_with("realization")) 
-  save(fragstack.meta,file=file.path(misc.meta.dir,"Fragstack_metadata.RData"))
+  save(fragstack.meta,file=file.path(base.dir,PE.cfg$files$fragstack.meta))
   
 } else {
-  load(file=file.path(misc.meta.dir,"Fragstack_metadata.RData"))
+  load(file=file.path(base.dir,PE.cfg$files$fragstack.meta))
 }
 
 #'========================================================================
@@ -338,7 +338,7 @@ print(pb)
 rm(pb)
 log_msg("\n")
 
-save(anom.meta,file=file.path(base.dir,"Anom_metadata.RData"))
+save(anom.meta,file=file.path(base.dir,PE.cfg$files$anom.meta))
 
 #'========================================================================
 # Calculate realisation means ####
@@ -383,7 +383,7 @@ log_msg("\n")
 #Compile into metadata catalogue by taking the first line in each groupling
 realmean.meta <- realmean.meta %>% 
                  select(name,type,start.date,date,lead.idx,n.realizations,fname)
-save(realmean.meta,file=file.path(base.dir,"Realmean_metadata.RData"))
+save(realmean.meta,file=file.path(base.dir,PE.cfg$files$realmean.meta))
 
 #'========================================================================
 # Complete 
