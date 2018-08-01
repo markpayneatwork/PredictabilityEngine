@@ -8,7 +8,7 @@
 #'
 #' Thu Jul 14 11:34:17 2016
 #'
-#' Extracts HadISST data for subsequent metric analysis
+#' Extracts HadISST data for subsequent metric analysis. 
 #
 #  This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 #  You are largely free to do what you like with it, so long as you "attribute" 
@@ -92,16 +92,16 @@ for(this.sp in this.sps) {
   #Working directories
   subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)
   base.dir <- define_dir(subdomain.dir,"Observations","HadISST")
-  work.dir <- define_dir(base.dir,"1.Working_files")
-  anom.dir <- define_dir(base.dir,"B.anoms")
-  clim.dir <- define_dir(base.dir,"A.climatologies")
+  work.dir <- tempdir()
+  misc.meta.dir <- define_dir(base.dir,PE.cfg$dir$Misc.meta)
+  mon.clim.dir <- define_dir(base.dir,"A.climatologies")
+  mon.anom.dir <- define_dir(base.dir,"B.monthly_anom")
   analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$analysis.grid.fname)
-  
 
   #/*======================================================================*/
-  #'## Process HadISST data
+  #'## Extract HadISST data
   #/*======================================================================*/
-    #Extract data spatially using CDO and average
+  #Extract data spatially using CDO and average
   #First we need to select the grid, before doing the spatial subsetting,
   #This step is not really necessary, as the analysis grid remapping will
   #take care of it much more robustly
@@ -116,119 +116,155 @@ for(this.sp in this.sps) {
   #Remap onto the analysis grid
   log_msg("Remapping...")
   in.fname <- HadISST.dat
-  out.fname <- file.path(work.dir,paste0(basename(in.fname),"_remapped"))
+  remap.fname <- file.path(work.dir,paste0(basename(in.fname),"_remapped"))
   condexec(2,remap.cmd <- cdo("-f nc", csl("remapbil", analysis.grid.fname),
-                              in.fname,out.fname))
+                              in.fname,remap.fname))
   
-  #monthly extraction
-  log_msg("Monthly extraction...")
-  in.fname <- out.fname
-  out.fname <- paste0(in.fname,"_selmon")
-  condexec(1,selmon.cmd <- cdo(csl("selmon",pcfg@MOI),
-                               in.fname,out.fname))
+  #Use remap.fname as source for further calculations
+  this.src <- remap.fname
   
-  #Average over time - only necessary when considering multiple target months
-  if(pcfg@average.months) {
-    in.fname <- out.fname
-    out.fname <- paste0(in.fname,"_yearmean")
-    condexec(1,yearmean.cmd <- cdo( "yearmean", in.fname,out.fname))
-  }
-  
-   
   #/*======================================================================*/
-  #  Move on to second step of anomalies, clims, fragments
+  #  Anomalies, clims, fragments
   #/*======================================================================*/
-  frag.src <- out.fname
-  
   #Calculate climatology 
   log_msg("Climatology....")
-  clim.fname <- paste0(frag.src,"_climatology")
-  condexec(3,clim.cmd <- cdo("monmean",
+  mon.clim.fname <- paste0(this.src,"_climatology")
+  condexec(3,clim.cmd <- cdo("ymonmean",
                              csl("-selyear",pcfg@clim.years),
-                             frag.src,clim.fname))
+                             this.src,mon.clim.fname))
   
   #Calculate anomalies
   log_msg("Anomalies...")
-  anom.fname <- paste0(frag.src,"_anom")
-  condexec(4,anom.cmd <- cdo("sub",frag.src,clim.fname,anom.fname))
+  mon.anom.fname <- paste0(this.src,"_anom")
+  condexec(4,anom.cmd <- cdo("sub",this.src,mon.clim.fname,mon.anom.fname))
+
+  #'========================================================================
+  # Average over MOIs (if relevant) ####
+  #'========================================================================
+  #Average over time - only necessary when considering multiple target months
+  if(pcfg@average.months) {
+    log_msg("Monthly averaging...")
+    
+    #Setup MOI directories
+    MOIave.clim.dir <- define_dir(base.dir,"C.MOIave_climatology")
+    MOIave.anom.dir <- define_dir(base.dir,"D.MOIave_anoms")
+
+    #Create a function to do this (as we need to reuse the code for
+    #both the climatology and the anomalies)
+    MOI.average <- function(in.src) {
+      #monthly extraction
+      out.fname <- paste0(in.src,"_selmon")
+      condexec(5,selmon.cmd <- cdo(csl("selmon",pcfg@MOI),
+                                   in.src,out.fname))
+      
+      #Calculate means of the anomalies
+      in.fname <- out.fname
+      out.fname <- paste0(in.fname,"_yearmean")
+      condexec(5,yearmean.cmd <- cdo( "yearmean", in.fname,out.fname))
+      
+      return(out.fname)
+    }
+    
+    #Now do averaging
+    MOIave.anom <- MOI.average(this.src)
+    MOIave.clim <- MOI.average(mon.clim.fname)
+    
+    #Now need to do the complete mean on MOIave.clim and move it 
+    #to the appropriate directory
+    condexec(5,clim.cmd <- ncwa("-a time", 
+                                MOIave.clim,
+                                file.path(MOIave.clim.dir,"MOIave_climatology.nc")))
+    
+  }
 
   #'========================================================================
   # Explode into fragments ####
   #'========================================================================
+  log_msg("Fragmenting...")
+  
   #Explode the climatologies fragment into year/months
-  log_msg("Exploding...")
-  clim.frag.prefix <- file.path(clim.dir,sprintf("%s_climatology_",pcfg@observations@name))
-  condexec(3,frag.cmd <- cdo("splitmon",clim.fname,clim.frag.prefix))
+  mon.clim.frag.prefix <- file.path(mon.clim.dir,sprintf("%s_climatology_",pcfg@observations@name))
+  condexec(3,frag.cmd <- cdo("splitmon",mon.clim.fname,mon.clim.frag.prefix))
   
   #Explode the anomalies fragment into year/months
-  log_msg("Exploding...")
-  anom.frag.prefix <- file.path(anom.dir,sprintf("%s_",pcfg@observations@name))
-  condexec(3,frag.cmd <- cdo("splityearmon",anom.fname,anom.frag.prefix))
+  mon.anom.frag.prefix <- file.path(mon.anom.dir,sprintf("%s_",pcfg@observations@name))
+  condexec(3,frag.cmd <- cdo("splityearmon",mon.anom.fname,mon.anom.frag.prefix))
   
-  #Remove the temporary files to tidy up
-  # tmp.fnames <- dir(dirname(temp.stem),pattern=basename(temp.stem),full.names = TRUE)
-  # del.err <- unlink(tmp.fnames)
-  # if(del.err!=0) stop("Error deleting temp files")
-  # 
+  if(pcfg@average.months) {
+    #Explode the MOIanomalies fragment into individual files, one per year
+    MOIave.anom.frag.prefix <- file.path(MOIave.anom.dir,sprintf("%s_",pcfg@observations@name))
+    condexec(3,MOI.frag.cmd <- cdo("splityear",
+                                   MOIave.anom,
+                                   MOIave.anom.frag.prefix))
+    
+  }
   
-  #/*======================================================================*/
-  #  Create (pseudo) metadata for anomalies
+    #/*======================================================================*/
+  #  Create (pseudo) metadata 
   #/*======================================================================*/
   log_msg("Creating pseudo metadata...\n")
   
-  #Fragment fnames
-  frag.fnames <- dir(anom.dir,pattern=".nc",full.names = TRUE)
-  
-  #Extract dates
-  meta.dat.l <- list()
-  for(f in frag.fnames) {
-    r <- raster(f)
-    meta.dat.l[[f]] <- tibble(date=getZ(r))
+  #Use a generic function to do the hardwork
+  generate.metadata <- function(src.dir) {
+    #Get fnames
+    src.fnames <- dir(src.dir,pattern=".nc",full.names = TRUE)
+    
+    #Extract dates
+    meta.dat.l <- list()
+    for(f in src.fnames) {
+      r <- raster(f)
+      meta.dat.l[[f]] <- tibble(date=getZ(r))
+    }
+    
+    #Build metadata
+    src.meta <- bind_rows(meta.dat.l) %>%
+      add_column(name=pcfg@observations@name,.before=1) %>%
+      add_column(type=pcfg@observations@name,.after=1) %>%
+      mutate(start.date=NA,
+             n.realizations=1,
+             fname=src.fnames) 
+    return(src.meta)
   }
   
-  #Build metadata
-  anom.meta <- bind_rows(meta.dat.l) %>%
-    add_column(name=pcfg@observations@name,.before=1) %>%
-    add_column(type=pcfg@observations@type,.after=1) %>%
-    mutate(start.date=NA,
-           n.realizations=1,
-           fname=frag.fnames) 
+  #Now, lets think for a minute. The downstream functions require two 
+  #files - Anomaly_metadata.RData and Realmean_metadata.RData. The choice
+  #of whether these relate to individual months or to an MOIaverage should
+  #be made here, not downstream, so we therefore need to set these up according
+  #to the project configuration. At the same time, we also want to store all
+  #metadata, so that it can be picked up later by the persistence forcast code
+  #So....
+  #First generate all monthly metadata anomalies - we need this for the persistence
+  #forecast anyway
+  mon.anom.meta <- generate.metadata(mon.anom.dir)
+  save(mon.anom.meta,file=file.path(base.dir,PE.cfg$Obs.monthly.anom.metadata))
+
+  #Now, setup rest of metadata accordingly
+  if(pcfg@average.months) {
+    #Get metadata
+    anom.meta <- generate.metadata(MOIave.anom.dir)
+  } else {
+    #We are only interested in files that are in the
+    #months of interest, so we need to filter
+    anom.meta <- subset(mon.anom.meta,month(date) %in% pcfg@MOI)
+  }
+  
+  #Save results and create a second copy as realmean metadata
   save(anom.meta,file=file.path(base.dir,"Anomaly_metadata.RData"))
-  realmean.meta <- anom.meta
+  realmean.meta <- anom.meta  #Needs a rename
   save(realmean.meta,file=file.path(base.dir,"Realmean_metadata.RData"))
   
-  #/*======================================================================*/
-  #  And similarly for the climatological files
-  #/*======================================================================*/
-  log_msg("Creating climatology pseudo metadata...\n")
-  
-  #Fragment fnames
-  clim.frag.fnames <- dir(clim.dir,pattern=".nc",full.names = TRUE)
-  
-  #Extract dates
-  clim.meta.dat.l <- list()
-  for(f in clim.frag.fnames) {
-    r <- raster(f)
-    clim.meta.dat.l[[f]] <- tibble(month=month(getZ(r)))
+  #And now for the climatologies
+  if(!pcfg@average.months) {
+    clim.meta <- generate.metadata(mon.clim.dir)
+    clim.meta$type <- "Climatology"
+    save(clim.meta,file=file.path(misc.meta.dir,"Climatology_metadata.RData"))
   }
-  
-  #Build metadata
-  clim.meta <- bind_rows(clim.meta.dat.l) %>%
-    add_column(name=pcfg@observations@name,.before=1) %>%
-    mutate(type="Climatology",.after=1) %>%
-    mutate(fname=clim.frag.fnames) 
-  save(clim.meta,file=file.path(base.dir,"Climatology_metadata.RData"))
 
-  # * data.src - name of the datasource
-  # * data.type - the type of data. For CMIP5 variables, includes the expt e.g. CMIP5.rcp85
-  # * date - of the forecast/observation/projection, not of the model initialisation
-  # * start.date - when the forecast is initialisation
-  # * n.realizations - the number of realizations stored in the fragment / fragstack
-  # * fname - including the full path relative to the project directory
-  
-  
-  
-}
+  #Remove the temporary files to tidy up
+  tmp.fnames <- dir(work.dir,pattern=work.dir,full.names = TRUE)
+  del.err <- unlink(tmp.fnames)
+  if(del.err!=0) stop("Error deleting temp files")
+}  #//end looping over spatial objects
 
 # #/*======================================================================*/
 #  Complete

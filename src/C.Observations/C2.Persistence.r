@@ -1,15 +1,15 @@
 #/*##########################################################################*/
-#' Setup system
+#' Create a persistence forecast 
 #' ==========================================================================
 #'
 #' by Mark R Payne  
 #' DTU-Aqua, Charlottenlund, Denmark  
 #' http://www.staff.dtu.dk/mpay  
 #'
-#' Thu Sep  1 14:40:41 2016
+#' Thu Jul 14 11:34:17 2016
 #'
-#' Builds and installs the package of support tools and sets some common
-#' configuration parameters
+#' Uses the existing observational data to create a persistence forecast. This
+#' is done simply by tweaking the existing metadata catalogues
 #
 #  This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 #  You are largely free to do what you like with it, so long as you "attribute" 
@@ -25,40 +25,65 @@
 #/*======================================================================*/
 #  Initialise system
 #/*======================================================================*/
-cat(sprintf("\n%s\n","Build and install package"))
+cat(sprintf("\n%s\n","Create a Persistence Forecast"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Configure markdown style, do house cleaning
 rm(list = ls(all.names=TRUE));  graphics.off();
 start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 
-log_msg <- function(fmt,...) {cat(sprintf(fmt,...));
-  flush.console();return(invisible(NULL))}
+#Helper functions, externals and libraries
+library(PredEng)
+load("objects/configuration.RData")
+load("objects/PredEng_config.RData")
 
-#Do it 
-install.packages("resources/ClimateTools", repos = NULL, type="source")
-install.packages("resources/PredEng_Package", repos = NULL, type="source")
+library(lubridate)
+library(raster)
+library(tibble)
+library(dplyr)
 
 #/*======================================================================*/
-#  Define common directories etc
+#  Configuration
 #/*======================================================================*/
-PE.cfg <- list()
-PE.cfg$datasrc.dir <- "data_srcs"
-PE.cfg$analysis.grid.fname <- "analysis.grid"
-PE.cfg$remapping.wts.fname <- "remapping_wts.nc"
-PE.cfg$ensmean.name <- "Ensmean"
-PE.cfg$VOI.name <- "Variable_of_interest"
-PE.cfg$ROI.extraction.buffer <- 2  #Degrees
+#Setup spatial configurations
+if(pcfg@use.global.ROI) { #only need to use one single global ROI
+  this.sps <- list(spatial.subdomain(name="",boundary=pcfg@global.ROI))
+} else { #Working with subdomains
+  this.sps <- pcfg@spatial.subdomains
+}
 
-#Directories
-PE.cfg$dir <- list(Misc.meta="Z.Misc.meta")
+#/*======================================================================*/
+#  Create (pseudo) metadata
+#  The trick here is that we can create a pseudo  persistence forecast
+#  by simply tweaking the metadata properly to reuse existing observational
+#  data files. We loop over the individual spatial subdomains in a single
+#  run.
+#/*======================================================================*/
 
-#Misc files
-PE.cfg$Obs.monthly.anom.metadata <- file.path(PE.cfg$dir$Misc.meta,"Monthly_anom_metadata.RData")
+for(this.sp in this.sps) {
+  log_msg("Creating pseudo metadata for %s...\n",this.sp@name)
+  
+  #Working directories
+  subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)
+  base.dir <- define_dir(subdomain.dir,"Persistence")
 
+  #Load the monthly anomaly data
+  load(file.path(subdomain.dir,"Observations",pcfg@observations@name,PE.cfg$Obs.monthly.anom.metadata))
+  
+  #Some tweaks
+  anom.meta <- mutate(mon.anom.meta,
+                      type="Persistence")
+  
+  #Save metadata
+  save(anom.meta,file=file.path(base.dir,"Anomaly_metadata.RData"))
+  realmean.meta <- anom.meta
+  save(realmean.meta,file=file.path(base.dir,"Realmean_metadata.RData"))
+}
 
-save(PE.cfg,file="objects/PredEng_config.RData")
-
+# #/*======================================================================*/
+#  Complete
+#/*======================================================================*/
+#+ results='asis'
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
