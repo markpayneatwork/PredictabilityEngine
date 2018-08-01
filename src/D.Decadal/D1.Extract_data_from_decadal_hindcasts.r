@@ -47,7 +47,7 @@ load("objects/configuration.RData")
 #Take input arguments, if any
 if(interactive()) {
   src.no <- 1
-  set.debug.level(6)  #0 complete fresh run
+  set.debug.level(4)  #0 complete fresh run
   set.condexec.silent()
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
@@ -85,10 +85,10 @@ remap.dir <- define_dir(base.dir,"1.remapping_wts")
 sel.dir <- define_dir(base.dir,"2.regrid")
 frag.dir <- define_dir(base.dir,"3.fragments")
 fragstack.dir <- define_dir(base.dir,"4.fragstacks")
-
 lead.clim.dir <- define_dir(base.dir,"5.lead.clims")
 anom.dir <- define_dir(base.dir,"A.anom")
 realmean.dir <- define_dir(base.dir,"B.realmean")
+misc.meta.dir <- define_dir(base.dir,PE.cfg$dir$Misc.meta)
 analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$analysis.grid.fname)
 
 #'========================================================================
@@ -201,7 +201,7 @@ if(get.debug.level()<=4) {
                       lead.idx=str_match(basename(frag.fnames),"^.*?_L([0-9]+).nc$")[,2],
                       realization=this.src@ensmem_fn(frag.fnames),
                       fname=frag.fnames)
-  save(frag.meta,file=file.path(base.dir,"Fragment_metadata.RData"))
+  save(frag.meta,file=file.path(misc.meta.dir,"Fragment_metadata.RData"))
   
   pb$stop()
   print(pb)
@@ -209,7 +209,7 @@ if(get.debug.level()<=4) {
   log_msg("\n")
   
 } else {
-  load(file.path(base.dir,"Fragment_metadata.RData"))
+  load(file.path(misc.meta.dir,"Fragment_metadata.RData"))
 }
 
 #'========================================================================
@@ -218,59 +218,65 @@ if(get.debug.level()<=4) {
 # layer corresponding to a realisation
 #'========================================================================
 log_msg("Building fragstacks...\n")
-# Group data into the fragment stacks
-fragstack.grp <- split(frag.meta,
-                       frag.meta[,c("date","lead.idx")],drop=TRUE)
 
-#Loop over groups and build the stacks
-pb <- progress_estimated(length(fragstack.grp))
-fragstack.meta.l <- list()
-for(i in seq(fragstack.grp)) {
-  pb$tick()$print()
-  grp <- fragstack.grp[[i]]
-  log_msg("Building fragstack %i of %i...\n",i,
-          length(fragstack.grp),silenceable = TRUE)
+if(get.debug.level()<=5) {
+  # Group data into the fragment stacks
+  fragstack.grp <- split(frag.meta,
+                         frag.meta[,c("date","lead.idx")],drop=TRUE)
   
-  #Stack
-  fragstack.fname <- file.path(fragstack.dir,
-                               with(grp[1,],
-                                    sprintf("%s_L%s_fragstack.nc",
-                                            format(date,"%Y%m%d"),lead.idx)))
-  # condexec(1,fragstack.cmd <- cdo("merge",
-  #                                 grp$fname,
-  #                                 fragstack.fname))
-  condexec(5,fragstack.cmd <- ncecat("--rcd_nm realization -M",
-                                     grp$fname,fragstack.fname))
+  #Loop over groups and build the stacks
+  pb <- progress_estimated(length(fragstack.grp))
+  fragstack.meta.l <- list()
+  for(i in seq(fragstack.grp)) {
+    pb$tick()$print()
+    grp <- fragstack.grp[[i]]
+    log_msg("Building fragstack %i of %i...\n",i,
+            length(fragstack.grp),silenceable = TRUE)
+    
+    #Stack
+    fragstack.fname <- file.path(fragstack.dir,
+                                 with(grp[1,],
+                                      sprintf("%s_L%s_fragstack.nc",
+                                              format(date,"%Y%m%d"),lead.idx)))
+    # condexec(1,fragstack.cmd <- cdo("merge",
+    #                                 grp$fname,
+    #                                 fragstack.fname))
+    condexec(5,fragstack.cmd <- ncecat("--rcd_nm realization -M",
+                                       grp$fname,fragstack.fname))
+    
+    #Store metadata
+    fragstack.meta.l[[i]] <- grp[1,] %>%
+      mutate(n.realizations=nrow(grp),
+             fname=fragstack.fname)
+    
+  }
+  Sys.sleep(0.1)
+  print(pb$stop())
+  log_msg("\n")
   
-  #Store metadata
-  fragstack.meta.l[[i]] <- grp[1,] %>%
-    mutate(n.realizations=nrow(grp),
-           fname=fragstack.fname)
+  #Save metadata
+  fragstack.meta <- bind_rows(fragstack.meta.l) %>%
+    select(-starts_with("realization")) 
+  save(fragstack.meta,file=file.path(misc.meta.dir,"Fragstack_metadata.RData"))
   
+} else {
+  load(file=file.path(misc.meta.dir,"Fragstack_metadata.RData"))
 }
-Sys.sleep(0.1)
-print(pb$stop())
-log_msg("\n")
-
-#Save metadata
-fragstack.meta <- bind_rows(fragstack.meta.l) %>%
-  select(-starts_with("realization")) 
-save(fragstack.meta,file=file.path(base.dir,"Fragstack_metadata.RData"))
-
 
 #'========================================================================
 # Calculate climatologies ####
 #'========================================================================
 log_msg("Calculating climatologies...\n")
 #Break into chunks for climatology calculation by lead time and start month
-fragstack.meta <- mutate(fragstack.meta,
+clim.meta <- mutate(fragstack.meta,
                          in.clim=year(date) %in% pcfg@clim.years,
                          start.month=month(start.date),
                          clim.idx=sprintf("S%02i.L%s",start.month,lead.idx),
                          clim.fname=file.path(lead.clim.dir,
                                               sprintf("%s_%s_clim.nc",
                                                       this.src@name,clim.idx)))
-lead.clim.files <- subset(fragstack.meta,in.clim)
+rm(fragstack.meta)
+lead.clim.files <- subset(clim.meta,in.clim)
 lead.clim.files.l <- split(lead.clim.files,lead.clim.files$clim.idx)
 
 #Calculate climatologies per lead and start mnth
@@ -308,7 +314,7 @@ log_msg("\n")
 #'========================================================================
 log_msg("Calculating anomalies...\n")
 #Simple loop over files
-anom.meta <- mutate(fragstack.meta,
+anom.meta <- mutate(clim.meta,
                     fragstack.fname=fname,
                     fname=file.path(anom.dir,
                                     sprintf("%s_S%s_L%s_anom.nc",
