@@ -33,6 +33,7 @@ rm(list = ls(all.names=TRUE));  graphics.off();
 
 #Source the common elements
 library(PredEng)
+library(tibble)
 load("objects/PredEng_config.RData")
 source("src/B.Configuration/B0.Define_SST_data_srcs.r")
 
@@ -47,7 +48,7 @@ pcfg <- PredEng.config(project.name= "Bluefin",
                comp.years=1970:2012,
                landmask="data_srcs/NMME/landmask.nc",
                observations=SST_obs[[c("HadISST")]],
-               CMIP5.models=CMIP5.mdls,
+               CMIP5.models=CMIP5.mdls.l,
                NMME.models=NMME.sst.l)
 
 #Setup scratch directory

@@ -146,10 +146,39 @@ for(mdl.name in names(NMME.mdls)){
 NMME.sst.l[["NASA-GEOS5"]]@realizations <- 1:11  #12th realization is very intermittant
 NMME.sst.l[["NCEP-CFSv2"]]@realizations <- 1:24  #Forecast has 32 but hindcast 24. 
                                                   #Restrict to be the same for simplicity
+#'========================================================================
+# Setup CMIP5 models ####
+#'========================================================================
+#Get list of files
+CMIP5.fnames <- dir(file.path("data_srcs","CMIP5"),pattern=".nc",full.names = TRUE,recursive=TRUE)
+if(length(CMIP5.fnames)==0) stop("Cannot find source files")
 
-# ========================================================================
-# Setup CMIP5 models
-# ========================================================================
-CMIP5.mdls <- data.source(name="CMIP5-tos",type="CMIP5",var="tos",
-                  source="CMIP5")
-  
+#Extract metadata
+CMIP5.meta.all <- tibble(model=CMIP5_model(CMIP5.fnames),
+                         expt=CMIP5_experiment(CMIP5.fnames),
+                         realization=CMIP5_realisation(CMIP5.fnames),
+                         fname=CMIP5.fnames)
+
+#Check for perturbed physics runs and differing initialisation methods
+#Generally, I don't know how to interpret these, so we just drop them
+CMIP5.meta.all <- tidyr::extract(CMIP5.meta.all,realization,
+                                 c("realization.r","realization.i","realization.p"),
+                                 "r([0-9]+)i([0-9]+)p([0-9]+)",
+                                 remove=FALSE)
+CMIP5.meta <- subset(CMIP5.meta.all,realization.i=="1" &realization.p=="1")
+
+#Split the CMIP5 data into chunks
+CMIP5.meta$CMIP5.chunk <- as.numeric(factor(CMIP5.meta$model)) %% PE.cfg$n.CMIP.chunks
+CMIP5.grp <- split(CMIP5.meta,CMIP5.meta$CMIP5.chunk)
+
+#Now create the PredEng.source objects
+CMIP5.mdls.l <- PredEng.list()
+for(i in seq(CMIP5.grp)) {
+  CMIP5.mdls.l[[i]] <- data.source(name=sprintf("Chunk %03i",i),
+                              type="CMIP5",
+                              var="tos",
+                              source=CMIP5.grp[[i]]$fname)
+}
+names(CMIP5.mdls.l) <- sapply(CMIP5.mdls.l,slot,"name")
+
+

@@ -49,6 +49,7 @@ PE.cfg$remapping.wts.fname <- "remapping_wts.nc"
 PE.cfg$ensmean.name <- "Ensmean"
 PE.cfg$VOI.name <- "Variable_of_interest"
 PE.cfg$ROI.extraction.buffer <- 2  #Degrees
+PE.cfg$n.CMIP.chunks <- 5  #How many chunks should the CMIP5 ensemble be broken into?
 
 #Directories
 PE.cfg$dir <- list(Misc.meta="Z.Misc.meta")
