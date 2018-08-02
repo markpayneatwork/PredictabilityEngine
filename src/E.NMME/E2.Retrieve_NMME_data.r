@@ -48,7 +48,7 @@ load("objects/configuration.RData")
 # ========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  src.no <- 5
+  src.no <- 15
   set.debug.level(0)  #0 complete fresh run
   set.condexec.silent(TRUE)
   set.cdo.defaults("--silent --no_warnings -O")
@@ -86,6 +86,8 @@ download.dir <- define_dir(base.dir,"0.data")
 
 set.debug.level(0)  #0 complete fresh run. 1 downloads missing files
 
+log_msg("Processing %s spatial subdomain....\n",this.sp@name)
+
 # ========================================================================
 # Setup
 # ========================================================================
@@ -96,10 +98,10 @@ this.meta <- subset(meta,Model==this.src@name)
 #Define spatial ROI string (for input into NCKS)
 #NMME works on the basis of a 0 to 360 grid, so we need to account for that
 #However, NCKS can take care of the differences
-extract.ROI <- extent(this.sp)
+extract.ROI <- as.vector(extent(this.sp))
 extract.ROI[1:2] <- Pacific.centered(extract.ROI[1:2])
 ROI.str <- do.call(sprintf,c("-d X,%.2f,%.2f -d Y,%.2f,%.2f",
-                             as.list(as.vector(extract.ROI))))
+                             as.list(extract.ROI)))
 
 #Download datetime
 download.datetime <- format(Sys.time(),"%Y%m%d_%H%M%S")
