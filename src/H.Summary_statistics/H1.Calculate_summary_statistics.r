@@ -1,5 +1,5 @@
 #'========================================================================
-# Calculate indicators
+# Calculate summary statistics
 #'========================================================================
 #
 # by Mark R Payne
@@ -8,7 +8,7 @@
 #
 # Created Wed May 23 22:50:39 2018
 #
-# Calculates indicators across the entire range of data sources
+# Calculates summary statistics across the entire range of data sources
 #
 # This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 # You are largely free to do what you like with it, so long as you "attribute"
@@ -17,19 +17,19 @@
 # To do:
 #
 # Notes:
-# *  We choose to parallelise over datasources, rather than over indicators,
+# *  We choose to parallelise over datasources, rather than over summary statistics,
 #    which would be an alternative structure. The logic behind this is that
 #    not all data sets are available on one machine at the same time, due to
 #    storage and practical limitations - however, we can always apply the
-#    indicators (I hope). Thus, it makes more sense to parallelise over datasources
-#    and then loop over indicators.
+#    summary statistics (I hope). Thus, it makes more sense to parallelise over datasources
+#    and then loop over summary statistics.
 #
 #'========================================================================
 
 #'========================================================================
 # Initialise system ####
 #'========================================================================
-cat(sprintf("\n%s\n","Calculate_indicators"))
+cat(sprintf("\n%s\n","Calculate_summary statistics"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Do house cleaning
@@ -42,14 +42,15 @@ library(dplyr)
 library(tibble)
 library(ncdf4)
 load("objects/configuration.RData")
+load("objects/PredEng_config.RData")
 
 #'========================================================================
 # Configure ####
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  src.no <- 14
-  set.debug.level(0)  #Non-zero lets us run with just a few points
+  src.no <- 12
+  set.debug.level(1)  #Non-zero lets us run with just a few points
   set.cdo.defaults("--silent --no_warnings")
   set.condexec.silent()
   set.log_msg.silent()
@@ -61,87 +62,95 @@ if(interactive()) {
   set.debug.level(0)  #0 complete fresh run
 }
 
-#Directory setup
-base.dir <- pcfg@scratch.dir
-obs.dir <- define_dir(file.path(base.dir,pcfg@observations@type,
-                                pcfg@observations@name))
-ind.dir <- define_dir(base.dir,"indicators")
+#'========================================================================
+# Divide work ####
+#'========================================================================
+#Supported data sources
+dat.srcs.l <- c(pcfg@decadal.models,
+              pcfg@NMME.models,
+              pcfg@observations,
+              pcfg@CMIP5.models)
+dat.srcs <- tibble(src.type=sapply(dat.srcs.l,slot,"type"),
+                       src.name=sapply(dat.srcs.l,slot,"name"))
+dat.srcs <- rbind(dat.srcs,
+                  tibble(src.type=c("Decadal","NMME"),src.name=PE.cfg$files$ensmean.name),
+                  tibble(src.type="Persistence",src.name="Persistence"))
+dat.srcs$src.id <- seq(nrow(dat.srcs))
+
+#Supported spatial subdomains
+if(pcfg@use.global.ROI) {
+  sp.subdomains <- ""
+} else {
+  sp.subdomains <- names(pcfg@spatial.subdomains)
+}
+
+#Do the expansion
+work.cfg <- expand.grid(src.id=dat.srcs$src.id,
+                        sp=sp.subdomains) %>%
+            left_join(dat.srcs,by="src.id") %>%
+            as.tibble()
+this.cfg <- work.cfg[src.no,]
+this.sp <- pcfg@spatial.subdomains[[this.cfg$sp]]
+
+log_msg("Processing (%s) %s, number %i of %i configurations.\n\n",
+        this.cfg$src.type,this.cfg$src.name,src.no,nrow(work.cfg))
 
 #'========================================================================
 # Setup ####
 #'========================================================================
-#Setup CMIP5 to spread across nodes
-CMIP5.dirs <- dir(file.path(pcfg@scratch.dir,pcfg@CMIP5.models@source),
-                 include.dirs = TRUE)
-CMIP5.chunks <- unlist(rep(list(pcfg@CMIP5.models),length(CMIP5.dirs)))
-for(i in seq(CMIP5.dirs)) {
-  CMIP5.chunks[[i]]@name <- sprintf("%s-%s",CMIP5.chunks[[i]]@name,CMIP5.dirs[i])
-  CMIP5.chunks[[i]]@source <- file.path(CMIP5.chunks[[i]]@source,CMIP5.dirs[i])
-}
+#Directory setup
+base.dir <- file.path(pcfg@scratch.dir,this.sp@name)
+obs.dir <- file.path(base.dir,pcfg@observations@type,pcfg@observations@name)
+sumstat.dir <- define_dir(base.dir,"Summary.statistics")
 
-#Supported models
-dat.srcs <- c(pcfg@decadal.hindcasts,pcfg@decadal.uninit,
-              pcfg@NMME.models,
-              pcfg@observations,pcfg@persistence,
-              unlist(CMIP5.chunks))
-src <- dat.srcs[[src.no]]
-log_msg("Processing (%s) %s, number %i of %i available data sources\n\n",
-        src@type,src@name,src.no,length(dat.srcs))
-
-#Setup observation data
-obs.clim.fname <- file.path(obs.dir,"obs_climatology.nc")
-obs.clim.full <- raster(obs.clim.fname)
-obs.clim <- crop(obs.clim.full,pcfg@ROI)  #Crop down to size
+#Setup observational climatology
+load(file.path(obs.dir,PE.cfg$files$Obs.climatology.metadata))
+obs.clim.l <- lapply(clim.meta$fname,raster)
+names(obs.clim.l) <- sprintf("%02i",month(clim.meta$date))
 
 #Setup landmask by regridding
-landmask <- raster(pcfg@landmask)
+#landmask <- raster(pcfg@landmask)
 
 #Result storage
-ind.l <- list()
+sum.stats.l <- list()
 
 #'========================================================================
-# Calculate indicators ####
+# Calculate summary statistics ####
 #'========================================================================
-#Outer loop is over the indicators. This is probably not the most effective
+#Outer loop is over the summary statistics This is probably not the most effective
 #strategy, as it involves some duplication around the calculation of the
-#input fields. However, this should be relatively minor and is more than 
-#compensated for by the fact that it is much simpler programmatically.
-for(j in seq(pcfg@indicators)) {
-  ind <- pcfg@indicators[[j]]
-  log_msg("Processing '%s' indicator, number %i of %i...\n",
-          ind@name,j,length(pcfg@indicators))
+#input fields. However, the summary statistics, in principle, determine the type
+#of data that should be used as an input (i.e. realmeans, realizations etc), so 
+#it makes most sense to it this way around.
+
+for(j in seq(pcfg@summary.statistics)) {
+  sumstat <- pcfg@summary.statistics[[j]]
+  log_msg("Processing '%s' summary statistic, number %i of %i...\n",
+          sumstat@name,j,length(pcfg@summary.statistics))
   
   #Load the appropriate metadata
-  if(class(src)=="data.ensemble") { #Obviously only going to use ensmean data
-    metadat.fname <- "Ensmean_metadata.RData"
-  } else if(ind@data.type=="means") { #Use realmeans
-    metadat.fname <- "Realmean_metadata.RData"
-  } else if(ind@data.type=="realizations") { #Use individual realizations
-    metadat.fname <- "Anom_metadata.RData"
+  if(this.cfg$src.name==PE.cfg$files$ensmean.name) { #Obviously only going to use ensmean data
+    metadat.fname <- PE.cfg$files$realmean.meta
+  } else if(sumstat@data.type=="means") { #Use realmeans
+    metadat.fname <- PE.cfg$files$realmean.meta
+  } else if(sumstat@data.type=="realizations") { #Use individual realizations
+    metadat.fname <- PE.cfg$files$anom.meta
   } else {
     stop("Unknown data type")
   }
 
-  #Tweaks for NMME, CMIP
-  if(src@type=="NMME") {
-    #NMME  data is not separated by model name
-    metadat.path <- file.path(base.dir,src@type,metadat.fname)
-  } else if(src@type=="CMIP5") {
-    #CMIP data are stored by chunks 
-    metadat.path <- file.path(base.dir,src@source,metadat.fname)
-  } else {
-    metadat.path <- file.path(base.dir,src@type,src@name,metadat.fname)
-  }
-  
+  #Load Metadata
+  metadat.path <- file.path(base.dir,this.cfg$src.type,this.cfg$src.name,metadat.fname)
   metadat.varname <- load(metadat.path)
   metadat <- get(metadat.varname)
   
-  #NMME is however processed individually, so we need to restrict the
-  #metadata to the particular momdel
-  if(src@type=="NMME" & class(src)=="data.source") {
-     metadat <- subset(metadat,name==src@name)
+  #Configure the observation climatology
+  if(pcfg@average.months) {
+    metadat$which.clim <- 1
+  } else {
+    metadat$which.clim <- sprintf("%02i",month(metadat$date))
   }
-  
+
   #Subset to make it run a bit quicker
   if(get.debug.level()!=0) {
     metadat <- metadat[1:10,]
@@ -156,13 +165,13 @@ for(j in seq(pcfg@indicators)) {
     pb$tick()$print()
     m <- metadat[i,]
     f <- m$fname
-    log_msg("Processing indicator %s, file %s...\n",
-            ind@name,basename(f),silenceable = TRUE)    
+    log_msg("Processing summary statistic %s, file %s...\n",
+            sumstat@name,basename(f),silenceable = TRUE)    
     
     #Import model anom as a brick 
     #TODO
     #This is also a mess, due to the error found in raster. Currently hacking it
-    if(ind@data.type=="realizations") {
+    if(sumstat@data.type=="realizations") {
       mdl.anom <- brick(f)  
       stop("working with realizations currently not supported")
       #The problem is essentially when we get to the storage of the results
@@ -171,6 +180,9 @@ for(j in seq(pcfg@indicators)) {
       mdl.anom <- raster(f) #Ideally this should be a brick, but that's not working for some reason 
     }
     
+    #Select the appropriate observation climatology
+    obs.clim <- obs.clim.l[[m$which.clim]]
+
     #The resolutions of the observational climatology and the modelled anomaly match 
     #automatically, because an earlier step involves the interpolations of both the 
     #model output and observations onto the same analysis grid. This saves lots
@@ -181,7 +193,12 @@ for(j in seq(pcfg@indicators)) {
     mdl.val <- obs.clim + mdl.anom
     
     #Apply the land mask 
-    masked <- mask(mdl.val,landmask,maskvalue=1)
+    #TODO: 20180801 I'm not really sure if we need a landmask at all, so lets drop it and 
+    #see what happens.
+    #masked <- mask(mdl.val,landmask,maskvalue=1)
+    
+    #Apply the polygon mask    
+    masked.r <- mask(mdl.val,this.sp@boundary)
     
     #Set the dates of the raster to be processed to be the same as those in the
     #original source file - these processing steps don't always propigate them
@@ -192,8 +209,8 @@ for(j in seq(pcfg@indicators)) {
     # blank.layer <- cellStats(is.na(masked),sum)==ncell(masked)
     # no.blanks <- masked[[which(!blank.layer)]]
     
-    #And we're ready. Lets calculate some indicators
-    res <- eval.indicator(x=masked,m=ind) 
+    #And we're ready. Lets calculate some summary statistics
+    res <- eval.sum.stat(ss=sumstat,r=masked.r) 
     
     #Add in the metadata and store the results
     #Doing the bind diretly like this is ok when we are dealing with
@@ -207,14 +224,16 @@ for(j in seq(pcfg@indicators)) {
   log_msg("\n")
   
   #Tidy up results a bit more
-  ind.res <- bind_rows(res.l) %>% 
+  sumstat.res <- bind_rows(res.l) %>% 
               as.tibble() %>%
-              add_column(indicator.name=ind@name,.before=1) %>%
-              add_column(indicator.type=class(ind),.after=1) %>%
-              add_column(indicator.data.type=ind@data.type,.after=2)
+              add_column(sumstat.name=sumstat@name,.before=1) %>%
+              add_column(sumstat.type=class(sumstat),.after=1) %>%
+              add_column(sumstat.data.type=sumstat@data.type,.after=2)
   #Store results
-  save.fname <- gsub(" ","-",sprintf("%s_%s_%s.RData",src@type,src@name,ind@name))
-  save(ind.res,file=file.path(ind.dir,save.fname))
+  save.fname <- gsub(" ","-",sprintf("%s_%s_%s_%s.RData",
+                                     this.sp@name,this.cfg$src.type,
+                                     this.cfg$src.name,sumstat@name))
+  save(sumstat.res,file=file.path(sumstat.dir,save.fname))
 }
 
 

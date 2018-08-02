@@ -268,6 +268,9 @@ for(this.sp in this.sps) {
     #Generate a climatology 
     clim.meta <- generate.metadata(mon.clim.dir)
     clim.meta$type <- "Climatology"
+    
+    #Restrict to months in the MOI
+    clim.meta <- subset(clim.meta,month(date) %in% pcfg@MOI)
   }
   save(clim.meta,file=file.path(base.dir,PE.cfg$files$Obs.climatology.metadata))
   

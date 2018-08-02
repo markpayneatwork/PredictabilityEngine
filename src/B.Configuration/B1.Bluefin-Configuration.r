@@ -73,17 +73,17 @@ pcfg@global.res  <- 0.5
 
 #Polygons
 sp.objs <- PredEng.list()
-sp.objs$irminger.sea <- spatial.subdomain("Irminger_Sea",
+sp.objs$irminger.sea <- spatial.subdomain("Irminger.Sea",
                                      as.SpatialPolygons.matrix(rbind(c(-45,58),c(-45,66),
                                                    c(-20,66),c(-32,58))))
-sp.objs$iceland.basin <- spatial.subdomain("Iceland_Basin",
+sp.objs$iceland.basin <- spatial.subdomain("Iceland.Basin",
                                       as.SpatialPolygons.matrix(rbind(c(-20,66),c(-32,58),
                                                     c(-15,58),c(-15,66))))
-sp.objs$no.coast <- spatial.subdomain("Norwegian_Coast",
+sp.objs$no.coast <- spatial.subdomain("Norwegian.Coast",
                                         as.SpatialPolygons.matrix(rbind(c(-5,62),c(10,62),
                                                                                 c(20,70),c(20,73),
                                                                                 c(12,73))))
-sp.objs$s.iceland <- spatial.subdomain("South_of_Iceland",extent(-50,-10,55,70))
+sp.objs$s.iceland <- spatial.subdomain("South.of.Iceland",extent(-50,-10,55,70))
 
 #Correct names and add to object
 names(sp.objs) <- sapply(sp.objs,slot,"name")
@@ -121,6 +121,7 @@ for(i in seq(statsum.l)){
 }
 
 #Merge it all in
+names(statsum.l) <- sapply(statsum.l,slot,"name")
 pcfg@summary.statistics <- statsum.l
 
 #'========================================================================
