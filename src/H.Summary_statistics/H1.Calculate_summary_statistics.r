@@ -49,7 +49,7 @@ load("objects/PredEng_config.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  src.no <- 12
+  src.no <- 17
   set.debug.level(1)  #Non-zero lets us run with just a few points
   set.cdo.defaults("--silent --no_warnings")
   set.condexec.silent()
@@ -74,7 +74,7 @@ dat.srcs <- tibble(src.type=sapply(dat.srcs.l,slot,"type"),
                        src.name=sapply(dat.srcs.l,slot,"name"))
 dat.srcs <- rbind(dat.srcs,
                   tibble(src.type=c("Decadal","NMME"),src.name=PE.cfg$files$ensmean.name),
-                  tibble(src.type="Persistence",src.name="Persistence"))
+                  tibble(src.type="Persistence",src.name=pcfg@observations@name))
 dat.srcs$src.id <- seq(nrow(dat.srcs))
 
 #Supported spatial subdomains
@@ -94,6 +94,12 @@ this.sp <- pcfg@spatial.subdomains[[this.cfg$sp]]
 
 log_msg("Processing (%s) %s, number %i of %i configurations.\n\n",
         this.cfg$src.type,this.cfg$src.name,src.no,nrow(work.cfg))
+
+if(this.cfg$src.type=="Persistence" & !pcfg@average.months & length(pcfg@MOI) >1 &
+   any(!sapply(pcfg@summary.statistics,slot,"use.anomalies"))){
+  stop("Don't know how to handle a persistence forecast for full
+       field summary statistics in presence of multiple months")
+}
 
 #'========================================================================
 # Setup ####
@@ -145,8 +151,8 @@ for(j in seq(pcfg@summary.statistics)) {
   metadat <- get(metadat.varname)
   
   #Configure the observation climatology
-  if(pcfg@average.months) {
-    metadat$which.clim <- 1
+  if(pcfg@average.months | length(pcfg@MOI)==1) {
+    metadat$which.clim <- 1  #Just use the value that is there
   } else {
     metadat$which.clim <- sprintf("%02i",month(metadat$date))
   }
@@ -180,17 +186,24 @@ for(j in seq(pcfg@summary.statistics)) {
       mdl.anom <- raster(f) #Ideally this should be a brick, but that's not working for some reason 
     }
     
-    #Select the appropriate observation climatology
-    obs.clim <- obs.clim.l[[m$which.clim]]
-
-    #The resolutions of the observational climatology and the modelled anomaly match 
-    #automatically, because an earlier step involves the interpolations of both the 
-    #model output and observations onto the same analysis grid. This saves lots
-    #of messing around with resolution adjustments etc
+    #Choose whether we use full fields or anomalies
+    if(sumstat@use.anomalies) {
+      mdl.val <- mdl.anom
+      
+    } else { #Calculate the full field by adding in the appropriate climatology
+      #Select the appropriate observation climatology
+      obs.clim <- obs.clim.l[[m$which.clim]]
+      
+      #The resolutions of the observational climatology and the modelled anomaly match 
+      #automatically, because an earlier step involves the interpolations of both the 
+      #model output and observations onto the same analysis grid. This saves lots
+      #of messing around with resolution adjustments etc
+      
+      #Build up the modelled value by combining the observational climatology
+      #with the modelled anomaly.
+      mdl.val <- obs.clim + mdl.anom
+    }
     
-    #Build up the modelled value by combining the observational climatology
-    #with the modelled anomaly.
-    mdl.val <- obs.clim + mdl.anom
     
     #Apply the land mask 
     #TODO: 20180801 I'm not really sure if we need a landmask at all, so lets drop it and 

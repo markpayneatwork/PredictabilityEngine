@@ -65,7 +65,7 @@ for(this.sp in this.sps) {
   
   #Working directories
   subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)
-  base.dir <- define_dir(subdomain.dir,"Persistence")
+  base.dir <- define_dir(subdomain.dir,"Persistence",pcfg@observations@name)
 
   #Load the monthly anomaly data
   load(file.path(subdomain.dir,"Observations",pcfg@observations@name,
