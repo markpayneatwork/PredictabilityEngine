@@ -149,9 +149,9 @@ for(i in seq(nrow(this.meta))) {
     condexec(1,download.cmd,silent=TRUE)
     
     #Set _FillValue
-    missval.cmd <- ncrename("-a .missing_value,_FillValue",download.full.path)
-    condexec(2,missval.cmd,silent=TRUE)
-    
+    # missval.cmd <- ncrename("-a .missing_value,_FillValue",download.full.path)
+    # condexec(2,missval.cmd,silent=TRUE)
+    # 
     #Convert X axis to [-180,180]
     #TODO
     # ncid <- nc_open(download.full.path,write=TRUE)
