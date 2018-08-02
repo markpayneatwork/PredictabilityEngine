@@ -33,6 +33,7 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 
 #Helper functions, externals and libraries
 library(ClimateTools)
+library(PredEng)
 library(ncdf4)
 library(ggplot2)
 library(lubridate)
@@ -43,14 +44,12 @@ library(reshape2)
 library(magrittr)
 library(reshape2)
 library(dplyr)
-load("objects/setup.RData")
+load("objects/PredEng_config.RData")
 load("objects/configuration.RData")
 
 # ========================================================================
 # Configuration
 # ========================================================================
-NMME.dir <- define_dir(pcfg@scratch.dir,"NMME")
-
 epoch.start <- ymd("1960-01-01")
 
 set.debug.level(0)  #0 complete fresh run
@@ -131,7 +130,7 @@ meta$last.start.date <-  epoch.start  + months(meta$last.start)
 # ========================================================================
 # Complete
 # ========================================================================
-save(meta,SLM,epoch.start,file=file.path(NMME.dir,"NMME_archive_metadata.RData"))
+save(meta,SLM,epoch.start,file=file.path(pcfg@scratch.dir,"NMME_archive_metadata.RData"))
 
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
