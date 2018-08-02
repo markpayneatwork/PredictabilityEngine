@@ -48,7 +48,7 @@ load("objects/configuration.RData")
 # ========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  src.no <- 2
+  src.no <- 5
   set.debug.level(0)  #0 complete fresh run
   set.condexec.silent(TRUE)
   set.cdo.defaults("--silent --no_warnings -O")
@@ -117,6 +117,7 @@ downloaded.dates.l <- lapply(downloaded.fnames,function(f) {
 downloaded.dates <- unlist(downloaded.dates.l)
 dates.to.download <- lapply(SLM["S",this.meta$mdl.str],function(x) {
                       x[!(x %in% downloaded.dates)]})
+names(dates.to.download) <- this.meta$mdl.str
 
 #'========================================================================
 # Download data ####
