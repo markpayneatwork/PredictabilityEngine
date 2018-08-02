@@ -219,8 +219,9 @@ for(this.sp in this.sps) {
     
     #Build metadata
     src.meta <- bind_rows(meta.dat.l) %>%
-      add_column(name=pcfg@observations@name,.before=1) %>%
-      add_column(type=pcfg@observations@name,.after=1) %>%
+      add_column(name=pcfg@observations@name,
+                 type=pcfg@observations@type,
+                 .before=1) %>%
       mutate(start.date=NA,
              n.realizations=1,
              fname=src.fnames) 

@@ -49,8 +49,8 @@ load("objects/PredEng_config.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  src.no <- 17
-  set.debug.level(1)  #Non-zero lets us run with just a few points
+  src.no <- 17  #1,2,10,15,17
+  set.debug.level(0)  #Non-zero lets us run with just a few points
   set.cdo.defaults("--silent --no_warnings")
   set.condexec.silent()
   set.log_msg.silent()
@@ -92,8 +92,8 @@ work.cfg <- expand.grid(src.id=dat.srcs$src.id,
 this.cfg <- work.cfg[src.no,]
 this.sp <- pcfg@spatial.subdomains[[this.cfg$sp]]
 
-log_msg("Processing (%s) %s, number %i of %i configurations.\n\n",
-        this.cfg$src.type,this.cfg$src.name,src.no,nrow(work.cfg))
+log_msg("Processing (%s) %s for %s subdomain, number %i of %i configurations.\n\n",
+        this.cfg$src.type,this.cfg$src.name,this.cfg$sp,src.no,nrow(work.cfg))
 
 if(this.cfg$src.type=="Persistence" & !pcfg@average.months & length(pcfg@MOI) >1 &
    any(!sapply(pcfg@summary.statistics,slot,"use.anomalies"))){
@@ -239,9 +239,12 @@ for(j in seq(pcfg@summary.statistics)) {
   #Tidy up results a bit more
   sumstat.res <- bind_rows(res.l) %>% 
               as.tibble() %>%
-              add_column(sumstat.name=sumstat@name,.before=1) %>%
-              add_column(sumstat.type=class(sumstat),.after=1) %>%
-              add_column(sumstat.data.type=sumstat@data.type,.after=2)
+              add_column(sp.subdomain=this.sp@name,
+                         sumstat.name=sumstat@name,
+                         sumstat.type=class(sumstat),
+                         sumstat.data.type=sumstat@data.type,
+                         .before=1)
+
   #Store results
   save.fname <- gsub(" ","-",sprintf("%s_%s_%s_%s.RData",
                                      this.sp@name,this.cfg$src.type,

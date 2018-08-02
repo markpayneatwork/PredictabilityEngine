@@ -42,7 +42,7 @@ source("src/B.Configuration/B0.Define_SST_data_srcs.r")
 #'========================================================================
 #Global project configuration
 pcfg <- PredEng.config(project.name= "Bluefin",
-               MOI=6:8,  #August
+               MOI=8,  #August
                average.months=FALSE,
                clim.years=1983:2005,  
                comp.years=1970:2012,
@@ -59,7 +59,7 @@ define_dir(pcfg@scratch.dir)
 pcfg@decadal.models <- hindcast_mdls[-which(names(hindcast_mdls)=="MPI-NCEP-forced")]
 
 #If working locally, only keep the simplest two models
-if(Sys.info()["nodename"]=="mpayne-Latitude-E7240") {
+if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
   pcfg@decadal.models <- pcfg@decadal.models[c(1,4)]
 }
 

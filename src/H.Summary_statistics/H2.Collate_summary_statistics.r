@@ -1,5 +1,5 @@
 #'========================================================================
-# H2. Collate indicators
+# H2. Collate summary statistics
 #'========================================================================
 #
 # by Mark R Payne
@@ -8,7 +8,7 @@
 #
 # Created Fri Jun  1 15:53:49 2018
 #
-# Collates indicators generated previously into a single metric
+# Collates summary statistics generated previously into a single metric
 #
 # This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 # You are largely free to do what you like with it, so long as you "attribute"
@@ -23,7 +23,7 @@
 #'========================================================================
 # Initialise system ####
 #'========================================================================
-cat(sprintf("\n%s\n","H2. Collate indicators"))
+cat(sprintf("\n%s\n","H2. Collate summary statistics"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Do house cleaning
@@ -38,6 +38,7 @@ library(reshape2)
 library(lubridate)
 library(udunits2)
 load("objects/configuration.RData")
+load("objects/PredEng_config.RData")
   
 #'========================================================================
 # Configure ####
@@ -52,86 +53,85 @@ if(interactive()) {
 
 #Directory setup
 base.dir <- pcfg@scratch.dir
-ind.dir <- define_dir(base.dir,"indicators")
 
 #'========================================================================
 # Select input data ####
 #'========================================================================
-#Import full set of indicator metrics
-ind.met.fnames <- dir(ind.dir,full.names = TRUE)
-
-#Loop over them individually and import
-ind.met.l <- list()
-for(f in ind.met.fnames){
-  var.names <- load(f)
-  ind.met.l[[f]]   <- get(var.names)
+#Get list of sp subdomains
+if(pcfg@use.global.ROI) {
+  sp.subdomains <- ""
+} else {
+  sp.subdomains <- names(pcfg@spatial.subdomains)
 }
 
-#Now we have one big list of indicator data. We could try and merge it
-#all together straight away, but there will be a problem with the names of the 
-#various columns. Lets see what they have in common and retain them
-# ind.res.colnames <- lapply(ind.met.l,names)
-# col.tbl <- melt(sort(table(unlist(ind.res.colnames))/length(ind.met.l)))
-# print(col.tbl)
+#Loop over subdomains them individually and import
+ss.l <- list()
+for(sp in sp.subdomains){
+  ss.fnames <- dir(file.path(base.dir,sp,"Summary.statistics"),full.names = TRUE)
+  for(f in ss.fnames){
+    var.names <- load(f)
+    ss.l[[f]]   <- get(var.names)
+  }
+  
+}
 
 #Big improvements to the metadata handling have rendered previous hard-earned code 
 #largely useless - we can now just take what we want
-keep.cols <- c("name","date",
-               "type",
-               "start.date",
-               "indicator.data.type","indicator.name","indicator.type","value")
-common.cols.l <- lapply(ind.met.l,"[",keep.cols)
+keep.cols <- c("sp.subdomain","name", "type",
+               "date","start.date",
+               "sumstat.data.type","sumstat.name","sumstat.type","value")
+common.cols.l <- lapply(ss.l,"[",keep.cols)
 
 #Merge into one big object and add meta information
-all.ind.raw <- bind_rows(common.cols.l) %>%
+all.ss.raw <- bind_rows(common.cols.l) %>%
                mutate(ym=sprintf("%i-%02i",year(date),month(date))) 
 
 #'========================================================================
 # Persistence forecasts ####
 #'========================================================================
 #Extract persistence and observation data
-obs.ind <- subset(all.ind.raw,type=="Observations")
-persis.ind <- subset(all.ind.raw,type=="Persistence") %>%
+obs.ss <- subset(all.ss.raw,type=="Observations")
+persis.ss <- subset(all.ss.raw,type=="Persistence") %>%
               select(-start.date)  %>%
               mutate(ym.date=sprintf("%i-%02i",year(date),month(date))) 
 
 #Generate the forecast grid
 lead.times <- c(1:11,seq(7,127,by=12))
 #lead.times <- 1:120
-persis.forecast.grid <- expand.grid(date=unique(obs.ind$date),
+persis.forecast.grid <- expand.grid(date=unique(obs.ss$date),
                                     lead=lead.times) %>%
                         as.tibble() %>%
                         mutate(start.date=date-months(lead),
                                ym.start=sprintf("%i-%02i",year(start.date),month(start.date)))
-persis.forecast.ind <- left_join(persis.forecast.grid,
-                                 persis.ind,
+persis.forecast.ss <- left_join(persis.forecast.grid,
+                                 persis.ss,
                                  by=c("ym.start"="ym.date") ) %>%
                         mutate(date=date.x,
                                date.x=NULL,date.y=NULL,ym.start=NULL,lead=NULL,
                                ym=sprintf("%i-%02i",year(date),month(date)))
 
-#Add it back to the indicator list
-all.ind <- rbind(subset(all.ind.raw,type!="Persistence"),
-                 persis.forecast.ind)
+#Add it back to the sumstat list
+all.ss <- rbind(subset(all.ss.raw,type!="Persistence"),
+                 persis.forecast.ss)
 
 #Calculate lead time using udunits
 ud.from <- "days since 1970-01-01"
 ud.to <- "months since 1900-01-01"
-all.ind$lead.raw <- as.numeric(ud.convert(all.ind$date,ud.from,ud.to))-
-                    as.numeric(ud.convert(all.ind$start.date,ud.from,ud.to))
-all.ind$lead <- round(all.ind$lead.raw/0.5)*0.5
+all.ss$lead.raw <- as.numeric(ud.convert(all.ss$date,ud.from,ud.to))-
+                    as.numeric(ud.convert(all.ss$start.date,ud.from,ud.to))
+all.ss$lead <- round(all.ss$lead.raw/0.5)*0.5
 
 #'========================================================================
 # Split and Merge ####
 #'========================================================================
 #Drop years that are not to be included in the evaluation of skill metrics
 #and drop CMIP5 as well (not interested in the skill)
-sel.res <-  all.ind %>% 
+sel.res <-  all.ss %>% 
             filter(year(date) %in% pcfg@comp.years,
                    !grepl("CMIP5",type)) 
 
 #Extract out the observational data
-obs.dat <- obs.ind %>% select(ym,indicator.name,value)
+obs.dat <- obs.ss %>% select(ym,sumstat.name,value)
 
 #And merge it back into the comparison dataframe. This way we have both the
 #modelled and the observed results together in the same dataframe. We note
@@ -139,7 +139,7 @@ obs.dat <- obs.ind %>% select(ym,indicator.name,value)
 #situations where we envisage using PredEnd i.e. one data point per year - but
 #we need to be aware that this is not exactly the case 
 comp.dat <- left_join(sel.res,obs.dat,
-                      by=c("ym","indicator.name"),
+                      by=c("ym","sumstat.name"),
                       suffix=c(".mdl",".obs"))
 
 #'========================================================================
@@ -148,7 +148,7 @@ comp.dat <- left_join(sel.res,obs.dat,
 #Now calculate the metrics
 RMSE <- function(x,y) { sqrt(mean((x-y)^2))}
 skill.m <- comp.dat %>%
-           group_by(name,type,indicator.name,lead) %>%
+           group_by(name,type,sumstat.name,lead) %>%
            summarize(cor=cor(value.mdl,value.obs,use="pairwise.complete"),
                      RMSE=RMSE(value.mdl,value.obs))
 
@@ -158,7 +158,7 @@ skill.m <- comp.dat %>%
 #'========================================================================
 #Save results
 save(skill.m, file=file.path(base.dir,"Skill_metrics.RData"))
-save(all.ind, file=file.path(base.dir,"All_indicators.RData"))
+save(all.ss, file=file.path(base.dir,"All_sumstats.RData"))
 
 
 #Turn off the lights

@@ -71,7 +71,8 @@ if(pcfg@use.global.ROI) { #only need to use one single global ROI
 base.dir <- define_dir(pcfg@scratch.dir,this.sp,"Decadal")
 ensmean.dir <- define_dir(base.dir,PE.cfg$files$ensmean.name)
 
-pcfg@decadal.models <- pcfg@decadal.models[1]
+log_msg("Calculating Ensemble mean for %s subdomain ...\n",this.sp)
+
 #'========================================================================
 # Setup ensemble averaging ####
 #'========================================================================
