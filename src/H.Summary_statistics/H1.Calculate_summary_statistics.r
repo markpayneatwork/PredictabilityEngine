@@ -151,7 +151,9 @@ for(j in seq(pcfg@summary.statistics)) {
     metadat.varname <- load(metadat.path)
     metadat <- get(metadat.varname)    
   } else {#Fail gracefully
-    stop(sprintf("Cannot find file %s.",metadat.path))
+    log_msg(sprintf("Error:Cannot find file %s.",metadat.path))
+    stop()
+    
   }
 
   
