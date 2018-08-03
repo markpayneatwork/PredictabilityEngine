@@ -147,8 +147,13 @@ for(j in seq(pcfg@summary.statistics)) {
 
   #Load Metadata
   metadat.path <- file.path(base.dir,this.cfg$src.type,this.cfg$src.name,metadat.fname)
-  metadat.varname <- load(metadat.path)
-  metadat <- get(metadat.varname)
+  if(file.exists(metadat.path)) {
+    metadat.varname <- load(metadat.path)
+    metadat <- get(metadat.varname)    
+  } else {#Fail gracefully
+    stop(sprintf("Cannot find file %s.",metadat.path))
+  }
+
   
   #Configure the observation climatology
   if(pcfg@average.months | length(pcfg@MOI)==1) {
