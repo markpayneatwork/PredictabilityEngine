@@ -60,7 +60,8 @@ PE.cfg$files <- list(Obs.monthly.anom.metadata=file.path(PE.cfg$dir$Misc.meta,"M
                      realmean.meta="Realmean_metadata.RData",
                      analysis.grid="analysis.grid",
                      remapping.wts="remapping_wts.nc",
-                     ensmean.name="Ensmean")
+                     ensmean.name="Ensmean",
+                     regridded.landmask="Regridded_landmask.nc")
 
 save(PE.cfg,file="objects/PredEng_config.RData")
 

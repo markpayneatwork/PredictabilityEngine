@@ -114,8 +114,8 @@ load(file.path(obs.dir,PE.cfg$files$Obs.climatology.metadata))
 obs.clim.l <- lapply(clim.meta$fname,raster)
 names(obs.clim.l) <- sprintf("%02i",month(clim.meta$date))
 
-#Setup landmask by regridding
-#landmask <- raster(pcfg@landmask)
+#Setup landmask 
+landmask <- raster(file.path(base.dir,PE.cfg$files$regridded.landmask))
 
 #Result storage
 sum.stats.l <- list()
@@ -206,24 +206,13 @@ for(j in seq(pcfg@summary.statistics)) {
     
     
     #Apply the land mask 
-    #TODO: 20180801 I'm not really sure if we need a landmask at all, so lets drop it and 
-    #see what happens.
-    #masked <- mask(mdl.val,landmask,maskvalue=1)
+    masked.land <- mask(mdl.val,landmask,maskvalue=1)
     
     #Apply the polygon mask    
-    masked.r <- mask(mdl.val,this.sp@boundary)
-    
-    #Set the dates of the raster to be processed to be the same as those in the
-    #original source file - these processing steps don't always propigate them
-    #correctly
-  #  masked <- setZ(masked,getZ(mdl.anom))
-    
-    # #Finally, drop layers that are completely blank
-    # blank.layer <- cellStats(is.na(masked),sum)==ncell(masked)
-    # no.blanks <- masked[[which(!blank.layer)]]
+    masked.land.sp <- mask(masked.land,this.sp@boundary)
     
     #And we're ready. Lets calculate some summary statistics
-    res <- eval.sum.stat(ss=sumstat,r=masked.r) 
+    res <- eval.sum.stat(ss=sumstat,r=masked.land.sp) 
     
     #Add in the metadata and store the results
     #Doing the bind diretly like this is ok when we are dealing with

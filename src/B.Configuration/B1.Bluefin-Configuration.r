@@ -127,31 +127,41 @@ pcfg@summary.statistics <- statsum.l
 #'========================================================================
 # Output ####
 #'========================================================================
-#Write CDO grid descriptors
+#Write output files 
 base.dir <- define_dir(pcfg@scratch.dir)
 if(pcfg@use.global.ROI){
-  log_msg("Writing Global Grid Descriptor...\n")
+  log_msg("Writing Global Outputs...\n")
+  #Write CDO grid descriptors
   this.ROI <- extend(pcfg@global.ROI,PE.cfg$ROI.extraction.buffer)
-  writeLines(griddes(this.ROI,res=pcfg@global.res),file.path(base.dir,PE.cfg$files$analysis.grid))
+  analysis.grid.fname <- file.path(base.dir,PE.cfg$files$analysis.grid)
+  griddes.txt <- griddes(this.ROI,res=pcfg@global.res)
+  writeLines(griddes.txt,analysis.grid.fname)
+  
+  #Write regridded landmask
+  regrid.landmask <- file.path(pcfg@scratch.dir,PE.cfg$files$regridded.landmask)
+  exec(landmask.cmd <- cdo("-f nc",
+                           csl("remapnn", pcfg@analysis.grid.fname),
+                           pcfg@landmask,
+                           regrid.landmask))
+
 } else { #Loop over spatial subdomains
   for(sp in pcfg@spatial.subdomains){
-    log_msg("Writing Grid Descriptor for %s...\n",sp@name)
+    log_msg("Writing outputs Descriptor for %s...\n",sp@name)
+    #Write CDO grid descriptors
     sp.dir <- define_dir(base.dir,sp@name)
     this.ROI <- extend(extent(sp),PE.cfg$ROI.extraction.buffer)
     griddes.txt <- griddes(this.ROI,res=pcfg@global.res) 
-    writeLines(griddes.txt,file.path(sp.dir,PE.cfg$files$analysis.grid))
+    analysis.grid.fname <- file.path(sp.dir,PE.cfg$files$analysis.grid)
+    writeLines(griddes.txt,analysis.grid.fname)
+    
+    #Write regridded landmask
+    regrid.landmask <- file.path(sp.dir,PE.cfg$files$regridded.landmask)
+    exec(landmask.cmd <- cdo("-f nc",
+                             csl("remapnn", analysis.grid.fname),
+                             pcfg@landmask,
+                             regrid.landmask))
   }  
 }
-
-
-# 
-# #Setup regridded landmask
-# regrid.landmask <- file.path(pcfg@scratch.dir,"landmask_regridded.nc")
-# exec(landmask.cmd <- cdo("-f nc", 
-#                          csl("remapnn", pcfg@analysis.grid),
-#                          pcfg@landmask, 
-#                          regrid.landmask))
-# pcfg@landmask <- regrid.landmask
 
 #Output
 save(pcfg,file="objects/configuration.RData")
