@@ -116,7 +116,7 @@ for(this.sp in this.sps) {
   #Remap onto the analysis grid
   log_msg("Remapping...")
   in.fname <- HadISST.dat
-  remap.fname <- file.path(work.dir,paste0(basename(in.fname),"_remapped"))
+  remap.fname <- file.path(work.dir,gsub(".nc$","_remapped.nc",basename(in.fname)))
   condexec(2,remap.cmd <- cdo("-f nc", csl("remapbil", analysis.grid.fname),
                               in.fname,remap.fname))
   
@@ -128,14 +128,14 @@ for(this.sp in this.sps) {
   #/*======================================================================*/
   #Calculate climatology 
   log_msg("Climatology....")
-  mon.clim.fname <- paste0(this.src,"_climatology")
+  mon.clim.fname <- gsub(".nc$","_climatology.nc",this.src)
   condexec(3,clim.cmd <- cdo("ymonmean",
                              csl("-selyear",pcfg@clim.years),
                              this.src,mon.clim.fname))
   
   #Calculate anomalies
   log_msg("Anomalies...")
-  mon.anom.fname <- paste0(this.src,"_anom")
+  mon.anom.fname <- gsub(".nc$","_anom.nc",this.src)
   condexec(4,anom.cmd <- cdo("sub",this.src,mon.clim.fname,mon.anom.fname))
 
   #'========================================================================
@@ -153,13 +153,13 @@ for(this.sp in this.sps) {
     #both the climatology and the anomalies)
     MOI.average <- function(in.src) {
       #monthly extraction
-      out.fname <- paste0(in.src,"_selmon")
+      out.fname <- gsub(".nc$","_selmon.nc",in.src)
       condexec(5,selmon.cmd <- cdo(csl("selmon",pcfg@MOI),
                                    in.src,out.fname))
       
       #Calculate means of the anomalies
       in.fname <- out.fname
-      out.fname <- paste0(in.fname,"_yearmean")
+      out.fname <- gsub(".nc$","_yearmean",in.fname)
       condexec(5,yearmean.cmd <- cdo( "yearmean", in.fname,out.fname))
       
       return(out.fname)
