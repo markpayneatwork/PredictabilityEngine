@@ -84,8 +84,6 @@ if(pcfg@use.global.ROI) { #only need to use one single global ROI
 base.dir <- define_dir(pcfg@scratch.dir,this.sp@name,"NMME",this.src@name)
 download.dir <- define_dir(base.dir,"0.data")
 
-set.debug.level(0)  #0 complete fresh run. 1 downloads missing files
-
 log_msg("Processing %s spatial subdomain....\n",this.sp@name)
 
 # ========================================================================
@@ -108,7 +106,6 @@ download.datetime <- format(Sys.time(),"%Y%m%d_%H%M%S")
 
 #Now, to allow for easy updating of data sets, we can first check what we have 
 #already available in the archive
-#TODO
 downloaded.fnames <- dir(download.dir,full.names = TRUE)
 downloaded.dates.l <- lapply(downloaded.fnames,function(f) {
                       ncid <- nc_open(f)

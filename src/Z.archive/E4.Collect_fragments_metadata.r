@@ -1,15 +1,16 @@
 ###########################################################################
-# E5.Climatologies
+# Collect fragements metadata
 # ==========================================================================
 #
 # by Mark R Payne  
 # DTU-Aqua, Kgs. Lyngby, Denmark  
 # http://www.staff.dtu.dk/mpay  
 #
-# Created Wed May 16 08:37:49 2018
+# Created Tue May 15 21:48:28 2018
 # 
-# Calculates the climatologies of the NMME 
-# forecast data, based on the exploded fragments
+# Collates metadata from the local database - the script is more or
+# less the same as the version oriented to the online version, but focuses
+# on the local fragments instead
 #
 # This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 # You are largely free to do what you like with it, so long as you "attribute" 
@@ -24,7 +25,7 @@
 #==========================================================================
 # Initialise system
 #==========================================================================
-cat(sprintf("\n%s\n","E5.Climatologies"))
+cat(sprintf("\n%s\n","E4.Collate fragments metadata"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Do house cleaning
@@ -33,69 +34,73 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 
 #Helper functions, externals and libraries
 library(PredEng)
+library(ncdf4)
+library(tibble)
+library(stringr)
 library(dplyr)
-load("objects/configuration.RData")
+library(ggplot2)
 load("objects/setup.RData")
+load("objects/configuration.RData")
 
 #==========================================================================
 # Configure
 #==========================================================================
-base.dir <- file.path(pcfg@scratch.dir,"NMME")
-lead.clim.dir <- define_dir(base.dir,"4.lead.clims")
-anom.dir <- define_dir(base.dir,"A.anoms")
+NMME.dat.dir <- file.path(pcfg@scratch.dir,"NMME")
+fragment.dir <- define_dir(NMME.dat.dir,"1.fragments")
 
-load(file.path(base.dir,"Fragment_metadata.RData"))
+epoch.start <- ymd("1960-01-01")
 
-set.debug.level(Inf) #Do all
-set.cdo.defaults("--silent --no_warnings -O")
+set.debug.level(Inf)  #0 complete fresh run
 
 #==========================================================================
-# Setup
+# Collate data
 #==========================================================================
-#Modify meta data to include climatology and anomaly filenames
-anom.meta <- mutate(frag.meta,
-                    type="NMME",
-                    frag.fname=fname, #fname is now applied to anom files
-                    clim.fname=sprintf("%s_L%s_clim.nc",name,lead),
-                    fname=file.path(anom.dir,gsub(".nc","_anom.nc",basename(frag.fname))),
-                    model=NULL,forecast.date=NULL)
+#Get list of files
+frag.fnames <- tibble(model=NA,
+                      fname=dir(fragment.dir,
+                              pattern = ".nc$",
+                              full.names = TRUE))
+frag.fnames$model <- str_match(basename(frag.fnames$fname),"^(.*?)_.*.nc$")[,2]
 
-#Define climatology file to use, based on grouping by  lead time and model
-in.clim <- subset(anom.meta,forecast.year %in% pcfg@clim.years)
-clim.files.l <- split(in.clim,in.clim$clim.fname)
-
-#==========================================================================
-# Calculate climatologies
-#==========================================================================
-#Loop over climatological files
-log_msg("Generating climatologies...\n")
-pb <- progress_estimated(length(clim.files.l))
-for(cf in clim.files.l) {
-  #Update progress bar
+#Data storage
+meta.db.l <- list()
+pb <- progress_estimated(nrow(frag.fnames))
+log_msg("Collating fragment metadata...\n")
+#Loop over files
+for(i in seq(nrow(frag.fnames))) {
   pb$tick()$print()
-  
-  #Setup   
-  clim.out.fname <- file.path(lead.clim.dir,unique(cf$clim.fname))
+  #open file via ncdf4
+  ncid <- nc_open(frag.fnames$fname[i])
+  #Get contents
+  d <- ncvar_get(ncid)
+  #Extract meta data
+  res <- tibble(start=ncid$dim$S$vals,
+                lead=ncid$dim$L$vals,
+                realization=underscore_field(frag.fnames$fname[i],5),
+                percent.na=mean(is.na(d))) 
+  meta.db.l[[i]] <- res
 
-  #Calculate climatology using nces
-  # clim.cmd <- nces("--netcdf4 --overwrite --history ",
-  #                  cf$frag.fname,
-  #                  clim.out.fname)
-  clim.cmd <- cdo("ensmean",
-                   cf$frag.fname,
-                   clim.out.fname)
-  condexec(1,clim.cmd)
-  
-  #Apply ncwa to remove degenerate dimensions
-  # ncwa.cmd <- ncwa("--overwrite -a sst,S,L,M",
-  #                  clim.out.fname,clim.out.fname)
-  # condexec(1,ncwa.cmd)
-  # 
+  #Close file
+  nc_close(ncid)
 }
 Sys.sleep(0.1)
 print(pb$stop())
+log_msg("\n")
 
-save(anom.meta,file=file.path(base.dir,"Anom_metadata.RData"))
+# ========================================================================
+# Process meta data
+# ========================================================================
+#Collate meta data
+frag.meta <- bind_rows(meta.db.l) %>%
+  add_column(name=frag.fnames$model,.before = 1) %>%
+  mutate(start.date=epoch.start  + months(start),
+         date=start.date+months(floor(lead))+days(14),  #Force it to 15th of month
+         forecast.month=month(date),
+         forecast.year=year(date)) %>%
+  add_column(fname=frag.fnames$fname) 
+
+
+save(frag.meta,file=file.path(NMME.dat.dir,"Fragment_metadata.RData"))
 
 #==========================================================================
 # Complete

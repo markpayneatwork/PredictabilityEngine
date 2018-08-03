@@ -50,8 +50,6 @@ load("objects/configuration.RData")
 # ========================================================================
 # Configuration
 # ========================================================================
-epoch.start <- ymd("1960-01-01")
-
 set.debug.level(0)  #0 complete fresh run
 
 # ========================================================================
@@ -108,8 +106,8 @@ meta <- bind_rows(meta.db.l)
 SLM <- do.call(cbind,SLM.l)
 
 #Correct dates etc
-meta$first.start.date <-  epoch.start  + months(meta$first.start)
-meta$last.start.date <-  epoch.start  + months(meta$last.start)
+meta$first.start.date <-  PE.cfg$NMME.epoch.start  + months(meta$first.start)
+meta$last.start.date <-  PE.cfg$NMME.epoch.start  + months(meta$last.start)
 
 # #Plot overview
 # g <- ggplot(SL,aes(y=model))+  geom_raster(aes(x=value)) +
@@ -130,7 +128,7 @@ meta$last.start.date <-  epoch.start  + months(meta$last.start)
 # ========================================================================
 # Complete
 # ========================================================================
-save(meta,SLM,epoch.start,file=file.path(pcfg@scratch.dir,"NMME_archive_metadata.RData"))
+save(meta,SLM,file=file.path(pcfg@scratch.dir,"NMME_archive_metadata.RData"))
 
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}

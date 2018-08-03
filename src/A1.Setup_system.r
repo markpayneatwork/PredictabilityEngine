@@ -35,6 +35,8 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 log_msg <- function(fmt,...) {cat(sprintf(fmt,...));
   flush.console();return(invisible(NULL))}
 
+library(lubridate)
+
 #Do it 
 install.packages("resources/ClimateTools", repos = NULL, type="source")
 install.packages("resources/PredEng_Package", repos = NULL, type="source")
@@ -46,6 +48,7 @@ PE.cfg <- list()
 PE.cfg$VOI.name <- "Variable_of_interest"
 PE.cfg$ROI.extraction.buffer <- 2  #Degrees
 PE.cfg$n.CMIP.chunks <- 5  #How many chunks should the CMIP5 ensemble be broken into?
+PE.cfg$NMME.epoch.start <- ymd("1960-01-01")
 
 #Directories
 PE.cfg$dirs <- list(Misc.meta="Z.Misc.meta",

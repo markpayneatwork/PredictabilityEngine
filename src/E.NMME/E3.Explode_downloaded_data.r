@@ -10,7 +10,8 @@
 #'
 #' NMME data is inherently 5D when it is downloaded (lat, lon, start date, lead,
 #' realization). To get it into a format where it can be picked up by the rest
-#' of the codebase, we need to "explode" it so that the pieces are 2D in nature.
+#' of the codebase, we need to "explode" it into fragstacks so that the pieces 
+#' are 3D in nature (lon, lat, realization), one for each start date and lead.
 #' We do this based primarily on the ncks tool. Ideally, we would also like to
 #' end with files that are compatible with CDO, but we shall see if that is possible
 #' 
@@ -44,102 +45,145 @@ library(raster)
 library(lubridate)
 library(tibble)
 library(dplyr)
-load("objects/setup.RData")
+load("objects/PredEng_config.RData")
 load("objects/configuration.RData")
 
 #'========================================================================
 # Configuration ####
 #'========================================================================
-NMME.dat.dir <- file.path(pcfg@scratch.dir,"NMME")
-download.dir <- define_dir(NMME.dat.dir,"0.data")
-fragment.dir <- define_dir(NMME.dat.dir,"1.fragments")
+#Take input arguments, if any
+if(interactive()) {
+  src.no <- 1
+  set.debug.level(0)  #0 complete fresh run
+  set.condexec.silent(TRUE)
+  set.cdo.defaults("--silent --no_warnings -O")
+  set.log_msg.silent()
+  set.nco.defaults("--ovewrite")
+} else {
+  #Taking inputs from the system environment
+  src.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
+  if(src.no=="") stop("Cannot find PBS_ARRAYID")
+  #Do everything and tell us all about it
+  set.debug.level(0)  #0 complete fresh run
+  set.condexec.silent(FALSE)
+  set.cdo.defaults()
+  set.log_msg.silent(FALSE)
+}
 
-set.debug.level(0)  #0 complete fresh run
-set.nco.defaults("--overwrite --netcdf4")
-set.condexec.silent()
+#Other configurations
+set.nco.defaults("--overwrite")
+
+#Extract configurations
+if(pcfg@use.global.ROI) { #only need to use one single global ROI
+  this.src <- pcfg@NMME.models[[src.no]]
+  this.sp  <- spatial.subdomain(pcfg@global.ROI,name="")  
+} else { #Working with subdomains
+  cfgs <- expand.grid(src=names(pcfg@NMME.models),
+                      sp=names(pcfg@spatial.subdomains))
+  this.src <- pcfg@NMME.models[[cfgs$src[src.no]]]
+  this.sp <- pcfg@spatial.subdomains[[cfgs$sp[src.no]]]
+}
+
+#Configure directories
+base.dir <- define_dir(pcfg@scratch.dir,this.sp@name,"NMME",this.src@name)
+download.dir <- define_dir(base.dir,"0.data")
+fragstack.dir <- define_dir(base.dir,"1.fragstacks")
+misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
 
 #'========================================================================
 # Setup ####
 #'========================================================================
-#Import metadata
-load(file.path(NMME.dat.dir,"NMME_archive_metadata.RData"))
+#Get metadata of files available
+downloaded.fnames <- dir(download.dir,full.names = TRUE)
 
 #'========================================================================
 # Explode data ####
 #'========================================================================
-#Loop over model data sets
-for(i in seq(nrow(meta))) {
-  mdl.cfg <- meta[i,]
-  mdl.id <- mdl.cfg$mdl.str
-  NMME.obj <- pcfg@NMME.models[[mdl.cfg$Model]]
-  download.fname <- file.path(download.dir,
-                              sprintf("%s.nc",mdl.id))
-
+#Loop over files
+fragstack.meta.l <- list()
+for(i in seq(downloaded.fnames)) {
+  this.file <- downloaded.fnames[i]
+  log_msg("Exploding %s, %s, file %02i of %02i...\n",this.sp@name,basename(this.file),i,length(downloaded.fnames))
+  
   #Figure out what's available, and what we actually want to extract
-  all.SL <- expand.grid(S.idx=seq(SLM[["S",mdl.id]]),
-                        L.idx=seq(SLM[["L",mdl.id]])) %>%
+  ncid <- nc_open(this.file)
+  all.SL <- expand.grid(S.idx=seq(ncid$dim$S$len),
+                        L.idx=seq(ncid$dim$L$len)) %>%
     as.tibble() %>%
-    mutate(S.val=SLM[["S",mdl.id]][S.idx],
-           L.val=SLM[["L",mdl.id]][L.idx],
-           start.date=epoch.start+months(S.val),
+    mutate(S.val=ncid$dim$S$val[S.idx],
+           L.val=ncid$dim$L$val[L.idx],
+           start.date=PE.cfg$NMME.epoch.start+months(S.val),
            forecast.date=start.date+months(floor(L.val)),
            forecast.month=month(forecast.date))
+  nc_close(ncid)
   
   #Now restrict to the relevant months
   sel.SL <- subset(all.SL,forecast.month %in% pcfg@MOI)
 
-  #Select realisations to explode  
-  if(any(NMME.obj@realizations==0)){
-    sel.M <- SLM[["M",mdl.id]]
-  } else {
-    sel.M <- NMME.obj@realizations
-  }
-
-  #Now comes the mega loop, where we loop over the start dates and members as well!
-  log_msg("Exploding %s, model  %02i of %02i...\n",mdl.id,i,nrow(meta))
+  #Now comes the mega loop, where we extract the dimensions that
+  #we are looking for
   pb <- progress_estimated(nrow(sel.SL))
   for(j in seq(nrow(sel.SL))) {
     pb$tick()$print()
-    sel.2D <- sel.SL[j,]
-    for(m in sel.M) {
-      #Setup for explode
-      fragment.fname <- sprintf("%s_S%s_L%02.1f_r%03i.nc",
-                                mdl.id,
-                                format(sel.2D$start.date,"%Y%m%d"),
-                                sel.2D$L.val,
-                                m)
-      fragment.full.path <- file.path(fragment.dir,fragment.fname)
-      
-      SLM.ROI.str <- sprintf("-d S,%i -d L,%i -d M,%i",
-                             sel.2D$S.idx,
-                             sel.2D$L.idx,
-                             m)
-      explode.cmd <- ncks("--fortran",   #Use indexing starting at 1, like in R
-                            SLM.ROI.str,
-                            download.fname,
-                            fragment.full.path)
-      condexec(1,explode.cmd)
-      
-      #Now apply ncwa to reduce the dimensionality so that we end
-      #up with something compatable with CDO
-      #We choose to drop the realization dimnension, to end with 
-      #a 4D variable
-      ncwa.cmd <- ncwa(sprintf("-a %s,M",NMME.obj@var),
-                       fragment.full.path,fragment.full.path)
-      condexec(1,ncwa.cmd)
-    }
+    this.sel.SL <- sel.SL[j,]
+    #Setup for explode
+    fragstack.fname <- sprintf("%s_%s_S%s_L%02.1f_fragstack.nc",
+                              this.src@name,
+                              this.sp@name,
+                              format(this.sel.SL$start.date,"%Y%m%d"),
+                              this.sel.SL$L.val)
+    fragstack.full.path <- file.path(fragstack.dir,fragstack.fname)
+    
+    SL.ROI.str <- sprintf("-d S,%i -d L,%i",
+                           this.sel.SL$S.idx,
+                           this.sel.SL$L.idx)
+    
+    #Boomski! Do it.
+    explode.cmd <- ncks("--fortran",   #Use indexing starting at 1, like in R
+                        SL.ROI.str,
+                        this.file,
+                        fragstack.full.path)
+    condexec(1,explode.cmd)
+    
+    #This leaves us with a file that is still 5D, but there are two
+    #degenerate dimensions now. If we drop them, then we end up with
+    #something that CDO can work with. For safety's sake, we first
+    #copy the two values into attributes
+    ncid <- nc_open(fragstack.full.path)
+    nc_close(ncid)
+    condexec(1,cmd <-ncatted("-h", sprintf("-a start.date,global,c,f,%f",ncid$dim$S$val),
+                             fragstack.full.path,fragstack.full.path))
+    condexec(1,cmd <-ncatted("-h", sprintf("-a lead,global,c,f,%f",ncid$dim$L$val),
+                             fragstack.full.path,fragstack.full.path))
+    
+    #Now drop the start.date and lead dimensions
+    ncwa.cmd <- ncwa(sprintf("-a %s,S,L",this.src@var),
+                     fragstack.full.path,fragstack.full.path)
+    condexec(1,ncwa.cmd)
+
+    #Create metadata as we go
+    res <- mutate(this.sel.SL,
+                  fname=fragstack.full.path,
+                  n.realizations=ncid$dim$M$len)
+    fragstack.meta.l[[fragstack.fname]] <- res
   }
   Sys.sleep(0.1)
   print(pb$stop())
   log_msg("\n")
 }
 
-
-
 #'========================================================================
-# Complete 
+# Finish 
 #'========================================================================
-#+ results='asis'
+#Build meta data object
+fragstack.meta <- bind_rows(fragstack.meta.l) %>%
+  select(start.date,date=forecast.date,lead=L.val,n.realizations,fname) %>%
+  add_column(name=this.src@name,
+             type=this.src@type,
+             .before=1)
+
+save(fragstack.meta,file=file.path(base.dir,PE.cfg$files$fragstack.meta))
+
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
