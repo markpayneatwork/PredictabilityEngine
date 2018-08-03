@@ -184,6 +184,7 @@ save(anom.meta,file=file.path(base.dir,"Anom_metadata.RData"))
 #Break into chunks per lead time and forecast date
 realmean.meta <- mutate(anom.meta,
                         anom.fname=fname,
+                        n.realizations=NA,
                         fname=file.path(realmean.dir,
                                         str_replace(basename(anom.fname),
                                                     "anom",

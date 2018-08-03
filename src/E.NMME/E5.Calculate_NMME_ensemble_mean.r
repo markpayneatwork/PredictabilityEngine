@@ -1,5 +1,5 @@
 ###########################################################################
-# E8.Calculate_NMME_ensemble_mean
+# E5.Calculate_NMME_ensemble_mean
 # ==========================================================================
 #
 # by Mark R Payne  
@@ -23,7 +23,7 @@
 #==========================================================================
 # Initialise system
 #==========================================================================
-cat(sprintf("\n%s\n","E8.Calculate_NMME_ensemble_mean"))
+cat(sprintf("\n%s\n","E5.Calculate_NMME_ensemble_mean"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Do house cleaning
@@ -34,25 +34,64 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 library(PredEng)
 library(dplyr)
 load("objects/configuration.RData")
-load("objects/setup.RData")
+load("objects/PredEng_config.RData")
 
 #==========================================================================
 # Configure
 #==========================================================================
-base.dir <- file.path(pcfg@scratch.dir,"NMME")
-ensmean.dir <- define_dir(base.dir,"C.ensmean")
+#Take input arguments, if any
+if(interactive()) {
+  cfg.id <- 1
+  set.debug.level(0)  #0 complete fresh run
+  set.condexec.silent(TRUE)
+  set.cdo.defaults("--silent --no_warnings -O")
+  set.log_msg.silent()
+  set.nco.defaults("--ovewrite")
+} else {
+  #Taking inputs from the system environment
+  cfg.id <- as.numeric(Sys.getenv("PBS_ARRAYID"))
+  if(cfg.id=="") stop("Cannot find PBS_ARRAYID")
+  #Do everything and tell us all about it
+  set.debug.level(0)  #0 complete fresh run
+  set.condexec.silent(FALSE)
+  set.cdo.defaults()
+  set.log_msg.silent(FALSE)
+}
 
-load(file.path(base.dir,"Realmean_metadata.RData"))
+#Other configurations
+set.nco.defaults("--overwrite")
 
-set.debug.level(0) #0 Do all
-set.cdo.defaults("--silent --no_warnings -O")
+#Extract configurations
+if(pcfg@use.global.ROI) { #only need to use one single global ROI
+  this.sp  <- spatial.subdomain(pcfg@global.ROI,name="")  
+  if(cfg.id!=1) stop("Incorrectly specified configuration")
+} else { #Working with subdomains
+  this.sp <- pcfg@spatial.subdomains[[cfg.id]]
+}
+
+#Configure directories
+subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)
+base.dir <- define_dir(subdomain.dir,"NMME")
+ensmean.dir <- define_dir(base.dir,PE.cfg$files$ensmean.name)
+anom.dir <- define_dir(ensmean.dir,"A.anoms")
 
 #==========================================================================
 # Setup
 #==========================================================================
+#Start by loading the metadata associated with each of the NMME
+#models
+metadat.l <- list()
+for(m in pcfg@NMME.models){
+  if(class(m)=="data.source") {
+    load(file.path(base.dir,m@name,PE.cfg$files$realmean.meta))
+    metadat.l[[m@name]] <- realmean.meta
+  }
+}
+metadat.all <- bind_rows(metadat.l)
+
 #Split files into processing chunks, where the common factor is that 
 #everything is the same apart from the realisation
-ensmean.group <- split(realmean.meta,realmean.meta[,c("start","lead")],
+ensmean.group <- split(metadat.all,metadat.all[,c("start.date","lead")],
                         drop=TRUE,sep="_")
 
 #==========================================================================
@@ -67,18 +106,14 @@ for(em.gp in ensmean.group) {
   pb$tick()$print()
   
   #Build commands
-  ensmean.fname <- file.path(ensmean.dir,
-                             unique(sprintf("NMME-ensmean_all_%s_%s_ensmean_anom.nc",
-                                  underscore_field(em.gp$fname,3),
-                                  underscore_field(em.gp$fname,4))))
-  # ensmean.cmd <- nces("--overwrite --netcdf4 --history",
-  #                      file.path(realmean.dir,em.gp$realmean.fname),
-  #                      file.path(ensmean.dir,ensmean.fname))
-  ensmean.cmd <- cdo("-ensmean",em.gp$fname,ensmean.fname)
+  ensmean.fname <- file.path(anom.dir,
+                             gsub("^.*?(_.*)_realmean.nc$","NMME-ensmean\\1_anom.nc",em.gp$fname[1]))
+
+  ensmean.cmd <- cdo("ensmean",em.gp$fname,ensmean.fname)
   condexec(1,ensmean.cmd)
   
   #Store new meta data
-  res <- em.gp %>%
+  res <- em.gp[1,] %>%
     select(-fname,-n.realizations) %>%
     mutate(n.mdls=nrow(em.gp),
            fname=ensmean.fname)
@@ -89,7 +124,8 @@ for(em.gp in ensmean.group) {
 #Form meta data
 ensmean.meta <- bind_rows(ensmean.meta.l) %>%
                 mutate(name="NMME-ensmean")
-save(ensmean.meta,file=file.path(base.dir,"Ensmean_metadata.RData"))
+save(ensmean.meta,file=file.path(ensmean.dir,PE.cfg$files$realmean.meta))
+
 
 #==========================================================================
 # Complete
