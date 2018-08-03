@@ -96,7 +96,7 @@ this.meta <- subset(meta,Model==this.src@name)
 #Define spatial ROI string (for input into NCKS)
 #NMME works on the basis of a 0 to 360 grid, so we need to account for that
 #However, NCKS can take care of the differences
-extract.ROI <- as.vector(extent(this.sp))
+extract.ROI <- as.vector(extend(extent(this.sp),PE.cfg$ROI.extraction.buffer))
 extract.ROI[1:2] <- Pacific.centered(extract.ROI[1:2])
 ROI.str <- do.call(sprintf,c("-d X,%.2f,%.2f -d Y,%.2f,%.2f",
                              as.list(extract.ROI)))
@@ -150,7 +150,8 @@ for(i in seq(nrow(this.meta))) {
     # condexec(2,missval.cmd,silent=TRUE)
     # 
     #Convert X axis to [-180,180]
-    #TODO
+    #Note that this is not necessary when we are using cdo later to do the remapping
+    #(and avoiding it saves a lot of )
     # ncid <- nc_open(download.full.path,write=TRUE)
     # nc_redef(ncid)
     # X.dim <- ncid$dim$X
