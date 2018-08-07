@@ -76,15 +76,14 @@ save(pcfg,file=file.path(pcfg@scratch.dir,"configuration.RData"))
 #Extract configurations
 require(tidyverse)
 
-cfg.dir <- define_dir(PE.cfg$dirs$cfg)
+project.cfg <- define_dir(pcfg@scratch.dir,"Job_configuration")
+unlink(PE.cfg$dirs$cfg)
+cfg.dir <- file.symlink(file.path(getwd(),project.cfg),PE.cfg$dirs$cfg)
 cfgs <- partition.workload(file.path(cfg.dir,"NMME.cfg"),pcfg,"NMME")
 cfgs <- partition.workload(file.path(cfg.dir,"NMME_Ensmean.cfg"),pcfg,NA)
 cfgs <- partition.workload(file.path(cfg.dir,"Decadal.cfg"),pcfg,"Decadal")
 cfgs <- partition.workload(file.path(cfg.dir,"Decadal_Ensmean.cfg"),pcfg,NA)
 cfgs <- partition.workload(file.path(cfg.dir,"Observations.cfg"),pcfg,"Observations")
-
-#this.src <- get.this.src(file.path(PE.cfg$dirs$cfg,"NMME_Ensmean.cfg"),cfg.no,pcfg)
-
 
 #' -----------
 #' <small>*This work by Mark R Payne is licensed under a  Creative Commons
