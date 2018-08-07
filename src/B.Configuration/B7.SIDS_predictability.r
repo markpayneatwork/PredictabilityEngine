@@ -33,7 +33,7 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 #Source the common elements
 library(PredEng)
 library(tibble)
-library(sf)
+library(sp)
 load("objects/PredEng_config.RData")
 source("src/B.Configuration/B0.Define_SST_data_srcs.r")
 
@@ -47,20 +47,20 @@ pcfg <- PredEng.config(project.name= "SIDS_Predictability",
                        clim.years=1983:2010,  
                        comp.years=1970:2012,
                        landmask="data_srcs/NMME/landmask.nc",
-                       observations=SST_obs[[c("HadISST")]],
+                       Observations=SST_obs[[c("HadISST")]],
                        #CMIP5.models=CMIP5.mdls.l,    #Disable
-                       NMME.models=NMME.sst.l)
+                       NMME=NMME.sst.l)
 
 #Setup scratch directory
 pcfg@scratch.dir <- file.path("scratch",pcfg@project.name)
 define_dir(pcfg@scratch.dir)
 
 #Drop NCEP forced model
-pcfg@decadal.models <- hindcast_mdls[-which(names(hindcast_mdls)=="MPI-NCEP-forced")]
+pcfg@Decadal <- hindcast_mdls[-which(names(hindcast_mdls)=="MPI-NCEP-forced")]
 
 #If working locally, only keep the simplest two models
 if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
-  pcfg@decadal.models <- pcfg@decadal.models[c(1,4)]
+  pcfg@Decadal <- pcfg@Decadal[c(1,4)]
 }
 
 #'========================================================================
@@ -71,15 +71,24 @@ pcfg@use.global.ROI <- FALSE
 pcfg@global.res  <- 0.25
 
 #Import EEZ's
-load("resources/EEZs/EEZs_raw.RData")
+load("resources/EEZs/EEZs.RData")
 
-#Restrict
-eez.sel <- subset(eez.sf,Area_km2 >1e3)
+#Modifications using sf
+# eez.sel <- subset(eez.sf,Area_km2 >1e3)
+# EEZ.objs <- PredEng.list()
+# for(i in seq(nrow(eez.sel))) {
+#   this.sf <- eez.sel[i,]
+#   EEZ.objs[[i]] <- spatial.subdomain(name=as.character(this.sf$MRGID),boundary=as(this.sf$geometry,"Spatial"))
+# }
+
+eez.sel <- subset(eez.sp,Area_km2 >1e3)
 EEZ.objs <- PredEng.list()
 for(i in seq(nrow(eez.sel))) {
-  this.sf <- eez.sel[i,]
-  EEZ.objs[[i]] <- spatial.subdomain(name=as.character(this.sf$MRGID),boundary=as(this.sf$geometry,"Spatial"))
+  this.sp <- eez.sel[i,]
+  EEZ.objs[[i]] <- spatial.subdomain(name=as.character(this.sp$MRGID),
+                                     boundary=as(this.sp,"SpatialPolygons"))
 }
+
 
 #Correct names and add to object
 names(EEZ.objs) <- eez.sel$MRGID
@@ -103,54 +112,13 @@ statsum.l[[1]]  <- spatial.mean(data.type="means",use.anomalies=TRUE)
 names(statsum.l) <- sapply(statsum.l,slot,"name")
 pcfg@summary.statistics <- statsum.l
 
-#'========================================================================
-# Output ####
-#'========================================================================
-#Write output files 
-base.dir <- define_dir(pcfg@scratch.dir)
-if(pcfg@use.global.ROI){
-  log_msg("Writing Global Outputs...\n")
-  #Write CDO grid descriptors
-  this.ROI <- extend(pcfg@global.ROI,PE.cfg$ROI.extraction.buffer)
-  analysis.grid.fname <- file.path(base.dir,PE.cfg$files$analysis.grid)
-  griddes.txt <- griddes(this.ROI,res=pcfg@global.res)
-  writeLines(griddes.txt,analysis.grid.fname)
-  
-  #Write regridded landmask
-  regrid.landmask <- file.path(pcfg@scratch.dir,PE.cfg$files$regridded.landmask)
-  exec(landmask.cmd <- cdo("-f nc",
-                           csl("remapnn", pcfg@analysis.grid.fname),
-                           pcfg@landmask,
-                           regrid.landmask))
-  
-} else { #Loop over spatial subdomains
-  for(sp in pcfg@spatial.subdomains){
-    log_msg("Writing outputs Descriptor for %s...\n",sp@name)
-    #Write CDO grid descriptors
-    sp.dir <- define_dir(base.dir,sp@name)
-    this.ROI <- extend(extent(sp),PE.cfg$ROI.extraction.buffer)
-    griddes.txt <- griddes(this.ROI,res=pcfg@global.res) 
-    analysis.grid.fname <- file.path(sp.dir,PE.cfg$files$analysis.grid)
-    writeLines(griddes.txt,analysis.grid.fname)
-    
-    #Write regridded landmask
-    regrid.landmask <- file.path(sp.dir,PE.cfg$files$regridded.landmask)
-    exec(landmask.cmd <- cdo("-f nc",
-                             csl("remapnn", analysis.grid.fname),
-                             pcfg@landmask,
-                             regrid.landmask))
-  }  
-}
-
-
-
-#Output
-save(pcfg,file="objects/configuration.RData")
-save(pcfg,file=file.path(pcfg@scratch.dir,"configuration.RData"))
 
 #'========================================================================
 # Done
 #'========================================================================
+#Output
+source("src/B.Configuration/B99.Configuration_wrapup.r")
+
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
 log_msg("\nConfiguration complete.\n")
