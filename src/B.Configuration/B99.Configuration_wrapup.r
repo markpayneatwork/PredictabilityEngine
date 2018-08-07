@@ -78,7 +78,9 @@ require(tidyverse)
 
 project.cfg <- define_dir(pcfg@scratch.dir,"Job_configuration")
 unlink(PE.cfg$dirs$cfg)
-cfg.dir <- file.symlink(file.path(getwd(),project.cfg),PE.cfg$dirs$cfg)
+file.symlink(file.path(getwd(),project.cfg),PE.cfg$dirs$cfg)
+cfg.dir <- PE.cfg$dirs$cfg
+
 cfgs <- partition.workload(file.path(cfg.dir,"NMME.cfg"),pcfg,"NMME")
 cfgs <- partition.workload(file.path(cfg.dir,"NMME_Ensmean.cfg"),pcfg,NA)
 cfgs <- partition.workload(file.path(cfg.dir,"Decadal.cfg"),pcfg,"Decadal")
