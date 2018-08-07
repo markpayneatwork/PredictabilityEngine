@@ -47,20 +47,20 @@ pcfg <- PredEng.config(project.name= "Bluefin",
                clim.years=1983:2005,  
                comp.years=1970:2012,
                landmask="data_srcs/NMME/landmask.nc",
-               observations=SST_obs[[c("HadISST")]],
+               Observations=SST_obs[[c("HadISST")]],
                #CMIP5.models=CMIP5.mdls.l,    #Disable
-               NMME.models=NMME.sst.l)
+               NMME=NMME.sst.l)
 
 #Setup scratch directory
 pcfg@scratch.dir <- file.path("scratch",pcfg@project.name)
 define_dir(pcfg@scratch.dir)
 
 #Drop NCEP forced model
-pcfg@decadal.models <- hindcast_mdls[-which(names(hindcast_mdls)=="MPI-NCEP-forced")]
+pcfg@Decadal <- hindcast_mdls[-which(names(hindcast_mdls)=="MPI-NCEP-forced")]
 
 #If working locally, only keep the simplest two models
 if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
-  pcfg@decadal.models <- pcfg@decadal.models[c(1,4)]
+  pcfg@Decadal <- pcfg@Decadal[c(1,4)]
 }
 
 #'========================================================================
@@ -127,45 +127,7 @@ pcfg@summary.statistics <- statsum.l
 #'========================================================================
 # Output ####
 #'========================================================================
-#Write output files 
-base.dir <- define_dir(pcfg@scratch.dir)
-if(pcfg@use.global.ROI){
-  log_msg("Writing Global Outputs...\n")
-  #Write CDO grid descriptors
-  this.ROI <- extend(pcfg@global.ROI,PE.cfg$ROI.extraction.buffer)
-  analysis.grid.fname <- file.path(base.dir,PE.cfg$files$analysis.grid)
-  griddes.txt <- griddes(this.ROI,res=pcfg@global.res)
-  writeLines(griddes.txt,analysis.grid.fname)
-  
-  #Write regridded landmask
-  regrid.landmask <- file.path(pcfg@scratch.dir,PE.cfg$files$regridded.landmask)
-  exec(landmask.cmd <- cdo("-f nc",
-                           csl("remapnn", pcfg@analysis.grid.fname),
-                           pcfg@landmask,
-                           regrid.landmask))
-
-} else { #Loop over spatial subdomains
-  for(sp in pcfg@spatial.subdomains){
-    log_msg("Writing outputs Descriptor for %s...\n",sp@name)
-    #Write CDO grid descriptors
-    sp.dir <- define_dir(base.dir,sp@name)
-    this.ROI <- extend(extent(sp),PE.cfg$ROI.extraction.buffer)
-    griddes.txt <- griddes(this.ROI,res=pcfg@global.res) 
-    analysis.grid.fname <- file.path(sp.dir,PE.cfg$files$analysis.grid)
-    writeLines(griddes.txt,analysis.grid.fname)
-    
-    #Write regridded landmask
-    regrid.landmask <- file.path(sp.dir,PE.cfg$files$regridded.landmask)
-    exec(landmask.cmd <- cdo("-f nc",
-                             csl("remapnn", analysis.grid.fname),
-                             pcfg@landmask,
-                             regrid.landmask))
-  }  
-}
-
-#Output
-save(pcfg,file="objects/configuration.RData")
-save(pcfg,file=file.path(pcfg@scratch.dir,"configuration.RData"))
+source("src/B.Configuration/B99.Configuration_wrapup.r")
 
 #'========================================================================
 # Done

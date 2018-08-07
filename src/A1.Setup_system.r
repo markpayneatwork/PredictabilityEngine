@@ -52,7 +52,8 @@ PE.cfg$NMME.epoch.start <- ymd("1960-01-01")
 
 #Directories
 PE.cfg$dirs <- list(Misc.meta="Z.Misc.meta",
-                    datasrc="data_srcs")
+                    datasrc="data_srcs",
+                    cfg="scratch/Job_configuration")
 
 #File names
 PE.cfg$files <- list(Obs.monthly.anom.metadata=file.path(PE.cfg$dir$Misc.meta,"Monthly_anom_metadata.RData"),

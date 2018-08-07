@@ -44,7 +44,7 @@ load("objects/PredEng_config.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  src.no <- 1
+  cfg.id <- 1
   set.debug.level(0)  #0 complete fresh run
   set.condexec.silent()
   set.cdo.defaults("--silent --no_warnings -O")
@@ -52,26 +52,23 @@ if(interactive()) {
   set.nco.defaults("--overwrite")
 } else {
   #Taking inputs from the system environment
-  src.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
-  if(src.no=="") stop("Cannot find PBS_ARRAYID")
+  cfg.id <- as.numeric(Sys.getenv("PBS_ARRAYID"))
+  if(cfg.id=="") stop("Cannot find PBS_ARRAYID")
   #Do everything and tell us all about it
   set.debug.level(0)  #0 complete fresh run
   set.condexec.silent(FALSE)
   set.cdo.defaults()
   set.log_msg.silent(FALSE)
 }
+
 #Extract configurations
-if(pcfg@use.global.ROI) { #only need to use one single global ROI
-  this.sp  <- ""
-} else { #Working with subdomains
-  this.sp <- names(pcfg@spatial.subdomains)[[src.no]]
-}
+this.sp <- get.this.sp(file.path(PE.cfg$dirs$cfg,"Decadal.cfg"),cfg.id,pcfg)
 
 #Directory setup
-base.dir <- define_dir(pcfg@scratch.dir,this.sp,"Decadal")
+base.dir <- define_dir(pcfg@scratch.dir,this.sp@name,"Decadal")
 ensmean.dir <- define_dir(base.dir,PE.cfg$files$ensmean.name)
 
-log_msg("Calculating Ensemble mean for %s subdomain ...\n",this.sp)
+log_msg("Calculating Ensemble mean for %s subdomain ...\n",this.sp@name)
 
 #'========================================================================
 # Setup ensemble averaging ####
@@ -79,7 +76,7 @@ log_msg("Calculating Ensemble mean for %s subdomain ...\n",this.sp)
 #Start by loading the metadata associated with each of the hindcast
 #models that we have chosen to use in our ensmean configuration
 metadat.l <- list()
-for(m in pcfg@decadal.models){
+for(m in pcfg@Decadal){
   if(class(m)=="data.source") {
     load(file.path(base.dir,m@name,PE.cfg$files$realmean.meta))
     metadat.l[[m@name]] <- realmean.meta

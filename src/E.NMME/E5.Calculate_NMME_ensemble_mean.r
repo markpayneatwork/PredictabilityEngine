@@ -61,13 +61,8 @@ if(interactive()) {
 #Other configurations
 set.nco.defaults("--overwrite")
 
-#Extract configurations
-if(pcfg@use.global.ROI) { #only need to use one single global ROI
-  this.sp  <- spatial.subdomain(pcfg@global.ROI,name="")  
-  if(cfg.id!=1) stop("Incorrectly specified configuration")
-} else { #Working with subdomains
-  this.sp <- pcfg@spatial.subdomains[[cfg.id]]
-}
+#Retrieve configurations
+this.sp <- get.this.sp(file.path(PE.cfg$dirs$cfg,"NMME_Ensmean.cfg"),cfg.id,pcfg)
 
 #Configure directories
 subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)

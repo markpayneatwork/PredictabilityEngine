@@ -53,7 +53,7 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  src.no <- 1
+  cfg.no <- 1
   set.debug.level(0)  #0 complete fresh run
   set.condexec.silent(TRUE)
   set.cdo.defaults("--silent --no_warnings -O")
@@ -61,8 +61,8 @@ if(interactive()) {
   set.nco.defaults("--ovewrite")
 } else {
   #Taking inputs from the system environment
-  src.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
-  if(src.no=="") stop("Cannot find PBS_ARRAYID")
+  cfg.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
+  if(cfg.no=="") stop("Cannot find PBS_ARRAYID")
   #Do everything and tell us all about it
   set.debug.level(0)  #0 complete fresh run
   set.condexec.silent(FALSE)
@@ -73,16 +73,9 @@ if(interactive()) {
 #Other configurations
 set.nco.defaults("--overwrite")
 
-#Extract configurations
-if(pcfg@use.global.ROI) { #only need to use one single global ROI
-  this.src <- pcfg@NMME.models[[src.no]]
-  this.sp  <- spatial.subdomain(pcfg@global.ROI,name="")  
-} else { #Working with subdomains
-  cfgs <- expand.grid(src=names(pcfg@NMME.models),
-                      sp=names(pcfg@spatial.subdomains))
-  this.src <- pcfg@NMME.models[[cfgs$src[src.no]]]
-  this.sp <- pcfg@spatial.subdomains[[cfgs$sp[src.no]]]
-}
+#Retrieve configurations
+this.sp <- get.this.sp(file.path(PE.cfg$dirs$cfg,"NMME.cfg"),cfg.no,pcfg)
+this.src <- get.this.src(file.path(PE.cfg$dirs$cfg,"NMME.cfg"),cfg.no,pcfg)
 
 #Configure directories
 base.dir <- define_dir(pcfg@scratch.dir,this.sp@name,"NMME",this.src@name)

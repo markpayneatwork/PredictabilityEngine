@@ -56,10 +56,10 @@ set.debug.level(0)  #0 complete fresh run
 # Retrieve meta data
 # ========================================================================
 #Restrict NMME models to individual data products, dropping the Ensmean
-indiv.NMME.models <- which(sapply(pcfg@NMME.models,class)=="data.source")
+indiv.NMME.models <- which(sapply(pcfg@NMME,class)=="data.source")
 
 #Import configurations from config object
-NMME.cfg <- lapply(pcfg@NMME.models[indiv.NMME.models],
+NMME.cfg <- lapply(pcfg@NMME[indiv.NMME.models],
                    function(d) {
                       tibble(Model=d@name,
                              type=names(d@source),

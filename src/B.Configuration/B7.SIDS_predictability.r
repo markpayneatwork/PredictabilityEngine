@@ -142,6 +142,8 @@ if(pcfg@use.global.ROI){
   }  
 }
 
+
+
 #Output
 save(pcfg,file="objects/configuration.RData")
 save(pcfg,file=file.path(pcfg@scratch.dir,"configuration.RData"))
