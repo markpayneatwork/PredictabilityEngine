@@ -33,7 +33,7 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 #Source the common elements
 library(PredEng)
 library(tibble)
-library(sf)
+library(sp)
 load("objects/PredEng_config.RData")
 source("src/B.Configuration/B0.Define_SST_data_srcs.r")
 
@@ -47,20 +47,20 @@ pcfg <- PredEng.config(project.name= "SIDS_Predictability",
                        clim.years=1983:2010,  
                        comp.years=1970:2012,
                        landmask="data_srcs/NMME/landmask.nc",
-                       observations=SST_obs[[c("HadISST")]],
+                       Observations=SST_obs[[c("HadISST")]],
                        #CMIP5.models=CMIP5.mdls.l,    #Disable
-                       NMME.models=NMME.sst.l)
+                       NMME=NMME.sst.l)
 
 #Setup scratch directory
 pcfg@scratch.dir <- file.path("scratch",pcfg@project.name)
 define_dir(pcfg@scratch.dir)
 
 #Drop NCEP forced model
-pcfg@decadal.models <- hindcast_mdls[-which(names(hindcast_mdls)=="MPI-NCEP-forced")]
+pcfg@Decadal <- hindcast_mdls[-which(names(hindcast_mdls)=="MPI-NCEP-forced")]
 
 #If working locally, only keep the simplest two models
 if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
-  pcfg@decadal.models <- pcfg@decadal.models[c(1,4)]
+  pcfg@Decadal <- pcfg@Decadal[c(1,4)]
 }
 
 #'========================================================================
@@ -71,15 +71,24 @@ pcfg@use.global.ROI <- FALSE
 pcfg@global.res  <- 0.25
 
 #Import EEZ's
-load("resources/EEZs/EEZs_raw.RData")
+load("resources/EEZs/EEZs.RData")
 
-#Restrict
-eez.sel <- subset(eez.sf,Area_km2 >1e3)
+#Modifications using sf
+# eez.sel <- subset(eez.sf,Area_km2 >1e3)
+# EEZ.objs <- PredEng.list()
+# for(i in seq(nrow(eez.sel))) {
+#   this.sf <- eez.sel[i,]
+#   EEZ.objs[[i]] <- spatial.subdomain(name=as.character(this.sf$MRGID),boundary=as(this.sf$geometry,"Spatial"))
+# }
+
+eez.sel <- subset(eez.sp,Area_km2 >1e3)
 EEZ.objs <- PredEng.list()
 for(i in seq(nrow(eez.sel))) {
-  this.sf <- eez.sel[i,]
-  EEZ.objs[[i]] <- spatial.subdomain(name=as.character(this.sf$MRGID),boundary=as(this.sf$geometry,"Spatial"))
+  this.sp <- eez.sel[i,]
+  EEZ.objs[[i]] <- spatial.subdomain(name=as.character(this.sp$MRGID),
+                                     boundary=as(this.sp,"SpatialPolygons"))
 }
+
 
 #Correct names and add to object
 names(EEZ.objs) <- eez.sel$MRGID
