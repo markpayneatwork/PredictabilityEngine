@@ -11,37 +11,45 @@
 # but instead just distributes the work to the cluster queueing system
 # via qsub
 #
+# Note also that the useage of this is a bit non-standard - to build
+# a specific type of file, you have to specify the TYPE argument e.g.
+#   make TYPE=NMME
+#
+# A list of available types, and their current status can be obtained 
+# using 
+#   make status
+#
 # Available targets
-#    NMME      : Processes NMME models
-# 
 #    help      ; Displays Makefile header with list of target
-#    vars      : Displays some useful variables
 #    clean     : Remove all record files
 # ----------------------------------------------------------------------
   
 #Sources, variables
 CFG_DIR=./scratch/Job_configuration
-NMME_CFGS=$(shell grep -o "^[0-9]\+" $(CFG_DIR)/NMME.cfg)
-NMME_OUTDIR=$(CFG_DIR)/NMME
-NMME_OKs=$(addprefix $(NMME_OUTDIR)/, $(addsuffix .ok, $(NMME_CFGS)))
-NMME_TODO=$(TODO_DIR)/NMME.todo
+TODO_DIR=$(CFG_DIR)/TODO
+CFGS=$(wildcard $(CFG_DIR)/*.cfg)
+TODOs=$(wildcard $(TODO_DIR)/*.todo)
+TYPES=$(notdir $(basename $(CFGS)))
+TYPE_DIRS=$(addprefix $(CFG_DIR)/,$(TYPES))
+
+OUTDIR=$(CFG_DIR)/$(TYPE)
+JOB_LIST=$(shell grep -o "^[0-9]\+" $(CFG_DIR)/$(TYPE).cfg)
+OKs=$(addprefix $(OUTDIR)/, $(addsuffix .ok, $(JOB_LIST)))
+TODO=$(TODO_DIR)/$(TYPE).todo
 
 #Target file lists
 MASTER=./src/Y.HPC_scripts/qMaster.sh
-TODO_DIR=$(CFG_DIR)/TODO
-TODOs=$(wildcard $(TODO_DIR)/*.todo)
 
 #Default target
-default: help
-
+default: help status
 
 #-------------------------------------
 #NMME
-NMME:  todo $(NMME_OKs)
-	TASK_IDS=`paste -s -d "," $(NMME_TODO)`; qsub -N PE_NMME -v NAME=NMME -t $$TASK_IDS $(MASTER)
+THIS:  todo $(OKs)
+	TASK_IDS=`paste -s -d "," $(TODO)`; qsub -N PE_$(DO) -v NAME=$(DO) -t $$TASK_IDS $(MASTER)
 	
-$(NMME_OUTDIR)/%.ok: 
-	@echo $* >> $(NMME_TODO)
+$(OUTDIR)/%.ok: 
+	@echo $* >> $(TODO)
 	
 #-------------------------------------
 #Remove any existing To do files
@@ -50,9 +58,14 @@ todo: $(TODOs)
 $(TODO_DIR)/%.todo: FORCE 
 	cat /dev/null  > $@ 
 
+status: $(addsuffix .status,$(TYPES))
+
+%.status: $(CFG_DIR)/%.cfg
+	@echo $*  : `ls $(CFG_DIR)/$*/ | wc -l` out of `grep -c "^[0-9]\+," $<` jobs
+
 setup: FORCE
-	mkdir $(NMME_OUTDIR)
-	mkdir $(TODO_DIR)
+	-mkdir $(TYPE_DIRS)
+	-mkdir $(TODO_DIR)
 
 #-------------------------------------
 clean:
