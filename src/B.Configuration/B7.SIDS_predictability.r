@@ -33,6 +33,7 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 #Source the common elements
 library(PredEng)
 library(tibble)
+library(raster)
 load("objects/PredEng_config.RData")
 source("src/B.Configuration/B0.Define_SST_data_srcs.r")
 
@@ -66,8 +67,9 @@ if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
 # Spatial Configurations ####
 #'========================================================================
 #Set global variables
-pcfg@use.global.ROI <- FALSE
-pcfg@global.res  <- 0.25
+pcfg@use.global.ROI <- TRUE
+pcfg@global.ROI <- extent(-180,180,-90,90)
+pcfg@global.res  <- 1 #0.25
 
 #Import EEZ's
 load("resources/EEZs/EEZs.RData")
@@ -80,6 +82,7 @@ load("resources/EEZs/EEZs.RData")
 #   EEZ.objs[[i]] <- spatial.subdomain(name=as.character(this.sf$MRGID),boundary=as(this.sf$geometry,"Spatial"))
 # }
 
+#Exclude small EEZs
 eez.sel <- subset(eez.sp,Area_km2 >1e3)
 EEZ.objs <- PredEng.list()
 for(i in seq(nrow(eez.sel))) {
