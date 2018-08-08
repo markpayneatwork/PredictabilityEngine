@@ -49,15 +49,15 @@ load("objects/PredEng_config.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  src.no <- 17  #1,2,10,15,17
+  cfg.no <- 1  #1,2,10,15,17
   set.debug.level(0)  #Non-zero lets us run with just a few points
   set.cdo.defaults("--silent --no_warnings")
   set.condexec.silent()
   set.log_msg.silent()
 } else {
   #Taking inputs from the system environment
-  src.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
-  if(src.no=="") stop("Cannot find PBS_ARRAYID")
+  cfg.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
+  if(cfg.no=="") stop("Cannot find PBS_ARRAYID")
   #Do everything
   set.debug.level(0)  #0 complete fresh run
 }
@@ -65,37 +65,14 @@ if(interactive()) {
 #'========================================================================
 # Divide work ####
 #'========================================================================
-#Supported data sources
-dat.srcs.l <- c(pcfg@decadal.models,
-              pcfg@NMME.models,
-              pcfg@observations,
-              pcfg@CMIP5.models)
-dat.srcs <- tibble(src.type=sapply(dat.srcs.l,slot,"type"),
-                       src.name=sapply(dat.srcs.l,slot,"name"))
-dat.srcs <- rbind(dat.srcs,
-                  tibble(src.type=c("Decadal","NMME"),src.name=PE.cfg$files$ensmean.name),
-                  tibble(src.type="Persistence",src.name=pcfg@observations@name))
-dat.srcs$src.id <- seq(nrow(dat.srcs))
+#Retrieve configurations
+cfg.fname <- file.path(PE.cfg$dirs$cfg,"SumStat.cfg")
+this.cfgs <- get.this.cfgs(cfg.fname)
+this.sp <- get.this.sp(cfg.fname,cfg.no,pcfg)
+this.src <- get.this.src(cfg.fname,cfg.no,pcfg)
+config.summary(this.src,this.sp)
 
-#Supported spatial subdomains
-if(pcfg@use.global.ROI) {
-  sp.subdomains <- ""
-} else {
-  sp.subdomains <- names(pcfg@spatial.subdomains)
-}
-
-#Do the expansion
-work.cfg <- expand.grid(src.id=dat.srcs$src.id,
-                        sp=sp.subdomains) %>%
-            left_join(dat.srcs,by="src.id") %>%
-            as.tibble()
-this.cfg <- work.cfg[src.no,]
-this.sp <- pcfg@spatial.subdomains[[this.cfg$sp]]
-
-log_msg("Processing (%s) %s for %s subdomain, number %i of %i configurations.\n\n",
-        this.cfg$src.type,this.cfg$src.name,this.cfg$sp,src.no,nrow(work.cfg))
-
-if(this.cfg$src.type=="Persistence" & !pcfg@average.months & length(pcfg@MOI) >1 &
+if(this.src@type=="Persistence" & !pcfg@average.months & length(pcfg@MOI) >1 &
    any(!sapply(pcfg@summary.statistics,slot,"use.anomalies"))){
   stop("Don't know how to handle a persistence forecast for full
        field summary statistics in presence of multiple months")
@@ -106,7 +83,7 @@ if(this.cfg$src.type=="Persistence" & !pcfg@average.months & length(pcfg@MOI) >1
 #'========================================================================
 #Directory setup
 base.dir <- file.path(pcfg@scratch.dir,this.sp@name)
-obs.dir <- file.path(base.dir,pcfg@observations@type,pcfg@observations@name)
+obs.dir <- file.path(base.dir,pcfg@Observations@type,pcfg@Observations@name)
 sumstat.dir <- define_dir(base.dir,"Summary.statistics")
 
 #Setup observational climatology
@@ -116,6 +93,18 @@ names(obs.clim.l) <- sprintf("%02i",month(clim.meta$date))
 
 #Setup landmask 
 landmask <- raster(file.path(base.dir,PE.cfg$files$regridded.landmask))
+
+#Setup weights
+#Currently not used
+# wts <- landmask
+# wts[] <-0
+# xtr.cell.l <- extract(wts,this.sp@boundary,cellnumbers=TRUE,weights=TRUE)
+# for(xtr in xtr.cell.l){
+#   wts[xtr[,"cell"]] <- xtr[,"weight"]
+# }
+
+#Apply the spatial ROI to the mask as well
+comb.mask <- mask(landmask,this.sp@boundary,updatevalue=1)
 
 #Result storage
 sum.stats.l <- list()
@@ -135,7 +124,7 @@ for(j in seq(pcfg@summary.statistics)) {
           sumstat@name,j,length(pcfg@summary.statistics))
   
   #Load the appropriate metadata
-  if(this.cfg$src.name==PE.cfg$files$ensmean.name) { #Obviously only going to use ensmean data
+  if(this.src@name==PE.cfg$files$ensmean.name) { #Obviously only going to use ensmean data
     metadat.fname <- PE.cfg$files$realmean.meta
   } else if(sumstat@data.type=="means") { #Use realmeans
     metadat.fname <- PE.cfg$files$realmean.meta
@@ -146,7 +135,7 @@ for(j in seq(pcfg@summary.statistics)) {
   }
 
   #Load Metadata
-  metadat.path <- file.path(base.dir,this.cfg$src.type,this.cfg$src.name,metadat.fname)
+  metadat.path <- file.path(base.dir,this.src@type,this.src@name,metadat.fname)
   if(file.exists(metadat.path)) {
     metadat.varname <- load(metadat.path)
     metadat <- get(metadat.varname)    
@@ -156,7 +145,6 @@ for(j in seq(pcfg@summary.statistics)) {
     
   }
 
-  
   #Configure the observation climatology
   if(pcfg@average.months | length(pcfg@MOI)==1) {
     metadat$which.clim <- 1  #Just use the value that is there
@@ -212,14 +200,11 @@ for(j in seq(pcfg@summary.statistics)) {
     }
     
     
-    #Apply the land mask 
-    masked.land <- mask(mdl.val,landmask,maskvalue=1)
-    
-    #Apply the polygon mask    
-    masked.land.sp <- mask(masked.land,this.sp@boundary)
-    
+    #Apply the masks 
+    masked.vals <- mask(mdl.val,comb.mask,maskvalue=1)
+  
     #And we're ready. Lets calculate some summary statistics
-    res <- eval.sum.stat(ss=sumstat,r=masked.land.sp) 
+    res <- eval.sum.stat(ss=sumstat,vals=masked.vals) 
     
     #Add in the metadata and store the results
     #Doing the bind diretly like this is ok when we are dealing with
@@ -243,8 +228,10 @@ for(j in seq(pcfg@summary.statistics)) {
 
   #Store results
   save.fname <- gsub(" ","-",sprintf("%s_%s_%s_%s.RData",
-                                     this.sp@name,this.cfg$src.type,
-                                     this.cfg$src.name,sumstat@name))
+                                     this.sp@name,
+                                     this.src@type,
+                                     this.src@name,
+                                     sumstat@name))
   save(sumstat.res,file=file.path(sumstat.dir,save.fname))
 }
 

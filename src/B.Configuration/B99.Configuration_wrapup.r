@@ -86,6 +86,12 @@ cfgs <- partition.workload(file.path(cfg.dir,"NMME_Ensmean.cfg"),pcfg,NA)
 cfgs <- partition.workload(file.path(cfg.dir,"Decadal.cfg"),pcfg,"Decadal")
 cfgs <- partition.workload(file.path(cfg.dir,"Decadal_Ensmean.cfg"),pcfg,NA)
 cfgs <- partition.workload(file.path(cfg.dir,"Observations.cfg"),pcfg,"Observations")
+cfgs <- partition.workload(file.path(cfg.dir,"SumStat.cfg"),pcfg,
+                           c("Decadal","NMME","Observations","CMIP5"),
+                           partition.by.space=TRUE,
+                           include.ensmeans = TRUE,
+                           include.persistence = TRUE)
+
 
 #' -----------
 #' <small>*This work by Mark R Payne is licensed under a  Creative Commons
