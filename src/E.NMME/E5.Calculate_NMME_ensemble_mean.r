@@ -103,7 +103,7 @@ for(em.gp in ensmean.group) {
   
   #Build commands
   ensmean.fname <- file.path(anom.dir,
-                             gsub("^.*?(_.*)_realmean.nc$","NMME-ensmean\\1_anom.nc",em.gp$fname[1]))
+                             gsub("^.*?(_.*)_realmean.nc$","NMME-ensmean\\1_anom.nc",basename(em.gp$fname[1])))
 
   ensmean.cmd <- cdo("ensmean",em.gp$fname,ensmean.fname)
   condexec(1,ensmean.cmd)
