@@ -43,7 +43,7 @@ if(pcfg@use.global.ROI){
   #Write regridded landmask
   regrid.landmask <- file.path(pcfg@scratch.dir,PE.cfg$files$regridded.landmask)
   exec(landmask.cmd <- cdo("--silent -f nc",
-                           csl(" remapnn", pcfg@analysis.grid.fname),
+                           csl(" remapnn", analysis.grid.fname),
                            pcfg@landmask,
                            regrid.landmask))
 
