@@ -66,7 +66,7 @@ if(interactive()) {
 # Divide work ####
 #'========================================================================
 #Retrieve configurations
-cfg.fname <- file.path(PE.cfg$dirs$cfg,"SumStat.cfg")
+cfg.fname <- file.path(PE.cfg$dirs$cfg,"SumStats.cfg")
 this.cfgs <- get.this.cfgs(cfg.fname)
 this.sp <- get.this.sp(cfg.fname,cfg.no,pcfg)
 this.src <- get.this.src(cfg.fname,cfg.no,pcfg)
@@ -82,7 +82,10 @@ if(this.src@type=="Persistence" & !pcfg@average.months & length(pcfg@MOI) >1 &
 # Setup ####
 #'========================================================================
 #Directory setup
-base.dir <- file.path(pcfg@scratch.dir,this.sp@name)
+if(pcfg@use.global.ROI) {
+	base.dir <- pcfg@scratch.dir
+} else {
+	base.dir <- file.path(pcfg@scratch.dir,this.sp@name)}
 obs.dir <- file.path(base.dir,pcfg@Observations@type,pcfg@Observations@name)
 sumstat.dir <- define_dir(base.dir,"Summary.statistics")
 

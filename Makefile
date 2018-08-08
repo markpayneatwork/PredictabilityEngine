@@ -46,7 +46,7 @@ default: help status
 #-------------------------------------
 #NMME
 THIS:  todo $(OKs)
-	TASK_IDS=`paste -s -d "," $(TODO)`; qsub -N PE_$(DO) -v NAME=$(DO) -t $$TASK_IDS $(MASTER)
+	TASK_IDS=`paste -s -d "," $(TODO)`; qsub -N PE_$(TYPE) -v NAME=$(TYPE) -t $$TASK_IDS $(MASTER)
 	
 $(OUTDIR)/%.ok: 
 	@echo $* >> $(TODO)
@@ -61,7 +61,7 @@ $(TODO_DIR)/%.todo: FORCE
 status: $(addsuffix .status,$(TYPES))
 
 %.status: $(CFG_DIR)/%.cfg
-	@echo $*  : `ls $(CFG_DIR)/$*/ | wc -l` out of `grep -c "^[0-9]\+," $<` jobs
+	@echo `printf "%-30s" "$*"`  : `ls $(CFG_DIR)/$*/ | wc -l` out of `grep -c "^[0-9]\+," $<` jobs
 
 setup: FORCE
 	-mkdir $(TYPE_DIRS)
