@@ -33,7 +33,6 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 #Source the common elements
 library(PredEng)
 library(tibble)
-library(sp)
 load("objects/PredEng_config.RData")
 source("src/B.Configuration/B0.Define_SST_data_srcs.r")
 
@@ -86,6 +85,7 @@ EEZ.objs <- PredEng.list()
 for(i in seq(nrow(eez.sel))) {
   this.sp <- eez.sel[i,]
   EEZ.objs[[i]] <- spatial.subdomain(name=as.character(this.sp$MRGID),
+                                     desc=this.sp$GeoName,
                                      boundary=as(this.sp,"SpatialPolygons"))
 }
 

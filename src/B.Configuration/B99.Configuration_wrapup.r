@@ -74,7 +74,7 @@ save(pcfg,file=file.path(pcfg@scratch.dir,"configuration.RData"))
 # HPC  Configuration ####
 #'========================================================================
 #Extract configurations
-require(tidyverse)
+#require(tidyverse)
 
 project.cfg <- define_dir(pcfg@scratch.dir,"Job_configuration")
 unlink(PE.cfg$dirs$cfg)

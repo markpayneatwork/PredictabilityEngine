@@ -76,7 +76,10 @@ this.src <- get.this.src(file.path(PE.cfg$dirs$cfg,"NMME.cfg"),cfg.no,pcfg)
 base.dir <- define_dir(pcfg@scratch.dir,this.sp@name,"NMME",this.src@name)
 download.dir <- define_dir(base.dir,"0.data")
 
-log_msg("Processing %s spatial subdomain....\n",this.sp@name)
+log_msg("Configuration.\n")
+log_msg("--------------\n")
+log_msg("Data source       : %s \n",this.src@name)
+log_msg("Spatial subdomain : %s (%s)\n",this.sp@name,this.sp@desc)
 
 # ========================================================================
 # Setup
