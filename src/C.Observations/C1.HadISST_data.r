@@ -67,7 +67,8 @@ if(interactive()) {
 
 #Retrieve configurations
 this.sp <- get.this.sp(file.path(PE.cfg$dirs$cfg,"Observations.cfg"),cfg.no,pcfg)
-config.summary(this.sp)
+this.src <- pcfg@Observations
+config.summary(this.sp,this.src)
 
 #Data source
 HadISST.dat <- file.path(PE.cfg$dirs$datasrc,"Observations/HadISST","HadISST_sst.nc")
@@ -111,23 +112,20 @@ remap.fname <- file.path(work.dir,gsub(".nc$","_remapped.nc",basename(in.fname))
 condexec(2,remap.cmd <- cdo("-f nc", csl("remapbil", analysis.grid.fname),
                             in.fname,remap.fname))
 
-#Use remap.fname as source for further calculations
-this.src <- remap.fname
-
 #/*======================================================================*/
 #  Anomalies, clims, fragments
 #/*======================================================================*/
 #Calculate climatology 
 log_msg("Climatology....")
-mon.clim.fname <- gsub(".nc$","_climatology.nc",this.src)
+mon.clim.fname <- gsub(".nc$","_climatology.nc",remap.fname)
 condexec(3,clim.cmd <- cdo("ymonmean",
                            csl("-selyear",pcfg@clim.years),
-                           this.src,mon.clim.fname))
+                           remap.fname,mon.clim.fname))
 
 #Calculate anomalies
 log_msg("Anomalies...")
-mon.anom.fname <- gsub(".nc$","_anom.nc",this.src)
-condexec(4,anom.cmd <- cdo("sub",this.src,mon.clim.fname,mon.anom.fname))
+mon.anom.fname <- gsub(".nc$","_anom.nc",remap.fname)
+condexec(4,anom.cmd <- cdo("sub",remap.fname,mon.clim.fname,mon.anom.fname))
 
 #'========================================================================
 # Average over MOIs (if relevant) ####
@@ -157,7 +155,7 @@ if(pcfg@average.months) {
   }
   
   #Now do averaging
-  MOIave.anom <- MOI.average(this.src)
+  MOIave.anom <- MOI.average(remap.fname)
   MOIave.yearmean <- MOI.average(mon.clim.fname)
   
   #Now need to do the complete mean on MOIave.clim and move it 
@@ -175,16 +173,16 @@ if(pcfg@average.months) {
 log_msg("Fragmenting...")
 
 #Explode the climatologies fragment into year/months
-mon.clim.frag.prefix <- file.path(mon.clim.dir,sprintf("%s_climatology_",pcfg@observations@name))
+mon.clim.frag.prefix <- file.path(mon.clim.dir,sprintf("%s_climatology_",this.src@name))
 condexec(3,frag.cmd <- cdo("splitmon",mon.clim.fname,mon.clim.frag.prefix))
 
 #Explode the anomalies fragment into year/months
-mon.anom.frag.prefix <- file.path(mon.anom.dir,sprintf("%s_",pcfg@observations@name))
+mon.anom.frag.prefix <- file.path(mon.anom.dir,sprintf("%s_",this.src@name))
 condexec(3,frag.cmd <- cdo("splityearmon",mon.anom.fname,mon.anom.frag.prefix))
 
 if(pcfg@average.months) {
   #Explode the MOIanomalies fragment into individual files, one per year
-  MOIave.anom.frag.prefix <- file.path(MOIave.anom.dir,sprintf("%s_",pcfg@observations@name))
+  MOIave.anom.frag.prefix <- file.path(MOIave.anom.dir,sprintf("%s_",this.src@name))
   condexec(3,MOI.frag.cmd <- cdo("splityear",
                                  MOIave.anom,
                                  MOIave.anom.frag.prefix))
@@ -210,8 +208,8 @@ generate.metadata <- function(src.dir) {
   
   #Build metadata
   src.meta <- bind_rows(meta.dat.l) %>%
-    add_column(name=pcfg@observations@name,
-               type=pcfg@observations@type,
+    add_column(name=this.src@name,
+               type=this.src@type,
                .before=1) %>%
     mutate(start.date=NA,
            n.realizations=1,
@@ -249,7 +247,7 @@ save(realmean.meta,file=file.path(base.dir,"Realmean_metadata.RData"))
 #And now for the climatologies
 if(pcfg@average.months) {
   #Only a single clim file - generate by hand
-  clim.meta <- tibble(name=pcfg@observations@name,
+  clim.meta <- tibble(name=this.src@name,
                       type="Climatology",
                       date=as.Date(ISOdate(9999,pcfg@MOI,15)),
                       start.date=NA,
