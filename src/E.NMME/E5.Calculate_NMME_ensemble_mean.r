@@ -63,6 +63,7 @@ set.nco.defaults("--overwrite")
 
 #Retrieve configurations
 this.sp <- get.this.sp(file.path(PE.cfg$dirs$cfg,"NMME_Ensmean.cfg"),cfg.id,pcfg)
+config.summary(this.sp)
 
 #Configure directories
 subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)
@@ -70,15 +71,13 @@ base.dir <- define_dir(subdomain.dir,"NMME")
 ensmean.dir <- define_dir(base.dir,PE.cfg$files$ensmean.name)
 anom.dir <- define_dir(ensmean.dir,"A.anoms")
 
-config.summary(this.sp)
-
 #==========================================================================
 # Setup
 #==========================================================================
 #Start by loading the metadata associated with each of the NMME
 #models
 metadat.l <- list()
-for(m in pcfg@NMME.models){
+for(m in pcfg@NMME){
   if(class(m)=="data.source") {
     load(file.path(base.dir,m@name,PE.cfg$files$realmean.meta))
     metadat.l[[m@name]] <- realmean.meta
