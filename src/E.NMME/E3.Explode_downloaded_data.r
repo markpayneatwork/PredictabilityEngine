@@ -83,10 +83,7 @@ download.dir <- define_dir(base.dir,"0.data")
 fragstack.dir <- define_dir(base.dir,"1.fragstacks")
 misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
 
-log_msg("Configuration.\n")
-log_msg("--------------\n")
-log_msg("Data source       : %s \n",this.src@name)
-log_msg("Spatial subdomain : %s (%s)\n",this.sp@name,this.sp@desc)
+config.summary(this.src,this.sp)
 
 #'========================================================================
 # Setup ####

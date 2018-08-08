@@ -76,11 +76,7 @@ realmean.dir <- define_dir(base.dir,"B.realmean")
 analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$files$analysis.grid)
 remapping.wts.fname <- file.path(base.dir,PE.cfg$files$remapping.wts)
 
-log_msg("Configuration.\n")
-log_msg("--------------\n")
-log_msg("Data source       : %s \n",this.src@name)
-log_msg("Spatial subdomain : %s (%s)\n",this.sp@name,this.sp@desc)
-
+config.summary(this.src,this.sp)
 
 #'==========================================================================
 # Setup ####

@@ -70,9 +70,7 @@ base.dir <- define_dir(subdomain.dir,"NMME")
 ensmean.dir <- define_dir(base.dir,PE.cfg$files$ensmean.name)
 anom.dir <- define_dir(ensmean.dir,"A.anoms")
 
-log_msg("Configuration.\n")
-log_msg("--------------\n")
-log_msg("Spatial subdomain : %s (%s)\n",this.sp@name,this.sp@desc)
+config.summary(this.sp)
 
 #==========================================================================
 # Setup
