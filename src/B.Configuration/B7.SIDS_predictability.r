@@ -122,6 +122,12 @@ pcfg@summary.statistics <- statsum.l
 #Output
 source("src/B.Configuration/B99.Configuration_wrapup.r")
 
+#As this project is so big, we also need to partition the collation
+#process as well
+cfgs <- partition.workload(file.path(cfg.dir,"SumStat_Collate.cfg"),
+                           pcfg,NA,partition.by.space=TRUE)
+
+
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
 log_msg("\nConfiguration complete.\n")

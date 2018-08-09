@@ -8,7 +8,10 @@
 #
 # Created Fri Jun  1 15:53:49 2018
 #
-# Collates summary statistics generated previously into a single metric
+# Collates summary statistics generated previously into a single metric. Note 
+# that the collation takes place over two dimensions - firstly over the data
+# sources (e.g. NMME, Decadal, Observations) and then this needs to be 
+# repeated for for each spatial area.
 #
 # This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 # You are largely free to do what you like with it, so long as you "attribute"
@@ -45,29 +48,60 @@ load("objects/PredEng_config.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  set.debug.level(0)  #Non-zero lets us run with just a few points
-} else {
-  #Do everything
+  partition.collation <- TRUE
+  cfg.no <- 2
   set.debug.level(0)  #0 complete fresh run
+  set.condexec.silent()
+  set.cdo.defaults("--silent --no_warnings -O")
+  set.log_msg.silent()
+  set.nco.defaults("--ovewrite")
+} else {
+  #Taking inputs from the system environment
+  partition.collation <- TRUE
+  cfg.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
+  if(cfg.no=="") stop("Cannot find PBS_ARRAYID")
+  #Do everything and tell us all about it
+  set.debug.level(0)  #0 complete fresh run
+  set.condexec.silent(FALSE)
+  set.cdo.defaults()
+  set.log_msg.silent(FALSE)
 }
+
+#Other configurations
+set.nco.defaults("--overwrite")
+
+#Retrieve configurations
+#However, in some cases we will want to do the collation all in one step.
+#In other cases, we will want to partition it up into smaller bits
+#We make the distinction based on whether the script is being run
+#interactively or from a script
+# if(partition.collation){
+#   cfg.fname <- file.path(PE.cfg$dirs$cfg,"SumStat_Collate.cfg")
+#   this.cfgs <- get.this.cfgs(cfg.fname)
+#   this.sp <- get.this.sp(cfg.fname,cfg.no,pcfg)
+#   sp.dirs <- this.sp@name
+#   config.summary(this.sp)
+# } else 
+  
+if(pcfg@use.global.ROI) {
+  sp.dirs <- ""
+} else {
+  sp.dirs <- names(pcfg@spatial.subdomains)
+}
+sp.subdomains <- names(pcfg@spatial.subdomains)[1:2]
 
 #Directory setup
 base.dir <- pcfg@scratch.dir
+out.dir <- define_dir(base.dir,"Collated.SumStats")
 
 #'========================================================================
 # Select input data ####
 #'========================================================================
-#Get list of sp subdomains
-if(pcfg@use.global.ROI) {
-  sp.subdomains <- ""
-} else {
-  sp.subdomains <- names(pcfg@spatial.subdomains)
-}
-
+log_msg("Loading input data..\n")
 #Loop over subdomains them individually and import
 ss.l <- list()
-for(sp in sp.subdomains){
-  ss.fnames <- dir(file.path(base.dir,sp,"Summary.statistics"),full.names = TRUE)
+for(sp.d in sp.dirs){
+  ss.fnames <- dir(file.path(base.dir,sp.d,"Summary.statistics"),full.names = TRUE)
   for(f in ss.fnames){
     var.names <- load(f)
     ss.l[[f]]   <- get(var.names)
@@ -89,6 +123,7 @@ all.ss.raw <- bind_rows(common.cols.l) %>%
 #'========================================================================
 # Persistence forecasts ####
 #'========================================================================
+log_msg("Setting up persistence forecasts...\n")
 #Extract persistence and observation data
 obs.ss <- subset(all.ss.raw,type=="Observations")
 persis.ss <- subset(all.ss.raw,type=="Persistence") %>%
@@ -99,6 +134,7 @@ persis.ss <- subset(all.ss.raw,type=="Persistence") %>%
 lead.times <- c(1:11,seq(7,127,by=12))
 #lead.times <- 1:120
 persis.forecast.grid <- expand.grid(date=unique(obs.ss$date),
+                                    sp.subdomain=sp.subdomains,
                                     lead=lead.times) %>%
                         as.tibble() %>%
                         mutate(start.date=date-months(lead),
@@ -124,6 +160,8 @@ all.ss$lead <- round(all.ss$lead.raw/0.5)*0.5
 #'========================================================================
 # Split and Merge ####
 #'========================================================================
+log_msg("Split and merge...\n")
+
 #Drop years that are not to be included in the evaluation of skill metrics
 #and drop CMIP5 as well (not interested in the skill)
 sel.res <-  all.ss %>% 
@@ -131,7 +169,10 @@ sel.res <-  all.ss %>%
                    !grepl("CMIP5",type)) 
 
 #Extract out the observational data
-obs.dat <- obs.ss %>% select(ym,sumstat.name,value)
+obs.dat <- obs.ss %>% 
+  filter(year(date) %in% pcfg@comp.years) %>%
+  select(sp.subdomain,ym,sumstat.name,value) 
+
 
 #And merge it back into the comparison dataframe. This way we have both the
 #modelled and the observed results together in the same dataframe. We note
@@ -145,6 +186,7 @@ comp.dat <- left_join(sel.res,obs.dat,
 #'========================================================================
 # Calculate the metrics ####
 #'========================================================================
+log_msg("Metric calculation...\n")
 #Now calculate the metrics
 RMSE <- function(x,y) { sqrt(mean((x-y)^2))}
 skill.m <- comp.dat %>%

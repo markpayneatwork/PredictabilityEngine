@@ -49,7 +49,7 @@ load("objects/PredEng_config.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.no <- 1  #1,2,10,15,17
+  cfg.no <- 989  #1,2,10,15,17
   set.debug.level(0)  #Non-zero lets us run with just a few points
   set.cdo.defaults("--silent --no_warnings")
   set.condexec.silent()

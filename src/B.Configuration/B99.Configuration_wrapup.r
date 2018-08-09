@@ -92,7 +92,6 @@ cfgs <- partition.workload(file.path(cfg.dir,"SumStats.cfg"),pcfg,
                            include.ensmeans = TRUE,
                            include.persistence = TRUE)
 
-
 #' -----------
 #' <small>*This work by Mark R Payne is licensed under a  Creative Commons
 #' Attribution-NonCommercial-ShareAlike 3.0 Unported License.
