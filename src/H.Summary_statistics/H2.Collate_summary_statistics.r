@@ -39,7 +39,7 @@ library(tibble)
 library(dplyr)
 library(reshape2)
 library(lubridate)
-library(udunits2)
+#library(udunits2)
 load("objects/configuration.RData")
 load("objects/PredEng_config.RData")
   
@@ -140,10 +140,17 @@ all.ss <- rbind(subset(all.ss.raw,type!="Persistence"),
                  persis.forecast.ss)
 
 #Calculate lead time using udunits
-ud.from <- "days since 1970-01-01"
-ud.to <- "months since 1900-01-01"
-all.ss$lead.raw <- as.numeric(ud.convert(all.ss$date,ud.from,ud.to))-
-                    as.numeric(ud.convert(all.ss$start.date,ud.from,ud.to))
+# ud.from <- "days since 1970-01-01"
+# ud.to <- "months since 1900-01-01"
+# all.ss$lead.raw <- as.numeric(ud.convert(all.ss$date,ud.from,ud.to))-
+#                     as.numeric(ud.convert(all.ss$start.date,ud.from,ud.to))
+
+#Calculate lead time manually
+date.to.months <- function(x) {
+  #Months since 1 Jan 1900
+  (year(x)-1900)*12+month(x) + (day(x)-1)/days_in_month(x)
+}
+all.ss$lead.raw <- date.to.months(all.ss$date)- date.to.months(all.ss$start.date)
 all.ss$lead <- round(all.ss$lead.raw/0.5)*0.5  #Half month accuracy
 
 #'========================================================================
