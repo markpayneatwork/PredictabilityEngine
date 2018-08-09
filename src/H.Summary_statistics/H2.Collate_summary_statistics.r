@@ -48,27 +48,15 @@ load("objects/PredEng_config.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  partition.collation <- TRUE
-  cfg.no <- 2
-  set.debug.level(0)  #0 complete fresh run
-  set.condexec.silent()
-  set.cdo.defaults("--silent --no_warnings -O")
-  set.log_msg.silent()
-  set.nco.defaults("--ovewrite")
+  # partition.collation <- TRUE
+  # cfg.no <- 2
 } else {
-  #Taking inputs from the system environment
-  partition.collation <- TRUE
-  cfg.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
-  if(cfg.no=="") stop("Cannot find PBS_ARRAYID")
+  # #Taking inputs from the system environment
+  # partition.collation <- TRUE
+  # cfg.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
+  # if(cfg.no=="") stop("Cannot find PBS_ARRAYID")
   #Do everything and tell us all about it
-  set.debug.level(0)  #0 complete fresh run
-  set.condexec.silent(FALSE)
-  set.cdo.defaults()
-  set.log_msg.silent(FALSE)
 }
-
-#Other configurations
-set.nco.defaults("--overwrite")
 
 #Retrieve configurations
 #However, in some cases we will want to do the collation all in one step.
@@ -88,7 +76,6 @@ if(pcfg@use.global.ROI) {
 } else {
   sp.dirs <- names(pcfg@spatial.subdomains)
 }
-sp.subdomains <- names(pcfg@spatial.subdomains)[1:2]
 
 #Directory setup
 base.dir <- pcfg@scratch.dir
@@ -133,15 +120,17 @@ persis.ss <- subset(all.ss.raw,type=="Persistence") %>%
 #Generate the forecast grid
 lead.times <- c(1:11,seq(7,127,by=12))
 #lead.times <- 1:120
-persis.forecast.grid <- expand.grid(date=unique(obs.ss$date),
-                                    sp.subdomain=sp.subdomains,
+forecast.dates <- filter(tibble(date=unique(obs.ss$date)),year(date) %in% pcfg@comp.years)
+persis.forecast.grid <- expand.grid(date=forecast.dates$date,
+                                    sp.subdomain=names(pcfg@spatial.subdomains),
                                     lead=lead.times) %>%
                         as.tibble() %>%
-                        mutate(start.date=date-months(lead),
+                        mutate(sp.subdomain=as.character(sp.subdomain),
+                               start.date=date-months(lead),
                                ym.start=sprintf("%i-%02i",year(start.date),month(start.date)))
 persis.forecast.ss <- left_join(persis.forecast.grid,
                                  persis.ss,
-                                 by=c("ym.start"="ym.date") ) %>%
+                                 by=c("ym.start"="ym.date","sp.subdomain") ) %>%
                         mutate(date=date.x,
                                date.x=NULL,date.y=NULL,ym.start=NULL,lead=NULL,
                                ym=sprintf("%i-%02i",year(date),month(date)))
@@ -155,7 +144,7 @@ ud.from <- "days since 1970-01-01"
 ud.to <- "months since 1900-01-01"
 all.ss$lead.raw <- as.numeric(ud.convert(all.ss$date,ud.from,ud.to))-
                     as.numeric(ud.convert(all.ss$start.date,ud.from,ud.to))
-all.ss$lead <- round(all.ss$lead.raw/0.5)*0.5
+all.ss$lead <- round(all.ss$lead.raw/0.5)*0.5  #Half month accuracy
 
 #'========================================================================
 # Split and Merge ####
@@ -180,7 +169,7 @@ obs.dat <- obs.ss %>%
 #situations where we envisage using PredEnd i.e. one data point per year - but
 #we need to be aware that this is not exactly the case 
 comp.dat <- left_join(sel.res,obs.dat,
-                      by=c("ym","sumstat.name"),
+                      by=c("ym","sumstat.name","sp.subdomain"),
                       suffix=c(".mdl",".obs"))
 
 #'========================================================================
