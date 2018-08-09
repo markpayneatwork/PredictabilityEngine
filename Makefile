@@ -50,6 +50,9 @@ THIS:  todo $(OKs)
 	
 $(OUTDIR)/%.ok: 
 	@echo $* >> $(TODO)
+
+Collate:
+	qsub -N PE_$@ -v NAME=$@ $(MASTER)
 	
 #-------------------------------------
 #Remove any existing To do files
