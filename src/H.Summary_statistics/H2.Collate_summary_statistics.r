@@ -148,7 +148,7 @@ all.ss <- rbind(subset(all.ss.raw,type!="Persistence"),
 #Calculate lead time manually
 date.to.months <- function(x) {
   #Months since 1 Jan 1900
-  (year(x)-1900)*12+month(x) + (day(x)-1)/days_in_month(x)
+  (year(x)-1900)*12 + (month(x)-1) + (day(x)-1)/days_in_month(x)
 }
 all.ss$lead.raw <- date.to.months(all.ss$date)- date.to.months(all.ss$start.date)
 all.ss$lead <- round(all.ss$lead.raw/0.5)*0.5  #Half month accuracy
