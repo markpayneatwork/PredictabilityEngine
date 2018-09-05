@@ -26,7 +26,7 @@ set -e
 #Select R version
 #export PATH=/appl/R/3.4.1/bin/:$PATH
 
-source ./src/Y.HPC_scripts/q${NAME}.sh
+source ./src/Y.HPC_scripts/${NAME}.sh
 
 #Error check
 if [ "$?" -eq 0 ]; 

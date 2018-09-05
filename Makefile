@@ -12,8 +12,9 @@
 # via qsub
 #
 # Note also that the useage of this is a bit non-standard - to build
-# a specific type of file, you have to specify the TYPE argument e.g.
-#   make TYPE=NMME
+# a specific type of file, you have to specify the TYPE argument together
+# with the "Cluster" target e.g.
+#   make THIS TYPE=NMME
 #
 # A list of available types, and their current status can be obtained 
 # using 
@@ -22,6 +23,12 @@
 # Available targets
 #    help      ; Displays Makefile header with list of target
 #    clean     : Remove all record files
+#    status    : List of available types and their current status
+#    setup     : Creates necessary subdirectories
+#
+#    collate   : Collates summary statistics (non-parallel)
+#    cluster   : Used together with TYPE argument to build a qsub job
+#                and distribute across cluster
 # ----------------------------------------------------------------------
   
 #Sources, variables
@@ -37,7 +44,7 @@ JOB_LIST=$(shell grep -o "^[0-9]\+" $(CFG_DIR)/$(TYPE).cfg)
 OKs=$(addprefix $(OUTDIR)/, $(addsuffix .ok, $(JOB_LIST)))
 TODO=$(TODO_DIR)/$(TYPE).todo
 
-#Target file lists
+#Master template
 MASTER=./src/Y.HPC_scripts/qMaster.sh
 
 #Default target
@@ -45,13 +52,13 @@ default: help status
 
 #-------------------------------------
 #NMME
-THIS:  todo $(OKs)
+cluster:  todo $(OKs)
 	TASK_IDS=`paste -s -d "," $(TODO)`; qsub -N PE_$(TYPE) -v NAME=$(TYPE) -t $$TASK_IDS $(MASTER)
 	
 $(OUTDIR)/%.ok: 
 	@echo $* >> $(TODO)
 
-Collate:
+collate:
 	qsub -N PE_$@ -v NAME=$@ $(MASTER)
 	
 #-------------------------------------
@@ -72,7 +79,8 @@ setup: FORCE
 
 #-------------------------------------
 clean:
-	-rm $(TODO_DIR)/*
+	-@rm $(addsuffix /*,$(TYPE_DIRS))
+	-@rm $(TODO_DIR)/*
 
 FORCE:
 
