@@ -73,7 +73,7 @@ save(pcfg,file=cfg.fname)
 if(file.exists(cfg.linked)) {
  file.remove(cfg.linked)
 }
-file.symlink(cfg.fname,cfg.linked)
+file.symlink(file.path(getwd(),cfg.fname),"objects")
 
 #'========================================================================
 # HPC  Configuration ####
