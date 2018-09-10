@@ -67,8 +67,13 @@ if(pcfg@use.global.ROI){
 }
 
 #Output
-save(pcfg,file="objects/configuration.RData")
-save(pcfg,file=file.path(pcfg@scratch.dir,"configuration.RData"))
+cfg.fname <- file.path(pcfg@scratch.dir,"configuration.RData")
+cfg.linked <- file.path("objects","configuration.RData")
+save(pcfg,file=cfg.fname)
+if(file.exists(cfg.linked)) {
+ file.remove(cfg.linked)
+}
+file.symlink(cfg.fname,cfg.linked)
 
 #'========================================================================
 # HPC  Configuration ####
