@@ -26,6 +26,7 @@
 #    clean     : Remove all log files from working directory
 #    status    : List of available types and their current status
 #    setup     : Creates necessary subdirectories
+#    install   : Installs various R packages
 #
 #    collate   : Collates summary statistics (non-parallel)
 #    cluster   : Used together with TYPE argument to build a qsub job
@@ -77,6 +78,9 @@ status: $(addsuffix .status,$(TYPES))
 setup: FORCE
 	-mkdir $(TYPE_DIRS)
 	-mkdir $(TODO_DIR)
+
+install: FORCE
+	Rscript src/A1.Setup_system.r
 
 #-------------------------------------
 clean:
