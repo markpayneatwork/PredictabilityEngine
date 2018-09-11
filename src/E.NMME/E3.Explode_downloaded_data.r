@@ -83,7 +83,7 @@ download.dir <- define_dir(base.dir,"0.data")
 fragstack.dir <- define_dir(base.dir,"1.fragstacks")
 misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
 
-config.summary(this.src,this.sp)
+config.summary(pcfg,this.src,this.sp)
 
 #'========================================================================
 # Setup ####

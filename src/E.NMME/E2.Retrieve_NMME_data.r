@@ -76,7 +76,7 @@ this.src <- get.this.src(file.path(PE.cfg$dirs$cfg,"NMME.cfg"),cfg.no,pcfg)
 base.dir <- define_dir(pcfg@scratch.dir,this.sp@name,"NMME",this.src@name)
 download.dir <- define_dir(base.dir,"0.data")
 
-config.summary(this.src,this.sp)
+config.summary(pcfg,this.src,this.sp)
 
 # ========================================================================
 # Setup

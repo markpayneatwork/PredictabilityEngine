@@ -63,7 +63,7 @@ set.nco.defaults("--overwrite")
 
 #Retrieve configurations
 this.sp <- get.this.sp(file.path(PE.cfg$dirs$cfg,"NMME_Ensmean.cfg"),cfg.id,pcfg)
-config.summary(this.sp)
+config.summary(pcfg,this.sp)
 
 #Configure directories
 subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)

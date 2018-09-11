@@ -49,7 +49,7 @@ load("objects/PredEng_config.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.no <- 989  #1,2,10,15,17
+  cfg.no <- 48  #1,2,10,15,17
   set.debug.level(0)  #Non-zero lets us run with just a few points
   set.cdo.defaults("--silent --no_warnings")
   set.condexec.silent()
@@ -70,7 +70,7 @@ cfg.fname <- file.path(PE.cfg$dirs$cfg,"SumStats.cfg")
 this.cfgs <- get.this.cfgs(cfg.fname)
 this.sp <- get.this.sp(cfg.fname,cfg.no,pcfg)
 this.src <- get.this.src(cfg.fname,cfg.no,pcfg)
-config.summary(this.src,this.sp)
+config.summary(pcfg, this.src,this.sp)
 
 if(this.src@type=="Persistence" & !pcfg@average.months & length(pcfg@MOI) >1 &
    any(!sapply(pcfg@summary.statistics,slot,"use.anomalies"))){

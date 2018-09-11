@@ -68,7 +68,7 @@ if(interactive()) {
 #Retrieve configurations
 this.sp <- get.this.sp(file.path(PE.cfg$dirs$cfg,"Observations.cfg"),cfg.no,pcfg)
 this.src <- pcfg@Observations
-config.summary(this.sp,this.src)
+config.summary(pcfg,this.sp,this.src)
 
 #Data source
 HadISST.dat <- file.path(PE.cfg$dirs$datasrc,"Observations/HadISST","HadISST_sst.nc")
