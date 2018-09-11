@@ -33,6 +33,7 @@ rm(list = ls(all.names=TRUE));  graphics.off();
 
 #Source the common elements
 library(PredEng)
+library(ClimateTools)
 library(tibble)
 load("objects/PredEng_config.RData")
 source("src/B.Configuration/B0.Define_SST_data_srcs.r")
@@ -67,23 +68,23 @@ if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
 # Spatial Configurations ####
 #'========================================================================
 #Set global variables
-pcfg@use.global.ROI <- FALSE
+pcfg@use.global.ROI <- TRUE
 pcfg@global.ROI <- extent(-70,30,50,80)
 pcfg@global.res  <- 0.5
 
 #Polygons
 sp.objs <- PredEng.list()
-sp.objs$irminger.sea <- spatial.subdomain("Irminger.Sea",
+sp.objs$irminger.sea <- spatial.domain("Irminger.Sea",
                                      as.SpatialPolygons.matrix(rbind(c(-45,58),c(-45,66),
                                                    c(-20,66),c(-32,58))))
-sp.objs$iceland.basin <- spatial.subdomain("Iceland.Basin",
+sp.objs$iceland.basin <- spatial.domain("Iceland.Basin",
                                       as.SpatialPolygons.matrix(rbind(c(-20,66),c(-32,58),
                                                     c(-15,58),c(-15,66))))
-sp.objs$no.coast <- spatial.subdomain("Norwegian.Coast",
+sp.objs$no.coast <- spatial.domain("Norwegian.Coast",
                                         as.SpatialPolygons.matrix(rbind(c(-5,62),c(10,62),
                                                                                 c(20,70),c(20,73),
                                                                                 c(12,73))))
-sp.objs$s.iceland <- spatial.subdomain("South.of.Iceland",extent(-50,-10,55,70))
+sp.objs$s.iceland <- spatial.domain("South.of.Iceland",extent(-50,-10,55,70))
 
 #Correct names and add to object
 names(sp.objs) <- sapply(sp.objs,slot,"name")
