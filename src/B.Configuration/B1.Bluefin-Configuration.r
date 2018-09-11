@@ -33,7 +33,6 @@ rm(list = ls(all.names=TRUE));  graphics.off();
 
 #Source the common elements
 library(PredEng)
-library(ClimateTools)
 library(tibble)
 load("objects/PredEng_config.RData")
 source("src/B.Configuration/B0.Define_SST_data_srcs.r")
