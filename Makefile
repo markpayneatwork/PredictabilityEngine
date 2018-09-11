@@ -14,7 +14,7 @@
 # Note also that the useage of this is a bit non-standard - to build
 # a specific type of file, you have to specify the TYPE argument together
 # with the "Cluster" target e.g.
-#   make THIS TYPE=NMME
+#   make cluster TYPE=NMME
 #
 # A list of available types, and their current status can be obtained 
 # using 
@@ -22,7 +22,8 @@
 #
 # Available targets
 #    help      ; Displays Makefile header with list of target
-#    clean     : Remove all record files
+#    purge     : Remove all todo files
+#    clean     : Remove all log files from working directory
 #    status    : List of available types and their current status
 #    setup     : Creates necessary subdirectories
 #
@@ -79,6 +80,9 @@ setup: FORCE
 
 #-------------------------------------
 clean:
+	-@rm PE_* -f
+
+purge:
 	-@rm $(addsuffix /*,$(TYPE_DIRS))
 	-@rm $(TODO_DIR)/*
 
