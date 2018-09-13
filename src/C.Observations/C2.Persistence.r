@@ -47,7 +47,7 @@ library(dplyr)
 #/*======================================================================*/
 #Setup spatial configurations
 if(pcfg@use.global.ROI) { #only need to use one single global ROI
-  this.sps <- list(spatial.subdomain(name="",boundary=pcfg@global.ROI))
+  this.sps <- list(spatial.domain(name="",boundary=pcfg@global.ROI))
 } else { #Working with subdomains
   this.sps <- pcfg@spatial.subdomains
 }
