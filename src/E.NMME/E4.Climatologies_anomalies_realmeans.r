@@ -42,7 +42,7 @@ load("objects/PredEng_config.RData")
 #'==========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.no <- 1
+  cfg.no <- 6
   set.debug.level(0)  #0 complete fresh run
   set.condexec.silent(TRUE)
   set.cdo.defaults("--silent --no_warnings -O")
@@ -141,6 +141,7 @@ condexec(2,wts.cmd <- cdo(csl("genbil",analysis.grid.fname),
 # Anomalies, remapping ####
 #'==========================================================================
 log_msg("Calculating anomalies...\n")
+#anom.meta <- subset(anom.meta,start.date=="2018-09-01")
 pb <- progress_estimated(nrow(anom.meta))
 for(i in seq(nrow(anom.meta))) {
   #Update progress bar
@@ -159,10 +160,15 @@ for(i in seq(nrow(anom.meta))) {
                   anom.temp)
   
   condexec(3,anom.cmd)
-  
-  #Remap
+  am$fname <- "scratch/Bluefin/NMME/NCAR-CCSM4/mapped.nc"
+  #Remap - using weights
+  # condexec(3,regrid.cmd <- cdo("-f nc",
+  #                              csl("remap", analysis.grid.fname, remapping.wts.fname),
+  #                              anom.temp,
+  #                              am$fname))
+  #Remap - directly
   condexec(3,regrid.cmd <- cdo("-f nc",
-                               csl("remap", analysis.grid.fname, remapping.wts.fname),
+                               csl("remapbil", analysis.grid.fname),
                                anom.temp,
                                am$fname))
 }
