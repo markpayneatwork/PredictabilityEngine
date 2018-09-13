@@ -28,6 +28,7 @@
 #    setup     : Creates necessary subdirectories
 #    install   : Installs various R packages
 #
+#    persistence: Persistence forecast
 #    collate   : Collates summary statistics (non-parallel)
 #    cluster   : Used together with TYPE argument to build a qsub job
 #                and distribute across cluster
@@ -60,7 +61,7 @@ cluster:  todo $(OKs)
 $(OUTDIR)/%.ok: 
 	@echo $* >> $(TODO)
 
-collate:
+collate persistence:
 	qsub -N PE_$@ -v NAME=$@ $(MASTER)
 	
 #-------------------------------------
