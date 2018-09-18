@@ -184,9 +184,9 @@ comp.dat <- left_join(sel.res,obs.dat,
 #'========================================================================
 log_msg("Metric calculation...\n")
 #Now calculate the metrics
-RMSE <- function(x,y) { sqrt(mean((x-y)^2))}
+RMSE <- function(x,y) { sqrt(mean((x-y)^2,na.rm=TRUE))}
 skill.m <- comp.dat %>%
-           group_by(name,type,sumstat.name,lead) %>%
+           group_by(name,type,sumstat.name,lead,sp.subdomain) %>%
            summarize(cor=cor(value.mdl,value.obs,use="pairwise.complete"),
                      RMSE=RMSE(value.mdl,value.obs))
 
