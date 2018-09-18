@@ -160,7 +160,6 @@ for(i in seq(nrow(anom.meta))) {
                   anom.temp)
   
   condexec(3,anom.cmd)
-  am$fname <- "scratch/Bluefin/NMME/NCAR-CCSM4/mapped.nc"
   #Remap - using weights
   # condexec(3,regrid.cmd <- cdo("-f nc",
   #                              csl("remap", analysis.grid.fname, remapping.wts.fname),
