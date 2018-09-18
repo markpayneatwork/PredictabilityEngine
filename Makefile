@@ -55,6 +55,9 @@ default: help status
 
 #-------------------------------------
 #NMME
+NMME NMME_Ensmean SumStats Decadal Decadal_Ensmean Observations:
+	make cluster TYPE=$@
+
 cluster:  todo $(OKs)
 	TASK_IDS=`paste -s -d "," $(TODO)`; qsub -N PE_$(TYPE) -v NAME=$(TYPE) -t $$TASK_IDS $(MASTER)
 	
@@ -74,7 +77,7 @@ $(TODO_DIR)/%.todo: FORCE
 status: $(addsuffix .status,$(TYPES))
 
 %.status: $(CFG_DIR)/%.cfg
-	@echo `printf "%-30s" "$*"`  : `ls $(CFG_DIR)/$*/ | wc -l` out of `grep -c "^[0-9]\+," $<` jobs
+	@echo `printf "%-50s" "$*"`  : `ls $(CFG_DIR)/$*/ | wc -l` out of `grep -c "^[0-9]\+," $<` jobs
 
 setup: FORCE
 	-mkdir $(TYPE_DIRS)
