@@ -87,7 +87,7 @@ eez.sel <- subset(eez.sp,Area_km2 >1e3)
 EEZ.objs <- PredEng.list()
 for(i in seq(nrow(eez.sel))) {
   this.sp <- eez.sel[i,]
-  EEZ.objs[[i]] <- spatial.subdomain(name=as.character(this.sp$MRGID),
+  EEZ.objs[[i]] <- spatial.domain(name=as.character(this.sp$MRGID),
                                      desc=this.sp$GeoName,
                                      boundary=as(this.sp,"SpatialPolygons"))
 }
