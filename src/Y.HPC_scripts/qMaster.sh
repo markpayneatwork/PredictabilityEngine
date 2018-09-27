@@ -1,8 +1,6 @@
 #!/bin/bash -x
 #Set default job name
 #PBS -N PE_${NAME} 
-#Set mail address
-#PBS -M mpay@aqua.dtu.dk
 
 #Run job in current working directory
 cd $PBS_O_WORKDIR
@@ -31,7 +29,7 @@ source ./src/Y.HPC_scripts/${NAME}.sh
 #Error check
 if [ "$?" -eq 0 ]; 
 then
-    touch ./scratch/Job_configuration/${NAME}/$PBS_ARRAYID.ok 
+    grep "^$PBS_ARRAYID," ./scratch/Job_configuration/${NAME}.cfg >> ./scratch/Job_configuration/${NAME}/$PBS_ARRAYID.ok 
     echo "Successful completion."
 else 
     echo "Failure"
