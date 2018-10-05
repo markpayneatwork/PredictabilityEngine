@@ -8,7 +8,7 @@
 #'
 #' Mon May 23 10:45:27 2016
 #'
-#' Retrieves allof the NMME data directly from the servers using OpenDAP
+#' Retrieves all of the NMME data directly from the servers using OpenDAP
 #' via NCKS. The approach taken here is to do most of the subsetting locally after
 #' we have downloaded it. While this is more intensive on storage, it solves a lot
 #' of problems around downloading
@@ -54,6 +54,7 @@ if(interactive()) {
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
   set.nco.defaults("--ovewrite")
+  options("mc.cores"=1)  
 } else {
   #Taking inputs from the system environment
   cfg.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
@@ -63,9 +64,8 @@ if(interactive()) {
   set.condexec.silent(FALSE)
   set.cdo.defaults()
   set.log_msg.silent(FALSE)
-  n.cores <- 1
+  options("mc.cores"=4)  
 }
-do.parallel <- FALSE
 
 #Other configurations
 set.nco.defaults("--overwrite")
@@ -192,6 +192,11 @@ for(i in seq(nrow(meta))) {
   #                                as.list(extract.ROI)))
   # }
   # 
+  
+  #However!! We can save ourselves a lot of pain at a later stage by converting from a
+  #Pacific centered to a Greenwich centered orientation right now. We take advantage of the
+  #multislab functionality of nco to do this
+ # ROI.str <- "--msa_user_order -d X,181.00,360.00 -d X,0.00,180.00"
   ROI.str <- ""
   
   if(nrow(to.download)!=0){
@@ -219,33 +224,17 @@ for(i in seq(nrow(meta))) {
       # missval.cmd <- ncrename("-a .missing_value,_FillValue",download.full.path)
       # condexec(2,missval.cmd,silent=TRUE)
       # 
-      #Convert X axis to [-180,180]
-      #Note that this is not necessary when we are using cdo later to do the remapping
-      #(and avoiding it saves a lot of )
+      # # Convert X axis to [-180,180]
+      # # Note that this is not necessary when we are using cdo later to do the remapping
       # ncid <- nc_open(download.full.path,write=TRUE)
-      # nc_redef(ncid)
-      # X.dim <- ncid$dim$X
-      # X.dim$vals <- Pacific.centered(X.dim$vals) 
-      # nc_create()
-      # correct.lon <- ncap2("--overwrite",
-      #                      '-s "where (X>180) X=X-360;"',
-      #                      download.full.path,download.full.path)
-      # condexec(3,correct.lon)
-      
+      # new.X <- Greenwich.centered(ncid$dim$X$vals)
+      # ncvar_put(ncid,"X",vals=new.X)
+      # nc_close(ncid)
+
     }
-    
-    if(do.parallel) {
-      #Setup cluster
-      log_msg("Setting up cluster..\n")
-      cl <- makeCluster(n.cores,type="FORK")
-      parLapplyLB(cl,seq(nrow(to.download)),download.fn)
-      stopCluster(cl)  
-    } else {
-      for(i in seq(nrow(to.download))) {
-        download.fn(i)
-      }
-    }
-    
+
+    mclapply(seq(nrow(to.download)),download.fn)    
+
   } else {
     log_msg("Skipping download from %s (all dates present).\n",mdl.id)
   } 
