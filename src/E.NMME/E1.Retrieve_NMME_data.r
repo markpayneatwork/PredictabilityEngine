@@ -64,7 +64,7 @@ if(interactive()) {
   set.condexec.silent(FALSE)
   set.cdo.defaults()
   set.log_msg.silent(FALSE)
-  options("mc.cores"=4)  
+  options("mc.cores"= as.numeric(Sys.getenv("PBS_NUM_PPN"))-1)
 }
 
 #Other configurations

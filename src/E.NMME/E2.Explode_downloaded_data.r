@@ -59,7 +59,7 @@ if(interactive()) {
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
   set.nco.defaults("--ovewrite")
-  options("mc.cores"=8)  
+  options("mc.cores"=7)  
   
 } else {
   #Taking inputs from the system environment
@@ -70,8 +70,8 @@ if(interactive()) {
   set.condexec.silent(FALSE)
   set.cdo.defaults()
   set.log_msg.silent(FALSE)
-  options("mc.cores"= as.numeric(Sys.getenv("PBS_NUM_PPN")))
-)  
+  options("mc.cores"= as.numeric(Sys.getenv("PBS_NUM_PPN"))-1)
+  
   
 }
 
