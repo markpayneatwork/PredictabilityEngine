@@ -45,6 +45,7 @@ library(raster)
 library(lubridate)
 library(tibble)
 library(dplyr)
+library(parallel)
 load("objects/configuration.RData")
 
 #'========================================================================
@@ -58,6 +59,8 @@ if(interactive()) {
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
   set.nco.defaults("--ovewrite")
+  options("mc.cores"=8)  
+  
 } else {
   #Taking inputs from the system environment
   cfg.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
@@ -67,6 +70,9 @@ if(interactive()) {
   set.condexec.silent(FALSE)
   set.cdo.defaults()
   set.log_msg.silent(FALSE)
+  options("mc.cores"= as.numeric(Sys.getenv("PBS_NUM_PPN")))
+)  
+  
 }
 
 #Other configurations
@@ -85,6 +91,9 @@ data.dir <- file.path(PE.cfg$dirs$datasrc,"NMME",this.src@name)
 fragstack.dir <- define_dir(base.dir,"1.fragstacks")
 misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
 
+analysis.grid.fname <- file.path(pcfg@scratch.dir,this.sp@name,PE.cfg$files$analysis.grid)
+
+#Display configuration
 config.summary(pcfg,this.src,this.sp)
 
 #'========================================================================
@@ -98,9 +107,13 @@ downloaded.fnames <- dir(data.dir,full.names = TRUE)
 #'========================================================================
 #Loop over files
 fragstack.meta.l <- list()
+pb <- progress_estimated(length(downloaded.fnames))
+
+log_msg("Exploding files...\n")
 for(i in seq(downloaded.fnames)) {
   this.file <- downloaded.fnames[i]
-  log_msg("Exploding %s, %s, file %02i of %02i...\n",this.sp@name,basename(this.file),i,length(downloaded.fnames))
+  
+  #log_msg("Exploding %s, %s, file %02i of %02i...\n",this.sp@name,basename(this.file),i,length(downloaded.fnames))
   
   #Figure out what's available, and what we actually want to extract
   ncid <- nc_open(this.file)
@@ -116,13 +129,10 @@ for(i in seq(downloaded.fnames)) {
   
   #Now restrict to the relevant months
   sel.SL <- subset(all.SL,forecast.month %in% pcfg@MOI)
-
+  
   #Now comes the mega loop, where we extract the dimensions that
   #we are looking for
-  pb <- progress_estimated(nrow(sel.SL))
-  for(j in seq(nrow(sel.SL))) {
-    pb$tick()$print()
-    this.sel.SL <- sel.SL[j,]
+  frag.fn <- function(this.sel.SL){
     #Setup for explode
     fragstack.fname <- sprintf("%s_%s_S%s_L%02.1f_fragstack.nc",
                               this.src@name,
@@ -130,6 +140,7 @@ for(i in seq(downloaded.fnames)) {
                               format(this.sel.SL$start.date,"%Y%m%d"),
                               this.sel.SL$L.val)
     fragstack.full.path <- file.path(fragstack.dir,fragstack.fname)
+    frag.temp <- tempfile(fileext=".nc")
     
     SL.ROI.str <- sprintf("-d S,%i -d L,%i",
                            this.sel.SL$S.idx,
@@ -139,35 +150,49 @@ for(i in seq(downloaded.fnames)) {
     explode.cmd <- ncks("--fortran",   #Use indexing starting at 1, like in R
                         SL.ROI.str,
                         this.file,
-                        fragstack.full.path)
+                        frag.temp)
     condexec(1,explode.cmd)
     
     #This leaves us with a file that is still 5D, but there are two
     #degenerate dimensions now. If we drop them, then we end up with
     #something that CDO can work with. For safety's sake, we first
     #copy the two values into attributes
-    ncid <- nc_open(fragstack.full.path)
-    nc_close(ncid)
-    condexec(1,cmd <-ncatted("-h", sprintf("-a start.date,global,c,f,%f",ncid$dim$S$val),
-                             fragstack.full.path,fragstack.full.path))
-    condexec(1,cmd <-ncatted("-h", sprintf("-a lead,global,c,f,%f",ncid$dim$L$val),
-                             fragstack.full.path,fragstack.full.path))
+    # ncid <- nc_open(frag.temp)
+    # nc_close(ncid)
+    # condexec(1,cmd <-ncatted("-h", sprintf("-a start.date,global,c,f,%f",ncid$dim$S$val),
+    #                          frag.temp,frag.temp))
+    # condexec(1,cmd <-ncatted("-h", sprintf("-a lead,global,c,f,%f",ncid$dim$L$val),
+    #                          fragstack.full.path,fragstack.full.path))
     
     #Now drop the start.date and lead dimensions
     ncwa.cmd <- ncwa(sprintf("-a %s,S,L",this.src@var),
-                     fragstack.full.path,fragstack.full.path)
+                     frag.temp,frag.temp)
     condexec(1,ncwa.cmd)
 
+    
+    #This leaves us with something that is compatible with CDO. Now we can do the
+    #remapping onto the grid of interest.
+    condexec(2,regrid.cmd <- cdo("-f nc",
+                                 csl("remapbil", analysis.grid.fname),
+                                 frag.temp,
+                                 fragstack.full.path))
+    
+    #Finally, drop the temp file
+    file.remove(frag.temp)
+    
     #Create metadata as we go
     res <- mutate(this.sel.SL,
                   fname=fragstack.full.path,
                   n.realizations=ncid$dim$M$len)
-    fragstack.meta.l[[fragstack.fname]] <- res
-  }
-  Sys.sleep(0.1)
-  print(pb$stop())
-  log_msg("\n")
+    return(res)}
+  
+  #Parallelise it
+  rtn.l <- mclapply(df2list(sel.SL),frag.fn)
+  fragstack.meta.l[[this.file]] <- bind_rows(rtn.l)
+  pb$tick()$print()
 }
+pb$stop()
+log_msg("\n")
 
 #'========================================================================
 # Finish 

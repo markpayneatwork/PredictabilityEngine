@@ -34,20 +34,22 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 #Helper functions, externals and libraries
 library(PredEng)
 library(dplyr)
+library(pbapply)
 load("objects/configuration.RData")
-load("objects/PredEng_config.RData")
 
 #'==========================================================================
 # Configure ####
 #'==========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.no <- 6
+  cfg.no <- 2
   set.debug.level(0)  #0 complete fresh run
   set.condexec.silent(TRUE)
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
   set.nco.defaults("--ovewrite")
+  options("mc.cores"=8)  
+  
 } else {
   #Taking inputs from the system environment
   cfg.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
@@ -57,14 +59,18 @@ if(interactive()) {
   set.condexec.silent(FALSE)
   set.cdo.defaults()
   set.log_msg.silent(FALSE)
+  options("mc.cores"= as.numeric(Sys.getenv("PBS_NUM_PPN")))
+  
 }
 
 #Other configurations
 set.nco.defaults("--overwrite")
 
 #Retrieve configurations
-this.sp <- get.this.sp(file.path(PE.cfg$dirs$cfg,"NMME.cfg"),cfg.no,pcfg)
-this.src <- get.this.src(file.path(PE.cfg$dirs$cfg,"NMME.cfg"),cfg.no,pcfg)
+cfg.fname <- file.path(PE.cfg$dirs$cfg,"NMME.cfg")
+these.cfgs <- get.this.cfgs(cfg.fname)
+this.sp <- get.this.sp(cfg.fname,cfg.no,pcfg)
+this.src <- get.this.src(cfg.fname,cfg.no,pcfg)
 
 #Configure directories
 subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)
@@ -102,11 +108,7 @@ clim.files.l <- split(in.clim,in.clim$clim.fname)
 #'==========================================================================
 #Loop over climatological files
 log_msg("Generating climatologies...\n")
-pb <- progress_estimated(length(clim.files.l))
-for(cf in clim.files.l) {
-  #Update progress bar
-  pb$tick()$print()
-  
+clim.fn <- function(cf) {
   #Setup   
   clim.out.fname <- unique(cf$clim.fname)
 
@@ -119,37 +121,34 @@ for(cf in clim.files.l) {
                              ensmean.tmp,
                              clim.out.fname))
   unlink((ensmean.tmp))
+  return(invisible(NULL))
   
 }
-Sys.sleep(0.1)
-print(pb$stop())
+dmp <- pblapply(clim.files.l,clim.fn,cl=getOption("mc.cores"))
 
+
+### 2018.10.05 Functionality removed, remapping is now done in E2
 #'==========================================================================
 # Setup Remapping weights (in preparation for remapping) ####
 #'==========================================================================
 #This is a pretty simple process - just subtract everything from everything
 #But we also need to take care of the remapping as well, and this is a 
 #good place to do it. Remapping weights are therefore setup first
-
-log_msg("Calculating remapping weights...\n")
-
-condexec(2,wts.cmd <- cdo(csl("genbil",analysis.grid.fname),
-                            anom.meta$clim.fname[1],
-                            remapping.wts.fname))
+# 
+# log_msg("Calculating remapping weights...\n")
+# 
+# condexec(2,wts.cmd <- cdo(csl("genbil",analysis.grid.fname),
+#                             anom.meta$clim.fname[1],
+#                             remapping.wts.fname))
 
 #'==========================================================================
 # Anomalies, remapping ####
 #'==========================================================================
 log_msg("Calculating anomalies...\n")
-#anom.meta <- subset(anom.meta,start.date=="2018-09-01")
-pb <- progress_estimated(nrow(anom.meta))
-for(i in seq(nrow(anom.meta))) {
-  #Update progress bar
-  pb$tick()$print()
-  am <- anom.meta[i,]
-  
+
+anom.fn <- function(am) {
   #Calculate anomaly
-  anom.temp <- tempfile(fileext = ".nc")
+ # anom.temp <- tempfile(fileext = ".nc")
   # anom.cmd <- ncdiff("--netcdf4 --overwrite --history",
   #                    anom.meta$frag.fname[i],
   #                    file.path(lead.clim.dir,anom.meta$clim.fname[i]),
@@ -157,23 +156,25 @@ for(i in seq(nrow(anom.meta))) {
   anom.cmd <- cdo("sub",
                   am$fragstack.fname,
                   am$clim.fname,
-                  anom.temp)
+                  am$fname)
   
   condexec(3,anom.cmd)
-  #Remap - using weights
+  
+  ### 2018.10.05 Functionality removed, remapping is now done in E2
+  # #Remap - using weights
+  # # condexec(3,regrid.cmd <- cdo("-f nc",
+  # #                              csl("remap", analysis.grid.fname, remapping.wts.fname),
+  # #                              anom.temp,
+  # #                              am$fname))
+  # #Remap - directly
   # condexec(3,regrid.cmd <- cdo("-f nc",
-  #                              csl("remap", analysis.grid.fname, remapping.wts.fname),
+  #                              csl("remapbil", analysis.grid.fname),
   #                              anom.temp,
   #                              am$fname))
-  #Remap - directly
-  condexec(3,regrid.cmd <- cdo("-f nc",
-                               csl("remapbil", analysis.grid.fname),
-                               anom.temp,
-                               am$fname))
+  
+  return(invisible(NULL))
 }
-
-Sys.sleep(0.1)
-print(pb$stop())
+dmp <- pblapply(df2list(anom.meta),anom.fn,cl=getOption("mc.cores"))
 
 #Done. Save the results
 save(anom.meta,file=file.path(base.dir,"Anom_metadata.RData"))
@@ -193,19 +194,15 @@ realmean.meta <- mutate(anom.meta,
 #Loop over anomaly files - as these are ultimately based on fragstacks then
 #its just a matter of averaging the realisations
 log_msg("Processing realization means...\n")
-pb <- progress_estimated(nrow(realmean.meta))
-for(i in seq(nrow(realmean.meta))) {
-  #Update counter
-  pb$tick()$print()
-  this.rm <- realmean.meta[i,]
-  
+realmean.fn <- function(this.rm) {
   #Average
   realmean.cmd <- cdo("vertmean",this.rm$anom.fname,this.rm$fname)
   condexec(4,realmean.cmd)
   
+  return(invisible(NULL))
+  
 }
-Sys.sleep(0.1)
-print(pb$stop())
+dmp <- pblapply(df2list(realmean.meta),realmean.fn,cl=getOption("mc.cores"))
 
 #Save data
 save(realmean.meta,file=file.path(base.dir,"Realmean_metadata.RData"))

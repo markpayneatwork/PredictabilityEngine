@@ -33,8 +33,8 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 #Helper functions, externals and libraries
 library(PredEng)
 library(dplyr)
+library(pbapply)
 load("objects/configuration.RData")
-load("objects/PredEng_config.RData")
 
 #==========================================================================
 # Configure
@@ -47,6 +47,7 @@ if(interactive()) {
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
   set.nco.defaults("--ovewrite")
+  options("mc.cores"= 8)
 } else {
   #Taking inputs from the system environment
   cfg.id <- as.numeric(Sys.getenv("PBS_ARRAYID"))
@@ -56,6 +57,7 @@ if(interactive()) {
   set.condexec.silent(FALSE)
   set.cdo.defaults()
   set.log_msg.silent(FALSE)
+  options("mc.cores"= as.numeric(Sys.getenv("PBS_NUM_PPN")))
 }
 
 #Other configurations
@@ -93,14 +95,9 @@ ensmean.group <- split(metadat.all,metadat.all[,c("start.date","lead")],
 #==========================================================================
 # Process
 #==========================================================================
-#Setup
+#Process ensemble means
 log_msg("Processing ensemble means...\n")
-pb <- progress_estimated(length(ensmean.group))
-ensmean.meta.l <- list()
-for(em.gp in ensmean.group) {
-  #Update counter
-  pb$tick()$print()
-  
+ensmean.fn <- function(em.gp){
   #Build commands
   ensmean.fname <- file.path(anom.dir,
                              gsub("^.*?(_.*)_realmean.nc$","NMME-ensmean\\1_anom.nc",basename(em.gp$fname[1])))
@@ -113,9 +110,10 @@ for(em.gp in ensmean.group) {
     select(-fname,-n.realizations) %>%
     mutate(n.mdls=nrow(em.gp),
            fname=ensmean.fname)
-  ensmean.meta.l[[ensmean.fname]] <- res[1,]
+  return(res[1,])
   
 }
+ensmean.meta.l <- pblapply(ensmean.group,ensmean.fn,cl=getOption("mc.cores"))
 
 #Form meta data
 ensmean.meta <- bind_rows(ensmean.meta.l) %>%
