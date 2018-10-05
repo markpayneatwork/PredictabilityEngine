@@ -147,7 +147,7 @@ for(i in seq(downloaded.fnames)) {
                            this.sel.SL$L.idx)
     
     #Boomski! Do it.
-    explode.cmd <- ncks("--fortran",   #Use indexing starting at 1, like in R
+    explode.cmd <- ncks("--fortran --deflate 0",   #Use indexing starting at 1, like in R
                         SL.ROI.str,
                         this.file,
                         frag.temp)
@@ -172,7 +172,7 @@ for(i in seq(downloaded.fnames)) {
     
     #This leaves us with something that is compatible with CDO. Now we can do the
     #remapping onto the grid of interest.
-    condexec(2,regrid.cmd <- cdo("-f nc",
+    condexec(2,regrid.cmd <- cdo("-f nc4",
                                  csl("remapbil", analysis.grid.fname),
                                  frag.temp,
                                  fragstack.full.path))
