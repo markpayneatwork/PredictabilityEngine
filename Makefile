@@ -27,6 +27,7 @@
 #    status    : List of available types and their current status
 #    setup     : Creates necessary subdirectories
 #    install   : Installs various R packages
+#    download  : Downloads NMME data via OpenDAP
 #
 #    persistence: Persistence forecast
 #    collate   : Collates summary statistics (non-parallel)
@@ -85,6 +86,9 @@ setup: FORCE
 
 install: FORCE
 	Rscript src/A1.Setup_system.r
+
+download:
+	qsub src/Y.HPC_scripts/qNMME_download.sh
 
 #-------------------------------------
 clean:
