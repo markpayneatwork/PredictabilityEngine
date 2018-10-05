@@ -45,7 +45,6 @@ library(raster)
 library(lubridate)
 library(tibble)
 library(dplyr)
-load("objects/PredEng_config.RData")
 load("objects/configuration.RData")
 
 #'========================================================================
@@ -53,7 +52,7 @@ load("objects/configuration.RData")
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.no <- 1
+  cfg.no <- 2
   set.debug.level(0)  #0 complete fresh run
   set.condexec.silent(TRUE)
   set.cdo.defaults("--silent --no_warnings -O")
@@ -74,12 +73,15 @@ if(interactive()) {
 set.nco.defaults("--overwrite")
 
 #Retrieve configurations
-this.sp <- get.this.sp(file.path(PE.cfg$dirs$cfg,"NMME.cfg"),cfg.no,pcfg)
-this.src <- get.this.src(file.path(PE.cfg$dirs$cfg,"NMME.cfg"),cfg.no,pcfg)
+cfg.file <- file.path(PE.cfg$dirs$cfg,"NMME.cfg")
+cfgs <- get.this.cfgs(cfg.file)
+this.sp <- get.this.sp(cfg.file,cfg.no,pcfg)
+this.src <- get.this.src(cfg.file,cfg.no,pcfg)
 
 #Configure directories
 base.dir <- define_dir(pcfg@scratch.dir,this.sp@name,"NMME",this.src@name)
-download.dir <- define_dir(base.dir,"0.data")
+data.dir <- file.path(PE.cfg$dirs$datasrc,"NMME",this.src@name)
+
 fragstack.dir <- define_dir(base.dir,"1.fragstacks")
 misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
 
@@ -89,7 +91,7 @@ config.summary(pcfg,this.src,this.sp)
 # Setup ####
 #'========================================================================
 #Get metadata of files available
-downloaded.fnames <- dir(download.dir,full.names = TRUE)
+downloaded.fnames <- dir(data.dir,full.names = TRUE)
 
 #'========================================================================
 # Explode data ####
