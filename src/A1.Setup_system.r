@@ -39,7 +39,7 @@ library(lubridate)
 
 #Do it 
 install.packages("resources/ClimateTools", repos = NULL, type="source")
-install.packages("resources/PredEng_Package", repos = NULL, type="source")
+install.packages("src/X.PredEng_Package", repos = NULL, type="source")
 
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
