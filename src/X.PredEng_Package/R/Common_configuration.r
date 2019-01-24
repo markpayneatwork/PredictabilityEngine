@@ -24,4 +24,4 @@ PE.cfg$files <- list(Obs.monthly.anom.metadata=file.path(PE.cfg$dir$Misc.meta,"M
                      ensmean.name="Ensmean",
                      regridded.landmask="Regridded_landmask.nc")
 
-devtools::use_data(PE.cfg,overwrite = TRUE)
+usethis::use_data(PE.cfg,overwrite = TRUE)
