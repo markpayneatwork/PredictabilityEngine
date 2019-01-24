@@ -1,0 +1,14 @@
+#' Default configuration options for PredEng package
+#'
+#' Sets the configuration options for the PredEng package. The variables are as follows:
+#'
+#' @format A data frame with 53940 rows and 10 variables:
+#' \describe{
+#'   \item{VOI.name}{Variable of Interest, default name for creating a variable}
+#'   \item{ROI.extraction.buffer}{Size of buffer around the region of interest to be extracted}
+#'   \item{n.CMIP.chunks}{How many chunks should the processing of CMIP variables be divided into}
+#'   \item{NMME.epoch.start}{Start of the epoch for NMME date format}
+#'   \item{dirs}{List of working directory names}
+#'   \item{files}{List of filenames}
+#' }
+"PE.cfg"

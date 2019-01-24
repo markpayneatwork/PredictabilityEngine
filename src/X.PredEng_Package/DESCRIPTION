@@ -1,0 +1,29 @@
+Package: PredEng
+Type: Package
+Title: Predictability Engine Support Tools
+Version: 0.1.0
+Author: Mark R. Payne
+Maintainer: Mark R. Payne <mpay@aqua.dtu.dk>
+Description: Tools, classes and methods to support the Predictability Engine
+License: What license is it under?
+LazyData: TRUE
+Depends:
+    raster,
+    ClimateTools,
+    dplyr,
+    lubridate,
+    stringr,
+    sp
+RoxygenNote: 6.0.1
+Suggests:
+    maps
+Collate: 
+    'Common_configuration.r'
+    'PredEng.list.r'
+    'Data_class_and_methods.r'
+    'Config_class_and_methods.r'
+    'PredEng.r'
+    'Sum_stats_class_and_methods.r'
+    'Workload_management.r'
+    'data.R'
+    'zzz_Common_elements.r'
