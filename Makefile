@@ -27,7 +27,7 @@
 #    status    : List of available types and their current status
 #    setup     : Creates necessary subdirectories
 #    install   : Installs various R packages
-#    download  : Downloads NMME data via OpenDAP
+#    NMME_sync : Downloads NMME data via OpenDAP
 #
 #    persistence: Persistence forecast
 #    collate   : Collates summary statistics (non-parallel)
@@ -49,7 +49,7 @@ OKs=$(addprefix $(OUTDIR)/, $(addsuffix .ok, $(JOB_LIST)))
 TODO=$(TODO_DIR)/$(TYPE).todo
 
 #Master template
-MASTER=./src/Y.HPC_scripts/qMaster.sh
+MASTER=./src/Y.HPC_scripts/bMaster.sh
 
 #Default target
 default: help status
@@ -60,7 +60,7 @@ NMME NMME_Ensmean SumStats Decadal Decadal_Ensmean Observations:
 	make cluster TYPE=$@
 
 cluster:  todo $(OKs)
-	TASK_IDS=`paste -s -d "," $(TODO)`; qsub -N PE_$(TYPE) -v NAME=$(TYPE) -t $$TASK_IDS $(MASTER)
+	@TASK_IDS=`paste -s -d "," $(TODO)`; bsub -J PE_$(TYPE)[$$TASK_IDS] -o PE_$(TYPE).%J.%I.out -e PE_$(TYPE).%J.%I.err -n 1 -R "rusage[mem=8GB]" -W 72:00  -N $(MASTER) $(TYPE) 
 	
 $(OUTDIR)/%.ok: 
 	@echo $* >> $(TODO)
@@ -73,7 +73,7 @@ collate persistence:
 todo: $(TODOs)
 
 $(TODO_DIR)/%.todo: FORCE 
-	cat /dev/null  > $@ 
+	@cat /dev/null  > $@ 
 
 status: $(addsuffix .status,$(TYPES))
 
@@ -87,8 +87,8 @@ setup: FORCE
 install: FORCE
 	Rscript src/A1.Setup_system.r
 
-download:
-	qsub src/Y.HPC_scripts/qNMME_download.sh
+NMME_sync:
+	bsub  < src/Y.HPC_scripts/bNMME_sync.sh
 
 #-------------------------------------
 clean:
@@ -99,6 +99,9 @@ purge:
 	-@rm $(TODO_DIR)/*
 
 FORCE:
+
+vars:
+	echo $(TODO)
 
 #Targets
 help:

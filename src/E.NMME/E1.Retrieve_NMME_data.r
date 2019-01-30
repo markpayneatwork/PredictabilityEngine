@@ -1,5 +1,5 @@
 #/*##########################################################################*/
-#' Retrieve NMME data
+#' E1. Retrieve NMME data
 #' ==========================================================================
 #'
 #' by Mark R Payne  
@@ -27,7 +27,7 @@
 # ========================================================================
 # Initialise system
 # ========================================================================
-cat(sprintf("\n%s\n","Retrieve NMME data"))
+cat(sprintf("\n%s\n","E1. Retrieve NMME data"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Configure markdown style, do house cleaning
