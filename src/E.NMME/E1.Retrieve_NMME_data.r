@@ -57,14 +57,15 @@ if(interactive()) {
   options("mc.cores"=1)  
 } else {
   #Taking inputs from the system environment
-  cfg.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
-  if(cfg.no=="") stop("Cannot find PBS_ARRAYID")
+  cfg.no <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
+  if(cfg.no=="") stop("Cannot find LSB_JOBINDEX")
   #Do everything and tell us all about it
   set.debug.level(0)  #0 complete fresh run
   set.condexec.silent(FALSE)
   set.cdo.defaults()
   set.log_msg.silent(FALSE)
-  options("mc.cores"= as.numeric(Sys.getenv("PBS_NUM_PPN"))-1)
+  options("mc.cores"= as.numeric(Sys.getenv("LSB_MAX_NUM_PROCESSORS"))-1)
+  options("mc.cores"=1)  
 }
 
 #Other configurations
