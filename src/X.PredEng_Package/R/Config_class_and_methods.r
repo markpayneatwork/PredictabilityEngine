@@ -1,6 +1,7 @@
 #' PredEng Project configuration class
 #'
 #' @slot project.name Name of the configuration
+#' @slot clean Should all existing files be overwritten, or apply intelligent make-like functionality to only process missing files?
 #' @slot Observations A data.source object defining the observational dataset to include. 
 #' @slot Decadal A list of GCM objects defining the decadal forecast systems to be analysed
 #' @slot NMME A list of GCM objects defining the NMME models to be analysed
@@ -41,6 +42,7 @@
 #' @export PredEng.config
 PredEng.config <- setClass("PredEng.config",
                            slots=list(project.name="character",
+                                      clean="logical",
                                       Observations="PredEng.source",
                                       Decadal="PredEng.list",
                                       NMME="PredEng.list",
@@ -59,6 +61,7 @@ PredEng.config <- setClass("PredEng.config",
                                       retain.realizations="logical",
                                       average.months="logical"),
                            prototype = list(global.ROI=extent(as.numeric(rep(NA,4))),
+                                            clean=TRUE,
                                             retain.realizations=TRUE))
 
 
