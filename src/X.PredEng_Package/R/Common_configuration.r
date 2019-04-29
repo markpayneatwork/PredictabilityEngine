@@ -21,6 +21,7 @@ PE.cfg$files <- list(Obs.monthly.anom.metadata=file.path(PE.cfg$dir$Misc.meta,"M
                      Obs.climatology.metadata=file.path(PE.cfg$dir$Misc.meta,"Climatology_metadata.rds"),
                      fragment.meta=file.path(PE.cfg$dir$Misc.meta,"Fragment_metadata.rds"),
                      fragstack.meta=file.path(PE.cfg$dir$Misc.meta,"Fragstack_metadata.rds"),
+                     clim.meta="Climatology_metadata.rds",
                      anom.meta="Anomaly_metadata.rds",
                      realmean.meta="Realmean_metadata.rds",
                      analysis.grid="analysis.grid",
