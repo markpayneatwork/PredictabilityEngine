@@ -38,8 +38,7 @@ library(tibble)
 library(dplyr)
 library(ncdf4)
 library(lubridate)
-load("objects/PredEng_config.RData")
-load("objects/configuration.RData")
+pcfg <- readRDS(PE.cfg$config.path)
 
 #'========================================================================
 # Configuration ####
@@ -47,8 +46,6 @@ load("objects/configuration.RData")
 #Take input arguments, if any
 if(interactive()) {
   cfg.id <- 2
-  set.debug.level(0)  #0 complete fresh run
-  set.condexec.silent()
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
   set.nco.defaults("--ovewrite")
@@ -57,8 +54,6 @@ if(interactive()) {
   cfg.id <- as.numeric(Sys.getenv("PBS_ARRAYID"))
   if(cfg.id=="") stop("Cannot find PBS_ARRAYID")
   #Do everything and tell us all about it
-  set.debug.level(0)  #0 complete fresh run
-  set.condexec.silent(FALSE)
   set.cdo.defaults()
   set.log_msg.silent(FALSE)
 }
@@ -85,93 +80,107 @@ misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
 analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$files$analysis.grid)
 
 #'========================================================================
-# Extract data ####
+# Setup ####
 #'========================================================================
 log_msg("Processing %s data source for %s subdomain ...\n",this.src@name,this.sp@name)
 
 #Get list of files
-fnames <- dir(src.dir,pattern="\\.nc$",full.names = TRUE)
-if(length(fnames)==0 & get.debug.level()<=2) stop("Cannot find source files")
+src.fnames <- dir(src.dir,pattern="\\.nc$",full.names = TRUE)
+if(length(src.fnames)==0 ) stop("Cannot find source files")
+src.meta <- tibble(fname=src.fnames)
 
 #Prepare a set of remapping weights
 log_msg("Preparing weights...\n")
 remapping.wts <- file.path(remap.dir,PE.cfg$files$remapping.wts)
-condexec(1,wts.cmd <- cdo(csl("genbil",analysis.grid.fname),fnames[1],
-                        remapping.wts))
+wts.cmd <- cdo(csl("genbil",analysis.grid.fname),src.meta$fname[1],
+                        remapping.wts)
 
-#Loop over Files
-log_msg("\nLooping over files...\n")
-pb <- progress_estimated(length(fnames),-1)
-for(i in seq(fnames)) {
-  #Update progress bar
-  pb$tick()$print()
-  
-  #Extract file
-  f <- fnames[i]
-  log_msg("Extracting from %s...\n",basename(f),silenceable = TRUE)
-  temp.stem <- tempfile()
+#'========================================================================
+# Extract Fragments from Source Files ####
+#'========================================================================
+#Use the fragment meta data here as the trigging step. My fear is that
+#an interruption of the source processing may lead to only a subset of
+#the fragments being produced from a given file. Hence, required that
+#the source extraction and fragment metadata are run in one large chunk
+#all the way to completion.
+frag.meta.fname <- file.path(base.dir,PE.cfg$files$fragment.meta)
 
-  #Subset out the layer(s) from the field of interest
-  #log_msg("Select and remap...")
-  temp.in <- f
-  temp.out <- sprintf("%s_sellevidx",temp.stem)
-  condexec(2,sellev.cmd <- cdo(csl("sellevidx",this.src@levels),
-                             temp.in,temp.out))
-  
-  #Average over the layers
-  temp.in <- temp.out
-  temp.out <- sprintf("%s_vertmean",temp.in)
-  condexec(2,levmean.cmd <- cdo("vertmean",temp.in,temp.out))
-  
-  #Select the field of interest, just to be sure
-  temp.in <- temp.out
-  temp.out <- sprintf("%s_selname",temp.in)
-  condexec(2,selname.cmd <- cdo(csl("selname",this.src@var),temp.in,temp.out))
-
-  #Select the months of interest 
-  temp.in <- temp.out
-  temp.out <- sprintf("%s_selmon",temp.in)
-  condexec(2,selmon.cmd <- cdo(csl("selmon", pcfg@MOI),
-                               temp.in,temp.out))
-  
-  #Average over time - only necessary when considering multiple target months
-  if(pcfg@average.months) {
+#Loop over Source Files
+log_msg("Extracting source files into fragments...\n")
+if(!file.exists(frag.meta.fname) | pcfg@recalculate) {
+  pb <- progress_estimated(nrow(src.meta),-1)
+  for(i in seq(nrow(src.meta))) {
+    #Update progress bar
+    pb$tick()$print()
+    
+    #Extract file
+    f <- src.meta$fname[i]
+    log_msg("Extracting from %s...\n",basename(f),silenceable = TRUE)
+    temp.stem <- tempfile()
+    
+    #Subset out the layer(s) from the field of interest
+    #log_msg("Select and remap...")
+    temp.in <- f
+    temp.out <- sprintf("%s_sellevidx",temp.stem)
+    sellev.cmd <- cdo(csl("sellevidx",this.src@levels),
+                      temp.in,temp.out)
+    
+    #Average over the layers
     temp.in <- temp.out
-    temp.out <- sprintf("%s_yearmean",temp.in)
-    condexec(2,yearmean.cmd <- cdo( "yearmean", temp.in,temp.out))
+    temp.out <- sprintf("%s_vertmean",temp.in)
+    levmean.cmd <- cdo("vertmean",temp.in,temp.out)
+    
+    #Select the field of interest, just to be sure
+    temp.in <- temp.out
+    temp.out <- sprintf("%s_selname",temp.in)
+    selname.cmd <- cdo(csl("selname",this.src@var),temp.in,temp.out)
+    
+    #Select the months of interest 
+    temp.in <- temp.out
+    temp.out <- sprintf("%s_selmon",temp.in)
+    selmon.cmd <- cdo(csl("selmon", pcfg@MOI),temp.in,temp.out)
+    
+    #Average over time - only necessary when considering multiple target months
+    if(pcfg@average.months) {
+      temp.in <- temp.out
+      temp.out <- sprintf("%s_yearmean",temp.in)
+      yearmean.cmd <- cdo( "yearmean", temp.in,temp.out)
+    }
+    
+    #Remap
+    temp.in <- temp.out
+    regrid.fname <- file.path(sel.dir,basename(f))
+    regrid.cmd <- cdo("-f nc",
+                      csl("remap", analysis.grid.fname, remapping.wts),
+                      temp.in, regrid.fname)
+    
+    #Fragment (split) into individual lead times
+    #Note that the splitting indexing is something decided by cdo, not here, and
+    #doesn't necessarily relate to the actual lead times in months/years.
+    this.frag.fname <- file.path(frag.dir,gsub(".nc$","_L",basename(f)))
+    frag.cmd <- cdo("splitsel,1",regrid.fname,this.frag.fname)
+    
+    #Remove the temporary files to tidy up
+    tmp.fnames <- dir(dirname(temp.stem),pattern=basename(temp.stem),full.names = TRUE)
+    del.err <- unlink(tmp.fnames)
+    if(del.err!=0) stop("Error deleting temp files")
+    
   }
+  pb$stop()
+  print(pb)
+  rm(pb)
   
-  #Remap
-  temp.in <- temp.out
-  regrid.fname <- file.path(sel.dir,basename(f))
-  condexec(2,regrid.cmd <- cdo("-f nc",
-                               csl("remap", analysis.grid.fname, remapping.wts),
-                               temp.in, regrid.fname))
+  pcfg@recalculate <- TRUE   #If here, then force all subsequent calculations
   
-  #Fragment (split) into individual lead times
-  #Note that the splitting indexing is something decided by cdo, not here, and
-  #doesn't necessarily relate to the actual lead times in months/years.
-  this.frag.fname <- file.path(frag.dir,
-                           gsub(".nc$","_L",basename(f)))
-  condexec(3,frag.cmd <- cdo("splitsel,1",regrid.fname,this.frag.fname))
-
-  #Remove the temporary files to tidy up
-  tmp.fnames <- dir(dirname(temp.stem),pattern=basename(temp.stem),full.names = TRUE)
-  del.err <- unlink(tmp.fnames)
-  if(del.err!=0) stop("Error deleting temp files")
-  
+  log_msg("\n")
 }
-pb$stop()
-print(pb)
-rm(pb)
-log_msg("\n")
 
 #'========================================================================
 # Collate fragment metadata  ####
 #'========================================================================
 #Get meta information 
 log_msg("Collating meta information...\n")
-if(get.debug.level()<=4) {
+if(!file.exists(frag.meta.fname) | pcfg@recalculate) {
   #Extract metadata from the files - this is controlled by the
   #various functions associated with the src model, and may
   #involving loading data from the file
@@ -194,15 +203,17 @@ if(get.debug.level()<=4) {
                       lead.idx=str_match(basename(frag.fnames),"^.*?_L([0-9]+).nc$")[,2],
                       realization=this.src@ensmem_fn(frag.fnames),
                       fname=frag.fnames)
-  save(frag.meta,file=file.path(base.dir,PE.cfg$files$fragment.meta))
+  saveRDS(frag.meta,file=frag.meta.fname)
   
   pb$stop()
   print(pb)
   rm(pb)
   log_msg("\n")
+
+  pcfg@recalculate <- TRUE   #If here, then force all subsequent calculations
   
 } else {
-  load(file.path(base.dir,PE.cfg$files$fragment.meta))
+  frag.meta <- readRDS(frag.meta.fname)
 }
 
 #'========================================================================
@@ -211,8 +222,9 @@ if(get.debug.level()<=4) {
 # layer corresponding to a realisation
 #'========================================================================
 log_msg("Building fragstacks...\n")
+fragstack.meta.fname <- file.path(base.dir,PE.cfg$files$fragstack.meta)
 
-if(get.debug.level()<=5) {
+if(!file.exists(fragstack.meta.fname)| pcfg@recalculate) {
   # Group data into the fragment stacks
   fragstack.grp <- split(frag.meta,
                          frag.meta[,c("date","lead.idx")],drop=TRUE)
@@ -234,8 +246,7 @@ if(get.debug.level()<=5) {
     # condexec(1,fragstack.cmd <- cdo("merge",
     #                                 grp$fname,
     #                                 fragstack.fname))
-    condexec(5,fragstack.cmd <- ncecat("--rcd_nm realization -M",
-                                       grp$fname,fragstack.fname))
+    fragstack.cmd <- ncecat("--rcd_nm realization -M",grp$fname,fragstack.fname)
     
     #Store metadata
     fragstack.meta.l[[i]] <- grp[1,] %>%
@@ -250,133 +261,162 @@ if(get.debug.level()<=5) {
   #Save metadata
   fragstack.meta <- bind_rows(fragstack.meta.l) %>%
     select(-starts_with("realization")) 
-  save(fragstack.meta,file=file.path(base.dir,PE.cfg$files$fragstack.meta))
+  saveRDS(fragstack.meta,file=fragstack.meta.fname)
+
+  pcfg@recalculate <- TRUE   #If here, then force all subsequent calculations
   
 } else {
-  load(file=file.path(base.dir,PE.cfg$files$fragstack.meta))
+  fragstack.meta <- readRDS(fragstack.meta.fname)
 }
 
 #'========================================================================
 # Calculate climatologies ####
 #'========================================================================
 log_msg("Calculating climatologies...\n")
-#Break into chunks for climatology calculation by lead time and start month
-clim.meta <- mutate(fragstack.meta,
-                         in.clim=year(date) %in% pcfg@clim.years,
-                         start.month=month(start.date),
-                         clim.idx=sprintf("S%02i.L%s",start.month,lead.idx),
-                         clim.fname=file.path(lead.clim.dir,
-                                              sprintf("%s_%s_clim.nc",
-                                                      this.src@name,clim.idx)))
-rm(fragstack.meta)
-lead.clim.files <- subset(clim.meta,in.clim)
-lead.clim.files.l <- split(lead.clim.files,lead.clim.files$clim.idx)
 
-#Calculate climatologies per lead and start mnth
-pb <- progress_estimated(length(lead.clim.files.l),-1)
-for(l in names(lead.clim.files.l)) {
-  pb$tick()$print()
-  lf.df <- lead.clim.files.l[[l]]
-  # lead.clim.fname <- file.path(lead.clim.dir,
-  #                              sprintf("%s_L%s_clim.nc",this.src@name,l))
-  # condexec(5,lead.clim.cmd <- cdo("-O ensmean",
-  #                                 lf.df$fname,lead.clim.fname))
+clim.meta.fname <-  file.path(base.dir,PE.cfg$files$clim.meta)
+
+if(!file.exists(clim.meta.fname) | pcfg@recalculate) {
   
-  #Calculate the climatology
-  #We need to use nco here, rather than CDO - not sure why, but it
-  #seems that the dimensionality is a bit too strange for CDO
-  #First we do the averaging over all the individual dates to be included
-  #in the climatology to product a climatology per realization. Then we need 
-  #to average over the realization climatologies to get the total climatology
-  #Note that we need to do the averaging with ncwa rather than ncra so 
-  #anomaly creation via ncdiff works properly
-  realclim.tmp <- tempfile()
-  condexec(6,realclim.cmd <- nces(lf.df$fname,realclim.tmp))
-  condexec(6,clim.cmd2 <- ncwa("-a realization", 
-                               realclim.tmp,unique(lf.df$clim.fname)))
-
+  #Break into chunks for climatology calculation by lead time and start month
+  clim.meta <- mutate(fragstack.meta,
+                      in.clim=year(date) %in% pcfg@clim.years,
+                      start.month=month(start.date),
+                      clim.idx=sprintf("S%02i.L%s",start.month,lead.idx),
+                      clim.fname=file.path(lead.clim.dir,
+                                           sprintf("%s_%s_clim.nc",
+                                                   this.src@name,clim.idx)))
+  rm(fragstack.meta)
+  lead.clim.files <- subset(clim.meta,in.clim)
+  lead.clim.files.l <- split(lead.clim.files,lead.clim.files$clim.idx)
+  
+  #Calculate climatologies per lead and start mnth
+  pb <- progress_estimated(length(lead.clim.files.l),-1)
+  for(l in names(lead.clim.files.l)) {
+    pb$tick()$print()
+    lf.df <- lead.clim.files.l[[l]]
+    # lead.clim.fname <- file.path(lead.clim.dir,
+    #                              sprintf("%s_L%s_clim.nc",this.src@name,l))
+    # condexec(5,lead.clim.cmd <- cdo("-O ensmean",
+    #                                 lf.df$fname,lead.clim.fname))
+    
+    #Calculate the climatology
+    #We need to use nco here, rather than CDO - not sure why, but it
+    #seems that the dimensionality is a bit too strange for CDO
+    #First we do the averaging over all the individual dates to be included
+    #in the climatology to product a climatology per realization. Then we need 
+    #to average over the realization climatologies to get the total climatology
+    #Note that we need to do the averaging with ncwa rather than ncra so 
+    #anomaly creation via ncdiff works properly
+    realclim.tmp <- tempfile()
+    realclim.cmd <- nces(lf.df$fname,realclim.tmp)
+    clim.cmd2 <- ncwa("-a realization", realclim.tmp,unique(lf.df$clim.fname))
+    
+  }
+  
+  pb$stop()
+  print(pb)
+  rm(pb)
+  log_msg("\n")
+  
+  saveRDS(clim.meta,file=clim.meta.fname)
+  pcfg@recalculate <- TRUE   #If here, then force all subsequent calculations
+  
+} else {
+  clim.meta <- readRDS(clim.meta.fname)
 }
-
-pb$stop()
-print(pb)
-rm(pb)
-log_msg("\n")
 
 #'========================================================================
 # Calculate anomalies ####
 #'========================================================================
 log_msg("Calculating anomalies...\n")
-#Simple loop over files
-anom.meta <- mutate(clim.meta,
-                    fragstack.fname=fname,
-                    fname=file.path(anom.dir,
-                                    sprintf("%s_S%s_L%s_anom.nc",
-                                            name,
-                                            format(start.date,"%Y%m%d"),
-                                            lead.idx)))
-pb <- progress_estimated(nrow(anom.meta))
-for(k in seq(nrow(anom.meta))){
-  pb$tick()$print()
-  log_msg("Calculating anomaly %s...\n",basename(anom.meta$fname[k]),silenceable = TRUE)
-  # condexec(6,anom.cmd <- cdo("sub",anom.meta$fragstack.fname[k],
-  #                            anom.meta$clim.fname[k],
-  #                            anom.meta$fname[k]))
-  condexec(7,anom.cmd <- ncdiff(anom.meta$fragstack.fname[k],
-                             anom.meta$clim.fname[k],
-                             anom.meta$fname[k]))
+anom.meta.fname <- file.path(base.dir,PE.cfg$files$anom.meta)
+
+if(!file.exists(anom.meta.fname) | pcfg@recalculate) {
+  #Simple loop over files
+  anom.meta <- mutate(clim.meta,
+                      fragstack.fname=fname,
+                      fname=file.path(anom.dir,
+                                      sprintf("%s_S%s_L%s_anom.nc",
+                                              name,
+                                              format(start.date,"%Y%m%d"),
+                                              lead.idx)))
+  pb <- progress_estimated(nrow(anom.meta))
+  for(k in seq(nrow(anom.meta))){
+    pb$tick()$print()
+    log_msg("Calculating anomaly %s...\n",basename(anom.meta$fname[k]),silenceable = TRUE)
+    # condexec(6,anom.cmd <- cdo("sub",anom.meta$fragstack.fname[k],
+    #                            anom.meta$clim.fname[k],
+    #                            anom.meta$fname[k]))
+    anom.cmd <- ncdiff(anom.meta$fragstack.fname[k],
+                       anom.meta$clim.fname[k],
+                       anom.meta$fname[k])
+  }
+  
+  pb$stop()
+  print(pb)
+  rm(pb)
+  log_msg("\n")
+  
+  saveRDS(anom.meta,file=anom.meta.fname)
+  pcfg@recalculate <- TRUE   #If here, then force all subsequent calculations
+} else {
+  anom.meta <- readRDS(anom.meta.fname)
 }
-
-pb$stop()
-print(pb)
-rm(pb)
-log_msg("\n")
-
-save(anom.meta,file=file.path(base.dir,PE.cfg$files$anom.meta))
 
 #'========================================================================
 # Calculate realisation means ####
 # This is easy now, as we can just average over the fragstacks
 #'========================================================================
 log_msg("Realisation means...\n")
-#Break into chunks per lead time and forecast date
-realmean.meta <- mutate(anom.meta,
-                        anom.fname=fname,
-                        fname=file.path(realmean.dir,
-                                                 str_replace(basename(anom.fname),
-                                                             "anom",
-                                                             "realmean")))
 
-#Average over the individual realisations at given lead time
-pb <- progress_estimated(nrow(realmean.meta),-1)
-for(i in seq(nrow(realmean.meta))) {
-  pb$tick()$print()
-  log_msg("Calculating realmean %s...\n",
-          basename(realmean.meta$fname[i]),silenceable = TRUE)
-  realmean.tmp <- tempfile()
-  condexec(8,realmean.cmd <- ncra(realmean.meta$anom.fname[i],realmean.tmp))
+realmean.meta.fname <- file.path(base.dir,PE.cfg$files$realmean.meta)
+
+if(!file.exists(realmean.meta.fname) | pcfg@recalculate) {
   
-  #Rename into a format suitable for combining into an ensmean
-  realmean.tmp2 <- tempfile()
-  condexec(8,rename.cmd <- ncrename(sprintf("-v %s,%s",this.src@var,PE.cfg$VOI.name),
-                                              realmean.tmp,realmean.tmp2))
+  #Break into chunks per lead time and forecast date
+  realmean.meta <- mutate(anom.meta,
+                          anom.fname=fname,
+                          fname=file.path(realmean.dir,
+                                          str_replace(basename(anom.fname),
+                                                      "anom",
+                                                      "realmean")))
   
-  #And retain only this variable (and associated dimensions)
-  condexec(8,drop.cmd <- ncks(sprintf("-v %s",PE.cfg$VOI.name),
-                                    realmean.tmp2,realmean.meta$fname[i]))
+  #Average over the individual realisations at given lead time
+  pb <- progress_estimated(nrow(realmean.meta),-1)
+  for(i in seq(nrow(realmean.meta))) {
+    pb$tick()$print()
+    log_msg("Calculating realmean %s...\n",
+            basename(realmean.meta$fname[i]),silenceable = TRUE)
+    realmean.tmp <- tempfile()
+    realmean.cmd <- ncra(realmean.meta$anom.fname[i],realmean.tmp)
+    
+    #Rename into a format suitable for combining into an ensmean
+    realmean.tmp2 <- tempfile()
+    rename.cmd <- ncrename(sprintf("-v %s,%s",this.src@var,PE.cfg$VOI.name),
+                           realmean.tmp,realmean.tmp2)
+    
+    #And retain only this variable (and associated dimensions)
+    drop.cmd <- ncks(sprintf("-v %s",PE.cfg$VOI.name),
+                     realmean.tmp2,realmean.meta$fname[i])
+    
+    unlink(c(realmean.tmp,realmean.tmp2))
+    
+  }
   
-  unlink(c(realmean.tmp,realmean.tmp2))
+  pb$stop()
+  print(pb)
+  rm(pb)
+  log_msg("\n")
   
+  #Compile into metadata catalogue by taking the first line in each groupling
+  realmean.meta <- realmean.meta %>% 
+    select(name,type,start.date,date,lead.idx,n.realizations,fname)
+  saveRDS(realmean.meta,file=realmean.meta.fname)
+  pcfg@recalculate <- TRUE   #If here, then force all subsequent calculations
+} else {                                 
+  realmean.meta <- readRDS(file=realmean.meta.fname)
 }
-
-pb$stop()
-print(pb)
-rm(pb)
-log_msg("\n")
-
-#Compile into metadata catalogue by taking the first line in each groupling
-realmean.meta <- realmean.meta %>% 
-                 select(name,type,start.date,date,lead.idx,n.realizations,fname)
-save(realmean.meta,file=file.path(base.dir,PE.cfg$files$realmean.meta))
 
 #'========================================================================
 # Complete 
