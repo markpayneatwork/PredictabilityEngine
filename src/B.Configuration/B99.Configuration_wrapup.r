@@ -42,10 +42,10 @@ if(pcfg@use.global.ROI){
   
   #Write regridded landmask
   regrid.landmask <- file.path(pcfg@scratch.dir,PE.cfg$files$regridded.landmask)
-  exec(landmask.cmd <- cdo("--silent -f nc",
+  landmask.cmd <- cdo("--silent -f nc",
                            csl(" remapnn", analysis.grid.fname),
                            pcfg@landmask,
-                           regrid.landmask))
+                           regrid.landmask)
 
 } else { #Loop over spatial subdomains
   for(sp in pcfg@spatial.subdomains){
@@ -67,9 +67,9 @@ if(pcfg@use.global.ROI){
 }
 
 #Output
-cfg.fname <- file.path(pcfg@scratch.dir,"configuration.RData")
-cfg.linked <- file.path("objects","configuration.RData")
-save(pcfg,file=cfg.fname)
+cfg.fname <- file.path(pcfg@scratch.dir,PE.cfg$config.fname)
+cfg.linked <- PE.cfg$config.path
+saveRDS(pcfg,file=cfg.fname)
 if(file.exists(cfg.linked)) {
  file.remove(cfg.linked)
 }

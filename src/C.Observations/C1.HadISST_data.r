@@ -33,9 +33,6 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 
 #Helper functions, externals and libraries
 library(PredEng)
-load("objects/configuration.RData")
-load("objects/PredEng_config.RData")
-
 library(lubridate)
 library(raster)
 library(tibble)
@@ -44,11 +41,11 @@ library(dplyr)
 #'========================================================================
 # Configuration ####
 #'========================================================================
+pcfg <- readRDS(PE.cfg$config.path)
+
 #Take input arguments, if any
 if(interactive()) {
   cfg.no <- 1
-  set.debug.level(0)  #0 complete fresh run
-  set.condexec.silent()
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
   set.nco.defaults("--overwrite")
@@ -59,8 +56,6 @@ if(interactive()) {
   if(cfg.no=="") stop("Cannot find PBS_ARRAYID")
 
   #Do everything and tell us all about it
-  set.debug.level(0)  #0 complete fresh run
-  set.condexec.silent(FALSE)
   set.cdo.defaults()
   set.log_msg.silent(FALSE)
 }
@@ -109,8 +104,8 @@ analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$files$analysis.grid)
 log_msg("Remapping...")
 in.fname <- HadISST.dat
 remap.fname <- file.path(work.dir,gsub(".nc$","_remapped.nc",basename(in.fname)))
-condexec(2,remap.cmd <- cdo("-f nc", csl("remapbil", analysis.grid.fname),
-                            in.fname,remap.fname))
+remap.cmd <- cdo("-f nc", csl("remapbil", analysis.grid.fname),
+                  in.fname,remap.fname)
 
 #/*======================================================================*/
 #  Anomalies, clims, fragments
@@ -118,14 +113,14 @@ condexec(2,remap.cmd <- cdo("-f nc", csl("remapbil", analysis.grid.fname),
 #Calculate climatology 
 log_msg("Climatology....")
 mon.clim.fname <- gsub(".nc$","_climatology.nc",remap.fname)
-condexec(3,clim.cmd <- cdo("ymonmean",
+clim.cmd <- cdo("ymonmean",
                            csl("-selyear",pcfg@clim.years),
-                           remap.fname,mon.clim.fname))
+                           remap.fname,mon.clim.fname)
 
 #Calculate anomalies
 log_msg("Anomalies...")
 mon.anom.fname <- gsub(".nc$","_anom.nc",remap.fname)
-condexec(4,anom.cmd <- cdo("sub",remap.fname,mon.clim.fname,mon.anom.fname))
+anom.cmd <- cdo("sub",remap.fname,mon.clim.fname,mon.anom.fname)
 
 #'========================================================================
 # Average over MOIs (if relevant) ####
@@ -143,13 +138,13 @@ if(pcfg@average.months) {
   MOI.average <- function(in.src) {
     #monthly extraction
     out.fname <- gsub(".nc$","_selmon.nc",in.src)
-    condexec(5,selmon.cmd <- cdo(csl("selmon",pcfg@MOI),
-                                 in.src,out.fname))
+    selmon.cmd <- cdo(csl("selmon",pcfg@MOI),
+                                 in.src,out.fname)
     
     #Calculate means of the anomalies
     in.fname <- out.fname
     out.fname <- gsub(".nc$","_yearmean",in.fname)
-    condexec(5,yearmean.cmd <- cdo( "yearmean", in.fname,out.fname))
+    yearmean.cmd <- cdo( "yearmean", in.fname,out.fname)
     
     return(out.fname)
   }
@@ -161,9 +156,9 @@ if(pcfg@average.months) {
   #Now need to do the complete mean on MOIave.clim and move it 
   #to the appropriate directory
   MOIave.clim <- file.path(MOIave.clim.dir,"MOIave_climatology.nc")
-  condexec(5,clim.cmd <- ncwa("-a time", 
+  clim.cmd <- ncwa("-a time", 
                               MOIave.yearmean,
-                              MOIave.clim))
+                              MOIave.clim)
   
 }
 
@@ -174,18 +169,18 @@ log_msg("Fragmenting...")
 
 #Explode the climatologies fragment into year/months
 mon.clim.frag.prefix <- file.path(mon.clim.dir,sprintf("%s_climatology_",this.src@name))
-condexec(3,frag.cmd <- cdo("splitmon",mon.clim.fname,mon.clim.frag.prefix))
+frag.cmd <- cdo("splitmon",mon.clim.fname,mon.clim.frag.prefix)
 
 #Explode the anomalies fragment into year/months
 mon.anom.frag.prefix <- file.path(mon.anom.dir,sprintf("%s_",this.src@name))
-condexec(3,frag.cmd <- cdo("splityearmon",mon.anom.fname,mon.anom.frag.prefix))
+frag.cmd <- cdo("splityearmon",mon.anom.fname,mon.anom.frag.prefix)
 
 if(pcfg@average.months) {
   #Explode the MOIanomalies fragment into individual files, one per year
   MOIave.anom.frag.prefix <- file.path(MOIave.anom.dir,sprintf("%s_",this.src@name))
-  condexec(3,MOI.frag.cmd <- cdo("splityear",
+  MOI.frag.cmd <- cdo("splityear",
                                  MOIave.anom,
-                                 MOIave.anom.frag.prefix))
+                                 MOIave.anom.frag.prefix)
   
 }
 
@@ -227,7 +222,7 @@ generate.metadata <- function(src.dir) {
 #First generate all monthly metadata anomalies - we need this for the persistence
 #forecast anyway
 mon.anom.meta <- generate.metadata(mon.anom.dir)
-save(mon.anom.meta,file=file.path(base.dir,PE.cfg$files$Obs.monthly.anom.metadata))
+saveRDS(mon.anom.meta,file=file.path(base.dir,PE.cfg$files$Obs.monthly.anom.metadata))
 
 #Now, setup rest of metadata accordingly
 if(pcfg@average.months) {
@@ -240,9 +235,9 @@ if(pcfg@average.months) {
 }
 
 #Save results and create a second copy as realmean metadata
-save(anom.meta,file=file.path(base.dir,"Anomaly_metadata.RData"))
+saveRDS(anom.meta,file=file.path(base.dir,"Anomaly_metadata.rds"))
 realmean.meta <- anom.meta  #Needs a rename
-save(realmean.meta,file=file.path(base.dir,"Realmean_metadata.RData"))
+saveRDS(realmean.meta,file=file.path(base.dir,"Realmean_metadata.rds"))
 
 #And now for the climatologies
 if(pcfg@average.months) {
@@ -262,7 +257,7 @@ if(pcfg@average.months) {
   #Restrict to months in the MOI
   clim.meta <- subset(clim.meta,month(date) %in% pcfg@MOI)
 }
-save(clim.meta,file=file.path(base.dir,PE.cfg$files$Obs.climatology.metadata))
+saveRDS(clim.meta,file=file.path(base.dir,PE.cfg$files$Obs.climatology.metadata))
 
 #Remove the temporary files to tidy up
 tmp.fnames <- dir(work.dir,pattern=work.dir,full.names = TRUE)
