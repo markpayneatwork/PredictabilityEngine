@@ -10,7 +10,6 @@ echo "=========================================================="
 
 #Setup
 module load cdo
-module load gcc
 module load nco
 source ~/.bashrc
 
