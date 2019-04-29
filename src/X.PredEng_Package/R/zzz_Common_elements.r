@@ -39,7 +39,7 @@ ll.crs <- CRS("+proj=longlat +ellps=WGS84")
 #' @param ... Relevant paramters to be displayed
 #'
 #' @export
-config.summary<- function(cfg.id="missing",...){
+config.summary<- function(...){
   
   l <- list(...)
   for(this in l){
@@ -50,9 +50,9 @@ config.summary<- function(cfg.id="missing",...){
       log_msg("Data source          : %s (%s) \n",this@name,this@type)}
     if(is(this,"spatial.domain"))     {
       log_msg("Spatial domain       : %s (%s)\n",this@name,this@desc)}
-  }
-  if(!missing(cfg.id)) {
-    log_msg("Configuration id     : %s\n",cfg.id)
+    if(is.numeric(this)) {
+      log_msg("Configuration id     : %i\n",this)
+    }
   }
   log_msg("R.version            : %s\n",R.version$version.string)
   log_msg("---------------------\n")

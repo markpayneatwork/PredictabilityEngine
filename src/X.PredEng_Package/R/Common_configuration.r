@@ -7,6 +7,10 @@ PE.cfg$ROI.extraction.buffer <- 2  #Degrees
 PE.cfg$n.CMIP.chunks <- 5  #How many chunks should the CMIP5 ensemble be broken into?
 PE.cfg$NMME.epoch.start <- as.Date("1960-01-01")
 
+#Configuration
+PE.cfg$config.fname <- "configuration.rds"
+PE.cfg$config.path <- file.path("objects",PE.cfg$config.fname)
+
 #Directories
 PE.cfg$dirs <- list(Misc.meta="Z.Misc.meta",
                     datasrc="data_srcs",
