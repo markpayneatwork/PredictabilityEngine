@@ -25,7 +25,7 @@ Different extraction modes can be combined in the same list.
 \describe{
 \item{\code{project.name}}{Name of the configuration}
 
-\item{\code{clean}}{Should all existing files be overwritten, or apply intelligent make-like functionality to only process missing files?}
+\item{\code{recalculate}}{Should all existing files be recalculated? Or only missing files?}
 
 \item{\code{Observations}}{A data.source object defining the observational dataset to include.}
 
