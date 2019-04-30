@@ -101,7 +101,9 @@ purge:
 FORCE:
 
 vars:
-	echo $(TODO)
+	@echo $(CFGS)
+	@echo $(TYPES)
+	@echo $(addsuffix .status,$(TYPES))
 
 #Targets
 help:

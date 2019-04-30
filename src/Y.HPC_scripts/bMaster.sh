@@ -17,6 +17,15 @@ source ~/.bashrc
 set -e 
 source ./src/Y.HPC_scripts/${1}.sh
 
+#Error check
+if [ "$?" -eq 0 ]; 
+then
+    grep "^$LSB_JOBINDEX," ./scratch/Job_configuration/${NAME}.cfg >> ./scratch/Job_configuration/${1}/$LSB_JOBINDEX.ok 
+    echo "Successful completion."
+else 
+    echo "Failure"
+fi
+
 #Finished
 echo "=========================================================="
 echo "Finished on : $(date)"
