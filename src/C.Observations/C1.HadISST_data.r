@@ -52,8 +52,8 @@ if(interactive()) {
 
 } else {
   #Taking inputs from the system environment
-  cfg.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
-  if(cfg.no=="") stop("Cannot find PBS_ARRAYID")
+  cfg.no <- as.numeric(Sys.getenv("LSF_JOBINDEX"))
+  if(cfg.no=="") stop("Cannot find LSF_JOBINDEX")
 
   #Do everything and tell us all about it
   set.cdo.defaults()

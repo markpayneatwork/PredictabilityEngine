@@ -49,8 +49,8 @@ if(interactive()) {
   set.nco.defaults("--overwrite")
 } else {
   #Taking inputs from the system environment
-  cfg.id <- as.numeric(Sys.getenv("PBS_ARRAYID"))
-  if(cfg.id=="") stop("Cannot find PBS_ARRAYID")
+  cfg.id <- as.numeric(Sys.getenv("LSF_JOBINDEX"))
+  if(cfg.id=="") stop("Cannot find LSF_JOBINDEX")
   #Do everything and tell us all about it
   set.cdo.defaults()
   set.log_msg.silent(FALSE)
