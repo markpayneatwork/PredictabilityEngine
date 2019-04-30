@@ -40,22 +40,20 @@ library(dplyr)
 library(reshape2)
 library(lubridate)
 #library(udunits2)
-load("objects/configuration.RData")
-load("objects/PredEng_config.RData")
-  
+pcfg <- readRDS(PE.cfg$config.path)
+
 #'========================================================================
 # Configure ####
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  # partition.collation <- TRUE
+   #partition.collation <- TRUE
   # cfg.no <- 2
 } else {
   # #Taking inputs from the system environment
   # partition.collation <- TRUE
-  # cfg.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
-  # if(cfg.no=="") stop("Cannot find PBS_ARRAYID")
-  #Do everything and tell us all about it
+  # cfg.no <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
+  # if(cfg.no=="") stop("Cannot find LSB_JOBINDEX")
 }
 
 #Retrieve configurations
@@ -90,8 +88,7 @@ ss.l <- list()
 for(sp.d in sp.dirs){
   ss.fnames <- dir(file.path(base.dir,sp.d,"Summary.statistics"),full.names = TRUE)
   for(f in ss.fnames){
-    var.names <- load(f)
-    ss.l[[f]]   <- get(var.names)
+    ss.l[[f]]   <- readRDS(f)
   }
   
 }
@@ -118,8 +115,7 @@ persis.ss <- subset(all.ss.raw,type=="Persistence") %>%
               mutate(ym.date=sprintf("%i-%02i",year(date),month(date))) 
 
 #Generate the forecast grid
-lead.times <- c(1:11,seq(7,127,by=12))
-#lead.times <- 1:120
+lead.times <- 1:120
 forecast.dates <- filter(tibble(date=unique(obs.ss$date)),year(date) %in% pcfg@comp.years)
 persis.forecast.grid <- expand.grid(date=forecast.dates$date,
                                     sp.subdomain=names(pcfg@spatial.subdomains),
@@ -153,50 +149,50 @@ date.to.months <- function(x) {
 all.ss$lead.raw <- date.to.months(all.ss$date)- date.to.months(all.ss$start.date)
 all.ss$lead <- round(all.ss$lead.raw/0.5)*0.5  #Half month accuracy
 
-#'========================================================================
-# Split and Merge ####
-#'========================================================================
-log_msg("Split and merge...\n")
-
-#Drop years that are not to be included in the evaluation of skill metrics
-#and drop CMIP5 as well (not interested in the skill)
-sel.res <-  all.ss %>% 
-            filter(year(date) %in% pcfg@comp.years,
-                   !grepl("CMIP5",type)) 
-
-#Extract out the observational data
-obs.dat <- obs.ss %>% 
-  filter(year(date) %in% pcfg@comp.years) %>%
-  select(sp.subdomain,ym,sumstat.name,value) 
-
-
-#And merge it back into the comparison dataframe. This way we have both the
-#modelled and the observed results together in the same dataframe. We note
-#that we do the merging by year - this should generally be ok for most of the
-#situations where we envisage using PredEnd i.e. one data point per year - but
-#we need to be aware that this is not exactly the case 
-comp.dat <- left_join(sel.res,obs.dat,
-                      by=c("ym","sumstat.name","sp.subdomain"),
-                      suffix=c(".mdl",".obs"))
+#' #'========================================================================
+#' # Split and Merge ####
+#' #'========================================================================
+#' log_msg("Split and merge...\n")
+#' 
+#' #Drop years that are not to be included in the evaluation of skill metrics
+#' #and drop CMIP5 as well (not interested in the skill)
+#' sel.res <-  all.ss %>% 
+#'             filter(year(date) %in% pcfg@comp.years,
+#'                    !grepl("CMIP5",type)) 
+#' 
+#' #Extract out the observational data
+#' obs.dat <- obs.ss %>% 
+#'   filter(year(date) %in% pcfg@comp.years) %>%
+#'   select(sp.subdomain,ym,sumstat.name,value) 
+#' 
+#' 
+#' #And merge it back into the comparison dataframe. This way we have both the
+#' #modelled and the observed results together in the same dataframe. We note
+#' #that we do the merging by year - this should generally be ok for most of the
+#' #situations where we envisage using PredEnd i.e. one data point per year - but
+#' #we need to be aware that this is not exactly the case 
+#' comp.dat <- left_join(sel.res,obs.dat,
+#'                       by=c("ym","sumstat.name","sp.subdomain"),
+#'                       suffix=c(".mdl",".obs"))
 
 #'========================================================================
 # Calculate the metrics ####
 #'========================================================================
-log_msg("Metric calculation...\n")
-#Now calculate the metrics
-RMSE <- function(x,y) { sqrt(mean((x-y)^2,na.rm=TRUE))}
-skill.m <- comp.dat %>%
-           group_by(name,type,sumstat.name,lead,sp.subdomain) %>%
-           summarize(cor=cor(value.mdl,value.obs,use="pairwise.complete"),
-                     RMSE=RMSE(value.mdl,value.obs))
+# log_msg("Metric calculation...\n")
+# #Now calculate the metrics
+# RMSE <- function(x,y) { sqrt(mean((x-y)^2,na.rm=TRUE))}
+# skill.m <- comp.dat %>%
+#            group_by(name,type,sumstat.name,lead,sp.subdomain) %>%
+#            summarize(cor=cor(value.mdl,value.obs,use="pairwise.complete"),
+#                      RMSE=RMSE(value.mdl,value.obs))
 
 
 #'========================================================================
 # Complete ####
 #'========================================================================
 #Save results
-save(skill.m, file=file.path(base.dir,"Skill_metrics.RData"))
-save(all.ss, file=file.path(base.dir,"All_sumstats.RData"))
+#save(skill.m, file=file.path(base.dir,"Skill_metrics.RData"))
+saveRDS(all.ss, file=file.path(base.dir,"All_sumstats.rds"))
 
 
 #Turn off the lights
