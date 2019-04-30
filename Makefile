@@ -60,7 +60,7 @@ NMME NMME_Ensmean SumStats Decadal Decadal_Ensmean Observations:
 	make cluster TYPE=$@
 
 cluster:  todo $(OKs)
-	@TASK_IDS=`paste -s -d "," $(TODO)`; bsub -J PE_$(TYPE)[$$TASK_IDS] -o PE_$(TYPE).%J.%I.out -e PE_$(TYPE).%J.%I.err -n 1 -R "rusage[mem=8GB]" -W 72:00  -N $(MASTER) $(TYPE) 
+	@TASK_IDS=`paste -s -d "," $(TODO)`; bsub -J PE_$(TYPE)[$$TASK_IDS] -o PE_$(TYPE).%J.%I.out -e PE_$(TYPE).%J.%I.err -n 1 -R "rusage[mem=8GB]" -W 72:00   $(MASTER) $(TYPE) 
 	
 $(OUTDIR)/%.ok: 
 	@echo $* >> $(TODO)
