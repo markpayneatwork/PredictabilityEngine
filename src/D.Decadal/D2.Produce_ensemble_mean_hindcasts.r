@@ -36,8 +36,7 @@ library(PredEng)
 library(dplyr)
 library(tibble)
 library(lubridate)
-load("objects/configuration.RData")
-load("objects/PredEng_config.RData")
+pcfg <- readRDS(PE.cfg$config.path)
 
 #'========================================================================
 # Configuration ####
@@ -45,8 +44,6 @@ load("objects/PredEng_config.RData")
 #Take input arguments, if any
 if(interactive()) {
   cfg.id <- 1
-  set.debug.level(0)  #0 complete fresh run
-  set.condexec.silent()
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
   set.nco.defaults("--overwrite")
@@ -55,8 +52,6 @@ if(interactive()) {
   cfg.id <- as.numeric(Sys.getenv("PBS_ARRAYID"))
   if(cfg.id=="") stop("Cannot find PBS_ARRAYID")
   #Do everything and tell us all about it
-  set.debug.level(0)  #0 complete fresh run
-  set.condexec.silent(FALSE)
   set.cdo.defaults()
   set.log_msg.silent(FALSE)
 }
@@ -78,7 +73,7 @@ log_msg("Calculating Ensemble mean for %s subdomain ...\n",this.sp@name)
 metadat.l <- list()
 for(m in pcfg@Decadal){
   if(class(m)=="data.source") {
-    load(file.path(base.dir,m@name,PE.cfg$files$realmean.meta))
+    realmean.meta <- readRDS(file.path(base.dir,m@name,PE.cfg$files$realmean.meta))
     metadat.l[[m@name]] <- realmean.meta
   }
 }
@@ -130,7 +125,7 @@ for(i in seq(grp.l)) {
   grp.meta$fname <- file.path(ensmean.dir,ensmean.fname)
 
   #Average over realisation means
-  condexec(1,ensmean.cmd <- nces(d$fname,grp.meta$fname))
+  ensmean.cmd <- nces(d$fname,grp.meta$fname)
   
   
   #Average over individual files
@@ -151,7 +146,7 @@ for(i in seq(grp.l)) {
 
 #Polish the anomaly file meta data into a more useable format
 ensmean.meta <- bind_rows(ensmean.meta.l)
-save(ensmean.meta,file=file.path(base.dir,PE.cfg$files$ensmean.name,
+saveRDS(ensmean.meta,file=file.path(base.dir,PE.cfg$files$ensmean.name,
                                  PE.cfg$files$realmean.meta))
 
 #'========================================================================
