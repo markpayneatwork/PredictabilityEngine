@@ -41,23 +41,22 @@ library(PredEng)
 library(dplyr)
 library(tibble)
 library(ncdf4)
-load("objects/configuration.RData")
-load("objects/PredEng_config.RData")
+pcfg <- readRDS(PE.cfg$config.path)
 
 #'========================================================================
 # Configure ####
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.no <- 48  #1,2,10,15,17
-  set.debug.level(0)  #Non-zero lets us run with just a few points
+  cfg.no <- 1
+  debug.mode <- TRUE
   set.cdo.defaults("--silent --no_warnings")
-  set.condexec.silent()
   set.log_msg.silent()
 } else {
+  debug.mode <- FALSE
   #Taking inputs from the system environment
-  cfg.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
-  if(cfg.no=="") stop("Cannot find PBS_ARRAYID")
+  cfg.no <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
+  if(cfg.no=="") stop("Cannot find LSB_JOBINDEX")
   #Do everything
   set.debug.level(0)  #0 complete fresh run
 }
@@ -90,7 +89,7 @@ obs.dir <- file.path(base.dir,pcfg@Observations@type,pcfg@Observations@name)
 sumstat.dir <- define_dir(base.dir,"Summary.statistics")
 
 #Setup observational climatology
-load(file.path(obs.dir,PE.cfg$files$Obs.climatology.metadata))
+clim.meta <- readRDS(file.path(obs.dir,PE.cfg$files$Obs.climatology.metadata))
 obs.clim.l <- lapply(clim.meta$fname,raster)
 names(obs.clim.l) <- sprintf("%02i",month(clim.meta$date))
 
@@ -140,8 +139,10 @@ for(j in seq(pcfg@summary.statistics)) {
   #Load Metadata
   metadat.path <- file.path(base.dir,this.src@type,this.src@name,metadat.fname)
   if(file.exists(metadat.path)) {
-    metadat.varname <- load(metadat.path)
-    metadat <- get(metadat.varname)    
+    # metadat.varname <- load(metadat.path)
+    # metadat <- get(metadat.varname)    
+     metadat <-readRDS(metadat.path)
+    
   } else {#Fail gracefully
     log_msg(sprintf("Error:Cannot find file %s.",metadat.path))
     stop()
@@ -156,7 +157,7 @@ for(j in seq(pcfg@summary.statistics)) {
   }
 
   #Subset to make it run a bit quicker
-  if(get.debug.level()!=0) {
+  if(debug.mode) {
     metadat <- metadat[1:10,]
   }
   
@@ -213,7 +214,7 @@ for(j in seq(pcfg@summary.statistics)) {
     #Doing the bind diretly like this is ok when we are dealing with
     #rasterLayer fragments, but we will need to be caseful when dealing with 
     #bricks, for example
-    res.l[[i]] <- as.tibble(cbind(m,res))
+    res.l[[i]] <- as_tibble(cbind(m,res))
   }
   
   Sys.sleep(0.1)
@@ -230,12 +231,12 @@ for(j in seq(pcfg@summary.statistics)) {
                          .before=1)
 
   #Store results
-  save.fname <- gsub(" ","-",sprintf("%s_%s_%s_%s.RData",
+  save.fname <- gsub(" ","-",sprintf("%s_%s_%s_%s.rds",
                                      this.sp@name,
                                      this.src@type,
                                      this.src@name,
                                      sumstat@name))
-  save(sumstat.res,file=file.path(sumstat.dir,save.fname))
+  saveRDS(sumstat.res,file=file.path(sumstat.dir,save.fname))
 }
 
 
