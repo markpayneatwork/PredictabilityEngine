@@ -116,7 +116,7 @@ pcfg@spatial.subdomains <- EEZ.objs
 #'========================================================================
 #Configure summary stats
 statsum.l <- PredEng.list()
-statsum.l[[1]] <- area.above.threshold(threshold=8.5)  #Based on Teunis' åaåer
+statsum.l[[1]] <- area.above.threshold(data.type="means",threshold=8.5)  #Based on Teunis' paper
 statsum.l[[2]]  <- spatial.mean(data.type="means",use.anomalies=TRUE)
 #statsum.l[[3]] <-isoline.lat(threshold=11)
 
