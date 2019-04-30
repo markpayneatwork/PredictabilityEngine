@@ -45,14 +45,14 @@ pcfg <- readRDS(PE.cfg$config.path)
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.id <- 2
+  cfg.id <- 1
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
   set.nco.defaults("--ovewrite")
 } else {
   #Taking inputs from the system environment
-  cfg.id <- as.numeric(Sys.getenv("PBS_ARRAYID"))
-  if(cfg.id=="") stop("Cannot find PBS_ARRAYID")
+  cfg.id <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
+  if(cfg.id=="") stop("Cannot find LSB_JOBINDEX")
   #Do everything and tell us all about it
   set.cdo.defaults()
   set.log_msg.silent(FALSE)
