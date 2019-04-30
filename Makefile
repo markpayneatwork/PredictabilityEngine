@@ -66,7 +66,7 @@ $(OUTDIR)/%.ok:
 	@echo $* >> $(TODO)
 
 collate persistence:
-	qsub -N PE_$@ -v NAME=$@ $(MASTER)
+	@TYPE=$@; bsub -J PE_$$TYPE -o PE_$$TYPE.%J.%I.out -e PE_$$TYPE.%J.%I.err -n 1 -R "rusage[mem=8GB]" -W 72:00 $(MASTER) $$TYPE 
 	
 #-------------------------------------
 #Remove any existing To do files
