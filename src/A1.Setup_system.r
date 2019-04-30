@@ -35,10 +35,9 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 log_msg <- function(fmt,...) {cat(sprintf(fmt,...));
   flush.console();return(invisible(NULL))}
 
-library(lubridate)
+library(devtools)
 
-#Do it 
-install.packages("resources/ClimateTools", repos = NULL, type="source")
+install_git("git@gitlab.gbar.dtu.dk:PayneLab/ClimateTools.git",git="external")
 install.packages("src/X.PredEng_Package", repos = NULL, type="source")
 
 #Turn off thte lights
