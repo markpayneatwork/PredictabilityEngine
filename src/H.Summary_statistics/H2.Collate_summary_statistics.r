@@ -191,8 +191,7 @@ all.ss$lead <- round(all.ss$lead.raw/0.5)*0.5  #Half month accuracy
 # Complete ####
 #'========================================================================
 #Save results
-#save(skill.m, file=file.path(base.dir,"Skill_metrics.RData"))
-saveRDS(all.ss, file=file.path(base.dir,"All_sumstats.rds"))
+saveRDS(all.ss, file=file.path(base.dir,PE.cfg$files$sumstats))
 
 
 #Turn off the lights

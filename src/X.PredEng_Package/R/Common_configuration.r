@@ -25,6 +25,7 @@ PE.cfg$files <- list(Obs.monthly.anom.metadata=file.path(PE.cfg$dir$Misc.meta,"M
                      clim.meta="Climatology_metadata.rds",
                      anom.meta="Anomaly_metadata.rds",
                      realmean.meta="Realmean_metadata.rds",
+                     sumstats="All_sumstats.rds",
                      analysis.grid="analysis.grid",
                      remapping.wts="remapping_wts.nc",
                      ensmean.name="Ensmean",
