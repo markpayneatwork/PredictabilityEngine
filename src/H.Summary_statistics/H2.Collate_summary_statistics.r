@@ -120,7 +120,7 @@ forecast.dates <- filter(tibble(date=unique(obs.ss$date)),year(date) %in% pcfg@c
 persis.forecast.grid <- expand.grid(date=forecast.dates$date,
                                     sp.subdomain=names(pcfg@spatial.subdomains),
                                     lead=lead.times) %>%
-                        as.tibble() %>%
+                        as_tibble() %>%
                         mutate(sp.subdomain=as.character(sp.subdomain),
                                start.date=date-months(lead),
                                ym.start=sprintf("%i-%02i",year(start.date),month(start.date)))
