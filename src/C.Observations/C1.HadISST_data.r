@@ -235,9 +235,9 @@ if(pcfg@average.months) {
 }
 
 #Save results and create a second copy as realmean metadata
-saveRDS(anom.meta,file=file.path(base.dir,"Anomaly_metadata.rds"))
+saveRDS(anom.meta,file=file.path(base.dir,PE.cfg$files$anom.meta))
 realmean.meta <- anom.meta  #Needs a rename
-saveRDS(realmean.meta,file=file.path(base.dir,"Realmean_metadata.rds"))
+saveRDS(realmean.meta,file=file.path(base.dir,PE.cfg$files$realmean.meta))
 
 #And now for the climatologies
 if(pcfg@average.months) {
