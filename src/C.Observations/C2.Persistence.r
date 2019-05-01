@@ -34,13 +34,11 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 
 #Helper functions, externals and libraries
 library(PredEng)
-load("objects/configuration.RData")
-load("objects/PredEng_config.RData")
-
 library(lubridate)
 library(raster)
 library(tibble)
 library(dplyr)
+pcfg <- readRDS(PE.cfg$config.path)
 
 #/*======================================================================*/
 #  Configuration
@@ -68,17 +66,16 @@ for(this.sp in this.sps) {
   base.dir <- define_dir(subdomain.dir,"Persistence",pcfg@Observations@name)
 
   #Load the monthly anomaly data
-  load(file.path(subdomain.dir,"Observations",pcfg@Observations@name,
-                 PE.cfg$files$Obs.monthly.anom.metadata))
+  mon.anom.meta <- readRDS(file.path(subdomain.dir,"Observations",pcfg@Observations@name,
+                                     PE.cfg$files$Obs.monthly.anom.metadata))
   
   #Some tweaks
-  anom.meta <- mutate(mon.anom.meta,
+  persis.meta <- mutate(mon.anom.meta,
                       type="Persistence")
   
   #Save metadata
-  save(anom.meta,file=file.path(base.dir,"Anomaly_metadata.RData"))
-  realmean.meta <- anom.meta
-  save(realmean.meta,file=file.path(base.dir,"Realmean_metadata.RData"))
+  saveRDS(persis.meta,file=file.path(base.dir,PE.cfg$files$anom.meta))
+  saveRDS(persis.meta,file=file.path(base.dir,PE.cfg$files$realmean.meta))
 }
 
 # #/*======================================================================*/
