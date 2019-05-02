@@ -1,0 +1,220 @@
+---
+title: Skill visualisations
+output:
+  html_document:
+    keep_md: false
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include="FALSE"}
+#'========================================================================
+# Visualise skill metrics
+#'========================================================================
+#
+# by Mark R Payne
+# DTU-Aqua, Kgs. Lyngby, Denmark
+# http://www.staff.dtu.dk/mpay
+#
+# Created Wed May  1 10:48:18 2019
+#
+# Makes a series of generic skill visualisations
+#
+# This work is subject to a Creative Commons "Attribution" "ShareALike" License.
+# You are largely free to do what you like with it, so long as you "attribute"
+# me for my contribution. See the fine print at the end for exact details.
+#
+# To do:
+#
+# Notes:
+#   Make sure when knitting that you have the Knit directory set to "project directory"
+#'========================================================================
+
+#Clean plate
+rm(list=ls())
+
+#Load packages
+library(tidyverse)
+library(PredEng)
+library(mapdata)
+library(sf)
+library(ggplot2)
+library(scales)
+
+#GGplot config
+theme_set(theme_bw(base_size = 14))
+
+#Configure Knitr
+knitr::opts_chunk$set(
+  echo=FALSE,
+	error = FALSE,
+	message = FALSE,
+	warning = FALSE,
+	include = TRUE,
+	results = "markup",
+	fig.width = 10,
+	fig.height=14/25*10,
+  fig.align="center",
+  fig.path=file.path(".","notebooks","figs/"))
+
+#Powerpoint needs 14 x 25cm figures
+
+#knitr::opts_knit$set(root.dir=getwd())
+#cat(sprintf("title: %s skill visualisation\n",pcfg@project.name))
+
+```
+
+by Mark R Payne  <br>
+DTU-Aqua, Kgs. Lyngby, Denmark  <br>
+http://www.staff.dtu.dk/mpay  <br>
+```{r results="asis"}
+cat(sprintf("Visualisations generated  %s\n",date()))
+```
+
+
+```{r}
+#==========================================================================
+# Configure
+#==========================================================================
+pcfg <- readRDS(PE.cfg$config.path)
+
+#'========================================================================
+# Setup ####
+#'========================================================================
+#Import data
+base.dir <- pcfg@scratch.dir
+skill.mets <- readRDS(file.path(base.dir,PE.cfg$files$skill.metrics))
+sumstat.dat <- readRDS(file.path(base.dir,PE.cfg$files$sumstats))
+
+#Rescale time axis
+rescale.fn <- function(m) {  #Converts a leadtime in months into a rescale value
+  ifelse(m>12,
+         rescale(m,from=c(12,120),to=c(1,2)),
+         rescale(m,from=c(0,12),to=c(0,1)))
+}
+
+skill.mets <- ungroup(skill.mets) %>%
+              filter(skill.type=="mean.skill",
+                     type!="Observations") %>%
+              mutate(t=rescale.fn(lead),
+                     ensmean=name=="Ensmean"|type=="Persistence")
+
+#Plot!
+x.lbls <- tibble(months=c(seq(0,12,by=3),seq(24,120,by=24)),t=rescale.fn(months)) %>%
+  mutate(lbl=ifelse(months<=12,sprintf("%g m",months),
+                    sprintf("%g y",months/12)))
+x.minor <- tibble(months=c(0:12,seq(24,120,by=12)),t=rescale.fn(months))
+
+#Present results by spatial region
+sp.skill.l <- split(skill.mets,skill.mets$sp.subdomain)
+
+```
+
+
+```{r results="asis"}
+for(this.sp in names(sp.skill.l)) {
+  #Extract data 
+  sp.dat <- sp.skill.l[[this.sp]]
+  
+  #Show title
+  cat(sprintf("\n\n## %s\n",this.sp))
+  
+  #Map of the Spatial region
+  sp.obj <- pcfg@spatial.subdomains[[this.sp]]
+  xtent <- extend(extent(sp.obj),10)
+  g <- ggplot()+
+    annotation_map(map_data("worldHires"),fill="black",colour="grey")+
+    geom_sf(data=st_as_sf(sp.obj@boundary)) +
+    coord_sf(xlim=xtent[1:2],ylim=xtent[3:4])
+  print(g)
+  
+  #Now split it down further into Individual summary statistics and loop
+  sp.ss.dat.l <- split(sp.dat,sp.dat[,"sumstat.name"]) 
+  for(this.ss in names(sp.ss.dat.l)) {
+    #Show a subtitle
+    cat(sprintf("\n\n### %s\n",this.ss))
+    
+    #Extract the corresponding sumstat data and plot it
+    sumstat.sel <- filter(sumstat.dat,
+                          sp.subdomain==this.sp,
+                          sumstat.name==this.ss)
+    sumstat.obs <- filter(sumstat.sel,type=="Observations") %>%
+                    mutate(timeframe="Historical")
+    mr.obs <- max(sumstat.obs$date)
+    sumstat.mdl <- filter(sumstat.sel,
+                          date>mr.obs,
+                          type %in% c("Decadal","NMME"),
+                          name!="Ensmean") %>%
+                   mutate(timeframe="Near-term predictions",
+                          name.type=paste(name,type,sep=".")) %>%
+                   group_by(name.type) %>%
+                   filter(start.date==max(start.date)) %>%
+                   ungroup() %>%
+                   dplyr::select(-name.type) 
+    
+    sumstat.plt.dat <- rbind(sumstat.obs,sumstat.mdl)
+    
+    g <- ggplot(sumstat.plt.dat,aes(x=date,y=value,colour=name))+
+         geom_line()+
+         labs(x="Year",y=this.ss)+
+         facet_wrap(~timeframe,nrow=1,scales="free_x")
+    print(g)    
+    
+    #Split skill data into metrics 
+    sp.ss.dat <- sp.ss.dat.l[[this.ss]]
+    sp.ss.sk.dat.l <- split(sp.ss.dat,sp.ss.dat[,c("skill.metric")])
+    
+    
+    #Iterate over skill metrics
+    for(this.sk in names(sp.ss.sk.dat.l)) {
+      #Get data
+      plt.dat <- sp.ss.sk.dat.l[[this.sk]]
+
+      #Set y range accordingly
+      if(this.sk=="cor") {
+        y.rng <- c(0,1)
+      } else {
+        y.rng <- range(pretty(c(0,plt.dat$value)))
+      }
+      
+      #Plot
+      g <- ggplot(plt.dat,aes(x=t,y=value,group=name))+
+        geom_line(aes(colour=type,size=ensmean))+
+        facet_wrap(~skill.metric,scales = "free_y")+
+        coord_cartesian(xlim=c(0,2),ylim=y.rng,expand=FALSE)+
+        scale_size_manual(values=c(0.25,1))+
+        guides(size=FALSE)+
+        scale_x_continuous(breaks=x.lbls$t,
+                           labels=x.lbls$lbl,
+                           minor_breaks = x.minor$t)+
+        labs(x="Lead time (months / years)",y=this.sk,colour="Forecast System")
+      print(g)
+      
+    }    
+    
+  }
+  
+
+}
+
+```
+
+
+
+
+
+***
+*This work by Mark R Payne is licensed under a  Creative Commons
+Attribution-NonCommercial-ShareAlike 3.0 Unported License. 
+For details, see http://creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US
+Basically, this means that you are free to "share" and "remix" for 
+non-commerical purposes as you see fit, so long as you "attribute" me for my
+contribution. Derivatives can be distributed under the same or 
+similar license.*
+
+*This work comes with ABSOLUTELY NO WARRANTY or support.*
+
+***
+
+
+
