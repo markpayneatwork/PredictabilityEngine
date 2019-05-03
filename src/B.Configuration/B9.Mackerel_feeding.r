@@ -120,6 +120,11 @@ statsum.l[[1]] <- area.above.threshold(data.type="means",threshold=8.5)  #Based 
 statsum.l[[2]]  <- spatial.mean(data.type="means",use.anomalies=TRUE)
 #statsum.l[[3]] <-isoline.lat(threshold=11)
 
+#Setup habitat suitability functionality
+habitat.mdl.dat <- readRDS("resources/Mackerel_summer_QR_values.rds")
+habitat.mdl.fn <-  approxfun(habitat.mdl.dat$temp,habitat.mdl.dat$value,rule=2)
+statsum.l[[3]] <-  habitat.suitability(model=habitat.mdl.fn,data.type="means",use.anomalies = FALSE)
+
 #Merge it all in
 names(statsum.l) <- sapply(statsum.l,slot,"name")
 pcfg@summary.statistics <- statsum.l

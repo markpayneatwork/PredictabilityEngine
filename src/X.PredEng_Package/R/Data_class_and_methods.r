@@ -29,20 +29,20 @@ PredEng.source <- setClass("PredEng.source",slots=list(name="character",
 #' @export data.source
 #' @exportClass data.source
 data.source <- setClass("data.source",contains="PredEng.source",
-                       slots=list(source="character",
-                                  var="character",
-                                  levels="numeric",
-                                  realizations="numeric",
-                         ensmem_fn="function",
-                         init_fn="function",  #TODO: Consider dropping this slot
-                         date_fn="function"),
-                       prototype=list(levels=1,
-                                      realizations=0,
-                                      date_fn=function(f) {
-                                        if(length(f)>1) stop("Function not vectorised")
-                                        dates <- getZ(brick(f))
-                                        return(dates)
-                                      }))
+                        slots=list(source="character",
+                                   var="character",
+                                   levels="numeric",
+                                   realizations="numeric",
+                                   ensmem_fn="function",
+                                   init_fn="function",  #TODO: Consider dropping this slot
+                                   date_fn="function"),
+                        prototype=list(levels=1,
+                                       realizations=0,
+                                       date_fn=function(f) {
+                                         if(length(f)>1) stop("Function not vectorised")
+                                         dates <- getZ(brick(f))
+                                         return(dates)
+                                       }))
 
 #' @export
 setMethod("show","PredEng.source", function(object) {

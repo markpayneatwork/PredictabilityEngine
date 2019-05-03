@@ -138,3 +138,33 @@ setMethod("eval.sum.stat",signature(ss="isoline.lat",vals="Raster"),
 
             return(lat.vals)
           })
+
+
+#' Habitat suitability model 
+#'
+#' Applies a habitat suitability model
+#' @export habitat.suitability
+habitat.suitability <- setClass("habitat.suitability",
+                                slots=list(model="function"),
+                                prototype=list(name="habitat.suitability"),
+                                contains="sum.stat")
+
+#' @export
+setMethod("eval.sum.stat",signature(ss="habitat.suitability",vals="Raster"),
+          function(ss,vals,...){
+            
+            require(dplyr)
+            
+            #Apply the habitat model
+            hab.r <- vals
+            hab.r[] <- ss@model(vals[])
+            
+            #Get pixel area
+            pxl.area <- area(hab.r)
+            
+            #Calculate total carrying capacity
+            pxl.cap <- pxl.area*exp(hab.r)
+            car.cap <- cellStats(pxl.cap,sum,na.rm=TRUE)
+            return(data.frame(value=car.cap)) })
+
+
