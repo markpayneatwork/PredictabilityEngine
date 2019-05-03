@@ -45,16 +45,22 @@ Rmd.src <- "src/H.Summary_statistics/H4.Visualise_summary_and_skill_stats.Rmd"
 # Setup ####
 #'========================================================================
 out.fname <- file.path(sprintf("%s_summary_and_skill.html",pcfg@project.name))
+out.dir <- define_dir(pcfg@scratch.dir,"notebooks")
 html.fname <- render(Rmd.src,
                      knit_root_dir = getwd(),
+                     intermediates_dir=out.dir,
+                     output_dir=out.dir,
                      output_file=out.fname,
-                     output_dir="notebooks",
-                     clean=TRUE,
-                     params=list(title="test"),
+                     clean=FALSE,
                      encoding="UTF-8",
                      envir=new.env())
 
+#Copy results to notebooks directory
+file.copy(file.path(out.dir,out.fname),"notebooks",overwrite=TRUE)
+
+
 if(interactive()) rstudioapi::viewer(html.fname)
+
 
 #'========================================================================
 # Complete ####

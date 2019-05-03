@@ -1,5 +1,5 @@
 ---
-title: Skill visualisations
+title: Summary Statistics and Forecast Skill Visualisations
 output:
   html_document:
     keep_md: false
@@ -54,8 +54,7 @@ knitr::opts_chunk$set(
 	results = "markup",
 	fig.width = 10,
 	fig.height=14/25*10,
-  fig.align="center",
-  fig.path=file.path(".","notebooks","figs/"))
+  fig.align="center")
 
 #Powerpoint needs 14 x 25cm figures
 
