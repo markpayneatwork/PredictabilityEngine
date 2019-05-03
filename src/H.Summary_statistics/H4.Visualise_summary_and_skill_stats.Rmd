@@ -137,7 +137,9 @@ for(this.sp in names(sp.skill.l)) {
     sumstat.sel <- filter(sumstat.dat,
                           sp.subdomain==this.sp,
                           sumstat.name==this.ss)
-    sumstat.obs <- filter(sumstat.sel,type=="Observations") %>%
+    sumstat.obs <- filter(sumstat.sel,
+                            type=="Observations",
+                            year(date)>=min(pcfg@comp.years)) %>%
                     mutate(timeframe="Historical")
     mr.obs <- max(sumstat.obs$date)
     sumstat.mdl <- filter(sumstat.sel,
@@ -150,7 +152,7 @@ for(this.sp in names(sp.skill.l)) {
                    filter(start.date==max(start.date)) %>%
                    ungroup() %>%
                    dplyr::select(-name.type) 
-    
+
     sumstat.plt.dat <- rbind(sumstat.obs,sumstat.mdl)
     
     g <- ggplot(sumstat.plt.dat,aes(x=date,y=value,colour=name))+
