@@ -29,7 +29,7 @@ source ./src/Y.HPC_scripts/${NAME}.sh
 #Error check
 if [ "$?" -eq 0 ]; 
 then
-    grep "^$PBS_ARRAYID," ./scratch/Job_configuration/${NAME}.cfg >> ./scratch/Job_configuration/${NAME}/$PBS_ARRAYID.ok 
+    grep "^$LSB_JOBINDEX," ./scratch/Job_configuration/${NAME}.cfg >> ./scratch/Job_configuration/${NAME}/$LSB_JOBINDEX.ok 
     echo "Successful completion."
 else 
     echo "Failure"
