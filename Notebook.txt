@@ -2,14 +2,36 @@
 Seasonal and Decadel Predictability Engine
 ==========================================
 TODO:
-. CMIP5 fragments are not consistent with the rest, in that they contain multiple dates. Need to explode them in a way similar to NMME
-* Redefine a fragment to be a 3D array lat-lon-realization at a given model, lead, date
-- Done for CMIP5, need to do for NMME and Decadal
-* Break NMME processing into individual models to allow parallelisation. Get it working on the HPC
-* Create a spatial field tools, including probabilities
-* Rename out.dir to something more appropriate
-* Break downloads of NMME data into chunks by start date, thereby allowing updates to be downloaded without having to get the whole thing..
-* Modify definition of climatology to be lead and startdate dependent
+* Create spatial field tools, including probabilities
+
+2019.05.02
+Got the visualisation code working, although it was a bit of a battle with Markdown as ever. Next step
+* Implement carrying capacity model
+* Implement spatial tools
+
+2019.05.01
+Got the calculation of skill metrics working, after some close investigation of how the persistence calculations work, including an upgrade of C2 to be RDS compatable. Next step is the to do the visualisations of these results.
+* Refine H4 visualisation code
+
+2019.04.30
+A little less effective today but still progress. H2 is a little unclear how that should work - I have clearly been thinking about parallelising the collation process, but that is not how the script is at the moment. Anyway, seems to be effective. Running a full Mackerel run
+* Maybe think about some automated visualisation and processing notebooks?
+
+2019.04.29
+Initiated a significant rewrite to remove condexex and replace with makefile-like functionality i.e. detecting whether the metadata files have been created. So far, so good, but requires some careful line-by-line checking. Currently up to D1. Completed. 
+* Next step D2, then do a full run for Mackerel
+
+2018.12.12
+Tried to restart on this, but unsure what problem is - seems to be something with the downloading of the data, and the server possibly saturating. Need to try downloading NMME in smaller chunks.
+
+2018.10.05
+Worked on adapting code to work with new approach to NMME ie download the whole lot, and then process from there. Have managed to get E1 and E2 working (even if there is something wierd with my laptops ability to read NMME via OpenDAP). Now need to adapt E4 - this should be simply a case of removing the remapping (which is taken care of in E2 now).
+
+2018.09.12
+No problem still seems to be there - unsure where it is comming from, but I can't seem to reproduce it when running on my laptop, but it is still there even after rerunning from scratch on the HPC. This may be something related to the different versions of CDO on the two machines? Do a side-by-side comparison of the cdo sub command to check
+
+2018.09.05
+Identified problem with NMME handling - there are a lot of NAs in the summary statistics. These have been traced back to the original NMME data that I have downloaded (have sent an email to check with NOAA about this). However, the problem may have solved itself - I am therefore rerunning the previous Bluefin analysis to see if it is still there.
 
 2018.07.27
 Have been working on adjusting coe base to work with fragstacks and multiple spatial areas. I think we have it working completely now for the Decadal script, but need to check it closely. Check now results and compare with previous results.
