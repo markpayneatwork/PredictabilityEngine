@@ -34,7 +34,6 @@ rm(list = ls(all.names=TRUE));  graphics.off();
 #Source the common elements
 library(PredEng)
 library(tibble)
-load("objects/PredEng_config.RData")
 source("src/B.Configuration/B0.Define_SST_data_srcs.r")
 
 #'========================================================================
@@ -94,15 +93,15 @@ pcfg@spatial.subdomains <- sp.objs
 # Extraction configuration ####
 #'========================================================================
 extr <- list()
-extr$spatial.forecasts <- as.Date("2018-08-15")
+extr$spatial.forecasts <- as.Date("2019-08-15")
 
 #A simple point-wise extraction point (corresponding to the point of capture)
-pt <- data.frame(lat=65 +42/60, 
-                 lon=-(30+50/60),
-                 date=as.Date(c("2012-08-22","2014-08-15")))
-pt$ID <- seq(nrow(pt))
-coordinates(pt) <- ~ lon +lat
-extr$spacetime.extraction <- pt
+# pt <- data.frame(lat=65 +42/60, 
+#                  lon=-(30+50/60),
+#                  date=as.Date(c("2012-08-22","2014-08-15")))
+# pt$ID <- seq(nrow(pt))
+# coordinates(pt) <- ~ lon +lat
+# extr$spacetime.extraction <- pt
 
 pcfg@extraction <- extr
 
