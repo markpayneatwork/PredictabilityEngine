@@ -57,7 +57,7 @@ if(interactive()) {
 }
 
 #Extract configurations
-this.sp <- get.this.sp(file.path(PE.cfg$dirs$cfg,"Decadal.cfg"),cfg.id,pcfg)
+this.sp <- get.this.sp(file.path(PE.cfg$dirs$job.cfg,"Decadal.cfg"),cfg.id,pcfg)
 
 #Directory setup
 base.dir <- define_dir(pcfg@scratch.dir,this.sp@name,"Decadal")

@@ -61,7 +61,7 @@ if(interactive()) {
 }
 
 #Retrieve configurations
-this.sp <- get.this.sp(file.path(PE.cfg$dirs$cfg,"Observations.cfg"),cfg.no,pcfg)
+this.sp <- get.this.sp(file.path(PE.cfg$dirs$job.cfg,"Observations.cfg"),cfg.no,pcfg)
 this.src <- pcfg@Observations
 config.summary(pcfg,this.sp,this.src)
 

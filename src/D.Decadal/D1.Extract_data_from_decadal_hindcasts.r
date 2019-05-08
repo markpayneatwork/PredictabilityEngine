@@ -62,8 +62,8 @@ if(interactive()) {
 set.nco.defaults("--overwrite")
 
 #Retrieve configurations
-this.sp <- get.this.sp(file.path(PE.cfg$dirs$cfg,"Decadal.cfg"),cfg.id,pcfg)
-this.src <- get.this.src(file.path(PE.cfg$dirs$cfg,"Decadal.cfg"),cfg.id,pcfg)
+this.sp <- get.this.sp(file.path(PE.cfg$dirs$job.cfg,"Decadal.cfg"),cfg.id,pcfg)
+this.src <- get.this.src(file.path(PE.cfg$dirs$job.cfg,"Decadal.cfg"),cfg.id,pcfg)
 
 #Directory setup
 src.dir <- file.path(PE.cfg$dirs$datasrc,"Decadal",this.src@source)

@@ -46,8 +46,8 @@ if(interactive()) {
   
 } else {
   #Taking inputs from the system environment
-  mdl.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
-  if(mdl.no=="") stop("Cannot find PBS_ARRAYID")
+  mdl.no <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
+  if(mdl.no=="") stop("Cannot find LSB_JOBINDEX")
   #Do everything
   set.debug.level(1)  #1 complete fresh run
   
