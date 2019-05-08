@@ -4,13 +4,13 @@
 #'
 #' @param obj A PredEng.config object
 #' @param src.slot Vector containg the name of the slot over which to partition 
-#' the workload
+#' the workload. In the case where this is set to "SumStats", work is partitioned
+#' over all relevant model data slots
+#' @param ensmean Treat this as an ensemble mean?
 #' @param partition.by.space Should the work be split up by spatial subdomain as well as data.src? The default
 #' behaviour is to follow the use.global.ROI slot in obj i.e. when use.global.ROI is TRUE, we don't want to 
 #' partition by space. However, in some cases (e.g. calculation of summary statistics) it is useful to have this 
 #' behaviour anyway.
-#' @param include.ensmeans Should ensemble means be included as well?
-#' @param include.persistence Should persistence forecasts be added?
 #'
 #' @export
 #' @name job_management
@@ -23,9 +23,9 @@ partition.workload <- function(obj,
   if(length(src.slot)!=1) stop("Can only partition a single slot at a time")
   
   #Setup data sources
-  if(src.slot=="summary.statistics") {
+  if(src.slot=="SumStats") {
     sel.slots <- c("Decadal","NMME","Observations","CMIP5")
-    out.prefix <- "SumStat"
+    out.prefix <- src.slot
   } else if(ensmean) {
     sel.slots <- src.slot
     out.prefix <- sprintf("%s_Ensmean",sel.slots)
@@ -39,7 +39,7 @@ partition.workload <- function(obj,
   dat.srcs <- tibble(src.type=sapply(dat.srcs.l,slot,"type"),
                      src.name=sapply(dat.srcs.l,slot,"name"))
   if(nrow(dat.srcs)==0) return(NULL)  #Catch blanks
-  if(src.slot=="summary.statistics") { #Need to include persistence as well
+  if(src.slot=="SumStats") { #Need to include persistence as well
     dat.srcs <- rbind(dat.srcs,
                       tibble(src.type="Persistence",src.name=obj@Observations@name))
   }

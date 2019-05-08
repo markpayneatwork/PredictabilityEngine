@@ -21,7 +21,10 @@ get.this.cfgs(fname)
 \item{obj}{A PredEng.config object}
 
 \item{src.slot}{Vector containg the name of the slot over which to partition 
-the workload}
+the workload. In the case where this is set to "SumStats", work is partitioned
+over all relevant model data slots}
+
+\item{ensmean}{Treat this as an ensemble mean?}
 
 \item{partition.by.space}{Should the work be split up by spatial subdomain as well as data.src? The default
 behaviour is to follow the use.global.ROI slot in obj i.e. when use.global.ROI is TRUE, we don't want to 
@@ -31,10 +34,6 @@ behaviour anyway.}
 \item{fname}{Filename (incluiding path) to read / write job configuration to/from}
 
 \item{cfg.idx}{Configuration index, indicating which job configration to extract}
-
-\item{include.ensmeans}{Should ensemble means be included as well?}
-
-\item{include.persistence}{Should persistence forecasts be added?}
 }
 \description{
 Manage job distribution
