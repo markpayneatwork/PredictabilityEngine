@@ -39,9 +39,14 @@ partition.workload <- function(obj,
   dat.srcs <- tibble(src.type=sapply(dat.srcs.l,slot,"type"),
                      src.name=sapply(dat.srcs.l,slot,"name"))
   if(nrow(dat.srcs)==0) return(NULL)  #Catch blanks
-  if(src.slot=="SumStats") { #Need to include persistence as well
-    dat.srcs <- rbind(dat.srcs,
-                      tibble(src.type="Persistence",src.name=obj@Observations@name))
+  
+  #Tweak the summary stats
+  if(src.slot=="SumStats") { #Need to include persistence and ensemble forecasts as well
+    ss.srcs.l <- list()
+    ss.srcs.l[[1]] <- tibble(src.type="Persistence",src.name=obj@Observations@name)
+    if(length(obj@NMME)!=0) ss.srcs.l[[2]] <- tibble(src.type="NMME",src.name=PE.cfg$files$ensmean.name)
+    if(length(obj@Decadal)!=0) ss.srcs.l[[3]] <- tibble(src.type="Decadal",src.name=PE.cfg$files$ensmean.name)
+    dat.srcs <- bind_rows(dat.srcs,ss.srcs.l)
   }
   dat.srcs$src.id <- seq(nrow(dat.srcs))
     
