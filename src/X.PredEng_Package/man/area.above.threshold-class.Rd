@@ -5,6 +5,9 @@
 \alias{area.above.threshold-class}
 \alias{area.above.threshold}
 \title{Area above a threshold}
+\arguments{
+\item{threshold}{Critical threshold value}
+}
 \description{
 Calculates the area of water above a threshold temperature
 }

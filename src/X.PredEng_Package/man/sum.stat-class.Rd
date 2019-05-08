@@ -3,20 +3,18 @@
 \docType{class}
 \name{sum.stat-class}
 \alias{sum.stat-class}
+\alias{sum.stat}
 \title{Summary statistics class}
-\description{
-Summary statistics class
-}
-\section{Slots}{
+\arguments{
+\item{name}{Name of the Summary statistics class}
 
-\describe{
-\item{\code{name}}{Name of the Summary statistics class}
-
-\item{\code{data.type}}{Indicates whether to use the individ. Valid values are 
+\item{data.type}{Indicates whether to use the individ. Valid values are 
 "realizations" and "means". This slot essentially acts as a flag telling
 the script whether it wants 2D (lat-lon) or 3D (lat-lon-realization) data.}
 
-\item{\code{use.anomalies}}{Should the summary statistic be calculated on the basis of
+\item{use.anomalies}{Should the summary statistic be calculated on the basis of
 anomalies only or should the full field be used?}
-}}
-
+}
+\description{
+Summary statistics class
+}

@@ -3,20 +3,20 @@
 # ========================================================================
 #' Summary statistics class
 #'
-#' @slot name Name of the Summary statistics class
-#' @slot data.type Indicates whether to use the individ. Valid values are 
+#' @param name Name of the Summary statistics class
+#' @param data.type Indicates whether to use the individ. Valid values are 
 #' "realizations" and "means". This slot essentially acts as a flag telling
 #' the script whether it wants 2D (lat-lon) or 3D (lat-lon-realization) data.
-#' @slot use.anomalies Should the summary statistic be calculated on the basis of
+#' @param use.anomalies Should the summary statistic be calculated on the basis of
 #' anomalies only or should the full field be used?
 #'
-#' @export 
+#' @export sum.stat
 #' @exportClass sum.stat
-setClass("sum.stat",
-         slots=list(name="character",
-                    data.type="character",
-                    use.anomalies="logical"),
-         prototype = list(use.anomalies=FALSE))
+sum.stat <- setClass("sum.stat",
+                     slots=list(name="character",
+                                data.type="character",
+                                use.anomalies="logical"),
+                     prototype = list(use.anomalies=FALSE))
 
 
 #' Evaluate an sum.stat
@@ -29,6 +29,8 @@ setGeneric("eval.sum.stat",
 #' Area above a threshold
 #'
 #' Calculates the area of water above a threshold temperature
+#' @param threshold Critical threshold value
+#' @describeIn  sum.stat
 #' @export area.above.threshold
 area.above.threshold <- setClass("area.above.threshold",
                                  slots=list(threshold="numeric"),

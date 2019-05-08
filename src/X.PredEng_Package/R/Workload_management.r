@@ -28,6 +28,7 @@ partition.workload <- function(fname,
     dat.srcs.l <- unlist(lapply(src.slots,slot,object=obj))
     dat.srcs <- tibble(src.type=sapply(dat.srcs.l,slot,"type"),
                        src.name=sapply(dat.srcs.l,slot,"name"))
+    if(nrow(dat.srcs)==0) return(NULL)  #Catch blanks
     
     #Handle ensemble means here
     if(include.ensmeans & "Decadal" %in% src.slots) {
