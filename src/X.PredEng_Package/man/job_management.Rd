@@ -8,9 +8,8 @@
 \alias{get.this.cfgs}
 \title{Manage job distribution}
 \usage{
-partition.workload(fname, obj, src.slots,
-  partition.by.space = !obj@use.global.ROI, include.ensmeans = FALSE,
-  include.persistence = FALSE)
+partition.workload(obj, src.slot, ensmean = FALSE,
+  partition.by.space = !obj@use.global.ROI)
 
 get.this.src(fname, cfg.idx, obj)
 
@@ -19,11 +18,9 @@ get.this.sp(fname, cfg.idx, obj)
 get.this.cfgs(fname)
 }
 \arguments{
-\item{fname}{Filename (incluiding path) to read / write job configuration to/from}
-
 \item{obj}{A PredEng.config object}
 
-\item{src.slots}{Vector containg the name(s) of the slot(s) over which to partition 
+\item{src.slot}{Vector containg the name of the slot over which to partition 
 the workload}
 
 \item{partition.by.space}{Should the work be split up by spatial subdomain as well as data.src? The default
@@ -31,11 +28,13 @@ behaviour is to follow the use.global.ROI slot in obj i.e. when use.global.ROI i
 partition by space. However, in some cases (e.g. calculation of summary statistics) it is useful to have this 
 behaviour anyway.}
 
+\item{fname}{Filename (incluiding path) to read / write job configuration to/from}
+
+\item{cfg.idx}{Configuration index, indicating which job configration to extract}
+
 \item{include.ensmeans}{Should ensemble means be included as well?}
 
 \item{include.persistence}{Should persistence forecasts be added?}
-
-\item{cfg.idx}{Configuration index, indicating which job configration to extract}
 }
 \description{
 Manage job distribution

@@ -3,7 +3,7 @@
 #' @param fname Filename (incluiding path) to read / write job configuration to/from
 #'
 #' @param obj A PredEng.config object
-#' @param src.slots Vector containg the name(s) of the slot(s) over which to partition 
+#' @param src.slot Vector containg the name of the slot over which to partition 
 #' the workload
 #' @param partition.by.space Should the work be split up by spatial subdomain as well as data.src? The default
 #' behaviour is to follow the use.global.ROI slot in obj i.e. when use.global.ROI is TRUE, we don't want to 
@@ -14,37 +14,37 @@
 #'
 #' @export
 #' @name job_management
-partition.workload <- function(fname,
-                               obj,
-                               src.slots,
-                               partition.by.space=!obj@use.global.ROI,
-                               include.ensmeans=FALSE,
-                               include.persistence=FALSE) {
-  #Extract lists
-  if(all(is.na(src.slots))) {
-    dat.srcs <- tibble(src.type=NA,src.name=NA)
-    
+partition.workload <- function(obj,
+                               src.slot,
+                               ensmean=FALSE,
+                               partition.by.space=!obj@use.global.ROI) {
+  
+  #Check inputs
+  if(length(src.slot)!=1) stop("Can only partition a single slot at a time")
+  
+  #Setup data sources
+  if(src.slot=="summary.statistics") {
+    sel.slots <- c("Decadal","NMME","Observations","CMIP5")
+    out.prefix <- "SumStat"
+  } else if(ensmean) {
+    sel.slots <- src.slot
+    out.prefix <- sprintf("%s_Ensmean",sel.slots)
   } else {
-    dat.srcs.l <- unlist(lapply(src.slots,slot,object=obj))
-    dat.srcs <- tibble(src.type=sapply(dat.srcs.l,slot,"type"),
-                       src.name=sapply(dat.srcs.l,slot,"name"))
-    if(nrow(dat.srcs)==0) return(NULL)  #Catch blanks
+    sel.slots <- src.slot
+    out.prefix <- sel.slots
+  }
     
-    #Handle ensemble means here
-    if(include.ensmeans & "Decadal" %in% src.slots) {
-      dat.srcs <- rbind(dat.srcs,
-                        tibble(src.type="Decadal",src.name=PE.cfg$files$ensmean.name))
-    }
-    if(include.ensmeans & "NMME" %in% src.slots) {
-      dat.srcs <- rbind(dat.srcs,
-                        tibble(src.type="NMME",src.name=PE.cfg$files$ensmean.name))  }
-    if(include.persistence ) {
-      dat.srcs <- rbind(dat.srcs,
-                        tibble(src.type="Persistence",src.name=pcfg@Observations@name))
-    }
+  #Now extract the data sources    
+  dat.srcs.l <- unlist(lapply(sel.slots,slot,object=obj))
+  dat.srcs <- tibble(src.type=sapply(dat.srcs.l,slot,"type"),
+                     src.name=sapply(dat.srcs.l,slot,"name"))
+  if(nrow(dat.srcs)==0) return(NULL)  #Catch blanks
+  if(src.slot=="summary.statistics") { #Need to include persistence as well
+    dat.srcs <- rbind(dat.srcs,
+                      tibble(src.type="Persistence",src.name=obj@Observations@name))
   }
   dat.srcs$src.id <- seq(nrow(dat.srcs))
-  
+    
   #Setup spatial domains
   if(partition.by.space ) { #Overrides the use.global.ROI switch
     sp.subdomains <- names(obj@spatial.subdomains)
@@ -60,10 +60,12 @@ partition.workload <- function(fname,
     left_join(dat.srcs,by="src.id") %>%
     select(-src.id) %>%
     add_column(cfg.id=seq(nrow(.)),.before=1) %>%
-    as.tibble()
+    as_tibble()
   
   #Save file
-  write_csv(work.cfg,path = fname)
+  out.dir <- define_dir(PE.cfg$dirs$job.cfg,out.prefix)
+  
+  write_csv(work.cfg,path = file.path(PE.cfg$dirs$job.cfg,sprintf("%s.cfg",out.prefix)))
 }
 
 #' @param cfg.idx Configuration index, indicating which job configration to extract

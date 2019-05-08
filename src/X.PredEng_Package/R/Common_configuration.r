@@ -14,7 +14,7 @@ PE.cfg$config.path <- file.path("objects",PE.cfg$config.fname)
 #Directories
 PE.cfg$dirs <- list(Misc.meta="Z.Misc.meta",
                     datasrc="data_srcs",
-                    cfg="scratch/Job_configuration")
+                    job.cfg="scratch/Job_configuration")
 
 #File names
 PE.cfg$files <- list(Obs.monthly.anom.metadata=file.path(PE.cfg$dir$Misc.meta,"Monthly_anom_metadata.rds"),

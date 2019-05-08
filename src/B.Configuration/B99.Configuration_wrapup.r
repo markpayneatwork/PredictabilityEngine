@@ -78,24 +78,19 @@ file.symlink(file.path(getwd(),cfg.fname),"objects")
 #'========================================================================
 # HPC  Configuration ####
 #'========================================================================
-#Extract configurations
-#require(tidyverse)
+#Setup soft linking
+project.cfg <- define_dir(pcfg@scratch.dir,basename(PE.cfg$dirs$job.cfg))
+unlink(PE.cfg$dirs$job.cfg) 
+file.symlink(file.path(getwd(),project.cfg),PE.cfg$dirs$job.cfg) 
 
-project.cfg <- define_dir(pcfg@scratch.dir,"Job_configuration")
-unlink(PE.cfg$dirs$cfg)
-file.symlink(file.path(getwd(),project.cfg),PE.cfg$dirs$cfg)
-cfg.dir <- PE.cfg$dirs$cfg
-
-cfgs <- partition.workload(file.path(cfg.dir,"NMME.cfg"),pcfg,"NMME")
-cfgs <- partition.workload(file.path(cfg.dir,"NMME_Ensmean.cfg"),pcfg,NA)
-cfgs <- partition.workload(file.path(cfg.dir,"Decadal.cfg"),pcfg,"Decadal")
-cfgs <- partition.workload(file.path(cfg.dir,"Decadal_Ensmean.cfg"),pcfg,NA)
-cfgs <- partition.workload(file.path(cfg.dir,"Observations.cfg"),pcfg,"Observations")
-cfgs <- partition.workload(file.path(cfg.dir,"SumStats.cfg"),pcfg,
-                           c("Decadal","NMME","Observations","CMIP5"),
-                           partition.by.space=TRUE,
-                           include.ensmeans = TRUE,
-                           include.persistence = TRUE)
+#Write configurations
+cfgs <- partition.workload(pcfg,"NMME")
+cfgs <- partition.workload(pcfg,"NMME",ensmean=TRUE)
+cfgs <- partition.workload(pcfg,"Decadal")
+cfgs <- partition.workload(pcfg,"Decadal",ensmean=TRUE)
+cfgs <- partition.workload(pcfg,"Observations")
+cfgs <- partition.workload(pcfg,"summary.statistics",
+                           partition.by.space=TRUE)
 
 #' -----------
 #' <small>*This work by Mark R Payne is licensed under a  Creative Commons
