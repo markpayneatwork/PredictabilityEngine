@@ -44,7 +44,7 @@ TYPES=$(notdir $(basename $(CFGS)))
 TYPE_DIRS=$(addprefix $(CFG_DIR)/,$(TYPES))
 
 OUTDIR=$(CFG_DIR)/$(TYPE)
-JOB_LIST=$(shell grep -o "^[0-9]\+" $(CFG_DIR)/$(TYPE).cfg)
+JOB_LIST=$(shell grep --no-messages -o "^[0-9]\+" $(CFG_DIR)/$(TYPE).cfg)
 OKs=$(addprefix $(OUTDIR)/, $(addsuffix .ok, $(JOB_LIST)))
 TODO=$(TODO_DIR)/$(TYPE).todo
 
@@ -85,7 +85,7 @@ setup: FORCE
 	-mkdir $(TODO_DIR)
 
 install: FORCE
-	Rscript src/A1.Setup_system.r
+	/appl/R/bin/Rscript-3.5.2-sl73 src/A1.Setup_system.r
 
 NMME_sync:
 	bsub  < src/Y.HPC_scripts/bNMME_sync.sh
