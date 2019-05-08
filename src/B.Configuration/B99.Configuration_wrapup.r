@@ -83,6 +83,9 @@ project.cfg <- define_dir(pcfg@scratch.dir,basename(PE.cfg$dirs$job.cfg))
 unlink(PE.cfg$dirs$job.cfg) 
 file.symlink(file.path(getwd(),project.cfg),PE.cfg$dirs$job.cfg) 
 
+#Need a TODO directory as well
+TODO.dir <- define_dir(PE.cfg$dirs$job.cfg,"TODO")
+
 #Write configurations
 cfgs <- partition.workload(pcfg,"NMME")
 cfgs <- partition.workload(pcfg,"NMME",ensmean=TRUE)
