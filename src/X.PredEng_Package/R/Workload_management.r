@@ -22,32 +22,28 @@ partition.workload <- function(obj,
   #Check inputs
   if(length(src.slot)!=1) stop("Can only partition a single slot at a time")
   
-  #Setup data sources
-  if(src.slot=="SumStats") {
-    sel.slots <- c("Decadal","NMME","Observations","CMIP5")
-    out.prefix <- src.slot
-  } else if(ensmean) {
-    sel.slots <- src.slot
-    out.prefix <- sprintf("%s_Ensmean",sel.slots)
-  } else {
-    sel.slots <- src.slot
-    out.prefix <- sel.slots
-  }
-    
-  #Now extract the data sources    
-  dat.srcs.l <- unlist(lapply(sel.slots,slot,object=obj))
+  #Get the list of all valid types
+  dat.srcs.l <- unlist(lapply(c("Decadal","NMME","Observations","CMIP5"),slot,object=obj))
   dat.srcs <- tibble(src.type=sapply(dat.srcs.l,slot,"type"),
                      src.name=sapply(dat.srcs.l,slot,"name"))
-  if(nrow(dat.srcs)==0) return(NULL)  #Catch blanks
+  other.srcs.l <- list()
+  other.srcs.l[[1]] <- tibble(src.type="Persistence",src.name=obj@Observations@name)
+  if(length(obj@NMME)!=0) other.srcs.l[[2]] <- tibble(src.type="NMME",src.name=PE.cfg$files$ensmean.name)
+  if(length(obj@Decadal)!=0) other.srcs.l[[3]] <- tibble(src.type="Decadal",src.name=PE.cfg$files$ensmean.name)
+  all.srcs <- bind_rows(dat.srcs,other.srcs.l)
   
-  #Tweak the summary stats
-  if(src.slot=="SumStats") { #Need to include persistence and ensemble forecasts as well
-    ss.srcs.l <- list()
-    ss.srcs.l[[1]] <- tibble(src.type="Persistence",src.name=obj@Observations@name)
-    if(length(obj@NMME)!=0) ss.srcs.l[[2]] <- tibble(src.type="NMME",src.name=PE.cfg$files$ensmean.name)
-    if(length(obj@Decadal)!=0) ss.srcs.l[[3]] <- tibble(src.type="Decadal",src.name=PE.cfg$files$ensmean.name)
-    dat.srcs <- bind_rows(dat.srcs,ss.srcs.l)
+  #Retain the data sources requested
+  if(src.slot=="SumStats") {
+    dat.srcs <- all.srcs
+    out.prefix <- src.slot
+  } else if(ensmean) {
+    dat.srcs <- filter(all.srcs,src.type==src.slot,src.name==PE.cfg$files$ensmean.name)
+    out.prefix <- sprintf("%s_Ensmean",src.slot)
+  } else {
+    dat.srcs <- filter(all.srcs,src.type==src.slot,src.name!=PE.cfg$files$ensmean.name)
+    out.prefix <- src.slot
   }
+  if(nrow(dat.srcs)==0) return(NULL)  #Catch blanks
   dat.srcs$src.id <- seq(nrow(dat.srcs))
     
   #Setup spatial domains
