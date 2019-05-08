@@ -117,8 +117,7 @@ for(i in seq(grp.l)) {
                      type="Decadal",
                          date=mean(d$date),
                          start.date=mean(d$start.date),
-                         lead.idx=unique(d$lead.idx), 
-                         realization="ensmean")
+                         lead.idx=unique(d$lead.idx))
   ensmean.fname <- sprintf("S%s_L%s_ensmean.nc",
                            format(grp.meta$start.date,"%Y%m%d"),
                            grp.meta$lead.idx)
