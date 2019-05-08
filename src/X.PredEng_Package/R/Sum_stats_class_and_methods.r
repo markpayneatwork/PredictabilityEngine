@@ -4,8 +4,8 @@
 #' Summary statistics class
 #'
 #' @param name Name of the Summary statistics class
-#' @param data.type Indicates whether to use the individ. Valid values are 
-#' "realizations" and "means". This slot essentially acts as a flag telling
+#' @param use.realmeans Indicates whether to use the mean of the individ realisations or
+#' the realisation values themselves. This slot essentially acts as a flag telling
 #' the script whether it wants 2D (lat-lon) or 3D (lat-lon-realization) data.
 #' @param use.anomalies Should the summary statistic be calculated on the basis of
 #' anomalies only or should the full field be used?
@@ -14,9 +14,10 @@
 #' @exportClass sum.stat
 sum.stat <- setClass("sum.stat",
                      slots=list(name="character",
-                                data.type="character",
+                                use.realmeans="logical",
                                 use.anomalies="logical"),
-                     prototype = list(use.anomalies=FALSE))
+                     prototype = list(use.realmeans=TRUE,
+                                      use.anomalies=FALSE))
 
 
 #' Evaluate an sum.stat
@@ -30,7 +31,6 @@ setGeneric("eval.sum.stat",
 #'
 #' Calculates the area of water above a threshold temperature
 #' @param threshold Critical threshold value
-#' @describeIn  sum.stat
 #' @export area.above.threshold
 area.above.threshold <- setClass("area.above.threshold",
                                  slots=list(threshold="numeric"),
@@ -62,7 +62,7 @@ setMethod("eval.sum.stat",signature(ss="area.above.threshold",vals="Raster"),
               mean.temp <- cellStats(b,mean)
               area.filt <- ifelse(is.na(mean.temp),NA,area.overthresh)
               #Return
-              return(data.frame(threshold=t,value=area.filt)) })
+              return(data.frame(realization=getZ(b),threshold=t,value=area.filt)) })
 
             #Tidy up output
             areas <- bind_rows(areas.l)
@@ -95,7 +95,7 @@ setMethod("eval.sum.stat",signature(ss="spatial.mean",vals="Raster"),
             na.by.area   <- (!is.na(b))*pxl.area
             wt.temp <- cellStats(temp.by.area,sum)/cellStats(na.by.area,sum)
 
-            return(data.frame(value=wt.temp))
+            return(data.frame(realization=getZ(b),value=wt.temp))
           })
 
 
@@ -133,7 +133,8 @@ setMethod("eval.sum.stat",signature(ss="isoline.lat",vals="Raster"),
                                         if(is(res,"try-error")) {res <- NA}
 
                                         return(res) })
-              lat.val.l[[i]] <- data.frame(threshold=m@threshold[i],
+              lat.val.l[[i]] <- data.frame(realization=getZ(b),
+                                           threshold=m@threshold[i],
                                            value=lat.val)
             }
             lat.vals<- bind_rows(lat.val.l)
@@ -167,6 +168,6 @@ setMethod("eval.sum.stat",signature(ss="habitat.suitability",vals="Raster"),
             #Calculate total carrying capacity
             pxl.cap <- pxl.area*exp(hab.r)
             car.cap <- cellStats(pxl.cap,sum,na.rm=TRUE)
-            return(data.frame(value=car.cap)) })
+            return(data.frame(realization=getZ(vals),value=car.cap)) })
 
 

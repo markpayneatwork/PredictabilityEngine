@@ -117,15 +117,18 @@ pcfg@spatial.subdomains <- EEZ.objs
 #Configure summary stats
 statsum.l <- PredEng.list()
 statsum.l[[1]] <- area.above.threshold(name = "Threshold - means",
-                                       data.type="means",threshold=8.5)  #Based on Teunis' paper
+                                       use.realmeans=TRUE,
+                                       threshold=8.5)  #Based on Teunis' paper
 statsum.l[[2]] <- area.above.threshold(name="Threshold - realisations",
-                                       data.type="means",threshold=8.5)  #Based on Teunis' paper
-
+                                       use.realmeans=FALSE,
+                                       threshold=8.5)  #Based on Teunis' paper
 
 statsum.l[[3]]  <- spatial.mean(name="Spatial mean - means",
-                                data.type="means",use.anomalies=TRUE)
+                                use.realmeans=TRUE,
+                                use.anomalies=TRUE)
 statsum.l[[4]]  <- spatial.mean(name="Spatial mean - realizations",
-                                data.type="realizations",use.anomalies=TRUE)
+                                use.realmeans=FALSE,
+                                use.anomalies=TRUE)
 #statsum.l[[3]] <-isoline.lat(threshold=11)
 
 #Setup habitat suitability functionality
@@ -133,10 +136,13 @@ habitat.mdl.dat <- readRDS("resources/Mackerel_summer_QR_values.rds")
 habitat.mdl.fn <-  approxfun(habitat.mdl.dat$temp,habitat.mdl.dat$value,rule=2)
 statsum.l[[5]] <-  habitat.suitability(name="Habitat - means",
                                        model=habitat.mdl.fn,
-                                       data.type="means",use.anomalies = FALSE)
+                                       use.realmeans=TRUE,
+                                       use.anomalies = FALSE)
 statsum.l[[6]] <-  habitat.suitability(name="Habitat - realisations",
-                                       model=habitat.mdl.fn,use.anomalies = FALSE,
-                                       data.type="realizations")
+                                       model=habitat.mdl.fn,
+                                       use.realmeans=FALSE,
+                                       use.anomalies = FALSE)
+
 
 #Merge it all in
 names(statsum.l) <- sapply(statsum.l,slot,"name")

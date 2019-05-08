@@ -65,7 +65,7 @@ if(interactive()) {
 # Divide work ####
 #'========================================================================
 #Retrieve configurations
-cfg.fname <- file.path(PE.cfg$dirs$cfg,"SumStats.cfg")
+cfg.fname <- file.path(PE.cfg$dirs$job.cfg,"SumStats.cfg")
 this.cfgs <- get.this.cfgs(cfg.fname)
 this.sp <- get.this.sp(cfg.fname,cfg.no,pcfg)
 this.src <- get.this.src(cfg.fname,cfg.no,pcfg)
@@ -90,7 +90,7 @@ sumstat.dir <- define_dir(base.dir,"Summary.statistics")
 
 #Setup observational climatology
 clim.meta <- readRDS(file.path(obs.dir,PE.cfg$files$Obs.climatology.metadata))
-obs.clim.l <- lapply(clim.meta$fname,raster)
+obs.clim.l <- lapply(clim.meta$fname,brick)
 names(obs.clim.l) <- sprintf("%02i",month(clim.meta$date))
 
 #Setup landmask 
@@ -128,13 +128,11 @@ for(j in seq(pcfg@summary.statistics)) {
   #Load the appropriate metadata
   if(this.src@name==PE.cfg$files$ensmean.name) { #Obviously only going to use ensmean data
     metadat.fname <- PE.cfg$files$realmean.meta
-  } else if(sumstat@data.type=="means") { #Use realmeans
+  } else if(sumstat@use.realmeans) { #Use realmeans
     metadat.fname <- PE.cfg$files$realmean.meta
-  } else if(sumstat@data.type=="realizations") { #Use individual realizations
+  } else if(!sumstat@use.realmeans) { #Use individual realizations
     metadat.fname <- PE.cfg$files$anom.meta
-  } else {
-    stop("Unknown data type")
-  }
+  } 
 
   #Load Metadata
   metadat.path <- file.path(base.dir,this.src@type,this.src@name,metadat.fname)
@@ -174,17 +172,11 @@ for(j in seq(pcfg@summary.statistics)) {
             sumstat@name,basename(f),silenceable = TRUE)    
     
     #Import model anom as a brick 
-    #TODO
-    #This is also a mess, due to the error found in raster. Currently hacking it
-    if(sumstat@data.type=="realizations") {
-      mdl.anom <- brick(f)  
-      stop("working with realizations currently not supported")
-      #The problem is essentially when we get to the storage of the results
-      #but should be easy to solve
-    } else  {
-      mdl.anom <- raster(f) #Ideally this should be a brick, but that's not working for some reason 
-    }
-    
+    #20190508 There was previously a problem working with a single layered brick in the raster
+    #package. However, this seems to have been resolved now, so we can do everything as a simple
+    #brick, which is the way God intended. 
+    mdl.anom <- brick(f)  
+
     #Choose whether we use full fields or anomalies
     if(sumstat@use.anomalies) {
       mdl.val <- mdl.anom
@@ -200,7 +192,8 @@ for(j in seq(pcfg@summary.statistics)) {
       
       #Build up the modelled value by combining the observational climatology
       #with the modelled anomaly.
-      mdl.val <- obs.clim + mdl.anom
+      mdl.val <- brick(obs.clim + mdl.anom)
+      mdl.val <- setZ(mdl.val,getZ(mdl.anom))  #...and correcting the Z values
     }
     
     
@@ -227,7 +220,7 @@ for(j in seq(pcfg@summary.statistics)) {
               add_column(sp.subdomain=this.sp@name,
                          sumstat.name=sumstat@name,
                          sumstat.type=class(sumstat),
-                         sumstat.data.type=sumstat@data.type,
+                         sumstat.use.realmeans=sumstat@use.realmeans,
                          .before=1)
 
   #Store results

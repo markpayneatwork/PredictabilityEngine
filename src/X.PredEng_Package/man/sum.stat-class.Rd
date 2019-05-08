@@ -8,8 +8,8 @@
 \arguments{
 \item{name}{Name of the Summary statistics class}
 
-\item{data.type}{Indicates whether to use the individ. Valid values are 
-"realizations" and "means". This slot essentially acts as a flag telling
+\item{use.realmeans}{Indicates whether to use the mean of the individ realisations or
+the realisation values themselves. This slot essentially acts as a flag telling
 the script whether it wants 2D (lat-lon) or 3D (lat-lon-realization) data.}
 
 \item{use.anomalies}{Should the summary statistic be calculated on the basis of
