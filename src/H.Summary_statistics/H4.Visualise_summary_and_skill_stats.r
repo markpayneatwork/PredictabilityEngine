@@ -44,7 +44,8 @@ Rmd.src <- "src/H.Summary_statistics/H4.Visualise_summary_and_skill_stats.Rmd"
 #'========================================================================
 # Setup ####
 #'========================================================================
-out.fname <- file.path(sprintf("%s_summary_and_skill.html",pcfg@project.name))
+date.time.str <- format(Sys.time(),"%Y%m%d_%H%M%S")
+out.fname <- file.path(sprintf("%s_summary_and_skill_%s.html",pcfg@project.name,date.time.str))
 out.dir <- define_dir(pcfg@scratch.dir,"notebooks")
 html.fname <- render(Rmd.src,
                      knit_root_dir = getwd(),
