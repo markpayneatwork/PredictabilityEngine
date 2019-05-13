@@ -62,7 +62,7 @@ if(interactive()) {
 #We make the distinction based on whether the script is being run
 #interactively or from a script
 # if(partition.collation){
-#   cfg.fname <- file.path(PE.cfg$dirs$cfg,"SumStat_Collate.cfg")
+#   cfg.fname <- file.path(PE.cfg$dirs$job.cfg,"SumStat_Collate.cfg")
 #   this.cfgs <- get.this.cfgs(cfg.fname)
 #   this.sp <- get.this.sp(cfg.fname,cfg.no,pcfg)
 #   sp.dirs <- this.sp@name
@@ -97,7 +97,7 @@ for(sp.d in sp.dirs){
 #largely useless - we can now just take what we want
 keep.cols <- c("sp.subdomain","name", "type",
                "date","start.date",
-               "sumstat.data.type","sumstat.name","sumstat.type","value")
+               "sumstat.use.realmeans","sumstat.name","sumstat.type","value")
 common.cols.l <- lapply(ss.l,"[",keep.cols)
 
 #Merge into one big object and add meta information
@@ -111,7 +111,7 @@ log_msg("Setting up persistence forecasts...\n")
 #Extract persistence and observation data
 obs.ss <- subset(all.ss.raw,type=="Observations")
 persis.ss <- subset(all.ss.raw,type=="Persistence") %>%
-              select(-start.date)  %>%
+              dplyr::select(-start.date)  %>%
               mutate(ym.date=sprintf("%i-%02i",year(date),month(date))) 
 
 #Generate the forecast grid

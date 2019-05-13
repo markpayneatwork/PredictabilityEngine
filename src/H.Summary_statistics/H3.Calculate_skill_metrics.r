@@ -75,6 +75,9 @@ comp.dat <- filter(comp.dat.all,
                    year(date) %in% pcfg@comp.years) %>%
   mutate(start.month=month(start.date))
 
+#Restrict the comparisons to the realmean-based metrics - for the moment
+comp.dat <- filter(comp.dat,sumstat.use.realmeans)
+
 #'========================================================================
 # Calculate the metrics ####
 #'========================================================================
