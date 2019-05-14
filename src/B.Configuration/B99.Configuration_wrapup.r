@@ -88,7 +88,7 @@ cfgs <- partition.workload(pcfg,"NMME",ensmean=TRUE)
 cfgs <- partition.workload(pcfg,"Decadal")
 cfgs <- partition.workload(pcfg,"Decadal",ensmean=TRUE)
 cfgs <- partition.workload(pcfg,"Observations")
-cfgs <- partition.workload(pcfg,"SumStats",partition.by.space=TRUE)
+cfgs <- partition.workload(pcfg,"Stats",partition.by.space=TRUE)
 
 #' -----------
 #' <small>*This work by Mark R Payne is licensed under a  Creative Commons

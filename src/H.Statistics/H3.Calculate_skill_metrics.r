@@ -8,7 +8,7 @@
 #
 # Created Wed May  1 10:48:18 2019
 #
-# Calculates skill metrics based on a supplied database of summary statistics
+# Calculates skill metrics based on a supplied database of statistics
 #
 # This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 # You are largely free to do what you like with it, so long as you "attribute"
@@ -48,8 +48,8 @@ pcfg <- readRDS(PE.cfg$config.path)
 #Setup Directories
 base.dir <- pcfg@scratch.dir
 
-#Import Sumstat results
-all.ss <- readRDS(file.path(base.dir,PE.cfg$files$sumstats))
+#Import stat results
+all.ss <- readRDS(file.path(base.dir,PE.cfg$files$stats))
 
 #'========================================================================
 # Split and Merge Observations ####
@@ -58,7 +58,7 @@ log.msg("Split and merge...\n")
 
 #Extract out the observational data
 obs.dat <- filter(all.ss,type=="Observations") %>%
-  dplyr::select(sp.subdomain,ym,sumstat.name,value) 
+  dplyr::select(sp.subdomain,ym,stat.name,value) 
 
 
 #And merge it back into the comparison dataframe. This way we have both the
@@ -67,7 +67,7 @@ obs.dat <- filter(all.ss,type=="Observations") %>%
 #situations where we envisage using PredEnd i.e. one data point per year - but
 #we need to be aware that this is not exactly the case 
 comp.dat.all <- left_join(all.ss,obs.dat,
-                          by=c("ym","sumstat.name","sp.subdomain"),
+                          by=c("ym","stat.name","sp.subdomain"),
                           suffix=c(".mdl",".obs"))
 
 #Subset further and add start.month
@@ -76,7 +76,7 @@ comp.dat <- filter(comp.dat.all,
   mutate(start.month=month(start.date))
 
 #Restrict the comparisons to the realmean-based metrics - for the moment
-comp.dat <- filter(comp.dat,sumstat.use.realmeans)
+comp.dat <- filter(comp.dat,stat.use.realmeans)
 
 #'========================================================================
 # Calculate the metrics ####
@@ -94,7 +94,7 @@ skill.sum <- function(d) {
 }
 
 #Now calculate the mean skill over all start dates
-g.vars <- c("name","type","sp.subdomain","sumstat.name","lead")
+g.vars <- c("name","type","sp.subdomain","stat.name","lead")
 skill.mean <- comp.dat %>%
   group_by_at(vars(one_of(g.vars))) %>%
   skill.sum() %>%

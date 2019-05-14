@@ -23,7 +23,7 @@ Collate:
     'Data_class_and_methods.r'
     'Config_class_and_methods.r'
     'PredEng.r'
-    'Sum_stats_class_and_methods.r'
+    'Stats_class_and_methods.r'
     'Workload_management.r'
     'data.R'
     'zzz_Common_elements.r'

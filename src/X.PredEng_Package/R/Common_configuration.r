@@ -13,6 +13,8 @@ PE.cfg$config.path <- file.path("objects",PE.cfg$config.fname)
 
 #Directories
 PE.cfg$dirs <- list(Misc.meta="Z.Misc.meta",
+                    statistics="Statistics",
+                    collated.stats="Collated.Stats",
                     datasrc="data_srcs",
                     job.cfg="scratch/Job_configuration")
 
@@ -25,7 +27,7 @@ PE.cfg$files <- list(Obs.monthly.anom.metadata=file.path(PE.cfg$dir$Misc.meta,"M
                      clim.meta="Climatology_metadata.rds",
                      anom.meta="Anomaly_metadata.rds",
                      realmean.meta="Realmean_metadata.rds",
-                     sumstats="All_sumstats.rds",
+                     stats="All_stats.rds",
                      skill.metrics="Skill_metrics.rds",
                      analysis.grid="analysis.grid",
                      remapping.wts="remapping_wts.nc",

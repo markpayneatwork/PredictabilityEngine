@@ -1,5 +1,5 @@
 #'========================================================================
-# H2. Collate summary statistics
+# H2. Collate statistics
 #'========================================================================
 #
 # by Mark R Payne
@@ -8,7 +8,7 @@
 #
 # Created Fri Jun  1 15:53:49 2018
 #
-# Collates summary statistics generated previously into a single metric. Note 
+# Collates statistics generated previously into a single metric. Note 
 # that the collation takes place over two dimensions - firstly over the data
 # sources (e.g. NMME, Decadal, Observations) and then this needs to be 
 # repeated for for each spatial area.
@@ -26,7 +26,7 @@
 #'========================================================================
 # Initialise system ####
 #'========================================================================
-cat(sprintf("\n%s\n","H2. Collate summary statistics"))
+cat(sprintf("\n%s\n","H2. Collate statistics"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Do house cleaning
@@ -77,7 +77,7 @@ if(pcfg@use.global.ROI) {
 
 #Directory setup
 base.dir <- pcfg@scratch.dir
-out.dir <- define_dir(base.dir,"Collated.SumStats")
+out.dir <- define_dir(base.dir,PE.cfg$dirs$collated.stats)
 
 #'========================================================================
 # Select input data ####
@@ -86,7 +86,7 @@ log_msg("Loading input data..\n")
 #Loop over subdomains them individually and import
 ss.l <- list()
 for(sp.d in sp.dirs){
-  ss.fnames <- dir(file.path(base.dir,sp.d,"Summary.statistics"),full.names = TRUE)
+  ss.fnames <- dir(file.path(base.dir,sp.d,PE.cfg$dirs$statistics),full.names = TRUE)
   for(f in ss.fnames){
     ss.l[[f]]   <- readRDS(f)
   }
@@ -97,7 +97,7 @@ for(sp.d in sp.dirs){
 #largely useless - we can now just take what we want
 keep.cols <- c("sp.subdomain","name", "type",
                "date","start.date",
-               "sumstat.use.realmeans","sumstat.name","sumstat.type","value")
+               "stat.use.realmeans","stat.name","stat.type","value")
 common.cols.l <- lapply(ss.l,"[",keep.cols)
 
 #Merge into one big object and add meta information
@@ -131,7 +131,7 @@ persis.forecast.ss <- left_join(persis.forecast.grid,
                                date.x=NULL,date.y=NULL,ym.start=NULL,lead=NULL,
                                ym=sprintf("%i-%02i",year(date),month(date)))
 
-#Add it back to the sumstat list
+#Add it back to the stat list
 all.ss <- rbind(subset(all.ss.raw,type!="Persistence"),
                  persis.forecast.ss)
 
@@ -191,7 +191,7 @@ all.ss$lead <- round(all.ss$lead.raw/0.5)*0.5  #Half month accuracy
 # Complete ####
 #'========================================================================
 #Save results
-saveRDS(all.ss, file=file.path(base.dir,PE.cfg$files$sumstats))
+saveRDS(all.ss, file=file.path(base.dir,PE.cfg$files$stats))
 
 
 #Turn off the lights

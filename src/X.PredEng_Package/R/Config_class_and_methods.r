@@ -8,7 +8,7 @@
 #' @slot CMIP5 A GCM object to configure extraction from the CMIP5 ensemble. 
 #' @slot spatial.subdomains List of spatial.config objects defining the spatial subdomains over which 
 #' to operate
-#' @slot summary.statistics PredEng.list of summary statistics to apply over each spatial area
+#' @slot statistics PredEng.list of statistics to apply over each spatial area
 #' @slot extraction PredEng.list definining temporal and spatial extraction characteristics
 #' @slot MOI The months of interest (a vector of integers between 1 and 12 inclusive)
 #' @slot clim.years The years to include in the climatology and analysis of hindcast skill (vector of 
@@ -48,7 +48,7 @@ PredEng.config <- setClass("PredEng.config",
                                       NMME="PredEng.list",
                                       CMIP5="PredEng.list",
                                       spatial.subdomains="PredEng.list",
-                                      summary.statistics="PredEng.list",
+                                      statistics="PredEng.list",
                                       extraction="list",
                                       global.ROI="Extent",
                                       global.res="numeric",

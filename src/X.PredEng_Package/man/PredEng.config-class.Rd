@@ -38,7 +38,7 @@ Different extraction modes can be combined in the same list.
 \item{\code{spatial.subdomains}}{List of spatial.config objects defining the spatial subdomains over which 
 to operate}
 
-\item{\code{summary.statistics}}{PredEng.list of summary statistics to apply over each spatial area}
+\item{\code{statistics}}{PredEng.list of statistics to apply over each spatial area}
 
 \item{\code{extraction}}{PredEng.list definining temporal and spatial extraction characteristics}
 

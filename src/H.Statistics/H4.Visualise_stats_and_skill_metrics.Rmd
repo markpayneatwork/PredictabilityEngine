@@ -1,5 +1,5 @@
 ---
-title: Summary Statistics and Forecast Skill Visualisations
+title: Statistics and Forecast Skill Visualisations
 output:
   html_document:
     keep_md: false
@@ -83,7 +83,7 @@ pcfg <- readRDS(PE.cfg$config.path)
 #Import data
 base.dir <- pcfg@scratch.dir
 skill.mets <- readRDS(file.path(base.dir,PE.cfg$files$skill.metrics))
-sumstat.dat <- readRDS(file.path(base.dir,PE.cfg$files$sumstats))
+stat.dat <- readRDS(file.path(base.dir,PE.cfg$files$stats))
 
 #Rescale time axis
 rescale.fn <- function(m) {  #Converts a leadtime in months into a rescale value
@@ -127,22 +127,22 @@ for(this.sp in names(sp.skill.l)) {
     coord_sf(xlim=xtent[1:2],ylim=xtent[3:4])
   print(g)
   
-  #Now split it down further into Individual summary statistics and loop
-  sp.ss.dat.l <- split(sp.dat,sp.dat[,"sumstat.name"]) 
+  #Now split it down further into Individual statistics and loop
+  sp.ss.dat.l <- split(sp.dat,sp.dat[,"stat.name"]) 
   for(this.ss in names(sp.ss.dat.l)) {
     #Show a subtitle
     cat(sprintf("\n\n### %s\n",this.ss))
     
-    #Extract the corresponding sumstat data and plot it
-    sumstat.sel <- filter(sumstat.dat,
+    #Extract the corresponding stat data and plot it
+    stat.sel <- filter(stat.dat,
                           sp.subdomain==this.sp,
-                          sumstat.name==this.ss)
-    sumstat.obs <- filter(sumstat.sel,
+                          stat.name==this.ss)
+    stat.obs <- filter(stat.sel,
                             type=="Observations",
                             year(date)>=min(pcfg@comp.years)) %>%
                     mutate(timeframe="Historical")
-    mr.obs <- max(sumstat.obs$date)
-    sumstat.mdl <- filter(sumstat.sel,
+    mr.obs <- max(stat.obs$date)
+    stat.mdl <- filter(stat.sel,
                           date>mr.obs,
                           type %in% c("Decadal","NMME"),
                           name!="Ensmean") %>%
@@ -153,9 +153,9 @@ for(this.sp in names(sp.skill.l)) {
                    ungroup() %>%
                    dplyr::select(-name.type) 
 
-    sumstat.plt.dat <- rbind(sumstat.obs,sumstat.mdl)
+    stat.plt.dat <- rbind(stat.obs,stat.mdl)
     
-    g <- ggplot(sumstat.plt.dat,aes(x=date,y=value,colour=name))+
+    g <- ggplot(stat.plt.dat,aes(x=date,y=value,colour=name))+
          geom_line()+
          labs(x="Year",y=this.ss)+
          facet_wrap(~timeframe,nrow=1,scales="free_x")

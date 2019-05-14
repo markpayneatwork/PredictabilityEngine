@@ -1,18 +1,18 @@
 # ========================================================================
-# Summary statistics classes and methods
+# Statistics classes and methods
 # ========================================================================
-#' Summary statistics class
+#' Statistics class
 #'
-#' @param name Name of the Summary statistics class
+#' @param name Name of the statistics class
 #' @param use.realmeans Indicates whether to use the mean of the individ realisations or
 #' the realisation values themselves. This slot essentially acts as a flag telling
 #' the script whether it wants 2D (lat-lon) or 3D (lat-lon-realization) data.
-#' @param use.anomalies Should the summary statistic be calculated on the basis of
+#' @param use.anomalies Should the statistic be calculated on the basis of
 #' anomalies only or should the full field be used?
 #'
-#' @export sum.stat
-#' @exportClass sum.stat
-sum.stat <- setClass("sum.stat",
+#' @export stat
+#' @exportClass stat
+stat <- setClass("stat",
                      slots=list(name="character",
                                 use.realmeans="logical",
                                 use.anomalies="logical"),
@@ -20,11 +20,11 @@ sum.stat <- setClass("sum.stat",
                                       use.anomalies=FALSE))
 
 
-#' Evaluate an sum.stat
+#' Evaluate an stat
 #' @export
-setGeneric("eval.sum.stat",
-           function(ss,vals, ...)
-             standardGeneric("eval.sum.stat")
+setGeneric("eval.stat",
+           function(st,vals, ...)
+             standardGeneric("eval.stat")
 )
 
 #' Area above a threshold
@@ -35,11 +35,11 @@ setGeneric("eval.sum.stat",
 area.above.threshold <- setClass("area.above.threshold",
                                  slots=list(threshold="numeric"),
                                  prototype=list(name="area.above.threshold"),
-                           contains="sum.stat")
+                           contains="stat")
 
 #' @export
-setMethod("eval.sum.stat",signature(ss="area.above.threshold",vals="Raster"),
-          function(ss,vals,...){
+setMethod("eval.stat",signature(st="area.above.threshold",vals="Raster"),
+          function(st,vals,...){
 
             require(dplyr)
 
@@ -52,7 +52,7 @@ setMethod("eval.sum.stat",signature(ss="area.above.threshold",vals="Raster"),
             pxl.area <- area(b)
 
             #Loop over temperature thresholds
-            areas.l <- lapply(ss@threshold,function(t) {
+            areas.l <- lapply(st@threshold,function(t) {
               #Calculate areas
               over.thresh <- b>t
               area.masked <- pxl.area * over.thresh
@@ -75,12 +75,12 @@ setMethod("eval.sum.stat",signature(ss="area.above.threshold",vals="Raster"),
 #' Calculates the average temperature within a region of interest using
 #' area-weighting
 #' @export spatial.mean
-spatial.mean <- setClass("spatial.mean",contains="sum.stat",
+spatial.mean <- setClass("spatial.mean",contains="stat",
                          prototype=list(name="spatial.mean"))
 
 #' @export
-setMethod("eval.sum.stat",signature(ss="spatial.mean",vals="Raster"),
-          function(ss,vals,...) {
+setMethod("eval.stat",signature(st="spatial.mean",vals="Raster"),
+          function(st,vals,...) {
             require(reshape2)
             #Crop supplied object to the spatial polygon and then mask
             #b.crop <- crop(x,m@poly.ROI)
@@ -104,12 +104,12 @@ setMethod("eval.sum.stat",signature(ss="spatial.mean",vals="Raster"),
 #' Calculates the average latitudinal position extent of an isoline
 #' @export isoline.lat
 isoline.lat <- setClass("isoline.lat",slots=list(threshold="numeric"),
-                            contains="sum.stat",
+                            contains="stat",
                             prototype=list(name="isoline.lat"))
 
 #' @export
-setMethod("eval.sum.stat",signature(ss="isoline.lat",vals="Raster"),
-          function(ss,vals,...){
+setMethod("eval.stat",signature(st="isoline.lat",vals="Raster"),
+          function(st,vals,...){
 
             require(reshape2)
 
@@ -150,17 +150,17 @@ setMethod("eval.sum.stat",signature(ss="isoline.lat",vals="Raster"),
 habitat.suitability <- setClass("habitat.suitability",
                                 slots=list(model="function"),
                                 prototype=list(name="habitat.suitability"),
-                                contains="sum.stat")
+                                contains="stat")
 
 #' @export
-setMethod("eval.sum.stat",signature(ss="habitat.suitability",vals="Raster"),
-          function(ss,vals,...){
+setMethod("eval.stat",signature(st="habitat.suitability",vals="Raster"),
+          function(st,vals,...){
             
             require(dplyr)
             
             #Apply the habitat model
             hab.r <- vals
-            hab.r[] <- ss@model(vals[])
+            hab.r[] <- st@model(vals[])
             
             #Get pixel area
             pxl.area <- area(hab.r)

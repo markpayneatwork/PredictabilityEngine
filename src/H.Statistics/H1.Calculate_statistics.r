@@ -1,5 +1,5 @@
 #'========================================================================
-# Calculate summary statistics
+# Calculate statistics
 #'========================================================================
 #
 # by Mark R Payne
@@ -8,7 +8,8 @@
 #
 # Created Wed May 23 22:50:39 2018
 #
-# Calculates summary statistics across the entire range of data sources
+# Calculates statistics across the entire range of data sources. Intended to
+# work with statistics tools that generate both fields and singular values
 #
 # This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 # You are largely free to do what you like with it, so long as you "attribute"
@@ -17,19 +18,19 @@
 # To do:
 #
 # Notes:
-# *  We choose to parallelise over datasources, rather than over summary statistics,
+# *  We choose to parallelise over datasources, rather than over statistics,
 #    which would be an alternative structure. The logic behind this is that
 #    not all data sets are available on one machine at the same time, due to
 #    storage and practical limitations - however, we can always apply the
-#    summary statistics (I hope). Thus, it makes more sense to parallelise over datasources
-#    and then loop over summary statistics.
+#    statistics (I hope). Thus, it makes more sense to parallelise over datasources
+#    and then loop over statistics.
 #
 #'========================================================================
 
 #'========================================================================
 # Initialise system ####
 #'========================================================================
-cat(sprintf("\n%s\n","Calculate_summary statistics"))
+cat(sprintf("\n%s\n","Calculate statistics"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Do house cleaning
@@ -48,8 +49,8 @@ pcfg <- readRDS(PE.cfg$config.path)
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.no <- 1
-  debug.mode <- TRUE
+  cfg.no <- 2
+  debug.mode <- FALSE
   set.cdo.defaults("--silent --no_warnings")
   set.log_msg.silent()
 } else {
@@ -65,14 +66,14 @@ if(interactive()) {
 # Divide work ####
 #'========================================================================
 #Retrieve configurations
-cfg.fname <- file.path(PE.cfg$dirs$job.cfg,"SumStats.cfg")
+cfg.fname <- file.path(PE.cfg$dirs$job.cfg,"Stats.cfg")
 this.cfgs <- get.this.cfgs(cfg.fname)
 this.sp <- get.this.sp(cfg.fname,cfg.no,pcfg)
 this.src <- get.this.src(cfg.fname,cfg.no,pcfg)
 config.summary(pcfg, this.src,this.sp)
 
 if(this.src@type=="Persistence" & !pcfg@average.months & length(pcfg@MOI) >1 &
-   any(!sapply(pcfg@summary.statistics,slot,"use.anomalies"))){
+   any(!sapply(pcfg@statistics,slot,"use.anomalies"))){
   stop("Don't know how to handle a persistence forecast for full
        field summary statistics in presence of multiple months")
 }
@@ -86,7 +87,7 @@ if(pcfg@use.global.ROI) {
 } else {
 	base.dir <- file.path(pcfg@scratch.dir,this.sp@name)}
 obs.dir <- file.path(base.dir,pcfg@Observations@type,pcfg@Observations@name)
-sumstat.dir <- define_dir(base.dir,"Summary.statistics")
+stat.dir <- define_dir(base.dir,PE.cfg$dirs$statistics)
 
 #Setup observational climatology
 clim.meta <- readRDS(file.path(obs.dir,PE.cfg$files$Obs.climatology.metadata))
@@ -95,15 +96,6 @@ names(obs.clim.l) <- sprintf("%02i",month(clim.meta$date))
 
 #Setup landmask 
 landmask <- raster(file.path(base.dir,PE.cfg$files$regridded.landmask))
-
-#Setup weights
-#Currently not used
-# wts <- landmask
-# wts[] <-0
-# xtr.cell.l <- extract(wts,this.sp@boundary,cellnumbers=TRUE,weights=TRUE)
-# for(xtr in xtr.cell.l){
-#   wts[xtr[,"cell"]] <- xtr[,"weight"]
-# }
 
 #Apply the spatial ROI to the mask as well
 comb.mask <- mask(landmask,this.sp@boundary,updatevalue=1)
@@ -120,17 +112,17 @@ sum.stats.l <- list()
 #of data that should be used as an input (i.e. realmeans, realizations etc), so 
 #it makes most sense to it this way around.
 
-for(j in seq(pcfg@summary.statistics)) {
-  sumstat <- pcfg@summary.statistics[[j]]
-  log_msg("Processing '%s' summary statistic, number %i of %i...\n",
-          sumstat@name,j,length(pcfg@summary.statistics))
+for(j in seq(pcfg@statistics)) {
+  this.stat <- pcfg@statistics[[j]]
+  log_msg("Processing '%s' statistic, number %i of %i...\n",
+          this.stat@name,j,length(pcfg@statistics))
   
   #Load the appropriate metadata
   if(this.src@name==PE.cfg$files$ensmean.name) { #Obviously only going to use ensmean data
     metadat.fname <- PE.cfg$files$realmean.meta
-  } else if(sumstat@use.realmeans) { #Use realmeans
+  } else if(this.stat@use.realmeans) { #Use realmeans
     metadat.fname <- PE.cfg$files$realmean.meta
-  } else if(!sumstat@use.realmeans) { #Use individual realizations
+  } else if(!this.stat@use.realmeans) { #Use individual realizations
     metadat.fname <- PE.cfg$files$anom.meta
   } 
 
@@ -169,7 +161,7 @@ for(j in seq(pcfg@summary.statistics)) {
     m <- metadat[i,]
     f <- m$fname
     log_msg("Processing summary statistic %s, file %s...\n",
-            sumstat@name,basename(f),silenceable = TRUE)    
+            this.stat@name,basename(f),silenceable = TRUE)    
     
     #Import model anom as a brick 
     #20190508 There was previously a problem working with a single layered brick in the raster
@@ -178,7 +170,7 @@ for(j in seq(pcfg@summary.statistics)) {
     mdl.anom <- brick(f)  
 
     #Choose whether we use full fields or anomalies
-    if(sumstat@use.anomalies) {
+    if(this.stat@use.anomalies) {
       mdl.val <- mdl.anom
       
     } else { #Calculate the full field by adding in the appropriate climatology
@@ -201,7 +193,7 @@ for(j in seq(pcfg@summary.statistics)) {
     masked.vals <- mask(mdl.val,comb.mask,maskvalue=1)
   
     #And we're ready. Lets calculate some summary statistics
-    res <- eval.sum.stat(ss=sumstat,vals=masked.vals) 
+    res <- eval.stat(st=this.stat,vals=masked.vals) 
     
     #Add in the metadata and store the results
     #Doing the bind diretly like this is ok when we are dealing with
@@ -215,12 +207,12 @@ for(j in seq(pcfg@summary.statistics)) {
   log_msg("\n")
   
   #Tidy up results a bit more
-  sumstat.res <- bind_rows(res.l) %>% 
+  stat.res <- bind_rows(res.l) %>% 
               as.tibble() %>%
               add_column(sp.subdomain=this.sp@name,
-                         sumstat.name=sumstat@name,
-                         sumstat.type=class(sumstat),
-                         sumstat.use.realmeans=sumstat@use.realmeans,
+                         stat.name=this.stat@name,
+                         stat.type=class(this.stat),
+                         stat.use.realmeans=this.stat@use.realmeans,
                          .before=1)
 
   #Store results
@@ -228,8 +220,8 @@ for(j in seq(pcfg@summary.statistics)) {
                                      this.sp@name,
                                      this.src@type,
                                      this.src@name,
-                                     sumstat@name))
-  saveRDS(sumstat.res,file=file.path(sumstat.dir,save.fname))
+                                     this.stat@name))
+  saveRDS(stat.res,file=file.path(stat.dir,save.fname))
 }
 
 

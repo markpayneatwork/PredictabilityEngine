@@ -146,7 +146,7 @@ statsum.l[[6]] <-  habitat.suitability(name="Habitat - realisations",
 
 #Merge it all in
 names(statsum.l) <- sapply(statsum.l,slot,"name")
-pcfg@summary.statistics <- statsum.l
+pcfg@statistics <- statsum.l
 
 #'========================================================================
 # Done

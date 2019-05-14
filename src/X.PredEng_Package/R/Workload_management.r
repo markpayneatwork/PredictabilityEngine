@@ -9,7 +9,7 @@
 #' @param ensmean Treat this as an ensemble mean?
 #' @param partition.by.space Should the work be split up by spatial subdomain as well as data.src? The default
 #' behaviour is to follow the use.global.ROI slot in obj i.e. when use.global.ROI is TRUE, we don't want to 
-#' partition by space. However, in some cases (e.g. calculation of summary statistics) it is useful to have this 
+#' partition by space. However, in some cases (e.g. calculation of statistics) it is useful to have this 
 #' behaviour anyway.
 #'
 #' @export
@@ -33,7 +33,7 @@ partition.workload <- function(obj,
   all.srcs <- bind_rows(dat.srcs,other.srcs.l)
   
   #Retain the data sources requested
-  if(src.slot=="SumStats") {
+  if(src.slot=="Stats") {
     dat.srcs <- all.srcs
     out.prefix <- src.slot
   } else if(ensmean) {
