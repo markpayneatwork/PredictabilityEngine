@@ -61,7 +61,7 @@ this.sp <- get.this.sp(file.path(PE.cfg$dirs$job.cfg,"Decadal.cfg"),cfg.id,pcfg)
 
 #Directory setup
 base.dir <- define_dir(pcfg@scratch.dir,this.sp@name,"Decadal")
-ensmean.dir <- define_dir(base.dir,PE.cfg$files$ensmean.name)
+ensmean.dir <- define_dir(base.dir,PE.cfg$files$ensmean.name,"B.realmean")
 
 log_msg("Calculating Ensemble mean for %s subdomain ...\n",this.sp@name)
 
