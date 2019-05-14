@@ -26,7 +26,7 @@
 # ========================================================================
 #IPSL and MPI-MR have basically an identifical structure, both being produced
 #originally by SPECS
-hindcast_mdls <- PredEng.list()
+hindcast_mdls <- list()
 hindcast_mdls$IPSL  <- data.source(name="IPSL-CM5A-LR",
                                    type="Decadal",
                            source="IPSL-CM5A-LR",
@@ -115,7 +115,7 @@ names(hindcast_mdls) <- sapply(hindcast_mdls,slot,"name")
 # ========================================================================
 # Setup observational data sets
 # ========================================================================
-SST_obs <- PredEng.list()
+SST_obs <- list()
 SST_obs$HadISST <- data.source(name="HadISST",var="sst")
 SST_obs$OISST <- data.source(name="OISST")
 SST_obs$EN4  <- data.source(name="EN4",var="temperature")
@@ -130,7 +130,7 @@ for(i in seq(SST_obs)){
 library(readr)
 NMME.cfg <- read_csv2(file.path(PE.cfg$dirs$datasrc,"NMME","NMME_SST_urls.csv"))
 NMME.mdls <- split(NMME.cfg,NMME.cfg$Model)
-NMME.sst.l <- PredEng.list()
+NMME.sst.l <- list()
 for(mdl.name in names(NMME.mdls)){
   mdl <- NMME.mdls[[mdl.name]]
   mdl.src <- mdl$URL
@@ -172,7 +172,7 @@ CMIP5.meta$CMIP5.chunk <- as.numeric(factor(CMIP5.meta$model)) %% PE.cfg$n.CMIP.
 CMIP5.grp <- split(CMIP5.meta,CMIP5.meta$CMIP5.chunk)
 
 #Now create the PredEng.source objects
-CMIP5.mdls.l <- PredEng.list()
+CMIP5.mdls.l <- list()
 for(i in seq(CMIP5.grp)) {
   CMIP5.mdls.l[[i]] <- data.source(name=sprintf("Chunk %03i",i),
                               type="CMIP5",

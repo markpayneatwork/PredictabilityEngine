@@ -95,7 +95,7 @@ eez.iceland <- filter(eez.sf,str_detect(GeoName,c("Iceland")),Pol_type=="200NM")
 
 #Correct names and add to object
 eez.sel <- rbind(eez.iceland, eez.gland.E,eez.gland.W) 
-EEZ.objs <- PredEng.list()
+EEZ.objs <- list()
 for(i in seq(nrow(eez.sel))) {
   this.sp <- eez.sel[i,]
   EEZ.objs[[i]] <- spatial.domain(name=as.character(this.sp$GeoName),
@@ -115,7 +115,7 @@ pcfg@spatial.subdomains <- EEZ.objs
 # Summary statistics ####
 #'========================================================================
 #Configure summary stats
-statsum.l <- PredEng.list()
+statsum.l <- list()
 statsum.l[[1]] <- threshold.area(name = "Area above 8.5 degrees",
                                  above=TRUE,
                                  use.realmeans=TRUE,

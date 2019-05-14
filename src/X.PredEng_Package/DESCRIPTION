@@ -19,7 +19,6 @@ Suggests:
     maps
 Collate: 
     'Common_configuration.r'
-    'PredEng.list.r'
     'Data_class_and_methods.r'
     'Config_class_and_methods.r'
     'PredEng.r'

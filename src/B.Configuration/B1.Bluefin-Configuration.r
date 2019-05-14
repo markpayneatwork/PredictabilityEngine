@@ -71,7 +71,7 @@ pcfg@global.ROI <- extent(-70,30,50,80)
 pcfg@global.res  <- 0.5
 
 #Polygons
-sp.objs <- PredEng.list()
+sp.objs <- list()
 sp.objs$irminger.sea <- spatial.domain("Irminger.Sea",
                                      as.SpatialPolygons.matrix(rbind(c(-45,58),c(-45,66),
                                                    c(-20,66),c(-32,58))))
@@ -109,7 +109,7 @@ pcfg@extraction <- extr
 # Summary statistics ####
 #'========================================================================
 #Configure summary stats
-stat.l <- PredEng.list()
+stat.l <- list()
 stat.l[[1]] <- threshold.area(name="Area above 11 degrees",
                               threshold=11,
                               above=TRUE,

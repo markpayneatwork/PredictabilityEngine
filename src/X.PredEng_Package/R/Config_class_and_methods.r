@@ -26,7 +26,6 @@
 #' @slot average.months Should we average over the months of interest?
 #'
 #' @include Data_class_and_methods.r
-#' @include PredEng.list.r
 #' 
 #' @details Extraction from the data sets can be performed either at specific geographical locations
 #'  (for all  time points), at specific times (for all locations), or at specific points in space-time. 
@@ -44,11 +43,11 @@ PredEng.config <- setClass("PredEng.config",
                            slots=list(project.name="character",
                                       recalculate="logical",
                                       Observations="PredEng.source",
-                                      Decadal="PredEng.list",
-                                      NMME="PredEng.list",
-                                      CMIP5="PredEng.list",
-                                      spatial.subdomains="PredEng.list",
-                                      statistics="PredEng.list",
+                                      Decadal="list",
+                                      NMME="list",
+                                      CMIP5="list",
+                                      spatial.subdomains="list",
+                                      statistics="list",
                                       extraction="list",
                                       global.ROI="Extent",
                                       global.res="numeric",
@@ -130,13 +129,20 @@ setMethod("show","PredEng.config", function(object) {
       cat(paste(range(obj),collapse="-"),"\n")
     } else if(is(obj,"numeric") & length(obj) <12){
       cat(paste(range(obj),collapse="-"),"\n")
-    } else if(is(obj,"PredEng.list") & length(obj) < 5){
-        cat(paste(names(obj),collapse=", "),"\n")
-    } else if(is(obj,"PredEng.list") ){
-      cat(sprintf("%s items",length(obj)),"\n")
-    } else if(is(obj,"list") ){
-      cat(sprintf("%s items",length(obj)),"\n")
-    } else if(is(obj,"PredEng.source") ){
+    } else if(is(obj,"list")){
+        #Get list names
+        l.list <- length(obj)
+        l.names <- names(obj)
+        #Respond accordingly
+        if(l.list != length(l.names) | l.list > 5) {
+          cat(sprintf("%s items",length(obj)),"\n")
+        } else if(length(l.names!=0)){
+          cat(paste(l.names,collapse=", "),"\n")
+        } else {
+          cat("\n")
+        }
+          
+   } else if(is(obj,"PredEng.source") ){
       cat(obj@name,"\n")
     # } else if(is(obj,"Date") & length(obj) < 5){
     #   cat(as.character(obj),"\n")
