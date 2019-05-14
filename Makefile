@@ -56,7 +56,7 @@ default: help status
 
 #-------------------------------------
 #NMME
-NMME NMME_Ensmean SumStats Decadal Decadal_Ensmean Observations:
+NMME NMME_Ensmean Stats Decadal Decadal_Ensmean Observations:
 	make cluster TYPE=$@
 
 cluster:  todo $(OKs)
