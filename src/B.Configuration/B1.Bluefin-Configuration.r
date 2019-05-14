@@ -109,19 +109,27 @@ pcfg@extraction <- extr
 # Summary statistics ####
 #'========================================================================
 #Configure summary stats
-statsum.l <- PredEng.list()
-statsum.l[[1]] <- area.above.threshold(threshold=11)
-#statsum.l[[2]]  <- spatial.mean()
-#statsum.l[[3]] <-isoline.lat(threshold=11)
+stat.l <- PredEng.list()
+stat.l[[1]] <- threshold.area(name="Area above 11 degrees",
+                              threshold=11,
+                              above=TRUE,
+                              use.realmeans=TRUE)
+stat.l[[2]] <- threshold(name="11 degree threshold",
+                         above=TRUE,
+                         threshold=11,
+                         use.realmeans=TRUE)
+
+#stat.l[[2]]  <- spatial.mean()
+#stat.l[[3]] <-isoline.lat(threshold=11)
 
 #Set type of data to use for all
-for(i in seq(statsum.l)){
-  statsum.l[[i]]@data.type <- "means"
+for(i in seq(stat.l)){
+  stat.l[[i]]@use.realmeans <- TRUE
 }
 
 #Merge it all in
-names(statsum.l) <- sapply(statsum.l,slot,"name")
-pcfg@summary.statistics <- statsum.l
+names(stat.l) <- sapply(stat.l,slot,"name")
+pcfg@statistics <- stat.l
 
 #'========================================================================
 # Output ####
