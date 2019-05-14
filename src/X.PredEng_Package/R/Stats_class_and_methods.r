@@ -62,7 +62,7 @@ setMethod("eval.stat",signature(st="threshold",vals="Raster"),
               } else {
                 res <- vals < st@threshold
               }
-            return(tibble(value=list(res)))
+            return(tibble(field=list(res)))
           })
 
 #' Threshold Area
@@ -102,7 +102,7 @@ setMethod("eval.stat",signature(st="threshold.area",vals="Raster"),
             area.filt <- ifelse(is.na(mean.temp),NA,area.statistfying.thresh)
 
             #Return
-            return(tibble(realization=getZ(vals),value=area.filt)) 
+            return(tibble(realization=1:nlayers(vals),value=area.filt)) 
             })
 
 
@@ -131,7 +131,7 @@ setMethod("eval.stat",signature(st="spatial.mean",vals="Raster"),
             na.by.area   <- (!is.na(b))*pxl.area
             wt.temp <- cellStats(temp.by.area,sum)/cellStats(na.by.area,sum)
 
-            return(data.frame(realization=getZ(b),value=wt.temp))
+            return(data.frame(realization=1:nlayers(b),value=wt.temp))
           })
 
 
@@ -204,6 +204,6 @@ setMethod("eval.stat",signature(st="habitat.suitability",vals="Raster"),
             #Calculate total carrying capacity
             pxl.cap <- pxl.area*exp(hab.r)
             car.cap <- cellStats(pxl.cap,sum,na.rm=TRUE)
-            return(data.frame(realization=getZ(vals),value=car.cap)) })
+            return(data.frame(realization=1:nlayers(vals),value=car.cap)) })
 
 

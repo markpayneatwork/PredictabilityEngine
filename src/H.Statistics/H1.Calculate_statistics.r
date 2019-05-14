@@ -49,7 +49,7 @@ pcfg <- readRDS(PE.cfg$config.path)
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.no <- 19
+  cfg.no <- 16
   debug.mode <- TRUE
   set.cdo.defaults("--silent --no_warnings")
   set.log_msg.silent()
@@ -120,7 +120,7 @@ stats.tb <- tibble(name=sapply(pcfg@statistics,slot,name="name"),
                    is.global.stat=sapply(pcfg@statistics,slot,name="is.global.stat"),
                    stat=pcfg@statistics)
 #Only apply spatial stats to global spatial domains
-if(this.sp@name=="global.ROI") {
+if(is.na(this.sp@name)) {
   sel.stats <- filter(stats.tb,is.global.stat)
 } else {
   sel.stats <- filter(stats.tb,!is.global.stat)

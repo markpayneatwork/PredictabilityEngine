@@ -93,15 +93,8 @@ for(sp.d in sp.dirs){
   
 }
 
-#Big improvements to the metadata handling have rendered previous hard-earned code 
-#largely useless - we can now just take what we want
-keep.cols <- c("sp.subdomain","name", "type",
-               "date","start.date",
-               "stat.use.realmeans","stat.name","stat.type","value")
-common.cols.l <- lapply(ss.l,"[",keep.cols)
-
 #Merge into one big object and add meta information
-all.ss.raw <- bind_rows(common.cols.l) %>%
+all.ss.raw <- bind_rows(ss.l) %>%
                mutate(ym=sprintf("%i-%02i",year(date),month(date))) 
 
 #'========================================================================
