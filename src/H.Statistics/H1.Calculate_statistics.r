@@ -49,8 +49,8 @@ pcfg <- readRDS(PE.cfg$config.path)
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.no <- 2
-  debug.mode <- FALSE
+  cfg.no <- 19
+  debug.mode <- TRUE
   set.cdo.defaults("--silent --no_warnings")
   set.log_msg.silent()
 } else {
@@ -75,7 +75,7 @@ config.summary(pcfg, this.src,this.sp)
 if(this.src@type=="Persistence" & !pcfg@average.months & length(pcfg@MOI) >1 &
    any(!sapply(pcfg@statistics,slot,"use.anomalies"))){
   stop("Don't know how to handle a persistence forecast for full
-       field summary statistics in presence of multiple months")
+       field statistics in presence of multiple months")
 }
 
 #'========================================================================
@@ -104,18 +104,32 @@ comb.mask <- mask(landmask,this.sp@boundary,updatevalue=1)
 sum.stats.l <- list()
 
 #'========================================================================
-# Calculate summary statistics ####
+# Calculate statistics ####
 #'========================================================================
-#Outer loop is over the summary statistics This is probably not the most effective
+#Outer loop is over the  statistics This is probably not the most effective
 #strategy, as it involves some duplication around the calculation of the
-#input fields. However, the summary statistics, in principle, determine the type
+#input fields. However, the statistics, in principle, determine the type
 #of data that should be used as an input (i.e. realmeans, realizations etc), so 
 #it makes most sense to it this way around.
 
-for(j in seq(pcfg@statistics)) {
-  this.stat <- pcfg@statistics[[j]]
+#The statistics can also inform the spatial domain that we are interested in
+#as well - particularly for statistics that return fields, instead of singular
+#values, we want to process the entire global domain, rather than just a single
+#local spatial domain. Hence, we need to select the spatial statistics accordingly.
+stats.tb <- tibble(name=sapply(pcfg@statistics,slot,name="name"),
+                   is.global.stat=sapply(pcfg@statistics,slot,name="is.global.stat"),
+                   stat=pcfg@statistics)
+#Only apply spatial stats to global spatial domains
+if(this.sp@name=="global.ROI") {
+  sel.stats <- filter(stats.tb,is.global.stat)
+} else {
+  sel.stats <- filter(stats.tb,!is.global.stat)
+}
+
+for(j in seq(nrow(sel.stats))) {
+  this.stat <- sel.stats[j,]$stat[[1]]
   log_msg("Processing '%s' statistic, number %i of %i...\n",
-          this.stat@name,j,length(pcfg@statistics))
+          this.stat@name,j,nrow(sel.stats))
   
   #Load the appropriate metadata
   if(this.src@name==PE.cfg$files$ensmean.name) { #Obviously only going to use ensmean data
@@ -199,12 +213,15 @@ for(j in seq(pcfg@statistics)) {
     #Doing the bind diretly like this is ok when we are dealing with
     #rasterLayer fragments, but we will need to be caseful when dealing with 
     #bricks, for example
-    res.l[[i]] <- as_tibble(cbind(m,res))
+    res.l[[i]] <- bind_cols(m,res)
   }
   
   Sys.sleep(0.1)
   print(pb$stop())
   log_msg("\n")
+  
+  #Combine results with metadata
+  
   
   #Tidy up results a bit more
   stat.res <- bind_rows(res.l) %>% 

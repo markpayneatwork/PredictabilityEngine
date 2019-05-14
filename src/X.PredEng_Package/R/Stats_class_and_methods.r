@@ -9,15 +9,19 @@
 #' the script whether it wants 2D (lat-lon) or 3D (lat-lon-realization) data.
 #' @param use.anomalies Should the statistic be calculated on the basis of
 #' anomalies only or should the full field be used?
-#'
+#' @param is.global.stat Indicates whether the stat should be calculated on a global or local basis ie. for 
+#' each individual spatial domain, or once for the entire global ROI
+#' @name stat
 #' @export stat
 #' @exportClass stat
 stat <- setClass("stat",
                      slots=list(name="character",
                                 use.realmeans="logical",
-                                use.anomalies="logical"),
+                                use.anomalies="logical",
+                                is.global.stat="logical"),
                      prototype = list(use.realmeans=TRUE,
-                                      use.anomalies=FALSE))
+                                      use.anomalies=FALSE,
+                                      is.global.stat=FALSE))
 
 
 #' Evaluate an stat
@@ -27,47 +31,79 @@ setGeneric("eval.stat",
              standardGeneric("eval.stat")
 )
 
-#' Area above a threshold
+#' Threshold
 #'
-#' Calculates the area of water above a threshold temperature
-#' @param threshold Critical threshold value
-#' @export area.above.threshold
-area.above.threshold <- setClass("area.above.threshold",
-                                 slots=list(threshold="numeric"),
-                                 prototype=list(name="area.above.threshold"),
-                           contains="stat")
+#' Determines where each pixel sits in relation to a threshold value
+#' @inherit stat params
+#' @param threshold Critical threshold value - a numeric of length 1
+#' @param above Logical value - TRUE indicates that we wish to test for values above the threshold. FALSE below.
+#' @export threshold
+#' @return Raster* object, matching the raster object supplied as an argument
+threshold <- setClass("threshold",
+                                 slots=list(threshold="numeric",
+                                            above="logical"),
+                                 prototype=list(name="threshold",
+                                                above=TRUE),
+                                 contains="stat",
+                                 validity = function(object) {
+                                   err.msg <- NULL
+                                   if(length(object@threshold)!=1) {
+                                     err.msg <- c(err.msg,
+                                                  sprintf("Length of 'threshold' slot should be 1 but is %i.",length(object@threshold)))
+                                   }
+                                   if(length(err.msg)==0) return(TRUE) else err.msg
+                                 })
 
 #' @export
-setMethod("eval.stat",signature(st="area.above.threshold",vals="Raster"),
+setMethod("eval.stat",signature(st="threshold",vals="Raster"),
+          function(st,vals,...){
+              if(st@above) {
+                res<- vals>st@threshold
+              } else {
+                res <- vals < st@threshold
+              }
+            return(tibble(value=list(res)))
+          })
+
+#' Threshold Area
+#'
+#' Calculates the area of water above (or below) a threshold value
+#' @return Tibble
+#' @export threshold.area
+threshold.area <- setClass("threshold.area",
+                           contains="threshold")
+
+#' @export
+setMethod("eval.stat",signature(st="threshold.area",vals="Raster"),
           function(st,vals,...){
 
             require(dplyr)
 
-            #Crop supplied object to the spatial polygon and then mask
-            #b.crop <- crop(x,m@poly.ROI)
-            #b <- mask(r,sp@boundary)
-            b <- vals
-
             #Get pixel area
-            pxl.area <- area(b)
+            
+            #Apply the threshold calculation
+            #Ideally this would be nested, and make a call to the parent
+            #class first, but there is so little code that we are talking about
+            #here, that its not worth the bother (and computational overhead)
+            if(st@above) {
+              ok.b <- vals>st@threshold
+            } else {
+              ok.b <- vals < st@threshold
+            }
+            
+            #Now calculate the area
+            pxl.area <- area(vals)
+            area.masked <- pxl.area * ok.b
+            names(area.masked) <- names(vals)
+            area.statistfying.thresh <- cellStats(area.masked,sum)
+            
+            #Filter areas where it doesn't work.
+            mean.temp <- cellStats(vals,mean)
+            area.filt <- ifelse(is.na(mean.temp),NA,area.statistfying.thresh)
 
-            #Loop over temperature thresholds
-            areas.l <- lapply(st@threshold,function(t) {
-              #Calculate areas
-              over.thresh <- b>t
-              area.masked <- pxl.area * over.thresh
-              names(area.masked) <- names(b)
-              area.overthresh <- cellStats(area.masked,sum)
-              #Filter areas where it doesn't work.
-              mean.temp <- cellStats(b,mean)
-              area.filt <- ifelse(is.na(mean.temp),NA,area.overthresh)
-              #Return
-              return(data.frame(realization=getZ(b),threshold=t,value=area.filt)) })
-
-            #Tidy up output
-            areas <- bind_rows(areas.l)
-            return(areas)
-          })
+            #Return
+            return(tibble(realization=getZ(vals),value=area.filt)) 
+            })
 
 
 #' Average temperature within an ROI

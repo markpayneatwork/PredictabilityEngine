@@ -116,32 +116,35 @@ pcfg@spatial.subdomains <- EEZ.objs
 #'========================================================================
 #Configure summary stats
 statsum.l <- PredEng.list()
-statsum.l[[1]] <- area.above.threshold(name = "Threshold - means",
-                                       use.realmeans=TRUE,
-                                       threshold=8.5)  #Based on Teunis' paper
-statsum.l[[2]] <- area.above.threshold(name="Threshold - realisations",
-                                       use.realmeans=FALSE,
-                                       threshold=8.5)  #Based on Teunis' paper
+statsum.l[[1]] <- threshold.area(name = "Area above 8.5 degrees",
+                                 above=TRUE,
+                                 use.realmeans=TRUE,
+                                 threshold=8.5)  #Based on Teunis' paper
+statsum.l[[2]] <- threshold(name="Threshold Field",
+                            is.global.stat = TRUE,
+                            above=TRUE,
+                            use.realmeans=FALSE,
+                            threshold=8.5)  #Based on Teunis' paper
 
-statsum.l[[3]]  <- spatial.mean(name="Spatial mean - means",
-                                use.realmeans=TRUE,
-                                use.anomalies=TRUE)
-statsum.l[[4]]  <- spatial.mean(name="Spatial mean - realizations",
-                                use.realmeans=FALSE,
-                                use.anomalies=TRUE)
+# statsum.l[[3]]  <- spatial.mean(name="Spatial mean - means",
+#                                 use.realmeans=TRUE,
+#                                 use.anomalies=TRUE)
+# statsum.l[[4]]  <- spatial.mean(name="Spatial mean - realizations",
+#                                 use.realmeans=FALSE,
+#                                 use.anomalies=TRUE)
 #statsum.l[[3]] <-isoline.lat(threshold=11)
 
 #Setup habitat suitability functionality
-habitat.mdl.dat <- readRDS("resources/Mackerel_summer_QR_values.rds")
-habitat.mdl.fn <-  approxfun(habitat.mdl.dat$temp,habitat.mdl.dat$value,rule=2)
-statsum.l[[5]] <-  habitat.suitability(name="Habitat - means",
-                                       model=habitat.mdl.fn,
-                                       use.realmeans=TRUE,
-                                       use.anomalies = FALSE)
-statsum.l[[6]] <-  habitat.suitability(name="Habitat - realisations",
-                                       model=habitat.mdl.fn,
-                                       use.realmeans=FALSE,
-                                       use.anomalies = FALSE)
+# habitat.mdl.dat <- readRDS("resources/Mackerel_summer_QR_values.rds")
+# habitat.mdl.fn <-  approxfun(habitat.mdl.dat$temp,habitat.mdl.dat$value,rule=2)
+# statsum.l[[5]] <-  habitat.suitability(name="Habitat - means",
+#                                        model=habitat.mdl.fn,
+#                                        use.realmeans=TRUE,
+#                                        use.anomalies = FALSE)
+# statsum.l[[6]] <-  habitat.suitability(name="Habitat - realisations",
+#                                        model=habitat.mdl.fn,
+#                                        use.realmeans=FALSE,
+#                                        use.anomalies = FALSE)
 
 
 #Merge it all in

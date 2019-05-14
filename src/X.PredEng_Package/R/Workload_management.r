@@ -22,7 +22,7 @@ partition.workload <- function(obj,
   #Check inputs
   if(length(src.slot)!=1) stop("Can only partition a single slot at a time")
   
-  #Get the list of all valid types
+  #Get the list of all valid data types
   dat.srcs.l <- unlist(lapply(c("Decadal","NMME","Observations","CMIP5"),slot,object=obj))
   dat.srcs <- tibble(src.type=sapply(dat.srcs.l,slot,"type"),
                      src.name=sapply(dat.srcs.l,slot,"name"))
@@ -31,6 +31,9 @@ partition.workload <- function(obj,
   if(length(obj@NMME)!=0) other.srcs.l[[2]] <- tibble(src.type="NMME",src.name=PE.cfg$files$ensmean.name)
   if(length(obj@Decadal)!=0) other.srcs.l[[3]] <- tibble(src.type="Decadal",src.name=PE.cfg$files$ensmean.name)
   all.srcs <- bind_rows(dat.srcs,other.srcs.l)
+  
+  #If we have global statistics in the mix, then we need to handle this accordingly
+  global.stats.present <- any(sapply(obj@statistics,slot,name="is.global.stat"))
   
   #Retain the data sources requested
   if(src.slot=="Stats") {
@@ -48,7 +51,11 @@ partition.workload <- function(obj,
     
   #Setup spatial domains
   if(partition.by.space ) { #Overrides the use.global.ROI switch
-    sp.subdomains <- names(obj@spatial.subdomains)
+    if(global.stats.present & src.slot=="Stats") {
+      sp.subdomains <- c(names(obj@spatial.subdomains),NA)  #Add a global spatial config
+    } else {
+      sp.subdomains <- names(obj@spatial.subdomains)
+    }
   } else if (obj@use.global.ROI) {
     sp.subdomains <- as.character(NA)
   } else {
@@ -97,7 +104,7 @@ get.this.sp <- function(fname,cfg.idx,obj){
   cfgs <- get.this.cfgs(fname)
   this.cfg <- cfgs[cfg.idx,]
   if(is.na(this.cfg$sp)) {
-    this.sp  <- spatial.domain(obj@global.ROI,name="")
+    this.sp  <- spatial.domain(obj@global.ROI,name="global.ROI")
   } else { #Working with subdomains
     this.sp <- obj@spatial.subdomains[[as.character(this.cfg$sp)]]
   }
