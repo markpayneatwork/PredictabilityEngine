@@ -49,8 +49,8 @@ pcfg <- readRDS(PE.cfg$config.path)
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.no <- 16
-  debug.mode <- TRUE
+  cfg.no <- 2
+  debug.mode <- FALSE
   set.cdo.defaults("--silent --no_warnings")
   set.log_msg.silent()
 } else {
@@ -120,7 +120,7 @@ stats.tb <- tibble(name=sapply(pcfg@statistics,slot,name="name"),
                    is.global.stat=sapply(pcfg@statistics,slot,name="is.global.stat"),
                    stat=pcfg@statistics)
 #Only apply spatial stats to global spatial domains
-if(is.na(this.sp@name)) {
+if(this.sp@name=="" & this.sp@desc=="global.ROI") {
   sel.stats <- filter(stats.tb,is.global.stat)
 } else {
   sel.stats <- filter(stats.tb,!is.global.stat)
@@ -228,13 +228,12 @@ for(j in seq(nrow(sel.stats))) {
               as.tibble() %>%
               add_column(sp.subdomain=this.sp@name,
                          stat.name=this.stat@name,
-                         stat.type=class(this.stat),
-                         stat.use.realmeans=this.stat@use.realmeans,
-                         .before=1)
+                         .before=1) %>%
+              select(-fname,-which.clim)
 
   #Store results
   save.fname <- gsub(" ","-",sprintf("%s_%s_%s_%s.rds",
-                                     this.sp@name,
+                                     ifelse(this.sp@name=="",this.sp@desc,this.sp@name),
                                      this.src@type,
                                      this.src@name,
                                      this.stat@name))

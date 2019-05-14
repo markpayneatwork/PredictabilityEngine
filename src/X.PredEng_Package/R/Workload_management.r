@@ -104,7 +104,7 @@ get.this.sp <- function(fname,cfg.idx,obj){
   cfgs <- get.this.cfgs(fname)
   this.cfg <- cfgs[cfg.idx,]
   if(is.na(this.cfg$sp)) {
-    this.sp  <- spatial.domain(obj@global.ROI,name=as.character(NA))
+    this.sp  <- spatial.domain(obj@global.ROI,name="",desc="global.ROI")
   } else { #Working with subdomains
     this.sp <- obj@spatial.subdomains[[as.character(this.cfg$sp)]]
   }

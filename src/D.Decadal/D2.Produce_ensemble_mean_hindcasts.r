@@ -60,7 +60,8 @@ if(interactive()) {
 this.sp <- get.this.sp(file.path(PE.cfg$dirs$job.cfg,"Decadal.cfg"),cfg.id,pcfg)
 
 #Directory setup
-base.dir <- define_dir(pcfg@scratch.dir,this.sp@name,"Decadal")
+sp.dir <- file.path(pcfg@scratch.dir,this.sp@name)
+base.dir <- define_dir(sp.dir,"Decadal")
 ensmean.dir <- define_dir(base.dir,PE.cfg$files$ensmean.name,"B.realmean")
 
 log_msg("Calculating Ensemble mean for %s subdomain ...\n",this.sp@name)
@@ -113,8 +114,8 @@ for(i in seq(grp.l)) {
   d <- grp.l[[i]]
   
   #Build up meta data
-  grp.meta <- tibble(name=PE.cfg$files$ensmean.name,
-                     type="Decadal",
+  grp.meta <- tibble(src.name=PE.cfg$files$ensmean.name,
+                     src.type="Decadal",
                          date=mean(d$date),
                          start.date=mean(d$start.date),
                          lead.idx=unique(d$lead.idx))

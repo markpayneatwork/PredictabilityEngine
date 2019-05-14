@@ -49,7 +49,16 @@ pcfg <- readRDS(PE.cfg$config.path)
 base.dir <- pcfg@scratch.dir
 
 #Import stat results
-all.ss <- readRDS(file.path(base.dir,PE.cfg$files$stats))
+all.stats.raw <- readRDS(file.path(base.dir,PE.cfg$files$stats))
+
+#Restrict the comparisons to the realmean-based metrics returning single
+#values - for the moment
+realmean.stats <- enframe(sapply(pcfg@statistics,slot,name="use.realmeans"),
+                          value="uses.realmeans" ) %>%
+                  filter(uses.realmeans)
+all.stats <- filter(all.stats.raw,
+                    stat.name %in% realmean.stats$name,
+                    sapply(field,is.null))
 
 #'========================================================================
 # Split and Merge Observations ####
@@ -57,7 +66,7 @@ all.ss <- readRDS(file.path(base.dir,PE.cfg$files$stats))
 log.msg("Split and merge...\n")
 
 #Extract out the observational data
-obs.dat <- filter(all.ss,type=="Observations") %>%
+obs.dat <- filter(all.stats,src.type=="Observations") %>%
   dplyr::select(sp.subdomain,ym,stat.name,value) 
 
 
@@ -66,7 +75,7 @@ obs.dat <- filter(all.ss,type=="Observations") %>%
 #that we do the merging by year - this should generally be ok for most of the
 #situations where we envisage using PredEnd i.e. one data point per year - but
 #we need to be aware that this is not exactly the case 
-comp.dat.all <- left_join(all.ss,obs.dat,
+comp.dat.all <- left_join(all.stats,obs.dat,
                           by=c("ym","stat.name","sp.subdomain"),
                           suffix=c(".mdl",".obs"))
 
@@ -75,8 +84,6 @@ comp.dat <- filter(comp.dat.all,
                    year(date) %in% pcfg@comp.years) %>%
   mutate(start.month=month(start.date))
 
-#Restrict the comparisons to the realmean-based metrics - for the moment
-comp.dat <- filter(comp.dat,stat.use.realmeans)
 
 #'========================================================================
 # Calculate the metrics ####
@@ -94,7 +101,7 @@ skill.sum <- function(d) {
 }
 
 #Now calculate the mean skill over all start dates
-g.vars <- c("name","type","sp.subdomain","stat.name","lead")
+g.vars <- c("src.name","src.type","sp.subdomain","stat.name","lead")
 skill.mean <- comp.dat %>%
   group_by_at(vars(one_of(g.vars))) %>%
   skill.sum() %>%

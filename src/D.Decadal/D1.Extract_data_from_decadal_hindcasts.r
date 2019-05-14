@@ -62,8 +62,10 @@ if(interactive()) {
 set.nco.defaults("--overwrite")
 
 #Retrieve configurations
-this.sp <- get.this.sp(file.path(PE.cfg$dirs$job.cfg,"Decadal.cfg"),cfg.id,pcfg)
-this.src <- get.this.src(file.path(PE.cfg$dirs$job.cfg,"Decadal.cfg"),cfg.id,pcfg)
+cfg.fname <- file.path(PE.cfg$dirs$job.cfg,"Decadal.cfg")
+this.cfgs <- get.this.cfgs(cfg.fname)
+this.sp <- get.this.sp(cfg.fname,cfg.id,pcfg)
+this.src <- get.this.src(cfg.fname,cfg.id,pcfg)
 
 #Directory setup
 src.dir <- file.path(PE.cfg$dirs$datasrc,"Decadal",this.src@source)
@@ -196,8 +198,8 @@ if(!file.exists(frag.meta.fname) | pcfg@recalculate) {
   }
   
   #Now build up a meta-data catalogue
-  frag.meta <- tibble(name=this.src@name,
-                      type=this.src@type,
+  frag.meta <- tibble(src.name=this.src@name,
+                      src.type=this.src@type,
                       start.date=this.src@init_fn(frag.fnames),
                       date=do.call(c,frag.dates.l),
                       lead.idx=str_match(basename(frag.fnames),"^.*?_L([0-9]+).nc$")[,2],
@@ -250,7 +252,7 @@ if(!file.exists(fragstack.meta.fname)| pcfg@recalculate) {
     
     #Store metadata
     fragstack.meta.l[[i]] <- grp[1,] %>%
-      mutate(n.realizations=nrow(grp),
+      mutate(#n.realizations=nrow(grp),
              fname=fragstack.fname)
     
   }
@@ -319,6 +321,8 @@ if(!file.exists(clim.meta.fname) | pcfg@recalculate) {
   rm(pb)
   log_msg("\n")
   
+  #Should probably tidy this metadata before saving, but as it is not used anyway, its not
+  #all that critical
   saveRDS(clim.meta,file=clim.meta.fname)
   pcfg@recalculate <- TRUE   #If here, then force all subsequent calculations
   
@@ -334,13 +338,13 @@ anom.meta.fname <- file.path(base.dir,PE.cfg$files$anom.meta)
 
 if(!file.exists(anom.meta.fname) | pcfg@recalculate) {
   #Simple loop over files
-  anom.meta <- mutate(clim.meta,
-                      fragstack.fname=fname,
-                      fname=file.path(anom.dir,
-                                      sprintf("%s_S%s_L%s_anom.nc",
-                                              name,
-                                              format(start.date,"%Y%m%d"),
-                                              lead.idx)))
+  anom.meta <- dplyr::select(clim.meta,-in.clim,-clim.idx,-start.month) %>%
+               mutate(fragstack.fname=fname,
+                     fname=file.path(anom.dir,
+                                     sprintf("%s_S%s_L%s_anom.nc",
+                                             src.name,
+                                             format(start.date,"%Y%m%d"),
+                                             lead.idx)))
   pb <- progress_estimated(nrow(anom.meta))
   for(k in seq(nrow(anom.meta))){
     pb$tick()$print()
@@ -357,6 +361,9 @@ if(!file.exists(anom.meta.fname) | pcfg@recalculate) {
   print(pb)
   rm(pb)
   log_msg("\n")
+  
+  #Tidy up anom.meta for saving
+  anom.meta <- select(anom.meta,-clim.fname,-fragstack.fname)
   
   saveRDS(anom.meta,file=anom.meta.fname)
   pcfg@recalculate <- TRUE   #If here, then force all subsequent calculations
@@ -411,7 +418,7 @@ if(!file.exists(realmean.meta.fname) | pcfg@recalculate) {
   
   #Compile into metadata catalogue by taking the first line in each groupling
   realmean.meta <- realmean.meta %>% 
-    select(name,type,start.date,date,lead.idx,n.realizations,fname)
+    select(src.name,src.type,start.date,date,lead.idx,fname)
   saveRDS(realmean.meta,file=realmean.meta.fname)
   pcfg@recalculate <- TRUE   #If here, then force all subsequent calculations
 } else {                                 

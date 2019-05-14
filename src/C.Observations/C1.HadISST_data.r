@@ -203,11 +203,11 @@ generate.metadata <- function(src.dir) {
   
   #Build metadata
   src.meta <- bind_rows(meta.dat.l) %>%
-    add_column(name=this.src@name,
-               type=this.src@type,
+    add_column(src.name=this.src@name,
+               src.type=this.src@type,
                .before=1) %>%
     mutate(start.date=NA,
-           n.realizations=1,
+#           n.realizations=1,
            fname=src.fnames) 
   return(src.meta)
 }
@@ -242,17 +242,17 @@ saveRDS(realmean.meta,file=file.path(base.dir,PE.cfg$files$realmean.meta))
 #And now for the climatologies
 if(pcfg@average.months) {
   #Only a single clim file - generate by hand
-  clim.meta <- tibble(name=this.src@name,
-                      type="Climatology",
+  clim.meta <- tibble(src.name=this.src@name,
+                      src.type="Climatology",
                       date=as.Date(ISOdate(9999,pcfg@MOI,15)),
                       start.date=NA,
-                      n.realizations=1,
+#                      n.realizations=1,
                       fname=MOIave.clim)
   
 } else {
   #Generate a climatology 
   clim.meta <- generate.metadata(mon.clim.dir)
-  clim.meta$type <- "Climatology"
+  clim.meta$src.type <- "Climatology"
   
   #Restrict to months in the MOI
   clim.meta <- subset(clim.meta,month(date) %in% pcfg@MOI)

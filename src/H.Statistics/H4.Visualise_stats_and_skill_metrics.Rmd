@@ -94,9 +94,9 @@ rescale.fn <- function(m) {  #Converts a leadtime in months into a rescale value
 
 skill.mets <- ungroup(skill.mets) %>%
               filter(skill.type=="mean.skill",
-                     type!="Observations") %>%
+                     src.type!="Observations") %>%
               mutate(t=rescale.fn(lead),
-                     ensmean=name=="Ensmean"|type=="Persistence")
+                     ensmean=src.name=="Ensmean"|src.type=="Persistence")
 
 #Plot!
 x.lbls <- tibble(months=c(seq(0,12,by=3),seq(24,120,by=24)),t=rescale.fn(months)) %>%
@@ -138,16 +138,16 @@ for(this.sp in names(sp.skill.l)) {
                           sp.subdomain==this.sp,
                           stat.name==this.ss)
     stat.obs <- filter(stat.sel,
-                            type=="Observations",
+                            src.type=="Observations",
                             year(date)>=min(pcfg@comp.years)) %>%
                     mutate(timeframe="Historical")
     mr.obs <- max(stat.obs$date)
     stat.mdl <- filter(stat.sel,
                           date>mr.obs,
-                          type %in% c("Decadal","NMME"),
-                          name!="Ensmean") %>%
+                          src.type %in% c("Decadal","NMME"),
+                          src.name!="Ensmean") %>%
                    mutate(timeframe="Near-term predictions",
-                          name.type=paste(name,type,sep=".")) %>%
+                          name.type=paste(src.name,src.type,sep=".")) %>%
                    group_by(name.type) %>%
                    filter(start.date==max(start.date)) %>%
                    ungroup() %>%
@@ -155,7 +155,7 @@ for(this.sp in names(sp.skill.l)) {
 
     stat.plt.dat <- rbind(stat.obs,stat.mdl)
     
-    g <- ggplot(stat.plt.dat,aes(x=date,y=value,colour=name))+
+    g <- ggplot(stat.plt.dat,aes(x=date,y=value,colour=src.name))+
          geom_line()+
          labs(x="Year",y=this.ss)+
          facet_wrap(~timeframe,nrow=1,scales="free_x")
@@ -179,8 +179,8 @@ for(this.sp in names(sp.skill.l)) {
       }
       
       #Plot
-      g <- ggplot(plt.dat,aes(x=t,y=value,group=name))+
-        geom_line(aes(colour=type,size=ensmean))+
+      g <- ggplot(plt.dat,aes(x=t,y=value,group=src.name))+
+        geom_line(aes(colour=src.type,size=ensmean))+
         facet_wrap(~skill.metric,scales = "free_y")+
         coord_cartesian(xlim=c(0,2),ylim=y.rng,expand=FALSE)+
         scale_size_manual(values=c(0.25,1))+

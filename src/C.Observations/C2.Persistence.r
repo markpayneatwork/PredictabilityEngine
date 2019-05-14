@@ -71,7 +71,7 @@ for(this.sp in this.sps) {
   
   #Some tweaks
   persis.meta <- mutate(mon.anom.meta,
-                      type="Persistence")
+                      src.type="Persistence")
   
   #Save metadata
   saveRDS(persis.meta,file=file.path(base.dir,PE.cfg$files$anom.meta))
