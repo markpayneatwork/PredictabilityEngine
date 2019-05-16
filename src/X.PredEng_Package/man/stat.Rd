@@ -16,6 +16,8 @@ anomalies only or should the full field be used?}
 
 \item{is.global.stat}{Indicates whether the stat should be calculated on a global or local basis ie. for 
 each individual spatial domain, or once for the entire global ROI}
+
+\item{skill.metrics}{A character vector listing the skill metrics to be applied for this statistic.}
 }
 \description{
 Statistics class

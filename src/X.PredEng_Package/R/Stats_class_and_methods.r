@@ -11,6 +11,7 @@
 #' anomalies only or should the full field be used?
 #' @param is.global.stat Indicates whether the stat should be calculated on a global or local basis ie. for 
 #' each individual spatial domain, or once for the entire global ROI
+#' @param skill.metrics A character vector listing the skill metrics to be applied for this statistic.
 #' @name stat
 #' @export stat
 #' @exportClass stat
@@ -18,7 +19,8 @@ stat <- setClass("stat",
                      slots=list(name="character",
                                 use.realmeans="logical",
                                 use.anomalies="logical",
-                                is.global.stat="logical"),
+                                is.global.stat="logical",
+                                skill.metrics="character"),
                      prototype = list(use.realmeans=TRUE,
                                       use.anomalies=FALSE,
                                       is.global.stat=FALSE))
@@ -31,19 +33,26 @@ setGeneric("eval.stat",
              standardGeneric("eval.stat")
 )
 
-#' Threshold
+#' Thresholds
 #'
-#' Determines where each pixel sits in relation to a threshold value
+#' Determines where each pixel sits in relation to a threshold value, potentially integrating over the
+#' area of interest
 #' @inherit stat params
 #' @param threshold Critical threshold value - a numeric of length 1
 #' @param above Logical value - TRUE indicates that we wish to test for values above the threshold. FALSE below.
+#' @param integrate Logical value - calculate the integrated area?
 #' @export threshold
-#' @return Raster* object, matching the raster object supplied as an argument
+
+#' @return  If integrate==TRUE, then a tibble is returned corresponding to the integrated area above (or below) the threshold value. 
+#' If integrate==FALSE, a tibble containing the Raster* object matching the raster object supplied as an
+#' argument
 threshold <- setClass("threshold",
                                  slots=list(threshold="numeric",
-                                            above="logical"),
+                                            above="logical",
+                                            integrate="logical"),
                                  prototype=list(name="threshold",
-                                                above=TRUE),
+                                                above=TRUE,
+                                                integrate=FALSE),
                                  contains="stat",
                                  validity = function(object) {
                                    err.msg <- NULL
@@ -57,58 +66,36 @@ threshold <- setClass("threshold",
 #' @export
 setMethod("eval.stat",signature(st="threshold",vals="Raster"),
           function(st,vals,...){
-              if(st@above) {
-                res<- vals>st@threshold
-              } else {
-                res <- vals < st@threshold
-              }
-            return(tibble(field=list(res)))
-          })
-
-#' Threshold Area
-#'
-#' Calculates the area of water above (or below) a threshold value
-#' @return Tibble
-#' @export threshold.area
-threshold.area <- setClass("threshold.area",
-                           contains="threshold")
-
-#' @export
-setMethod("eval.stat",signature(st="threshold.area",vals="Raster"),
-          function(st,vals,...){
-
-            require(dplyr)
-
-            #Get pixel area
-            
-            #Apply the threshold calculation
-            #Ideally this would be nested, and make a call to the parent
-            #class first, but there is so little code that we are talking about
-            #here, that its not worth the bother (and computational overhead)
             if(st@above) {
-              ok.b <- vals>st@threshold
+              pass.threshold <- vals > st@threshold
             } else {
-              ok.b <- vals < st@threshold
+              pass.threshold <- vals < st@threshold
             }
             
-            #Now calculate the area
-            pxl.area <- area(vals)
-            area.masked <- pxl.area * ok.b
-            names(area.masked) <- names(vals)
-            area.statistfying.thresh <- cellStats(area.masked,sum)
-            
-            #Filter areas where it doesn't work.
-            mean.temp <- cellStats(vals,mean)
-            area.filt <- ifelse(is.na(mean.temp),NA,area.statistfying.thresh)
+            if(st@integrate) {
+              #Now calculate the area
+              pxl.area <- area(vals)
+              area.masked <- pxl.area * pass.threshold
+              names(area.masked) <- names(vals)
+              area.statistfying.thresh <- cellStats(area.masked,sum)
+              
+              #Filter areas where it doesn't work.
+              mean.temp <- cellStats(vals,mean)
+              area.filt <- ifelse(is.na(mean.temp),NA,area.statistfying.thresh)
+              
+              #Return
+              return(tibble(realization=1:nlayers(vals),value=area.filt)) 
 
-            #Return
-            return(tibble(realization=1:nlayers(vals),value=area.filt)) 
-            })
+            } else { #Return the results
+              return(tibble(field=list(res)))
+            }
+
+          })
 
 
-#' Average temperature within an ROI
+#' Average value within an ROI
 #'
-#' Calculates the average temperature within a region of interest using
+#' Calculates the average value of a variable within a region of interest using
 #' area-weighting
 #' @export spatial.mean
 spatial.mean <- setClass("spatial.mean",contains="stat",
@@ -133,6 +120,22 @@ setMethod("eval.stat",signature(st="spatial.mean",vals="Raster"),
 
             return(data.frame(realization=1:nlayers(b),value=wt.temp))
           })
+
+#' Pass-through statistic
+#'
+#' Returns the field that was supplied. This can be useful, for example, if we
+#' want to look at anomaly correlation coefficients and just want to pass the 
+#' value straight through into the statistics processing and skill metric system
+#' @export pass.through
+pass.through <- setClass("pass.through",contains="stat",
+                         prototype=list(name="pass.through"))
+
+#' @export
+setMethod("eval.stat",signature(st="pass.through",vals="Raster"),
+          function(st,vals,...) {
+            return(tibble(field=list(vals)))
+          })
+
 
 
 #' Northward extent of an isolone

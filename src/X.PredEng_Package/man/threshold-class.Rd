@@ -4,15 +4,20 @@
 \name{threshold-class}
 \alias{threshold-class}
 \alias{threshold}
-\title{Threshold}
+\title{Thresholds}
 \arguments{
 \item{threshold}{Critical threshold value - a numeric of length 1}
 
 \item{above}{Logical value - TRUE indicates that we wish to test for values above the threshold. FALSE below.}
+
+\item{integrate}{Logical value - calculate the integrated area?}
 }
 \value{
-Raster* object, matching the raster object supplied as an argument
+If integrate==TRUE, then a tibble is returned corresponding to the integrated area above (or below) the threshold value. 
+If integrate==FALSE, a tibble containing the Raster* object matching the raster object supplied as an
+argument
 }
 \description{
-Determines where each pixel sits in relation to a threshold value
+Determines where each pixel sits in relation to a threshold value, potentially integrating over the
+area of interest
 }

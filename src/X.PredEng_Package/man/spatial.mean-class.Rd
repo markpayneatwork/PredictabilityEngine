@@ -4,8 +4,8 @@
 \name{spatial.mean-class}
 \alias{spatial.mean-class}
 \alias{spatial.mean}
-\title{Average temperature within an ROI}
+\title{Average value within an ROI}
 \description{
-Calculates the average temperature within a region of interest using
+Calculates the average value of a variable within a region of interest using
 area-weighting
 }
