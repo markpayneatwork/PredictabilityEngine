@@ -33,26 +33,27 @@ setGeneric("eval.stat",
              standardGeneric("eval.stat")
 )
 
+#' Return type
+#' @export
+setGeneric("returns.field",
+           function(st)
+             standardGeneric("returns.field"))
+
 #' Thresholds
 #'
 #' Determines where each pixel sits in relation to a threshold value, potentially integrating over the
 #' area of interest
-#' @inherit stat params
 #' @param threshold Critical threshold value - a numeric of length 1
 #' @param above Logical value - TRUE indicates that we wish to test for values above the threshold. FALSE below.
-#' @param integrate Logical value - calculate the integrated area?
 #' @export threshold
 
-#' @return  If integrate==TRUE, then a tibble is returned corresponding to the integrated area above (or below) the threshold value. 
-#' If integrate==FALSE, a tibble containing the Raster* object matching the raster object supplied as an
-#' argument
+#' @return  \code{threshold} returns a tibble containing the Raster* object matching the raster object supplied as an
+#' argument.
 threshold <- setClass("threshold",
                                  slots=list(threshold="numeric",
-                                            above="logical",
-                                            integrate="logical"),
+                                            above="logical"),
                                  prototype=list(name="threshold",
-                                                above=TRUE,
-                                                integrate=FALSE),
+                                                above=TRUE),
                                  contains="stat",
                                  validity = function(object) {
                                    err.msg <- NULL
@@ -66,30 +67,60 @@ threshold <- setClass("threshold",
 #' @export
 setMethod("eval.stat",signature(st="threshold",vals="Raster"),
           function(st,vals,...){
-            if(st@above) {
-              pass.threshold <- vals > st@threshold
-            } else {
-              pass.threshold <- vals < st@threshold
-            }
-            
-            if(st@integrate) {
-              #Now calculate the area
-              pxl.area <- area(vals)
-              area.masked <- pxl.area * pass.threshold
-              names(area.masked) <- names(vals)
-              area.statistfying.thresh <- cellStats(area.masked,sum)
-              
-              #Filter areas where it doesn't work.
-              mean.temp <- cellStats(vals,mean)
-              area.filt <- ifelse(is.na(mean.temp),NA,area.statistfying.thresh)
-              
-              #Return
-              return(tibble(realization=1:nlayers(vals),value=area.filt)) 
+            return(threshold.fn(st,vals,integrate=FALSE))
+          })
 
-            } else { #Return the results
-              return(tibble(field=list(res)))
-            }
+#' @export
+setMethod("returns.field",signature(st="threshold"),
+          function(st){
+            return(TRUE)
+          })
 
+
+threshold.fn <- function(st,vals,integrate){
+  if(st@above) {
+    pass.threshold <- vals > st@threshold
+  } else {
+    pass.threshold <- vals < st@threshold
+  }
+  
+  if(integrate) {
+    #Now calculate the area
+    pxl.area <- area(vals)
+    area.masked <- pxl.area * pass.threshold
+    names(area.masked) <- names(vals)
+    area.statistfying.thresh <- cellStats(area.masked,sum)
+    
+    #Filter areas where it doesn't work.
+    mean.temp <- cellStats(vals,mean)
+    area.filt <- ifelse(is.na(mean.temp),NA,area.statistfying.thresh)
+    
+    #Return
+    return(tibble(realization=1:nlayers(vals),value=area.filt)) 
+    
+  } else { #Return the results
+    return(tibble(field=list(res)))
+  }}
+
+#' Threshold area
+#' 
+#' Returns the area above or below a threshold
+#' 
+#' @export area.threshold
+#' @param threshold Critical threshold value - a numeric of length 1
+#' @param above Logical value - TRUE indicates that we wish to test for values above the threshold. FALSE below.
+#' @return  \code{threshold.area} returns a tibble  corresponding to the integrated area above (or below) the threshold value. 
+area.threshold <- setClass("area.threshold",contains="threshold")
+
+#' @export
+setMethod("eval.stat",signature(st="area.threshold",vals="Raster"),
+          function(st,vals,...){
+            return(threshold.fn(st,vals,integrate=TRUE))
+          })
+
+setMethod("returns.field",signature(st="area.threshold"),
+          function(st){
+            return(FALSE)
           })
 
 
@@ -121,6 +152,13 @@ setMethod("eval.stat",signature(st="spatial.mean",vals="Raster"),
             return(data.frame(realization=1:nlayers(b),value=wt.temp))
           })
 
+
+setMethod("returns.field",signature(st="spatial.mean"),
+          function(st){
+            return(FALSE)
+          })
+
+
 #' Pass-through statistic
 #'
 #' Returns the field that was supplied. This can be useful, for example, if we
@@ -134,6 +172,11 @@ pass.through <- setClass("pass.through",contains="stat",
 setMethod("eval.stat",signature(st="pass.through",vals="Raster"),
           function(st,vals,...) {
             return(tibble(field=list(vals)))
+          })
+
+setMethod("returns.field",signature(st="pass.through"),
+          function(st){
+            return(TRUE)
           })
 
 
@@ -181,6 +224,11 @@ setMethod("eval.stat",signature(st="isoline.lat",vals="Raster"),
             return(lat.vals)
           })
 
+setMethod("returns.field",signature(st="isoline.lat"),
+          function(st){
+            return(FALSE)
+          })
+
 
 #' Habitat suitability model 
 #'
@@ -209,4 +257,9 @@ setMethod("eval.stat",signature(st="habitat.suitability",vals="Raster"),
             car.cap <- cellStats(pxl.cap,sum,na.rm=TRUE)
             return(data.frame(realization=1:nlayers(vals),value=car.cap)) })
 
+
+setMethod("returns.field",signature(st="habitat.suitability"),
+          function(st){
+            return(FALSE)
+          })
 
