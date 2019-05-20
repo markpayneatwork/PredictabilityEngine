@@ -132,16 +132,26 @@ log.msg("Metrics for field statistics...\n")
 fldstats <- filter(stats.meta,returns.field)
 fldstats.dat <- filter(comp.dat,stat.name %in% fldstats$name)
 
-field.skill.fn <- function(mdl.l,obs.l){
+cor.field.skill.fn <- function(mdl.l,obs.l){
   mdl.b <- brick(mdl.l)
   obs.b <- brick(obs.l)
   return(list(corLocal(mdl.b,obs.b)))
 } 
 
+RMSE.field.skill.fn <- function(mdl.l,obs.l){
+  mdl.b <- brick(mdl.l)
+  obs.b <- brick(obs.l)
+  err.b <- mdl.b - obs.b
+  rmse.b <- sqrt(mean(err.b^2))
+  return(list(rmse.b))
+} 
+
 field.skill <- fldstats.dat %>%
   group_by_at(vars(one_of(g.vars))) %>%
-  summarize(field.skill=field.skill.fn(field.mdl,field.obs)) %>%
-  mutate(skill.type="field",skill.metric="cor")
+  summarize(cor=cor.field.skill.fn(field.mdl,field.obs),
+            RMSE=RMSE.field.skill.fn(field.mdl,field.obs)) %>%
+  gather("skill.metric","field.skill",-one_of(g.vars)) %>%
+  mutate(skill.type="field")
 
 comb.skill <- bind_rows(skill.mets,field.skill)
 saveRDS(comb.skill,file=file.path(base.dir,PE.cfg$files$skill.metrics))
