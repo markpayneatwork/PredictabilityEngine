@@ -47,8 +47,8 @@ src.dir <- "data_srcs/Decadal/MPI-ESM-LR_MiKlip-b1/so/"
 #'========================================================================
 #Setup 
 fnames.l <- dir(src.dir,pattern="*.nc",full.names=TRUE)
-meta.l <- list()
-
+meta.l <- vector("list",length(fnames.l))
+                 
 #Loop
 pb <- progress_estimated(length(fnames.l),-1)
 
@@ -64,10 +64,10 @@ for(f in fnames.l) {
 var.df <- bind_rows(meta.l,.id = "fname") %>%
           tidyr::extract(fname,"realisation","_(r[0-9]i[0-9]p[0-9])_")
 
-ggplot(var.df,aes(x=position,y=val))+
+g <- ggplot(var.df,aes(x=position,y=val))+
   geom_point()+
   facet_wrap(~realisation)
-
+print(g)
 
 #'========================================================================
 # And Go ####
