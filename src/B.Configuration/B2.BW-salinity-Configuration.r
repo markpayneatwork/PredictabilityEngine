@@ -32,33 +32,82 @@ rm(list = ls(all.names=TRUE));  graphics.off();
 
 #Source the common elements
 library(PredEng)
+library(tidyverse)
 
 # ========================================================================
-# Configuration
+# Generic Configuration
 # ========================================================================
-#Use the temperature set as a default
-source("src/B.Configuration/B1.BW-temperature-Configuration.r")
+#Global project configuration
+pcfg <- PredEng.config(project.name= "BW-Salinity",
+                       MOI=3,  #March - ideally should be Feb-March-april average (??)
+                       average.months=FALSE,
+                       clim.years=1980:2010,  
+                       comp.years=1970:2012,
+                       landmask="data_srcs/NMME/landmask.nc")
 
-#Correct name
-pcfg@name <- "BW-Sal"
+#Setup scratch directory
+pcfg@scratch.dir <- file.path("scratch",pcfg@project.name)
+define_dir(pcfg@scratch.dir)
 
-#Adjust observational sources and models to work with salinity instead of temperature
-pcfg@observations[["EN4"]]@var <- "salinity"
-pcfg@hindcast.models[["MPI-ESM-LR"]]@var <- "so"
+#'========================================================================
+# Spatial Configurations ####
+#'========================================================================
+#Set global variables
+pcfg@use.global.ROI <- TRUE
+pcfg@global.ROI <- extent(-25,0,40,65)
+pcfg@global.res  <- 0.5
 
-#Update everything
-pcfg <- update(pcfg)
+#Polygons
+sp.objs <- list()
+sp.objs$spawing.area <- spatial.domain("Spawning.area",extent(-20,-5,50,60))
 
-# ========================================================================
-# Output
-# ========================================================================
-#Write CDO grid descriptor
-writeLines(griddes(pcfg),pcfg@analysis.grid)
+#Correct names and add to object
+names(sp.objs) <- sapply(sp.objs,slot,"name")
+pcfg@spatial.subdomains <- sp.objs
 
-#Output
-save.image(file="objects/configuration.RData")
-dmp <- define_dir(file.path("processing",pcfg@name))
-save.image(file=file.path("processing",pcfg@name,"configuration.RData"))
+#'========================================================================
+# Data Sources ####
+#'========================================================================
+#Define observational sources
+pcfg@Observations <- data.source(name="EN4",type="Observations",
+                              var="salinity",
+                              levels=17:23,
+                              source=file.path("Observations","EN4"))
+
+#Only one model to chose from here
+pcfg@Decadal <- list(data.source(name="MPI-ESM-LR",var="so",
+                                 type="Decadal",
+                                 levels=13:19,
+                                 ensmem_fn=function(x) {stop("unsure if we need this")},
+                                 init_fn=function(f){
+                                   init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
+                                   init.date <- ymd(paste(init.str,"01",sep=""))
+                                   return(init.date)}))
+
+names(pcfg@Decadal) <- sapply(pcfg@Decadal,slot,"name")
+
+#'========================================================================
+# Statistics ####
+#'========================================================================
+#Configure stats
+stat.l <- list()
+stat.l[[1]]  <- spatial.mean(name="Mean Salinity")
+
+stat.l[[2]] <- pass.through(name="Salinity field anomaly",
+                               skill.metrics = "correlation",
+                               is.global.stat=TRUE,
+                               use.anomalies = TRUE,
+                               use.realmeans=TRUE)
+
+#Merge it all in
+names(stat.l) <- sapply(stat.l,slot,"name")
+pcfg@statistics <- stat.l
+
+
+#'========================================================================
+# Output ####
+#'========================================================================
+source("src/B.Configuration/B99.Configuration_wrapup.r")
 
 # ========================================================================
 # Done

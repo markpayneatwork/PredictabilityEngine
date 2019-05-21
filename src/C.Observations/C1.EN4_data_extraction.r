@@ -33,140 +33,295 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 
 #Helper functions, externals and libraries
 library(PredEng)
-library(ClimateTools)
-load("objects/configuration.RData")
+pcfg <- readRDS(PE.cfg$config.path)
 
 #/*======================================================================*/
 #  Configuration
 #/*======================================================================*/
 #Take input arguments, if any
 if(interactive()) {
-  mdl.no <- 2
-  set.debug.level(1)  #1 complete fresh run
+  cfg.no <- 1
+  set.cdo.defaults("--silent --no_warnings -O")
+  set.log_msg.silent()
+  set.nco.defaults("--overwrite")
   
 } else {
   #Taking inputs from the system environment
-  mdl.no <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
-  if(mdl.no=="") stop("Cannot find LSB_JOBINDEX")
-  #Do everything
-  set.debug.level(1)  #1 complete fresh run
+  cfg.no <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
+  if(cfg.no=="") stop("Cannot find LSB_JOBINDEX")
   
+  #Do everything and tell us all about it
+  set.cdo.defaults()
+  set.log_msg.silent(FALSE)
 }
 
+#Retrieve configurations
+this.sp <- get.this.sp(file.path(PE.cfg$dirs$job.cfg,"Observations.cfg"),cfg.no,pcfg)
+this.src <- pcfg@Observations
+config.summary(pcfg,this.sp,this.src)
+
 #Choose the data_src configuration
-obs.srcs <- sapply(pcfg@observations,slot,"source")
-if(!any(obs.srcs=="EN4")) stop("Not configured to use EN4 data")
-dat.obj <- pcfg@observations[[which(obs.srcs=="EN4")[mdl.no]]]
+if(!this.src@name=="EN4") stop("Not configured to use EN4 data")
+
+#'========================================================================
+# Setup ####
+# If we are considering looping over spatial areas in the one script, this
+# is where you would start, by setting this.sp to the appropriate area
+# for a list of possibilities
+#'========================================================================
+log_msg("\nProcessing %s...\n",this.sp@name)
 
 #Working directories
-src.dir <- file.path("data_srcs","EN4")
-base.dir <- define_dir("processing",pcfg@name)
-dat.dir <- define_dir(base.dir,dat.obj@name)
-subset.dir <- define_dir(dat.dir,"1.subsetted")
+src.dir <- file.path(PE.cfg$dirs$datasrc,this.src@source)
+subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)
+base.dir <- define_dir(subdomain.dir,"Observations","EN4")
+extract.dir <- define_dir(base.dir,"1.extracted")
+mon.clim.dir <- define_dir(base.dir,"A.monthly_climatologies")
+mon.anom.dir <- define_dir(base.dir,"B.monthly_anom")
+misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
+
+
 unzip.dir <- tempdir()
+# misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
+# mon.clim.dir <- define_dir(base.dir,"A.monthly_climatologies")
+# mon.anom.dir <- define_dir(base.dir,"B.monthly_anom")
+# analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$files$analysis.grid)
 
 #Contents of zipfiles
-EN4.file.stem <- "EN.4.2.0.f.analysis.g10."
+#EN4.file.stem <- "EN.4.2.0.f.analysis.g10."
 
 
 #/*======================================================================*/
-#'## Extract EN4 data
+#'## Extract EN4 meta data into fragments
 #/*======================================================================*/
-log_msg("Subsetting data...\n")
+log_msg("Extracting metadata...\n")
 
 #First thing to do is to get metadata of the available files, and 
 #use this to define future files
-EN.meta <- data.frame(fname=dir(src.dir,pattern="*.zip",full.names = TRUE))
-EN.meta$year <- as.numeric(str_match(basename(EN.meta$fname),
-                                      "([0-9]{4}).zip$")[,2])
-EN.meta$subset.fname <- file.path(subset.dir,gsub(".zip",".nc",
-                                                   basename(EN.meta$fname)))
+src.zips.l <- dir(src.dir,pattern="*.zip",full.names = TRUE)
+# src.meta.l <- lapply(src.file.l,function(f) {
+#   zipinfo.args <- ssl("-1" ,file.path(getwd(),f))
+#   manifest.l <- system2("zipinfo",zipinfo.args,stdout=TRUE)
+#   return(tibble(zip.fname=f,content.fname=manifest.l))
+# })
+# src.meta.all <- bind_rows(src.meta.l) %>%
+#             tidyr::extract(content.fname,c("year","month"),".*.([0-9]{4})([0-9]{2}).nc",
+#                            remove=FALSE,convert=TRUE)
 
-#Prepare a set of remapping weights based on decompressing one of these files
-log_msg("Preparing weights...")
-
-#Loop over Files
-for(i in seq(nrow(EN.meta))) {
-  #Extract file
-  f <- EN.meta$fname[i]
-  log_msg("%s...\n",basename(f))
-
-  #Unzip the relevant files from the archive to the temp directory
-  extract.files <- sprintf("%s%04i%02i.nc",
-                           EN4.file.stem,
-                           EN.meta$year[i],
-                           pcfg@MOI)
-  unzip.cmd <- ssl("unzip -o",f,
-                     ssl(extract.files),sprintf("-d %s",unzip.dir))
-  run_if(1,unzip.cmd)
+#Loop over files
+pb <- progress_estimated(length(src.zips.l),-1)
+extract.meta.l <- list()  #Meta data list of the extracted files
+  
+for(this.src.zip in src.zips.l) {
+  
+  #Unzip all files from the archive to the temp directory
+  unzip.args <- ssl("-o",this.src.zip,
+                     sprintf("-d %s",unzip.dir))
+  system2("unzip",unzip.args,stdout=FALSE)
+  
+  #Setup the manifest metadata
+  manifest.meta <- tibble(fname=system2("zipinfo",ssl("-1",this.src.zip),stdout=TRUE)) %>%
+                   mutate(sellev.fname=sprintf("%s.sellev.nc",fname),
+                          selROI.fname=sprintf("%s.selROI.nc",fname),
+                          tempcor.fname=sprintf("%s.degC.nc",sellev.fname),
+                          vertmean.fname=sprintf("%s.vertmean.nc",fname)) %>%
+                  mutate_all(function(x) file.path(unzip.dir,x)) %>%
+                  mutate(src.fname=this.src.zip,
+                         extract.fname=file.path(extract.dir,basename(fname)))
+  extract.meta.l[[this.src.zip]] <- manifest.meta
 
   #For each individual file, strip out as much extra info as possible
-  #by selecting the field of interest and the layers of interest
-  selnames <- file.path(unzip.dir,sprintf("%s.select.nc",extract.files))
-  for(j in seq(selnames) ) {
+  #by selecting the field of interest, region of interest and the layers of interest
+  for(j in seq(nrow(manifest.meta)))  {
+    this.meta <- manifest.meta[j,]
     #Select the levels and field of interest first
-    sellev.fname <- tempfile(fileext=".nc")
-    run_if(2,sellev.cmd <- cdo(csl("sellevidx",dat.obj@levels),
-                               csl("-selname",dat.obj@var),
-                               file.path(unzip.dir,extract.files[j]),
-                               sellev.fname))
-    
+    sellev.cmd <- cdo(csl("sellevidx",this.src@levels),
+                               csl("-selname",this.src@var),
+                               this.meta$fname,
+                               this.meta$sellev.fname)
+
     #If we are dealing with temperature, need to convert from K to C
-    if(dat.obj@var=="temperature") {
-      next.fname <- sprintf("%s_degC.nc",sellev.fname)
-      run_if(2,levmean.cmd <- cdo("addc,-273.15",sellev.fname,next.fname))
+    if(this.src@var=="temperature") {
+      next.fname <- this.temp$tempcor.fname
+      levmean.cmd <- cdo("addc,-273.15",
+                         this.meta$sellev.fname,
+                         next.fname)
     } else {
-      next.fname <- sellev.fname
+      next.fname <- this.meta$sellev.fname
     }
     
     #Average over the extracted levels
-    run_if(2,levmean.cmd <- cdo("vertmean",next.fname,selnames[j]))
+    levmean.cmd <- cdo("vertmean",
+                       next.fname,
+                       this.meta$vertmean.fname)
     
+    #Do the spatial remapping and extraction
+    remap.cmd <- cdo(csl("remapbil", file.path(subdomain.dir,PE.cfg$files$analysis.grid)),
+                        this.meta$vertmean.fname, 
+                        this.meta$extract.fname)
   }
-  
-  #Average over the files
-  yearmean.fname <- tempfile(fileext=".nc")
-  run_if(2,yearmean.cmd <- cdo( "ensmean",selnames,yearmean.fname))
-  
-  #Subset spatially
-  run_if(2,remap.cmd <- cdo("-f nc", csl("sellonlatbox",as.vector(pcfg@ROI)),
-                             yearmean.fname, EN.meta$subset.fname[i]))
-  unlink(c(selnames, extract.files, yearmean.fname))
+
+  #Tidy up
+  unlink(with(manifest.meta,c(fname,sellev.fname,selROI.fname,vertmean.fname,tempcor.fname)))
+  pb$tick()$print()
 }
+print(pb$stop())
 
-#Merge into a single file 
-annave.fname<- file.path(dat.dir,"observations_native.nc")
-run_if(3,annave.cmd <- cdo("-O -mergetime",
-                           EN.meta$subset.fname,
-                           annave.fname))
+#Tweak metadata
+extract.meta <- bind_rows(extract.meta.l) %>%
+                select(src.fname,extract.fname) %>%
+                tidyr::extract(extract.fname,c("year","month"),".*.([0-9]{4})([0-9]{2}).nc",
+                             remove=FALSE,convert=TRUE)
 
-#Remap onto the analysis grid 
-log_msg("Remapping...\n")
-remap.fname <- file.path(dat.dir,"observations.nc")
-run_if(4,remap.cmd <- cdo(csl("remapbil", pcfg@analysis.grid),
-                           annave.fname, remap.fname))
-
-#Calculate climatology
+#/*======================================================================*/
+#  Climatologies and anomalies ####
+#/*======================================================================*/
+#Setup climatology 
 log_msg("Climatology....\n")
-clim.fname <- file.path(dat.dir,"obs_climatology.nc")
-run_if(5,clim.cmd <- cdo("timmean",
-                         csl("-selyear",pcfg@clim.years),
-                         remap.fname,clim.fname))
+clim.meta <- mutate(extract.meta,
+                    clim.fname=file.path(mon.clim.dir,
+                                         sprintf("EN4_climatology_%02i.nc",month)))
+clim.sel.dat <- filter(clim.meta,year %in% pcfg@clim.years)
+clim.sel.l <- split(clim.sel.dat,clim.sel.dat$month)
+
+pb <- progress_estimated(length(clim.sel.l),-1)
+
+#Calculate climatologies
+for(this.clim.files in clim.sel.l) {
+  mon.clim.fname <-   mon.clim.cmd <- cdo("ensmean",
+                      ssl(this.clim.files$extract.fname),
+                      unique(this.clim.files$clim.fname))
+  pb$tick()$print()
+}
+print(pb$stop())
 
 #Calculate anomalies
 log_msg("Anomalies...\n")
-anom.fname <- file.path(dat.dir,"obs_anom.nc")
-run_if(6,anom.cmd <- cdo("sub",remap.fname,clim.fname,anom.fname))
+anom.meta <- mutate(clim.meta,
+                    anom.fname=file.path(mon.anom.dir,basename(extract.fname)))
+pb <- progress_estimated(nrow(anom.meta),-1)
+for(i in seq(nrow(anom.meta))) {
+  this.meta <- anom.meta[i,]
+  anom.cmd <- cdo("sub",this.meta$extract.fname,this.meta$clim.fname,this.meta$anom.fname)
+  pb$tick()$print()
+}
+print(pb$stop())
 
-# #Cross check that this worked corretly using Raster
-# b.anom <- brick(anom.fname)
-# b.clim <- brick(clim.fname)
-# b.obs <- brick(annave.fname)
-# b.obs.rec <- b.anom+b.clim  #Reconstructed
-# b.diff <- b.obs - b.obs.rec
-# #Check anomaly summation over the cliamtological period
-# clim.yr.idxs <- which(year(getZ(b.anom)) %in% pcfg@clim.years)
-# b.anom.sum <- sum(b.anom[[clim.yr.idxs]])
+#'========================================================================
+# Average over MOIs (if relevant) ####
+#'========================================================================
+#Average over time - only necessary when considering multiple target months
+if(pcfg@average.months) {
+  stop("Month averaging is currently unhandled in EN4. See HadISST and following code for examples.")
+  log_msg("Monthly averaging...")
+  
+  #Setup MOI directories
+  MOIave.clim.dir <- define_dir(base.dir,"C.MOIave_climatology")
+  MOIave.anom.dir <- define_dir(base.dir,"D.MOIave_anoms")
+  
+  #Create a function to do this (as we need to reuse the code for
+  #both the climatology and the anomalies)
+  MOI.average <- function(in.src) {
+    #monthly extraction
+    out.fname <- gsub(".nc$","_selmon.nc",in.src)
+    selmon.cmd <- cdo(csl("selmon",pcfg@MOI),
+                      in.src,out.fname)
+    
+    #Calculate means of the anomalies
+    in.fname <- out.fname
+    out.fname <- gsub(".nc$","_yearmean",in.fname)
+    yearmean.cmd <- cdo( "yearmean", in.fname,out.fname)
+    
+    return(out.fname)
+  }
+  
+  #Now do averaging
+  MOIave.anom <- MOI.average(remap.fname)
+  MOIave.yearmean <- MOI.average(mon.clim.fname)
+  
+  #Now need to do the complete mean on MOIave.clim and move it 
+  #to the appropriate directory
+  MOIave.clim <- file.path(MOIave.clim.dir,"MOIave_climatology.nc")
+  clim.cmd <- ncwa("-a time", 
+                   MOIave.yearmean,
+                   MOIave.clim)
+  
+}
+
+#/*======================================================================*/
+#  Create (pseudo) metadata 
+#/*======================================================================*/
+log_msg("Creating pseudo metadata...\n")
+
+#Use a generic function to do the hardwork
+generate.metadata <- function(src.dir) {
+  #Get fnames
+  src.fnames <- dir(src.dir,pattern=".nc",full.names = TRUE)
+  
+  #Extract dates
+  meta.dat.l <- list()
+  for(f in src.fnames) {
+    r <- raster(f)
+    meta.dat.l[[f]] <- tibble(date=getZ(r))
+  }
+  
+  #Build metadata
+  src.meta <- bind_rows(meta.dat.l) %>%
+    add_column(src.name=this.src@name,
+               src.type=this.src@type,
+               .before=1) %>%
+    mutate(start.date=NA,
+           #           n.realizations=1,
+           fname=src.fnames) 
+  return(src.meta)
+}
+
+#Now, lets think for a minute. The downstream functions require two 
+#files - Anomaly_metadata.RData and Realmean_metadata.RData. The choice
+#of whether these relate to individual months or to an MOIaverage should
+#be made here, not downstream, so we therefore need to set these up according
+#to the project configuration. At the same time, we also want to store all
+#metadata, so that it can be picked up later by the persistence forcast code
+#So....
+#First generate all monthly metadata anomalies - we need this for the persistence
+#forecast anyway
+mon.anom.meta <- generate.metadata(mon.anom.dir)
+saveRDS(mon.anom.meta,file=file.path(base.dir,PE.cfg$files$Obs.monthly.anom.metadata))
+
+#Now, setup rest of metadata accordingly
+if(pcfg@average.months) {
+  #Get metadata
+  anom.meta <- generate.metadata(MOIave.anom.dir)
+} else {
+  #We are only interested in files that are in the
+  #months of interest, so we need to filter
+  anom.meta <- subset(mon.anom.meta,month(date) %in% pcfg@MOI)
+}
+
+#Save results and create a second copy as realmean metadata
+saveRDS(anom.meta,file=file.path(base.dir,PE.cfg$files$anom.meta))
+realmean.meta <- anom.meta  #Needs a rename
+saveRDS(realmean.meta,file=file.path(base.dir,PE.cfg$files$realmean.meta))
+
+#And now for the climatologies
+if(pcfg@average.months) {
+  #Only a single clim file - generate by hand
+  clim.meta <- tibble(src.name=this.src@name,
+                      src.type="Climatology",
+                      date=as.Date(ISOdate(9999,pcfg@MOI,15)),
+                      start.date=NA,
+                      #                      n.realizations=1,
+                      fname=MOIave.clim)
+  
+} else {
+  #Generate a climatology 
+  clim.meta <- generate.metadata(mon.clim.dir)
+  clim.meta$src.type <- "Climatology"
+  
+  #Restrict to months in the MOI
+  clim.meta <- subset(clim.meta,month(date) %in% pcfg@MOI)
+}
+saveRDS(clim.meta,file=file.path(base.dir,PE.cfg$files$Obs.climatology.metadata))
 
 #/*======================================================================*/
 #  Complete
