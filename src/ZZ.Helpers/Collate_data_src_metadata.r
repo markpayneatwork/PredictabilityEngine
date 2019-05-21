@@ -53,7 +53,7 @@ meta.l <- vector("list",length(fnames.l))
 pb <- progress_estimated(length(fnames.l),-1)
 
 for(f in fnames.l) {
-  pb$tick()
+  pb$tick()$print()
   ncid <- nc_open(f)
   meta.l[[f]] <- tibble(val=ncid$dim$time$vals,
                         position=seq(val))
