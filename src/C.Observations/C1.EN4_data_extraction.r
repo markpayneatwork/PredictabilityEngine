@@ -33,6 +33,7 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 
 #Helper functions, externals and libraries
 library(PredEng)
+library(tidyverse)
 pcfg <- readRDS(PE.cfg$config.path)
 
 #/*======================================================================*/
