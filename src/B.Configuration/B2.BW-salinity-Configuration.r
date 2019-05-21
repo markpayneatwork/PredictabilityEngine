@@ -33,6 +33,7 @@ rm(list = ls(all.names=TRUE));  graphics.off();
 #Source the common elements
 library(PredEng)
 library(tidyverse)
+source("src/B.Configuration/B0.Define_common_data_srcs.r")
 
 # ========================================================================
 # Generic Configuration
@@ -75,16 +76,8 @@ pcfg@Observations <- data.source(name="EN4",type="Observations",
                               source=file.path("Observations","EN4"))
 
 #Only one model to chose from here
-pcfg@Decadal <- list(data.source(name="MPI-ESM-LR",var="so",
-                                 type="Decadal",
-                                 levels=13:19,
-                                 ensmem_fn=function(x) {stop("unsure if we need this")},
-                                 init_fn=function(f){
-                                   init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
-                                   init.date <- ymd(paste(init.str,"01",sep=""))
-                                   return(init.date)}))
-
-names(pcfg@Decadal) <- sapply(pcfg@Decadal,slot,"name")
+pcfg@Decadal <- Sal.Decadal
+pcfg@Decadal[["MPI-ESM-LR"]]@levels <- 13:19  #Set depth layers
 
 #'========================================================================
 # Statistics ####

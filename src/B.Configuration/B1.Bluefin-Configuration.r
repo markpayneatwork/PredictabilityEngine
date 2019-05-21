@@ -34,7 +34,7 @@ rm(list = ls(all.names=TRUE));  graphics.off();
 #Source the common elements
 library(PredEng)
 library(tibble)
-source("src/B.Configuration/B0.Define_SST_data_srcs.r")
+source("src/B.Configuration/B0.Define_common_data_srcs.r")
 
 #'========================================================================
 # Project Configuration ####
@@ -55,7 +55,7 @@ pcfg@scratch.dir <- file.path("scratch",pcfg@project.name)
 define_dir(pcfg@scratch.dir)
 
 #Drop NCEP forced model
-pcfg@Decadal <- hindcast_mdls[-which(names(hindcast_mdls)=="MPI-NCEP-forced")]
+pcfg@Decadal <- SST.Decadal[-which(names(SST.Decadal)=="MPI-NCEP-forced")]
 
 #If working locally, only keep the simplest two models
 if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
@@ -106,11 +106,11 @@ extr$spatial.forecasts <- as.Date("2019-08-15")
 pcfg@extraction <- extr
 
 #'========================================================================
-# Summary statistics ####
+# Statistics ####
 #'========================================================================
-#Configure summary stats
+#Configure stats
 stat.l <- list()
-stat.l[[1]] <- threshold.area(name="Area above 11 degrees",
+stat.l[[1]] <- area.threshold(name="Area above 11 degrees",
                               threshold=11,
                               above=TRUE,
                               use.realmeans=TRUE)

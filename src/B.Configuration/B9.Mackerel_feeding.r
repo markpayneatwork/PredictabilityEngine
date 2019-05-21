@@ -38,7 +38,7 @@ library(PredEng)
 library(tibble)
 library(raster)
 library(tidyverse)
-source("src/B.Configuration/B0.Define_SST_data_srcs.r")
+source("src/B.Configuration/B0.Define_common_data_srcs.r")
 
 #'========================================================================
 # Project Configuration ####
@@ -60,7 +60,7 @@ pcfg@scratch.dir <- file.path("scratch",pcfg@project.name)
 define_dir(pcfg@scratch.dir)
 
 #Drop NCEP forced model
-pcfg@Decadal <- hindcast_mdls[-which(names(hindcast_mdls)=="MPI-NCEP-forced")]
+pcfg@Decadal <- SST.Decadal[-which(names(SST.Decadal)=="MPI-NCEP-forced")]
 
 #If working locally, only keep the simplest two models
 if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
@@ -116,15 +116,22 @@ pcfg@spatial.subdomains <- EEZ.objs
 #'========================================================================
 #Configure summary stats
 statsum.l <- list()
-statsum.l[[1]] <- threshold.area(name = "Area above 8.5 degrees",
+statsum.l[[1]] <- area.threshold(name = "Area above 8.5 degrees",
+                                 skill.metrics=c("cor","RMSE"),
                                  above=TRUE,
                                  use.realmeans=TRUE,
                                  threshold=8.5)  #Based on Teunis' paper
-statsum.l[[2]] <- threshold(name="Threshold Field",
-                            is.global.stat = TRUE,
-                            above=TRUE,
-                            use.realmeans=FALSE,
-                            threshold=8.5)  #Based on Teunis' paper
+# statsum.l[[2]] <- threshold(name="Threshold Field",
+#                             skill.metrics="brier",
+#                             is.global.stat = TRUE,
+#                             above=TRUE,
+#                             use.realmeans=FALSE,
+#                             threshold=8.5)  #Based on Teunis' paper
+statsum.l[[2]] <- pass.through(name="Temperature anomaly",
+                               skill.metrics = "correlation",
+                               is.global.stat=TRUE,
+                               use.anomalies = TRUE,
+                               use.realmeans=TRUE)
 
 # statsum.l[[3]]  <- spatial.mean(name="Spatial mean - means",
 #                                 use.realmeans=TRUE,

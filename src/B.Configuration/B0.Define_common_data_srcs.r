@@ -1,5 +1,5 @@
 #/*##########################################################################*/
-#' Define SST Data Sources
+#' Define Data Sources
 #' ==========================================================================
 #'
 #' by Mark R Payne  
@@ -8,7 +8,7 @@
 #'
 #' Thu Sep  1 19:17:39 2016
 #'
-#' Defines the Set of supported data sources using for examining SST predictability
+#' Defines a set of commonly employed data sources 
 #
 #  This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 #  You are largely free to do what you like with it, so long as you "attribute" 
@@ -22,12 +22,12 @@
 #/*##########################################################################*/
 
 # ========================================================================
-# Setup hindcast models
+# Setup SST.Decadal models
 # ========================================================================
 #IPSL and MPI-MR have basically an identifical structure, both being produced
 #originally by SPECS
-hindcast_mdls <- list()
-hindcast_mdls$IPSL  <- data.source(name="IPSL-CM5A-LR",
+SST.Decadal <- list()
+SST.Decadal$IPSL  <- data.source(name="IPSL-CM5A-LR",
                                    type="Decadal",
                            source="IPSL-CM5A-LR",
                            var="tos",
@@ -38,15 +38,15 @@ hindcast_mdls$IPSL  <- data.source(name="IPSL-CM5A-LR",
                              init.date <- ymd(init.str)
                              return(init.date)})
 
-hindcast_mdls$"MPI-MR" <-  new("data.source",hindcast_mdls$IPSL,
+SST.Decadal$"MPI-MR" <-  new("data.source",SST.Decadal$IPSL,
                                name="MPI-ESM-MR",
                                source="MPI-ESM-MR")
 
 #MPI-LR is different,
-hindcast_mdls$"MPI-LR" <-  data.source(name="MPI-ESM-LR",
+SST.Decadal$"MPI-LR" <-  data.source(name="MPI-ESM-LR",
                                        type="Decadal",
                                        var="thetao",
-                               source="MPI-ESM-LR_MiKlip-b1",
+                               source="MPI-ESM-LR_MiKlip-b1/theta0",
                              ensmem_fn=CMIP5_realisation,
                              init_fn=function(f){
                                init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
@@ -54,7 +54,7 @@ hindcast_mdls$"MPI-LR" <-  data.source(name="MPI-ESM-LR",
                                return(init.date)})
 
 #MPI - NCEP requires all three to be specified
-hindcast_mdls$"MPI-NCEP" <- data.source(name="MPI-NCEP-forced",
+SST.Decadal$"MPI-NCEP" <- data.source(name="MPI-NCEP-forced",
                                 type="Decadal",
                                 source="MPI-ESM-LR_NCEP-forced",
                                 var="var2",
@@ -71,7 +71,7 @@ hindcast_mdls$"MPI-NCEP" <- data.source(name="MPI-NCEP-forced",
                                return(init.date)})
 
 #GFDL is largely in CMIP5 format
-hindcast_mdls$GFDL <-   data.source(name="GFDL-CM2.1",
+SST.Decadal$GFDL <-   data.source(name="GFDL-CM2.1",
                             type="Decadal",
                             source="GFDL-CM2.1",
                             var="tos",
@@ -82,12 +82,30 @@ hindcast_mdls$GFDL <-   data.source(name="GFDL-CM2.1",
                                return(init.date)})
 
 #Identify models as hindcast models and set the source equal to the name
-for(i in seq(hindcast_mdls)) {
-  hindcast_mdls[[i]]@type <- "Decadal"
+for(i in seq(SST.Decadal)) {
+  SST.Decadal[[i]]@type <- "Decadal"
 }
 
 #Set list names
-names(hindcast_mdls) <- sapply(hindcast_mdls,slot,"name")
+names(SST.Decadal) <- sapply(SST.Decadal,slot,"name")
+
+#'========================================================================
+# Salinity data sources ####
+#'========================================================================
+Sal.Decadal <- list()
+Sal.Decadal$"MPI-LR" <-  data.source(name="MPI-ESM-LR",
+                                     type="Decadal",
+                                     var="so",
+                                     source="MPI-ESM-LR_MiKlip-b1/so/",
+                                     ensmem_fn=CMIP5_realisation,
+                                     init_fn=function(f){
+                                       init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
+                                       init.date <- ymd(paste(init.str,"01",sep=""))
+                                       return(init.date)})
+
+#Set list names
+names(Sal.Decadal) <- sapply(Sal.Decadal,slot,"name")
+
 
 # ========================================================================
 # Setup uninitialised models
