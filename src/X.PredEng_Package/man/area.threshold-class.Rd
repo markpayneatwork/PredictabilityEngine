@@ -6,13 +6,15 @@
 \alias{area.threshold}
 \title{Threshold area}
 \arguments{
-\item{threshold}{Critical threshold value - a numeric of length 1}
+\item{threshold}{Critical threshold value(s) - a numeric of length 1 or 2}
 
-\item{above}{Logical value - TRUE indicates that we wish to test for values above the threshold. FALSE below.}
+\item{above}{Logical value - TRUE indicates that we wish to test for values above the threshold. FALSE below. 
+If threshold is a length two vector, then this argument is ignored}
 }
 \value{
-\code{threshold.area} returns a tibble  corresponding to the integrated area above (or below) the threshold value.
+\code{threshold.area} returns a tibble  corresponding to the integrated area above (or below) the threshold value. 
+If two thresholds are supplied, the integrated area corresponds to that between the two thresholds
 }
 \description{
-Returns the area above or below a threshold
+Returns the area of water defined by threshold(s)
 }

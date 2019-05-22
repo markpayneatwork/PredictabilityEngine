@@ -6,13 +6,14 @@
 \alias{threshold}
 \title{Thresholds}
 \arguments{
-\item{threshold}{Critical threshold value - a numeric of length 1}
+\item{threshold}{Critical threshold value - a numeric of length 1 or 2}
 
-\item{above}{Logical value - TRUE indicates that we wish to test for values above the threshold. FALSE below.}
+\item{above}{Logical value - TRUE indicates that we wish to test for values above the threshold. FALSE below. 
+Ignored if two thresholds are supplied.}
 }
 \value{
 \code{threshold} returns a tibble containing the Raster* object matching the raster object supplied as an
-argument.
+argument. If two thresholds are supplied, the raster corresponds to that between the two thresholds
 }
 \description{
 Determines where each pixel sits in relation to a threshold value, potentially integrating over the

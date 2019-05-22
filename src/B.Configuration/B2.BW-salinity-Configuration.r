@@ -92,6 +92,20 @@ stat.l[[2]] <- pass.through(name="Salinity field anomaly",
                                use.anomalies = TRUE,
                                use.realmeans=TRUE)
 
+stat.l[[3]] <- area.threshold(name="Suitable spawning area",
+                            skill.metrics = "correlation",
+                            is.global.stat=FALSE,
+                            use.anomalies = FALSE,
+                            threshold=c(35.3,35.5),
+                            use.realmeans=TRUE)
+
+stat.l[[4]] <- threshold(name="Spawning suitability",
+                              skill.metrics = "correlation",
+                              is.global.stat=FALSE,
+                              use.anomalies = FALSE,
+                              threshold=c(35.3,35.5),
+                              use.realmeans=TRUE)
+
 #Merge it all in
 names(stat.l) <- sapply(stat.l,slot,"name")
 pcfg@statistics <- stat.l

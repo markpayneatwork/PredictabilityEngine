@@ -43,12 +43,13 @@ setGeneric("returns.field",
 #'
 #' Determines where each pixel sits in relation to a threshold value, potentially integrating over the
 #' area of interest
-#' @param threshold Critical threshold value - a numeric of length 1
-#' @param above Logical value - TRUE indicates that we wish to test for values above the threshold. FALSE below.
+#' @param threshold Critical threshold value - a numeric of length 1 or 2
+#' @param above Logical value - TRUE indicates that we wish to test for values above the threshold. FALSE below. 
+#' Ignored if two thresholds are supplied.
 #' @export threshold
 
 #' @return  \code{threshold} returns a tibble containing the Raster* object matching the raster object supplied as an
-#' argument.
+#' argument. If two thresholds are supplied, the raster corresponds to that between the two thresholds
 threshold <- setClass("threshold",
                                  slots=list(threshold="numeric",
                                             above="logical"),
@@ -57,9 +58,9 @@ threshold <- setClass("threshold",
                                  contains="stat",
                                  validity = function(object) {
                                    err.msg <- NULL
-                                   if(length(object@threshold)!=1) {
+                                   if(!length(object@threshold) %in% c(1,2)) {
                                      err.msg <- c(err.msg,
-                                                  sprintf("Length of 'threshold' slot should be 1 but is %i.",length(object@threshold)))
+                                                  sprintf("Length of 'threshold' slot should be 1 or 2 but is %i.",length(object@threshold)))
                                    }
                                    if(length(err.msg)==0) return(TRUE) else err.msg
                                  })
@@ -78,7 +79,10 @@ setMethod("returns.field",signature(st="threshold"),
 
 
 threshold.fn <- function(st,vals,integrate){
-  if(st@above) {
+  
+  if(length(st@threshold)==2) {
+    pass.threshold <- vals > min(st@threshold) & vals < max(st@threshold)
+  } else if(st@above) {
     pass.threshold <- vals > st@threshold
   } else {
     pass.threshold <- vals < st@threshold
@@ -104,12 +108,14 @@ threshold.fn <- function(st,vals,integrate){
 
 #' Threshold area
 #' 
-#' Returns the area above or below a threshold
+#' Returns the area of water defined by threshold(s)
 #' 
 #' @export area.threshold
-#' @param threshold Critical threshold value - a numeric of length 1
-#' @param above Logical value - TRUE indicates that we wish to test for values above the threshold. FALSE below.
+#' @param threshold Critical threshold value(s) - a numeric of length 1 or 2
+#' @param above Logical value - TRUE indicates that we wish to test for values above the threshold. FALSE below. 
+#' If threshold is a length two vector, then this argument is ignored
 #' @return  \code{threshold.area} returns a tibble  corresponding to the integrated area above (or below) the threshold value. 
+#' If two thresholds are supplied, the integrated area corresponds to that between the two thresholds
 area.threshold <- setClass("area.threshold",contains="threshold")
 
 #' @export
