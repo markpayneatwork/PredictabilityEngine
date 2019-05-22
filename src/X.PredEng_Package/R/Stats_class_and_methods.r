@@ -103,7 +103,7 @@ threshold.fn <- function(st,vals,integrate){
     return(tibble(realization=1:nlayers(vals),value=area.filt)) 
     
   } else { #Return the results
-    return(tibble(field=list(res)))
+    return(tibble(field=list(pass.threshold)))
   }}
 
 #' Threshold area
