@@ -4,6 +4,36 @@ Seasonal and Decadel Predictability Engine
 TODO:
 * Create spatial field tools, including probabilities
 
+2019.05.28
+Implemented DPLE support. This required some thinking about the way that we deal with data sources, and the like. However, it was possible to fit into the CDO approach in the end, which is very relieving.
+
+2019.05.16
+Some more structure changes to the PredEng package to improve the statistics methods. Seems to have been a good idea - I have now got to the point where I can start to make spatial correlation maps.
+* Start making visualisations of skill
+* Extend to other metrics and allowing customisation of metrics
+
+2019.05.14
+Major rewrites around the summary statistics to support field-based results. Was a fairly major headache, but feel like I have a good solution now. Also required major redefinitions of the metadata conventions as well. A lot of work, and it may take some time to get the bugs out, but I feel it was worth it - we now have seamless support for spatial fields
+* See if we can find a good way to do global detection - possibly with a flag?
+* Update bluefin and run it through the analysis again, to check that it has worked properly. It did.
+Also removed the PredEng.list class, as it was a bit naff.
+Looks like we have a fully functioning system again now. Next step is to refine the spatial skill metrics. This is probably best done by defining the skill metric in association with the statistic, and then picking up the rest from there in H3. Will probably need to separate though into field metrics and indvidual metrics, but could pull it together again in the summary metrics. Lead times could be irritating though.
+
+2019.05.13
+Started work on spatial statistics. Got a start, anyway. Now need to settle on a structure for configuring and defining metrics.
+* Implement CPRS metrics. Distinguish between deterministic and probabilistics metrics in the skill metric calculations. Check with Johanna how best to do the calculation
+
+2019.05.08
+Before moving to fully spatial fields, lets check two things
+* does the Bluefin tuna still work properly? Yes, appears to work well.
+* Lets get the realisations working as well..
+Spent most of the morning working on problems with workload distribution - have streamlined that and removed some annoying bugs. Starting work on realisations now, but need to check how it is being handled by the indivudal sum stats, and possibly rewrite them to support realisations.
+Late-night session broke a lot of code, but it looks like we have realizations working now
+
+2019.05.03
+Implement habitat suitability metrics - appears to be quite successful. Will probably need to play with this a bit in the future to find a final structure that works best, but at the moment it is just doing linear interpolation of supplied values - this should be faster than any model evaluation, especially if the model is fit in BRMS.
+* Next step is to extend to the spatial aspect, to make maps of skill. This is best done using the same summary statistics, but perhaps overloading them to respond differently depending on the context. Dunno. Need to think it through.
+
 2019.05.02
 Got the visualisation code working, although it was a bit of a battle with Markdown as ever. Next step
 * Implement carrying capacity model

@@ -45,10 +45,12 @@ pcfg <- readRDS(PE.cfg$config.path)
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.id <- 1
+  cfg.id <- 5
   set.cdo.defaults("--silent --no_warnings -O")
+  #set.cdo.defaults("-O")
   set.log_msg.silent()
   set.nco.defaults("--ovewrite")
+  pcfg@recalculate <- TRUE
 } else {
   #Taking inputs from the system environment
   cfg.id <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
@@ -68,7 +70,6 @@ this.sp <- get.this.sp(cfg.fname,cfg.id,pcfg)
 this.src <- get.this.src(cfg.fname,cfg.id,pcfg)
 
 #Directory setup
-src.dir <- file.path(PE.cfg$dirs$datasrc,"Decadal",this.src@source)
 subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)
 base.dir <- define_dir(subdomain.dir,"Decadal",this.src@name)
 remap.dir <- define_dir(base.dir,"1.remapping_wts")
@@ -87,15 +88,16 @@ analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$files$analysis.grid)
 log_msg("Processing %s data source for %s subdomain ...\n",this.src@name,this.sp@name)
 
 #Get list of files
-src.fnames <- dir(src.dir,pattern="\\.nc$",full.names = TRUE)
+src.fnames <- this.src@source
 if(length(src.fnames)==0 ) stop("Cannot find source files")
+if(any(!file.exists(src.fnames))) stop("Cannot find all source files")
 src.meta <- tibble(fname=src.fnames)
 
 #Prepare a set of remapping weights
-log_msg("Preparing weights...\n")
-remapping.wts <- file.path(remap.dir,PE.cfg$files$remapping.wts)
-wts.cmd <- cdo(csl("genbil",analysis.grid.fname),src.meta$fname[1],
-                        remapping.wts)
+# log_msg("Preparing weights...\n")
+# remapping.wts <- file.path(remap.dir,PE.cfg$files$remapping.wts)
+# wts.cmd <- cdo(csl("genbil",analysis.grid.fname),src.meta$fname[1],
+#                         remapping.wts)
 
 #'========================================================================
 # Extract Fragments from Source Files ####
@@ -118,43 +120,69 @@ if(!file.exists(frag.meta.fname) | pcfg@recalculate) {
     #Extract file
     f <- src.meta$fname[i]
     log_msg("Extracting from %s...\n",basename(f),silenceable = TRUE)
-    temp.stem <- tempfile()
+    tmp.stem <- tempfile()
     
     #Subset out the layer(s) from the field of interest
     #log_msg("Select and remap...")
-    temp.in <- f
-    temp.out <- sprintf("%s_sellevidx",temp.stem)
-    sellev.cmd <- cdo(csl("sellevidx",this.src@levels),
-                      temp.in,temp.out)
+    if(!any(is.na(this.src@levels))) {
+      tmp.in <- f
+      tmp.out <- sprintf("%s_sellevidx",tmp.stem)
+      sellev.cmd <- cdo(csl("sellevidx",this.src@levels),
+                        tmp.in,tmp.out)
+    } else {
+      tmp.out <- f
+    }
     
     #Average over the layers
-    temp.in <- temp.out
-    temp.out <- sprintf("%s_vertmean",temp.in)
-    levmean.cmd <- cdo("vertmean",temp.in,temp.out)
+    tmp.in <- tmp.out
+    tmp.out <- sprintf("%s_vertmean",tmp.in)
+    levmean.cmd <- cdo("vertmean",tmp.in,tmp.out)
     
     #Select the field of interest, just to be sure
-    temp.in <- temp.out
-    temp.out <- sprintf("%s_selname",temp.in)
-    selname.cmd <- cdo(csl("selname",this.src@var),temp.in,temp.out)
+    tmp.in <- tmp.out
+    tmp.out <- sprintf("%s_selname",tmp.in)
+    selname.cmd <- cdo(csl("selname",this.src@var),tmp.in,tmp.out)
     
+    #Before selecting the months of interest, we may need to apply a time
+    #correction of the time axis. CESM-DPLE, for example, has the time axis
+    #set to 2018-08-01 to represent the period 2018-07-01-2018-08-01, meaning
+    #that is actually the average value for July, but is labelled as August. It's a trap!
+    #This is where we correct for that effect, and ensure that selmon works properly
+    if(!is.null(this.src@time.correction)) {
+      tmp.in <- tmp.out
+      tmp.out <- sprintf("%s_timecorrect",tmp.in)
+      shiftime.cmd <- cdo(csl("shifttime", this.src@time.correction),tmp.in,tmp.out)
+    }
+
     #Select the months of interest 
-    temp.in <- temp.out
-    temp.out <- sprintf("%s_selmon",temp.in)
-    selmon.cmd <- cdo(csl("selmon", pcfg@MOI),temp.in,temp.out)
+    tmp.in <- tmp.out
+    tmp.out <- sprintf("%s_selmon",tmp.in)
+    selmon.cmd <- cdo(csl("selmon", pcfg@MOI),tmp.in,tmp.out)
     
     #Average over time - only necessary when considering multiple target months
     if(pcfg@average.months) {
-      temp.in <- temp.out
-      temp.out <- sprintf("%s_yearmean",temp.in)
-      yearmean.cmd <- cdo( "yearmean", temp.in,temp.out)
+      tmp.in <- tmp.out
+      tmp.out <- sprintf("%s_yearmean",tmp.in)
+      yearmean.cmd <- cdo( "yearmean", tmp.in,tmp.out)
     }
     
     #Remap
-    temp.in <- temp.out
+    tmp.in <- tmp.out
+    regrid.fname <- file.path(sel.dir,basename(f))
+    
+    #Remap Reusing weights
+    # tmp.in <- tmp.out
+    # regrid.fname <- file.path(sel.dir,basename(f))
+    # regrid.cmd <- cdo("-f nc",
+    #                   csl("remap", analysis.grid.fname, remapping.wts),
+    #                   tmp.in, regrid.fname)
+    
+    #Remap recalculating weights every time
+    tmp.in <- tmp.out
     regrid.fname <- file.path(sel.dir,basename(f))
     regrid.cmd <- cdo("-f nc",
-                      csl("remap", analysis.grid.fname, remapping.wts),
-                      temp.in, regrid.fname)
+                      csl("remapbil", analysis.grid.fname),
+                      tmp.in, regrid.fname)
     
     #Fragment (split) into individual lead times
     #Note that the splitting indexing is something decided by cdo, not here, and
@@ -163,10 +191,10 @@ if(!file.exists(frag.meta.fname) | pcfg@recalculate) {
     frag.cmd <- cdo("splitsel,1",regrid.fname,this.frag.fname)
     
     #Remove the temporary files to tidy up
-    tmp.fnames <- dir(dirname(temp.stem),pattern=basename(temp.stem),full.names = TRUE)
+    tmp.fnames <- dir(dirname(tmp.stem),pattern=basename(tmp.stem),full.names = TRUE)
     del.err <- unlink(tmp.fnames)
     if(del.err!=0) stop("Error deleting temp files")
-    
+ 
   }
   pb$stop()
   print(pb)
@@ -194,16 +222,16 @@ if(!file.exists(frag.meta.fname) | pcfg@recalculate) {
     log_msg("Collating metadata from fragment %s...\n",
             basename(frag.fnames[i]),silenceable = TRUE)
     
-    frag.dates.l[[i]] <- this.src@date_fn(frag.fnames[i])
+    frag.dates.l[[i]] <- this.src@date.fn(frag.fnames[i])
   }
   
   #Now build up a meta-data catalogue
   frag.meta <- tibble(src.name=this.src@name,
                       src.type=this.src@type,
-                      start.date=this.src@init_fn(frag.fnames),
+                      start.date=this.src@init.fn(frag.fnames),
                       date=do.call(c,frag.dates.l),
                       lead.idx=str_match(basename(frag.fnames),"^.*?_L([0-9]+).nc$")[,2],
-                      realization=this.src@ensmem_fn(frag.fnames),
+                      realization=this.src@ensmem.fn(frag.fnames),
                       fname=frag.fnames)
   saveRDS(frag.meta,file=frag.meta.fname)
   

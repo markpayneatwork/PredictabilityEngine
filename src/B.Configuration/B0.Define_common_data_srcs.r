@@ -21,6 +21,16 @@
 #    where it can be compiled in a meaningful manner
 #/*##########################################################################*/
 
+#'========================================================================
+# Helper functions ####
+#'========================================================================
+date.by.brick <- function(f) {
+  if(length(f)>1) stop("Function not vectorised")
+  dates <- getZ(brick(f))
+  return(dates)}
+
+decadal.dir <- file.path(PE.cfg$dirs$datasrc,"Decadal")
+
 # ========================================================================
 # Setup SST.Decadal models
 # ========================================================================
@@ -28,58 +38,89 @@
 #originally by SPECS
 SST.Decadal <- list()
 SST.Decadal$IPSL  <- data.source(name="IPSL-CM5A-LR",
-                                   type="Decadal",
-                           source="IPSL-CM5A-LR",
-                           var="tos",
-                           ensmem_fn=function(f) {
-                             underscore_field(f,6)},
-                           init_fn=function(f){
-                             init.str <- gsub("S","",underscore_field(f,5))
-                             init.date <- ymd(init.str)
-                             return(init.date)})
+                                 type="Decadal",
+                                 source=dir(file.path(decadal.dir,"IPSL-CM5A-LR"),
+                                            pattern="\\.nc$",full.names = TRUE),
+                                 var="tos",
+                                 ensmem.fn=function(f) {
+                                   underscore_field(f,6)},
+                                 init.fn=function(f){
+                                   init.str <- gsub("S","",underscore_field(f,5))
+                                   init.date <- ymd(init.str)
+                                   return(init.date)},
+                                 date.fn=date.by.brick)
 
 SST.Decadal$"MPI-MR" <-  new("data.source",SST.Decadal$IPSL,
-                               name="MPI-ESM-MR",
-                               source="MPI-ESM-MR")
+                             name="MPI-ESM-MR",
+                             source=dir(file.path(decadal.dir,"MPI-ESM-MR"),
+                                        pattern="\\.nc$",full.names = TRUE))
 
 #MPI-LR is different,
 SST.Decadal$"MPI-LR" <-  data.source(name="MPI-ESM-LR",
-                                       type="Decadal",
-                                       var="thetao",
-                               source="MPI-ESM-LR_MiKlip-b1/theta0",
-                             ensmem_fn=CMIP5_realisation,
-                             init_fn=function(f){
-                               init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
-                               init.date <- ymd(paste(init.str,"01",sep=""))
-                               return(init.date)})
+                                     type="Decadal",
+                                     var="thetao",
+                                     source=dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","theta0"),
+                                                pattern="\\.nc$",full.names = TRUE),
+                                     ensmem.fn=CMIP5_realisation,
+                                     init.fn=function(f){
+                                       init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
+                                       init.date <- ymd(paste(init.str,"01",sep=""))
+                                       return(init.date)},
+                                     date.fn=date.by.brick)
 
 #MPI - NCEP requires all three to be specified
 SST.Decadal$"MPI-NCEP" <- data.source(name="MPI-NCEP-forced",
-                                type="Decadal",
-                                source="MPI-ESM-LR_NCEP-forced",
-                                var="var2",
-                             ensmem_fn=function(f){return(rep("r1",length(f)))},
-                             date_fn=function(f){
-                               dates.str <- getZ(brick(f))
-                               dates <- ymd(dates.str)
-                               day(dates) <- 15  #Adjust to be mid month, rather than end of month
-                               #But adjust
-                               return(dates)},
-                             init_fn=function(f){
-                               init.yr <- str_match(basename(f),"^dma([0-9]{4})_.*$")[,2]
-                               init.date <- as.Date(ISOdate(init.yr,1,1))
-                               return(init.date)})
+                                      type="Decadal",
+                                      source=dir(file.path(decadal.dir,"MPI-ESM-LR_NCEP-forced"),
+                                                 pattern="\\.nc$",full.names = TRUE),
+                                      var="var2",
+                                      ensmem.fn=function(f){return(rep("r1",length(f)))},
+                                      date.fn=function(f){
+                                        dates.str <- getZ(brick(f))
+                                        dates <- ymd(dates.str)
+                                        day(dates) <- 15  #Adjust to be mid month, rather than end of month
+                                        #But adjust
+                                        return(dates)},
+                                      init.fn=function(f){
+                                        init.yr <- str_match(basename(f),"^dma([0-9]{4})_.*$")[,2]
+                                        init.date <- as.Date(ISOdate(init.yr,1,1))
+                                        return(init.date)})
 
 #GFDL is largely in CMIP5 format
 SST.Decadal$GFDL <-   data.source(name="GFDL-CM2.1",
-                            type="Decadal",
-                            source="GFDL-CM2.1",
-                            var="tos",
-                             ensmem_fn=CMIP5_realisation,
-                             init_fn=function(f){
-                               init.yr <- str_match(basename(f),"^.*?_decadal([0-9]{4})_r.*$")[,2]
-                               init.date <- as.Date(ISOdate(init.yr,1,1))
-                               return(init.date)})
+                                  type="Decadal",
+                                  source=dir(file.path(decadal.dir,"GFDL-CM2.1"),
+                                             pattern="\\.nc$",full.names = TRUE),
+                                  var="tos",
+                                  ensmem.fn=CMIP5_realisation,
+                                  init.fn=function(f){
+                                    init.yr <- str_match(basename(f),"^.*?_decadal([0-9]{4})_r.*$")[,2]
+                                    init.date <- as.Date(ISOdate(init.yr,1,1))
+                                    return(init.date)},
+                                  date.fn=date.by.brick)
+
+#Add in the CESM DPLE
+CESM.DPLE.src <-   data.source(name="CESM-DPLE",
+                               type="Decadal",
+                               levels=as.numeric(NA),
+                               var="SST",
+                               time.correction="-15days",
+                               ensmem.fn=function(f) {
+                                 val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,3]
+                                 return(val)},
+                               init.fn=function(f) {
+                                 val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,2]
+                                 return(ymd(sprintf("%s-01",val)))},
+                               date.fn=date.by.brick)
+DPLE.srcs <- tibble(fname=dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SST"),
+                              pattern="\\.nc$",full.names = TRUE)) %>%
+  mutate(idx=rep(1:4,length.out=nrow(.))) 
+CESM.DPLE.src.l <- lapply(split(DPLE.srcs,DPLE.srcs$idx),function(x) {
+  rtn <- CESM.DPLE.src
+  rtn@source <- x$fname
+  return(rtn)})
+SST.Decadal <- c(SST.Decadal,CESM.DPLE.src.l)
+
 
 #Identify models as hindcast models and set the source equal to the name
 for(i in seq(SST.Decadal)) {
@@ -89,6 +130,7 @@ for(i in seq(SST.Decadal)) {
 #Set list names
 names(SST.Decadal) <- sapply(SST.Decadal,slot,"name")
 
+
 #'========================================================================
 # Salinity data sources ####
 #'========================================================================
@@ -96,12 +138,14 @@ Sal.Decadal <- list()
 Sal.Decadal$"MPI-LR" <-  data.source(name="MPI-ESM-LR",
                                      type="Decadal",
                                      var="so",
-                                     source="MPI-ESM-LR_MiKlip-b1/so/",
-                                     ensmem_fn=CMIP5_realisation,
-                                     init_fn=function(f){
+                                     source=dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","so"),
+                                                pattern="\\.nc$",full.names = TRUE),
+                                     ensmem.fn=CMIP5_realisation,
+                                     init.fn=function(f){
                                        init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
                                        init.date <- ymd(paste(init.str,"01",sep=""))
-                                       return(init.date)})
+                                       return(init.date)},
+                                     date.fn=date.by.brick)
 
 #Set list names
 names(Sal.Decadal) <- sapply(Sal.Decadal,slot,"name")
@@ -134,13 +178,15 @@ names(Sal.Decadal) <- sapply(Sal.Decadal,slot,"name")
 # Setup observational data sets
 # ========================================================================
 SST_obs <- list()
-SST_obs$HadISST <- data.source(name="HadISST",var="sst")
-SST_obs$OISST <- data.source(name="OISST")
-SST_obs$EN4  <- data.source(name="EN4",var="temperature")
-for(i in seq(SST_obs)){
-  SST_obs[[i]]@source <- file.path("Observations",SST_obs[[i]]@name)
-  SST_obs[[i]]@type <- "Observations"
-}
+SST_obs$HadISST <- data.source(name="HadISST",
+                               type="Observations",
+                               var="sst",
+                               source="data_srcs/Observations/HadISST/HadISST_sst.nc")
+SST_obs$EN4  <- data.source(name="EN4",
+                            type="Observations",
+                            var="temperature",
+                            source=dir("data_srcs/Observations/EN4/",
+                                       pattern="\\.zip$",full.names = TRUE))
 
 # ========================================================================
 # Setup NMME models
@@ -154,16 +200,17 @@ for(mdl.name in names(NMME.mdls)){
   mdl.src <- mdl$URL
   names(mdl.src) <- mdl$type
   obj <- data.source(name=mdl.name,#sprintf("NMME-%s",mdl.name),
-             type="NMME",
-             var="sst",
-             source=mdl.src)  
+                     type="NMME",
+                     var="sst",
+                     source=mdl.src)  
   NMME.sst.l[[mdl.name]] <- obj
 }
 
 #Restrict some realisations
 NMME.sst.l[["NASA-GEOS5"]]@realizations <- 1:11  #12th realization is very intermittant
 NMME.sst.l[["NCEP-CFSv2"]]@realizations <- 1:24  #Forecast has 32 but hindcast 24. 
-                                                  #Restrict to be the same for simplicity
+
+#Restrict to be the same for simplicity
 #'========================================================================
 # Setup CMIP5 models ####
 #'========================================================================
@@ -193,9 +240,9 @@ CMIP5.grp <- split(CMIP5.meta,CMIP5.meta$CMIP5.chunk)
 CMIP5.mdls.l <- list()
 for(i in seq(CMIP5.grp)) {
   CMIP5.mdls.l[[i]] <- data.source(name=sprintf("Chunk %03i",i),
-                              type="CMIP5",
-                              var="tos",
-                              source=CMIP5.grp[[i]]$fname)
+                                   type="CMIP5",
+                                   var="tos",
+                                   source=CMIP5.grp[[i]]$fname)
 }
 names(CMIP5.mdls.l) <- sapply(CMIP5.mdls.l,slot,"name")
 

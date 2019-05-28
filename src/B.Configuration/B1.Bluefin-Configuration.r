@@ -57,10 +57,10 @@ define_dir(pcfg@scratch.dir)
 #Drop NCEP forced model
 pcfg@Decadal <- SST.Decadal[-which(names(SST.Decadal)=="MPI-NCEP-forced")]
 
-#If working locally, only keep the simplest two models
-if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
-  pcfg@Decadal <- pcfg@Decadal[c(1,4)]
-}
+# #If working locally, only keep the simplest two models
+# if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
+#   pcfg@Decadal <- pcfg@Decadal[c(1,4)]
+# }
 
 #'========================================================================
 # Spatial Configurations ####
