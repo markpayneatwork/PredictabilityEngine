@@ -45,7 +45,7 @@ pcfg <- readRDS(PE.cfg$config.path)
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.id <- 5
+  cfg.id <- 1
   set.cdo.defaults("--silent --no_warnings -O")
   #set.cdo.defaults("-O")
   set.log_msg.silent()
@@ -148,7 +148,7 @@ if(!file.exists(frag.meta.fname) | pcfg@recalculate) {
     #set to 2018-08-01 to represent the period 2018-07-01-2018-08-01, meaning
     #that is actually the average value for July, but is labelled as August. It's a trap!
     #This is where we correct for that effect, and ensure that selmon works properly
-    if(!is.null(this.src@time.correction)) {
+    if(length(this.src@time.correction)!=0) {
       tmp.in <- tmp.out
       tmp.out <- sprintf("%s_timecorrect",tmp.in)
       shiftime.cmd <- cdo(csl("shifttime", this.src@time.correction),tmp.in,tmp.out)
