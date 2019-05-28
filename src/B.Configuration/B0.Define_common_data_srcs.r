@@ -50,7 +50,8 @@ SST.Decadal$IPSL  <- data.source(name="IPSL-CM5A-LR",
                                    return(init.date)},
                                  date.fn=date.by.brick)
 
-SST.Decadal$"MPI-MR" <-  new("data.source",SST.Decadal$IPSL,
+SST.Decadal$"MPI-MR" <-  new("data.source",
+                             SST.Decadal$IPSL,
                              name="MPI-ESM-MR",
                              source=dir(file.path(decadal.dir,"MPI-ESM-MR"),
                                         pattern="\\.nc$",full.names = TRUE))
@@ -100,8 +101,12 @@ SST.Decadal$GFDL <-   data.source(name="GFDL-CM2.1",
                                   date.fn=date.by.brick)
 
 #Add in the CESM DPLE
-CESM.DPLE.src <-   data.source(name="CESM-DPLE",
+#This could be split into multiple sub-sources, but then that starts to create problems when
+#it comes time to calculate the ensemble mean etc. We need to think that one through a bit....
+SST.Decadal$CESM.DPLE <-   data.source(name="CESM-DPLE",
                                type="Decadal",
+                               source=dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SST"),
+                                          pattern="\\.nc$",full.names = TRUE),
                                levels=as.numeric(NA),
                                var="SST",
                                time.correction="-15days",
@@ -112,20 +117,6 @@ CESM.DPLE.src <-   data.source(name="CESM-DPLE",
                                  val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,2]
                                  return(ymd(sprintf("%s-01",val)))},
                                date.fn=date.by.brick)
-DPLE.srcs <- tibble(fname=dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SST"),
-                              pattern="\\.nc$",full.names = TRUE)) %>%
-  mutate(idx=rep(1:4,length.out=nrow(.))) 
-CESM.DPLE.src.l <- lapply(split(DPLE.srcs,DPLE.srcs$idx),function(x) {
-  rtn <- CESM.DPLE.src
-  rtn@source <- x$fname
-  return(rtn)})
-SST.Decadal <- c(SST.Decadal,CESM.DPLE.src.l)
-
-
-#Identify models as hindcast models and set the source equal to the name
-for(i in seq(SST.Decadal)) {
-  SST.Decadal[[i]]@type <- "Decadal"
-}
 
 #Set list names
 names(SST.Decadal) <- sapply(SST.Decadal,slot,"name")
