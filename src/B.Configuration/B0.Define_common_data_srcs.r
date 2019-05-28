@@ -60,7 +60,7 @@ SST.Decadal$"MPI-MR" <-  new("data.source",
 SST.Decadal$"MPI-LR" <-  data.source(name="MPI-ESM-LR",
                                      type="Decadal",
                                      var="thetao",
-                                     source=dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","theta0"),
+                                     source=dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","thetao"),
                                                 pattern="\\.nc$",full.names = TRUE),
                                      ensmem.fn=CMIP5_realisation,
                                      init.fn=function(f){
