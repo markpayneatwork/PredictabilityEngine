@@ -29,7 +29,6 @@
 #    install   : Installs various R packages
 #    NMME_sync : Downloads NMME data via OpenDAP
 #
-#    persistence: Persistence forecast
 #    collate   : Collates summary statistics (non-parallel)
 #    cluster   : Used together with TYPE argument to build a qsub job
 #                and distribute across cluster
@@ -65,7 +64,7 @@ cluster:  todo $(OKs)
 $(OUTDIR)/%.ok: 
 	@echo $* >> $(TODO)
 
-collate persistence:
+collate:
 	@TYPE=$@; bsub -J PE_$$TYPE -o PE_$$TYPE.%J.%I.out -e PE_$$TYPE.%J.%I.err -n 1 -R "rusage[mem=8GB]" -W 72:00 $(MASTER) $$TYPE 
 	
 #-------------------------------------
