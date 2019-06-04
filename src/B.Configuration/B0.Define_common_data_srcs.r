@@ -42,7 +42,7 @@ SST.Decadal$IPSL  <- data.source(name="IPSL-CM5A-LR",
                                  source=dir(file.path(decadal.dir,"IPSL-CM5A-LR"),
                                             pattern="\\.nc$",full.names = TRUE),
                                  var="tos",
-                                 ensmem.fn=function(f) {
+                                 realization.fn=function(f) {
                                    underscore_field(f,6)},
                                  init.fn=function(f){
                                    init.str <- gsub("S","",underscore_field(f,5))
@@ -62,7 +62,7 @@ SST.Decadal$"MPI-LR" <-  data.source(name="MPI-ESM-LR",
                                      var="thetao",
                                      source=dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","thetao"),
                                                 pattern="\\.nc$",full.names = TRUE),
-                                     ensmem.fn=CMIP5_realisation,
+                                     realization.fn=CMIP5_realisation,
                                      init.fn=function(f){
                                        init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
                                        init.date <- ymd(paste(init.str,"01",sep=""))
@@ -75,7 +75,7 @@ SST.Decadal$"MPI-NCEP" <- data.source(name="MPI-NCEP-forced",
                                       source=dir(file.path(decadal.dir,"MPI-ESM-LR_NCEP-forced"),
                                                  pattern="\\.nc$",full.names = TRUE),
                                       var="var2",
-                                      ensmem.fn=function(f){return(rep("r1",length(f)))},
+                                      realization.fn=function(f){return(rep("r1",length(f)))},
                                       date.fn=function(f){
                                         dates.str <- getZ(brick(f))
                                         dates <- ymd(dates.str)
@@ -93,7 +93,7 @@ SST.Decadal$GFDL <-   data.source(name="GFDL-CM2.1",
                                   source=dir(file.path(decadal.dir,"GFDL-CM2.1"),
                                              pattern="\\.nc$",full.names = TRUE),
                                   var="tos",
-                                  ensmem.fn=CMIP5_realisation,
+                                  realization.fn=CMIP5_realisation,
                                   init.fn=function(f){
                                     init.yr <- str_match(basename(f),"^.*?_decadal([0-9]{4})_r.*$")[,2]
                                     init.date <- as.Date(ISOdate(init.yr,1,1))
@@ -110,7 +110,7 @@ SST.Decadal$CESM.DPLE <-   data.source(name="CESM-DPLE",
                                levels=as.numeric(NA),
                                var="SST",
                                time.correction="-15days",
-                               ensmem.fn=function(f) {
+                               realization.fn=function(f) {
                                  val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,3]
                                  return(val)},
                                init.fn=function(f) {
@@ -126,17 +126,39 @@ names(SST.Decadal) <- sapply(SST.Decadal,slot,"name")
 # Salinity data sources ####
 #'========================================================================
 Sal.Decadal <- list()
+
+#MPI-LR
+#There is a problem with the date-time stamps on the first realisation in this hindcast
+#ensemble. It could be corrected, but to start with we just drop it, awaiting the updated
+#data set from Daniela. 2019.06.04
+MPI.LR.srcs <- dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","so"),
+                   pattern="\\.nc$",full.names = TRUE) %>%
+                subset(!grepl("r1i1p1",.))
 Sal.Decadal$"MPI-LR" <-  data.source(name="MPI-ESM-LR",
                                      type="Decadal",
                                      var="so",
-                                     source=dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","so"),
-                                                pattern="\\.nc$",full.names = TRUE),
-                                     ensmem.fn=CMIP5_realisation,
+                                     source=MPI.LR.srcs,
+                                     realization.fn=CMIP5_realisation,
                                      init.fn=function(f){
                                        init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
                                        init.date <- ymd(paste(init.str,"01",sep=""))
                                        return(init.date)},
                                      date.fn=date.by.brick)
+#CESM-DPLE
+Sal.Decadal$CESM.DPLE <-   data.source(name="CESM-DPLE",
+                                       type="Decadal",
+                                       source=dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SALT"),
+                                                  pattern="\\.nc$",full.names = TRUE),
+                                       levels=as.numeric(NA),
+                                       var="Salt",
+                                       time.correction="-15days",
+                                       realization.fn=function(f) {
+                                         val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,3]
+                                         return(val)},
+                                       init.fn=function(f) {
+                                         val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,2]
+                                         return(ymd(sprintf("%s-01",val)))},
+                                       date.fn=date.by.brick)
 
 #Set list names
 names(Sal.Decadal) <- sapply(Sal.Decadal,slot,"name")
@@ -198,8 +220,8 @@ for(mdl.name in names(NMME.mdls)){
 }
 
 #Restrict some realisations
-NMME.sst.l[["NASA-GEOS5"]]@realizations <- 1:11  #12th realization is very intermittant
-NMME.sst.l[["NCEP-CFSv2"]]@realizations <- 1:24  #Forecast has 32 but hindcast 24. 
+NMME.sst.l[["NASA-GEOS5"]]@realizations <- as.character(1:11)  #12th realization is very intermittant
+NMME.sst.l[["NCEP-CFSv2"]]@realizations <- as.character(1:24)  #Forecast has 32 but hindcast 24. 
 
 #Restrict to be the same for simplicity
 #'========================================================================

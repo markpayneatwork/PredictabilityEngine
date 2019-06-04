@@ -79,6 +79,18 @@ pcfg@Observations <- data.source(name="EN4",type="Observations",
 pcfg@Decadal <- Sal.Decadal
 pcfg@Decadal[["MPI-ESM-LR"]]@levels <- 13:19  #Set depth layers
 
+#Check on CESM-DPLE vertical layers
+# library(ncdf4)
+# ncid <- nc_open(Sal.Decadal$`CESM-DPLE`@source[1])
+# d <- data.frame(z_t=ncid$dim$z_t$vals,
+#                 z_w=ncid$dim$z_w$vals,
+#                 z_w_top=ncid$dim$z_w_top$vals,
+#                 z_w_bot=ncid$dim$z_w_bot$vals) %>%
+#       mutate_all(function(x){ x/ 100}) %>% #Convert to metres
+#       add_column(.before=1,layer=seq(nrow(.)))
+# filter(d,z_w_top>250,z_w_bot < 600)
+pcfg@Decadal[["CESM-DPLE"]]@levels <- 24:35
+
 #'========================================================================
 # Statistics ####
 #'========================================================================
