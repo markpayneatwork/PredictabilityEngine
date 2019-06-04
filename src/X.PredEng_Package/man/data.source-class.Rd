@@ -23,12 +23,12 @@ options are "Decadal", "NMME", "CMIP","Obs", and eventually "C3S"}
 \item{\code{levels}}{Level(s) in the source data set containing the relevant data. A value of NA means that averaging 
 take place over all available layers}
 
-\item{\code{realizations}}{Realization(s) to use. Zero indicates all.}
+\item{\code{realizations}}{Character string, naming the realization(s) to use. NA indicates all.}
 
 \item{\code{time.correction}}{A string suitable for use with the "cdo shifttime,x" command string that can be used to 
 correcct for time-bound versus time value problems.}
 
-\item{\code{ensmem.fn}}{A function to extract the realisation, for cases where a simple index doesn't work}
+\item{\code{realization.fn}}{A function to extract the realisation ID}
 
 \item{\code{init.fn}}{Function to extract the initialisation dates}
 
