@@ -150,7 +150,7 @@ Sal.Decadal$CESM.DPLE <-   data.source(name="CESM-DPLE",
                                        source=dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SALT"),
                                                   pattern="\\.nc$",full.names = TRUE),
                                        levels=as.numeric(NA),
-                                       var="Salt",
+                                       var="SALT",
                                        time.correction="-15days",
                                        realization.fn=function(f) {
                                          val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,3]
