@@ -45,7 +45,7 @@ pcfg <- readRDS(PE.cfg$config.path)
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.id <- 1
+  cfg.id <- 3
   set.cdo.defaults("--silent --no_warnings -O")
   #set.cdo.defaults("-O")
   set.log_msg.silent()
@@ -231,7 +231,7 @@ if(!file.exists(frag.meta.fname) | pcfg@recalculate) {
                       start.date=this.src@init.fn(frag.fnames),
                       date=do.call(c,frag.dates.l),
                       lead.idx=str_match(basename(frag.fnames),"^.*?_L([0-9]+).nc$")[,2],
-                      realization=this.src@ensmem.fn(frag.fnames),
+                      realization=this.src@realization.fn(frag.fnames),
                       fname=frag.fnames)
   saveRDS(frag.meta,file=frag.meta.fname)
   
