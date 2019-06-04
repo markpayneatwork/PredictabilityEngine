@@ -101,7 +101,7 @@ stat.l[[3]] <- area.threshold(name="Suitable spawning area",
 
 stat.l[[4]] <- threshold(name="Spawning suitability",
                               skill.metrics = "correlation",
-                              is.global.stat=FALSE,
+                              is.global.stat=TRUE,
                               use.anomalies = FALSE,
                               threshold=c(35.3,35.5),
                               use.realmeans=TRUE)
