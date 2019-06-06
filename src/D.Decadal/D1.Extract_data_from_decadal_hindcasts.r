@@ -68,6 +68,7 @@ cfg.fname <- file.path(PE.cfg$dirs$job.cfg,"Decadal.cfg")
 this.cfgs <- get.this.cfgs(cfg.fname)
 this.sp <- get.this.sp(cfg.fname,cfg.id,pcfg)
 this.src <- get.this.src(cfg.fname,cfg.id,pcfg)
+config.summary(pcfg,this.sp,this.src)
 
 #Directory setup
 subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)
@@ -193,7 +194,6 @@ if(!file.exists(frag.meta.fname) | pcfg@recalculate) {
     #Remove the temporary files to tidy up
     log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
     
-    stop()
     tmp.fnames <- dir(dirname(tmp.stem),pattern=basename(tmp.stem),full.names = TRUE)
     del.err <- unlink(tmp.fnames)
     if(del.err!=0) stop("Error deleting temp files")
