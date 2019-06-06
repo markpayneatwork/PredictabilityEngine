@@ -3,14 +3,27 @@
 # ========================================================================
 #' Metadata class for describing data sources compatabile with PredEng
 #'
-#' @slot name Identifier of data source 
+#' @slot name Name of data source e.g. the model that it derives from
+#' @slot id Unique identifier, used to separate processing up into subtasks
 #' @slot type Type of data source that this object corresponds to - valid 
-#' options are "Decadal", "NMME", "CMIP","Obs", and eventually "C3S" 
+#' options are "Decadal", "NMME", "CMIP","Observations", and eventually "C3S" 
 #'
 #' @export PredEng.source
 #' @exportClass PredEng.source
-PredEng.source <- setClass("PredEng.source",slots=list(name="character",
-                                           type="character"))
+PredEng.source <- setClass("PredEng.source",
+                           slots=list(name="character",
+                                      id="character",
+                                      type="character"),
+                           validity = function(object) {
+                             err.msg <- NULL
+                             for(n in slotNames(object)) {
+                               if(length(slot(object,n))==0) {
+                                 err.msg <- c(err.msg,
+                                              sprintf('Slot "%s" is undefined.',n))
+                               }
+                             }
+                             if(length(err.msg)==0) return(TRUE) else err.msg
+                           })
 
 
 #' Metadata class for describing data from a single model 
@@ -31,7 +44,8 @@ PredEng.source <- setClass("PredEng.source",slots=list(name="character",
 #'
 #' @export data.source
 #' @exportClass data.source
-data.source <- setClass("data.source",contains="PredEng.source",
+data.source <- setClass("data.source",
+                        contains="PredEng.source",
                         slots=list(source="character",
                                    var="character",
                                    levels="numeric",

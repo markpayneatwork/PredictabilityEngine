@@ -11,9 +11,11 @@ Metadata class for describing data sources compatabile with PredEng
 \section{Slots}{
 
 \describe{
-\item{\code{name}}{Identifier of data source}
+\item{\code{name}}{Name of data source e.g. the model that it derives from}
+
+\item{\code{id}}{Unique identifier, used to separate processing up into subtasks}
 
 \item{\code{type}}{Type of data source that this object corresponds to - valid 
-options are "Decadal", "NMME", "CMIP","Obs", and eventually "C3S"}
+options are "Decadal", "NMME", "CMIP","Observations", and eventually "C3S"}
 }}
 

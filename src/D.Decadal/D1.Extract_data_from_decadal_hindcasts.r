@@ -45,7 +45,7 @@ pcfg <- readRDS(PE.cfg$config.path)
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.id <- 3
+  cfg.id <- 2
   set.cdo.defaults("--silent --no_warnings -O")
   #set.cdo.defaults("-O")
   set.log_msg.silent()
@@ -71,7 +71,7 @@ this.src <- get.this.src(cfg.fname,cfg.id,pcfg)
 
 #Directory setup
 subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)
-base.dir <- define_dir(subdomain.dir,"Decadal",this.src@name)
+base.dir <- define_dir(subdomain.dir,"Decadal",this.src@id)
 remap.dir <- define_dir(base.dir,"1.remapping_wts")
 sel.dir <- define_dir(base.dir,"2.regrid")
 frag.dir <- define_dir(base.dir,"3.fragments")
@@ -85,7 +85,7 @@ analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$files$analysis.grid)
 #'========================================================================
 # Setup ####
 #'========================================================================
-log_msg("Processing %s data source for %s subdomain ...\n",this.src@name,this.sp@name)
+log_msg("Processing %s data source for %s subdomain ...\n",this.src@id,this.sp@name)
 
 #Get list of files
 src.fnames <- this.src@source
@@ -191,6 +191,9 @@ if(!file.exists(frag.meta.fname) | pcfg@recalculate) {
     frag.cmd <- cdo("splitsel,1",regrid.fname,this.frag.fname)
     
     #Remove the temporary files to tidy up
+    log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
+    
+    stop()
     tmp.fnames <- dir(dirname(tmp.stem),pattern=basename(tmp.stem),full.names = TRUE)
     del.err <- unlink(tmp.fnames)
     if(del.err!=0) stop("Error deleting temp files")

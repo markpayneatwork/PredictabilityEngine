@@ -21,7 +21,7 @@ options are "Decadal", "NMME", "CMIP","Obs", and eventually "C3S"}
 \item{\code{var}}{Variable name from which to extract data}
 
 \item{\code{levels}}{Level(s) in the source data set containing the relevant data. A value of NA means that averaging 
-take place over all available layers}
+take place over all available layers. Also an epic track by Avicii (RIP).}
 
 \item{\code{realizations}}{Character string, naming the realization(s) to use. NA indicates all.}
 

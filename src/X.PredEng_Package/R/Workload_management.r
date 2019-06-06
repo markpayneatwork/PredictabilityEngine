@@ -25,11 +25,11 @@ partition.workload <- function(obj,
   #Get the list of all valid data types
   dat.srcs.l <- unlist(lapply(c("Decadal","NMME","Observations","CMIP5"),slot,object=obj))
   dat.srcs <- tibble(src.type=sapply(dat.srcs.l,slot,"type"),
-                     src.name=sapply(dat.srcs.l,slot,"name"))
+                     src.id=sapply(dat.srcs.l,slot,"id"))
   other.srcs.l <- list()
-  other.srcs.l[[1]] <- tibble(src.type="Persistence",src.name=obj@Observations@name)
-  if(length(obj@NMME)!=0) other.srcs.l[[2]] <- tibble(src.type="NMME",src.name=PE.cfg$files$ensmean.name)
-  if(length(obj@Decadal)!=0) other.srcs.l[[3]] <- tibble(src.type="Decadal",src.name=PE.cfg$files$ensmean.name)
+  other.srcs.l[[1]] <- tibble(src.type="Persistence",src.id=obj@Observations@id)
+  if(length(obj@NMME)!=0) other.srcs.l[[2]] <- tibble(src.type="NMME",src.id=PE.cfg$files$ensmean.name)
+  if(length(obj@Decadal)!=0) other.srcs.l[[3]] <- tibble(src.type="Decadal",src.id=PE.cfg$files$ensmean.name)
   all.srcs <- bind_rows(dat.srcs,other.srcs.l)
   
   #If we have global statistics in the mix, then we need to handle this accordingly
@@ -40,14 +40,14 @@ partition.workload <- function(obj,
     dat.srcs <- all.srcs
     out.prefix <- src.slot
   } else if(ensmean) {
-    dat.srcs <- filter(all.srcs,src.type==src.slot,src.name==PE.cfg$files$ensmean.name)
+    dat.srcs <- filter(all.srcs,src.type==src.slot,src.id==PE.cfg$files$ensmean.name)
     out.prefix <- sprintf("%s_Ensmean",src.slot)
   } else {
-    dat.srcs <- filter(all.srcs,src.type==src.slot,src.name!=PE.cfg$files$ensmean.name)
+    dat.srcs <- filter(all.srcs,src.type==src.slot,src.id!=PE.cfg$files$ensmean.name)
     out.prefix <- src.slot
   }
   if(nrow(dat.srcs)==0) return(NULL)  #Catch blanks
-  dat.srcs$src.id <- seq(nrow(dat.srcs))
+  dat.srcs$src.num <- seq(nrow(dat.srcs))
     
   #Setup spatial domains
   if(partition.by.space ) { #Overrides the use.global.ROI switch
@@ -63,10 +63,10 @@ partition.workload <- function(obj,
   }
   
   #Do the expansion
-  work.cfg <- expand.grid(src.id=dat.srcs$src.id,
+  work.cfg <- expand.grid(src.num=dat.srcs$src.num,
                           sp=sp.subdomains) %>%
-    left_join(dat.srcs,by="src.id") %>%
-    select(-src.id) %>%
+    left_join(dat.srcs,by="src.num") %>%
+    select(-src.num) %>%
     add_column(cfg.id=seq(nrow(.)),.before=1) %>%
     as_tibble()
   
@@ -83,16 +83,16 @@ partition.workload <- function(obj,
 get.this.src <- function(fname,cfg.idx,obj){
   cfgs <- get.this.cfgs(fname)
   this.cfg <- cfgs[cfg.idx,]
-  if(is.na(this.cfg$src.name) | is.na(this.cfg$src.type)) {
+  if(is.na(this.cfg$src.id) | is.na(this.cfg$src.type)) {
     stop("Source not defined for this configuration")
   }
-  if(this.cfg$src.type=="Persistence"|this.cfg$src.name==PE.cfg$files$ensmean.name) {
-    this.src <- data.source(name=this.cfg$src.name,type=this.cfg$src.type)  
+  if(this.cfg$src.type=="Persistence"|this.cfg$src.id==PE.cfg$files$ensmean.name) {
+    this.src <- data.source(name=this.cfg$src.id,type=this.cfg$src.type)  
   } else if(this.cfg$src.type=="Observations") {
     this.src <- obj@Observations
   } else  {
     srcs <- slot(obj,this.cfg$src.type)
-    this.src <- srcs[[as.character(this.cfg$src.name)]]
+    this.src <- srcs[[as.character(this.cfg$src.id)]]
   }
   return(this.src)
   
