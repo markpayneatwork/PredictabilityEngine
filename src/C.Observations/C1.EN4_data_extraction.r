@@ -73,7 +73,6 @@ if(!this.src@name=="EN4") stop("Not configured to use EN4 data")
 log_msg("\nProcessing %s...\n",this.sp@name)
 
 #Working directories
-src.dir <- file.path(PE.cfg$dirs$datasrc,this.src@source)
 subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)
 base.dir <- define_dir(subdomain.dir,"Observations","EN4")
 extract.dir <- define_dir(base.dir,"1.extracted")
@@ -99,7 +98,7 @@ log_msg("Extracting metadata...\n")
 
 #First thing to do is to get metadata of the available files, and 
 #use this to define future files
-src.zips.l <- dir(src.dir,pattern="*.zip",full.names = TRUE)
+#src.zips.l <- dir(src.dir,pattern="*.zip",full.names = TRUE)
 # src.meta.l <- lapply(src.file.l,function(f) {
 #   zipinfo.args <- ssl("-1" ,file.path(getwd(),f))
 #   manifest.l <- system2("zipinfo",zipinfo.args,stdout=TRUE)
@@ -110,10 +109,10 @@ src.zips.l <- dir(src.dir,pattern="*.zip",full.names = TRUE)
 #                            remove=FALSE,convert=TRUE)
 
 #Loop over files
-pb <- progress_estimated(length(src.zips.l),-1)
+pb <- progress_estimated(length(this.src@source),-1)
 extract.meta.l <- list()  #Meta data list of the extracted files
   
-for(this.src.zip in src.zips.l) {
+for(this.src.zip in this.src@source) {
   
   #Unzip all files from the archive to the temp directory
   unzip.args <- ssl("-o",this.src.zip,
