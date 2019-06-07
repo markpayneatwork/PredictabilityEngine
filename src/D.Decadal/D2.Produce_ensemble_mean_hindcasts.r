@@ -74,7 +74,7 @@ log_msg("Calculating Ensemble mean for %s subdomain ...\n",this.sp@name)
 metadat.l <- list()
 for(m in pcfg@Decadal){
   if(class(m)=="data.source") {
-    realmean.meta <- readRDS(file.path(base.dir,m@name,PE.cfg$files$realmean.meta))
+    realmean.meta <- readRDS(file.path(base.dir,m@id,PE.cfg$files$realmean.meta))
     metadat.l[[m@name]] <- realmean.meta
   }
 }
