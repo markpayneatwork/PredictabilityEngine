@@ -47,10 +47,10 @@ partition.workload <- function(obj,
     out.prefix <- sprintf("%s_Ensmean",src.slot)
   } else if(toupper(data.partition.type)=="CHUNKS") {
     dat.srcs <- filter(all.chunks,src.type==src.slot,src.name!=PE.cfg$files$ensmean.name)
-    out.prefix <- sprintf("%s_Chunks",src.slot)
+    out.prefix <- sprintf("%s_by_chunks",src.slot)
   } else if(toupper(data.partition.type)=="SOURCES") {
     dat.srcs <- filter(all.srcs,src.type==src.slot,src.name!=PE.cfg$files$ensmean.name)
-    out.prefix <- sprintf("%s_Sources",src.slot)
+    out.prefix <- sprintf("%s_by_sources",src.slot)
   } else {
     stop(sprintf('Unknown option "%s"',data.partition.type))
   }
