@@ -4,7 +4,6 @@
 #' Metadata class for describing data sources compatabile with PredEng
 #'
 #' @slot name Name of data source e.g. the model that it derives from
-#' @slot id Unique identifier, used to separate processing up into subtasks
 #' @slot type Type of data source that this object corresponds to - valid 
 #' options are "Decadal", "NMME", "CMIP","Observations", and eventually "C3S" 
 #'
@@ -12,7 +11,6 @@
 #' @exportClass PredEng.source
 PredEng.source <- setClass("PredEng.source",
                            slots=list(name="character",
-                                      id="character",
                                       type="character"),
                            validity = function(object) {
                              err.msg <- NULL
@@ -32,6 +30,7 @@ PredEng.source <- setClass("PredEng.source",
 #' @slot type Type of data source that this object corresponds to - valid 
 #' options are "Decadal", "NMME", "CMIP","Obs", and eventually "C3S" 
 #' @slot source Directory or URL containing the raw information
+#' @slot n.chunks Number of chunks into which to split the processing
 #' @slot var Variable name from which to extract data
 #' @slot levels Level(s) in the source data set containing the relevant data. A value of NA means that averaging 
 #' take place over all available layers. Also an epic track by Avicii (RIP).
@@ -47,6 +46,7 @@ PredEng.source <- setClass("PredEng.source",
 data.source <- setClass("data.source",
                         contains="PredEng.source",
                         slots=list(source="character",
+                                   n.chunks="numeric",
                                    var="character",
                                    levels="numeric",
                                    realizations="character",
@@ -55,6 +55,7 @@ data.source <- setClass("data.source",
                                    init.fn="function",  #TODO: Consider dropping this slot
                                    date.fn="function"),
                         prototype=list(levels=1,
+                                       n.chunks=1,
                                        realizations=as.character(NA),
                                        date.fn=function(x) {stop("Date.fn not specified")},
                                        realization.fn=function(x) {stop("Realization function not specified")},

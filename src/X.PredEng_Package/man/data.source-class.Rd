@@ -18,6 +18,8 @@ options are "Decadal", "NMME", "CMIP","Obs", and eventually "C3S"}
 
 \item{\code{source}}{Directory or URL containing the raw information}
 
+\item{\code{n.chunks}}{Number of chunks into which to split the processing}
+
 \item{\code{var}}{Variable name from which to extract data}
 
 \item{\code{levels}}{Level(s) in the source data set containing the relevant data. A value of NA means that averaging 

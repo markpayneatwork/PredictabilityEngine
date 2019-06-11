@@ -8,8 +8,8 @@
 \alias{get.this.cfgs}
 \title{Manage job distribution}
 \usage{
-partition.workload(obj, src.slot, ensmean = FALSE,
-  partition.by.space = !obj@use.global.ROI)
+partition.workload(obj, src.slot, data.partition.type,
+  space.partition = !obj@use.global.ROI)
 
 get.this.src(fname, cfg.idx, obj)
 
@@ -20,13 +20,12 @@ get.this.cfgs(fname)
 \arguments{
 \item{obj}{A PredEng.config object}
 
-\item{src.slot}{Vector containg the name of the slot over which to partition 
-the workload. In the case where this is set to "SumStats", work is partitioned
-over all relevant model data slots}
+\item{src.slot}{Name of the slot over which to partition the workload. In the case where
+this is set to "Stats", work is partitioned over all relevant model data slots}
 
-\item{ensmean}{Treat this as an ensemble mean?}
+\item{data.partition.type}{"ensmean", "source", or "chunk"}
 
-\item{partition.by.space}{Should the work be split up by spatial subdomain as well as data.src? The default
+\item{space.partition}{Should the work be split up by spatial subdomain? The default
 behaviour is to follow the use.global.ROI slot in obj i.e. when use.global.ROI is TRUE, we don't want to 
 partition by space. However, in some cases (e.g. calculation of statistics) it is useful to have this 
 behaviour anyway.}
