@@ -88,12 +88,13 @@ file.symlink(file.path(getwd(),project.cfg),PE.cfg$dirs$job.cfg)
 TODO.dir <- define_dir(PE.cfg$dirs$job.cfg,"TODO")
 
 #Write configurations
-cfgs <- partition.workload(pcfg,"NMME")
-cfgs <- partition.workload(pcfg,"NMME",ensmean=TRUE)
-cfgs <- partition.workload(pcfg,"Decadal")
-cfgs <- partition.workload(pcfg,"Decadal",ensmean=TRUE)
-cfgs <- partition.workload(pcfg,"Observations")
-cfgs <- partition.workload(pcfg,"Stats",partition.by.space=TRUE)
+cfgs <- partition.workload(pcfg,"NMME","Sources")
+cfgs <- partition.workload(pcfg,"NMME","Ensmean")
+cfgs <- partition.workload(pcfg,"Decadal","Sources")
+cfgs <- partition.workload(pcfg,"Decadal","Chunks")
+cfgs <- partition.workload(pcfg,"Decadal","Ensmean")
+cfgs <- partition.workload(pcfg,"Observations","Sources")
+cfgs <- partition.workload(pcfg,"Stats",space.partition=TRUE)
 
 #' -----------
 #' <small>*This work by Mark R Payne is licensed under a  Creative Commons
