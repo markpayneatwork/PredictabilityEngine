@@ -8,7 +8,7 @@
 \alias{get.this.cfgs}
 \title{Manage job distribution}
 \usage{
-partition.workload(obj, src.slot, data.partition.type,
+partition.workload(obj, src.slot, data.partition.type = "",
   space.partition = !obj@use.global.ROI)
 
 get.this.src(fname, cfg.idx, obj)

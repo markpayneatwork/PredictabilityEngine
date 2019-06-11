@@ -15,7 +15,7 @@
 #' @name job_management
 partition.workload <- function(obj,
                                src.slot,
-                               data.partition.type,
+                               data.partition.type="",
                                space.partition=!obj@use.global.ROI) {
   
   #Check inputs
@@ -51,6 +51,9 @@ partition.workload <- function(obj,
   } else if(toupper(data.partition.type)=="SOURCES") {
     dat.srcs <- filter(all.srcs,src.type==src.slot,src.name!=PE.cfg$files$ensmean.name)
     out.prefix <- sprintf("%s_by_sources",src.slot)
+  } else if(toupper(data.partition.type)=="") {
+    dat.srcs <- filter(all.srcs,src.type==src.slot,)
+    out.prefix <- src.slot
   } else {
     stop(sprintf('Unknown option "%s"',data.partition.type))
   }
