@@ -108,7 +108,7 @@ get.this.src <- function(fname,cfg.idx,obj){
   if(this.src@n.chunks!=1) {
     chunk.src.df <- tibble(source=this.src@source,
                            init=factor(this.src@init.fn(source)),
-                           chunk=as.numeric(init)%%this.src@n.chunks) %>%
+                           chunk=as.numeric(init)%%this.src@n.chunks+1) %>%   #+1 moves to 1 indexed
                     filter(chunk==this.cfg$chunk.id)
     this.src@source <- chunk.src.df$source
   }
