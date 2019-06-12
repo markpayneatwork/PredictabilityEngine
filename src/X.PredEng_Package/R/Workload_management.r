@@ -44,7 +44,7 @@ partition.workload <- function(obj,
     out.prefix <- src.slot
   } else if(toupper(data.partition.type)=="ENSMEAN") {
     dat.srcs <- filter(all.srcs,src.type==src.slot,src.name==PE.cfg$files$ensmean.name)
-    out.prefix <- sprintf("%s_Ensmean",src.slot)
+    out.prefix <- sprintf("%s_ensmean",src.slot)
   } else if(toupper(data.partition.type)=="CHUNKS") {
     dat.srcs <- filter(all.chunks,src.type==src.slot,src.name!=PE.cfg$files$ensmean.name)
     out.prefix <- sprintf("%s_by_chunks",src.slot)
@@ -108,12 +108,14 @@ get.this.src <- function(fname,cfg.idx,obj){
   
   #Take care of the chunking at this step, by filtering sources accordingly
   #Chunking is done by initialisation date
-  if(this.src@n.chunks!=1) {
+  if(!is.null(this.cfg$chunk.id)) {
     chunk.src.df <- tibble(source=this.src@source,
                            init=factor(this.src@init.fn(source)),
-                           chunk=as.numeric(init)%%this.src@n.chunks+1) %>%   #+1 moves to 1 indexed
-                    filter(chunk==this.cfg$chunk.id)
-    this.src@source <- chunk.src.df$source
+                           chunk=(as.numeric(init)-1)%%this.src@n.chunks) %>%   
+                    filter(chunk==this.cfg$chunk.id-1) #-1 moves to 0 indexed
+    this.src <- data.source.chunk(this.src,
+                                    source=chunk.src.df$source,
+                                    chunk.id=this.cfg$chunk.id)
   }
   return(this.src)
   

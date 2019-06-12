@@ -67,26 +67,27 @@ set.nco.defaults("--overwrite")
 cfg.fname <- file.path(PE.cfg$dirs$job.cfg,"Decadal_by_chunks.cfg")
 this.cfgs <- get.this.cfgs(cfg.fname)
 this.sp <- get.this.sp(cfg.fname,cfg.id,pcfg)
-this.src <- get.this.src(cfg.fname,cfg.id,pcfg)
-config.summary(pcfg,this.sp,this.src)
+this.chunk <- get.this.src(cfg.fname,cfg.id,pcfg)
+config.summary(pcfg,this.sp,this.chunk)
 
 #Directory setup
 subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)
-base.dir <- define_dir(subdomain.dir,"Decadal",this.src@name)
-remap.dir <- define_dir(base.dir,"1.remapping_wts")
-sel.dir <- define_dir(base.dir,"2.regrid")
-frag.dir <- define_dir(base.dir,"3.fragments")
-fragstack.dir <- define_dir(base.dir,"4.fragstacks")
-misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
+datsrc.dir <- define_dir(subdomain.dir,"Decadal",this.chunk@name)
+chunk.dir <- define_dir(datsrc.dir,sprintf("Chunk_%03i",this.chunk@chunk.id))
+remap.dir <- define_dir(chunk.dir,"1.remapping_wts")
+sel.dir <- define_dir(chunk.dir,"2.regrid")
+frag.dir <- define_dir(chunk.dir,"3.fragments")
+fragstack.dir <- define_dir(chunk.dir,"4.fragstacks")
+misc.meta.dir <- define_dir(datsrc.dir,PE.cfg$dirs$Misc.meta)
 analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$files$analysis.grid)
 
 #'========================================================================
 # Setup ####
 #'========================================================================
-log_msg("Processing %s data source for %s subdomain ...\n",this.src@name,this.sp@name)
+log_msg("Processing %s data source for %s subdomain ...\n",this.chunk@name,this.sp@name)
 
 #Get list of files
-src.fnames <- this.src@source
+src.fnames <- this.chunk@source
 if(length(src.fnames)==0 ) stop("Cannot find source files")
 if(any(!file.exists(src.fnames))) stop("Cannot find all source files")
 src.meta <- tibble(fname=src.fnames)
@@ -105,7 +106,7 @@ src.meta <- tibble(fname=src.fnames)
 #the fragments being produced from a given file. Hence, required that
 #the source extraction and fragment metadata are run in one large chunk
 #all the way to completion.
-frag.meta.fname <- file.path(base.dir,PE.cfg$files$fragment.meta)
+frag.meta.fname <- file.path(chunk.dir,PE.cfg$files$fragment.meta)
 
 #Loop over Source Files
 log_msg("Extracting source files into fragments...\n")
@@ -122,10 +123,10 @@ if(!file.exists(frag.meta.fname) | pcfg@recalculate) {
     
     #Subset out the layer(s) from the field of interest
     #log_msg("Select and remap...")
-    if(!any(is.na(this.src@levels))) {
+    if(!any(is.na(this.chunk@levels))) {
       tmp.in <- f
       tmp.out <- sprintf("%s_sellevidx",tmp.stem)
-      sellev.cmd <- cdo(csl("sellevidx",this.src@levels),
+      sellev.cmd <- cdo(csl("sellevidx",this.chunk@levels),
                         tmp.in,tmp.out)
     } else {
       tmp.out <- f
@@ -139,17 +140,17 @@ if(!file.exists(frag.meta.fname) | pcfg@recalculate) {
     #Select the field of interest, just to be sure
     tmp.in <- tmp.out
     tmp.out <- sprintf("%s_selname",tmp.in)
-    selname.cmd <- cdo(csl("selname",this.src@var),tmp.in,tmp.out)
+    selname.cmd <- cdo(csl("selname",this.chunk@var),tmp.in,tmp.out)
     
     #Before selecting the months of interest, we may need to apply a time
     #correction of the time axis. CESM-DPLE, for example, has the time axis
     #set to 2018-08-01 to represent the period 2018-07-01-2018-08-01, meaning
     #that is actually the average value for July, but is labelled as August. It's a trap!
     #This is where we correct for that effect, and ensure that selmon works properly
-    if(length(this.src@time.correction)!=0) {
+    if(length(this.chunk@time.correction)!=0) {
       tmp.in <- tmp.out
       tmp.out <- sprintf("%s_timecorrect",tmp.in)
-      shiftime.cmd <- cdo(csl("shifttime", this.src@time.correction),tmp.in,tmp.out)
+      shiftime.cmd <- cdo(csl("shifttime", this.chunk@time.correction),tmp.in,tmp.out)
     }
 
     #Select the months of interest 
@@ -223,16 +224,16 @@ if(!file.exists(frag.meta.fname) | pcfg@recalculate) {
     log_msg("Collating metadata from fragment %s...\n",
             basename(frag.fnames[i]),silenceable = TRUE)
     
-    frag.dates.l[[i]] <- this.src@date.fn(frag.fnames[i])
+    frag.dates.l[[i]] <- this.chunk@date.fn(frag.fnames[i])
   }
   
   #Now build up a meta-data catalogue
-  frag.meta <- tibble(src.name=this.src@name,
-                      src.type=this.src@type,
-                      start.date=this.src@init.fn(frag.fnames),
+  frag.meta <- tibble(src.name=this.chunk@name,
+                      src.type=this.chunk@type,
+                      start.date=this.chunk@init.fn(frag.fnames),
                       date=do.call(c,frag.dates.l),
                       lead.idx=str_match(basename(frag.fnames),"^.*?_L([0-9]+).nc$")[,2],
-                      realization=this.src@realization.fn(frag.fnames),
+                      realization=this.chunk@realization.fn(frag.fnames),
                       fname=frag.fnames)
   saveRDS(frag.meta,file=frag.meta.fname)
   
@@ -253,7 +254,7 @@ if(!file.exists(frag.meta.fname) | pcfg@recalculate) {
 # layer corresponding to a realisation
 #'========================================================================
 log_msg("Building fragstacks...\n")
-fragstack.meta.fname <- file.path(base.dir,PE.cfg$files$fragstack.meta)
+fragstack.meta.fname <- file.path(chunk.dir,PE.cfg$files$fragstack.meta)
 
 if(!file.exists(fragstack.meta.fname)| pcfg@recalculate) {
   # Group data into the fragment stacks

@@ -118,3 +118,14 @@ test.data.source <- function(obj,f="missing"){
   log_msg("\nForecast Initialisation\n")
   print(obj@init.fn(f))
 }
+
+#' Data source chunk
+#' 
+#' A data chunk based on a subset of a full data.source object
+#'
+#' @slot chunk.id numeric. Unique identifier
+#' @export
+data.source.chunk <- setClass("data.source.chunk",
+                        contains="data.source",
+                        slots=list(chunk.id="numeric"),
+                        prototype=list(chunk.id=as.numeric(NA)))
