@@ -78,7 +78,7 @@ remap.dir <- define_dir(chunk.dir,"1.remapping_wts")
 sel.dir <- define_dir(chunk.dir,"2.regrid")
 frag.dir <- define_dir(chunk.dir,"3.fragments")
 fragstack.dir <- define_dir(chunk.dir,"4.fragstacks")
-misc.meta.dir <- define_dir(datsrc.dir,PE.cfg$dirs$Misc.meta)
+misc.meta.dir <- define_dir(chunk.dir,PE.cfg$dirs$Misc.meta)
 analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$files$analysis.grid)
 
 #'========================================================================
