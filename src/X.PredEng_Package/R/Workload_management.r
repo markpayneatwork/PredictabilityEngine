@@ -108,15 +108,16 @@ get.this.src <- function(fname,cfg.idx,obj){
   
   #Take care of the chunking at this step, by filtering sources accordingly
   #Chunking is done by initialisation date
-  if(!is.null(this.cfg$chunk.id)) {
+  if(!is.null(this.cfg$chunk.id) ) {
     chunk.src.df <- tibble(source=this.src@source,
                            init=factor(this.src@init.fn(source)),
                            chunk=(as.numeric(init)-1)%%this.src@n.chunks) %>%   
                     filter(chunk==this.cfg$chunk.id-1) #-1 moves to 0 indexed
     this.src <- data.source.chunk(this.src,
                                     source=chunk.src.df$source,
-                                    chunk.id=this.cfg$chunk.id)
-  }
+                                    chunk.id=sprintf("Chunk_%03i",this.cfg$chunk.id))
+    if(this.src@n.chunks==1) this.src@chunk.id <- ""
+  } 
   return(this.src)
   
 }

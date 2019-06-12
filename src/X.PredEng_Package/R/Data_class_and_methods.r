@@ -124,8 +124,11 @@ test.data.source <- function(obj,f="missing"){
 #' A data chunk based on a subset of a full data.source object
 #'
 #' @slot chunk.id numeric. Unique identifier
-#' @export
+#' 
+#' @export data.source.chunk
+#' @exportClass data.source.chunk
+#' 
 data.source.chunk <- setClass("data.source.chunk",
                         contains="data.source",
-                        slots=list(chunk.id="numeric"),
-                        prototype=list(chunk.id=as.numeric(NA)))
+                        slots=list(chunk.id="character"),
+                        prototype=list(chunk.id=as.character(NULL)))
