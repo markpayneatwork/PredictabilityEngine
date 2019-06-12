@@ -27,16 +27,15 @@ partition.workload <- function(obj,
                                 src.names <- names(x@sources)
                                 tibble(src.type=x@type,
                                        src.name=x@name,
-                                       chunk.id=ifelse(is.null(src.names),"",src.names))})
+                                       chunk.id=if(is.null(src.names)) {NA} else {src.names})})
   other.srcs.l <- list()
   other.srcs.l[[1]] <- tibble(src.type="Persistence",src.name=obj@Observations@name)
   if(length(obj@NMME)!=0) other.srcs.l[[2]] <- tibble(src.type="NMME",src.name=PE.cfg$files$ensmean.name)
   if(length(obj@Decadal)!=0) other.srcs.l[[3]] <- tibble(src.type="Decadal",src.name=PE.cfg$files$ensmean.name)
-  all.chunks <- bind_rows(dat.srcs,other.srcs.l) %>%
-              mutate(chunk.id=ifelse(is.na(chunk.id),1,chunk.id))
-  all.srcs <- filter(all.chunks,chunk.id==1) %>% 
-              select(-chunk.id)
-  
+  all.chunks <- bind_rows(dat.srcs,other.srcs.l) 
+  all.srcs <- select(all.chunks,-chunk.id) %>%
+              unique()
+
   #If we have global statistics in the mix, then we need to handle this accordingly
   global.stats.present <- any(sapply(obj@statistics,slot,name="is.global.stat"))
   
