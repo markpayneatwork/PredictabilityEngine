@@ -10,10 +10,8 @@ LazyData: TRUE
 Depends:
     raster,
     ClimateTools,
-    dplyr,
-    lubridate,
-    stringr,
-    sp
+    tidyverse,
+    sf
 RoxygenNote: 6.1.1
 Suggests:
     maps

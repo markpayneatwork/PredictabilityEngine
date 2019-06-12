@@ -16,7 +16,11 @@ Metadata class for describing data from a single model
 \item{\code{type}}{Type of data source that this object corresponds to - valid 
 options are "Decadal", "NMME", "CMIP","Obs", and eventually "C3S"}
 
-\item{\code{source}}{Directory or URL containing the raw information}
+\item{\code{chunk}}{Chunk identifier (optional)}
+
+\item{\code{sources}}{A list of directories or URLs containing the raw information. Each item in the list
+corresponds to a processing chunk. If the list is longer than one item, it must be named - these
+are the names of the chunks}
 
 \item{\code{n.chunks}}{Number of chunks into which to split the processing}
 

@@ -34,10 +34,7 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 
 #Helper functions, externals and libraries
 library(PredEng)
-library(tibble)
-library(dplyr)
 library(ncdf4)
-library(lubridate)
 pcfg <- readRDS(PE.cfg$config.path)
 
 #'========================================================================
@@ -73,7 +70,7 @@ config.summary(pcfg,this.sp,this.chunk)
 #Directory setup
 subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)
 datsrc.dir <- define_dir(subdomain.dir,"Decadal",this.chunk@name)
-chunk.dir <- define_dir(datsrc.dir,this.chunk@chunk.id)
+chunk.dir <- define_dir(datsrc.dir,this.chunk@chunk)
 remap.dir <- define_dir(chunk.dir,"1.remapping_wts")
 sel.dir <- define_dir(chunk.dir,"2.regrid")
 frag.dir <- define_dir(chunk.dir,"3.fragments")
@@ -87,7 +84,7 @@ analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$files$analysis.grid)
 log_msg("Processing %s data source for %s subdomain ...\n",this.chunk@name,this.sp@name)
 
 #Get list of files
-src.fnames <- this.chunk@source
+src.fnames <- unlist(this.chunk@sources)
 if(length(src.fnames)==0 ) stop("Cannot find source files")
 if(any(!file.exists(src.fnames))) stop("Cannot find all source files")
 src.meta <- tibble(fname=src.fnames)

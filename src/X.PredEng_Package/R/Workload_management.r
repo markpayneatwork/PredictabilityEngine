@@ -23,9 +23,11 @@ partition.workload <- function(obj,
   
   #Get the list of all valid data types
   dat.srcs.l <- unlist(lapply(c("Decadal","NMME","Observations","CMIP5"),slot,object=obj))
-  dat.srcs <- lapply(dat.srcs.l,function(x) {tibble(src.type=x@type,
-                                                    src.name=x@name,
-                                                    chunk.id=1:x@n.chunks)})
+  dat.srcs <- lapply(dat.srcs.l,function(x) {
+                                src.names <- names(x@sources)
+                                tibble(src.type=x@type,
+                                       src.name=x@name,
+                                       chunk.id=ifelse(is.null(src.names),"",src.names))})
   other.srcs.l <- list()
   other.srcs.l[[1]] <- tibble(src.type="Persistence",src.name=obj@Observations@name)
   if(length(obj@NMME)!=0) other.srcs.l[[2]] <- tibble(src.type="NMME",src.name=PE.cfg$files$ensmean.name)
@@ -106,17 +108,11 @@ get.this.src <- function(fname,cfg.idx,obj){
     this.src <- srcs[[as.character(this.cfg$src.name)]]
   }
   
-  #Take care of the chunking at this step, by filtering sources accordingly
-  #Chunking is done by initialisation date
-  if(!is.null(this.cfg$chunk.id) ) {
-    chunk.src.df <- tibble(source=this.src@source,
-                           init=factor(this.src@init.fn(source)),
-                           chunk=(as.numeric(init)-1)%%this.src@n.chunks) %>%   
-                    filter(chunk==this.cfg$chunk.id-1) #-1 moves to 0 indexed
-    this.src <- data.source.chunk(this.src,
-                                    source=chunk.src.df$source,
-                                    chunk.id=sprintf("Chunk_%03i",this.cfg$chunk.id))
-    if(this.src@n.chunks==1) this.src@chunk.id <- ""
+  #Take care of the chunking, if necessary - only return the
+  #sources in the corresponding chunk
+  if(!is.null(this.cfg$chunk.id) & !is.na(this.cfg$chunk.id)) {
+    this.src@sources <- this.src@sources[this.cfg$chunk.id]
+    this.src@chunk <- this.cfg$chunk.id
   } 
   return(this.src)
   
@@ -138,6 +134,6 @@ get.this.sp <- function(fname,cfg.idx,obj){
 #' @export
 #' @rdname job_management
 get.this.cfgs <- function(fname){
-  cfgs <- read.csv(fname)
+  cfgs <- read_csv(fname,col_types = cols())
   return(cfgs)
 }
