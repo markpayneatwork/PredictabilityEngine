@@ -86,7 +86,7 @@ if(pcfg@use.global.ROI) {
 	base.dir <- pcfg@scratch.dir
 } else {
 	base.dir <- file.path(pcfg@scratch.dir,this.sp@name)}
-obs.dir <- file.path(base.dir,pcfg@Observations@type,pcfg@Observations@id)
+obs.dir <- file.path(base.dir,pcfg@Observations@type,pcfg@Observations@name)
 stat.dir <- define_dir(base.dir,PE.cfg$dirs$statistics)
 
 #Setup observational climatology
@@ -132,7 +132,7 @@ for(j in seq(nrow(sel.stats))) {
           this.stat@name,j,nrow(sel.stats))
   
   #Load the appropriate metadata
-  if(this.src@id==PE.cfg$files$ensmean.name) { #Obviously only going to use ensmean data
+  if(this.src@name==PE.cfg$files$ensmean.name) { #Obviously only going to use ensmean data
     metadat.fname <- PE.cfg$files$realmean.meta
   } else if(this.stat@use.realmeans) { #Use realmeans
     metadat.fname <- PE.cfg$files$realmean.meta
@@ -141,7 +141,7 @@ for(j in seq(nrow(sel.stats))) {
   } 
 
   #Load Metadata
-  metadat.path <- file.path(base.dir,this.src@type,this.src@id,metadat.fname)
+  metadat.path <- file.path(base.dir,this.src@type,this.src@name,metadat.fname)
   if(file.exists(metadat.path)) {
     # metadat.varname <- load(metadat.path)
     # metadat <- get(metadat.varname)    
@@ -235,7 +235,7 @@ for(j in seq(nrow(sel.stats))) {
   save.fname <- gsub(" ","-",sprintf("%s_%s_%s_%s.rds",
                                      ifelse(this.sp@name=="",this.sp@desc,this.sp@name),
                                      this.src@type,
-                                     this.src@id,
+                                     this.src@name,
                                      this.stat@name))
   saveRDS(stat.res,file=file.path(stat.dir,save.fname))
 }
