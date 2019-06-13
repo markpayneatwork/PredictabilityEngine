@@ -20,16 +20,17 @@
 # using 
 #   make status
 #
-# Available targets
+# Additional targets
 #    help      ; Displays Makefile header with list of target
 #    purge     : Remove all todo files
 #    clean     : Remove all log files from working directory
 #    status    : List of available types and their current status
 #    setup     : Creates necessary subdirectories
-#    install   : Installs various R packages
-#    NMME_sync : Downloads NMME data via OpenDAP
+#    install   : Installs support R packages
 #
-#    collate   : Collates summary statistics (non-parallel)
+#    NMME_sync : Downloads NMME data via OpenDAP
+#    PPStats   : Collates statistics (non-parallel) and postprocesses them
+#
 #    cluster   : Used together with TYPE argument to build a qsub job
 #                and distribute across cluster
 # ----------------------------------------------------------------------
@@ -64,7 +65,7 @@ cluster:  todo $(OKs)
 $(OUTDIR)/%.ok: 
 	@echo $* >> $(TODO)
 
-collate:
+PPStats:
 	@TYPE=$@; bsub -J PE_$$TYPE -o PE_$$TYPE.%J.%I.out -e PE_$$TYPE.%J.%I.err -n 1 -R "rusage[mem=8GB]" -W 72:00 $(MASTER) $$TYPE 
 	
 #-------------------------------------
