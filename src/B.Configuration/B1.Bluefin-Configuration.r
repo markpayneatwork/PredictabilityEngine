@@ -55,7 +55,7 @@ pcfg@scratch.dir <- file.path("scratch",pcfg@project.name)
 define_dir(pcfg@scratch.dir)
 
 #Drop NCEP forced model
-pcfg@Decadal <- SST.Decadal[-which(names(SST.Decadal)=="MPI-NCEP-forced")]
+pcfg@Decadal <- SST.Decadal[!grepl(c("^MPI-NCEP-forced$"),names(SST.Decadal))]
 
 # #If working locally, only keep the simplest two models
 # if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
