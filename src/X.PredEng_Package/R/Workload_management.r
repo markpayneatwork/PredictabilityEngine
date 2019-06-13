@@ -109,10 +109,11 @@ get.this.src <- function(fname,cfg.idx,obj){
   
   #Take care of the chunking, if necessary - only return the
   #sources in the corresponding chunk
-  if(!is.null(this.cfg$chunk.id) & !is.na(this.cfg$chunk.id)) {
-    this.src@sources <- this.src@sources[this.cfg$chunk.id]
-    this.src@chunk <- this.cfg$chunk.id
-  } 
+  if("chunk.id"%in% names(this.cfg)) {
+    if(!is.na(this.cfg$chunk.id)) {
+      this.src@sources <- this.src@sources[this.cfg$chunk.id]
+      this.src@chunk <- this.cfg$chunk.id
+    }}
   return(this.src)
   
 }
