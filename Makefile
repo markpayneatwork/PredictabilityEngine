@@ -55,11 +55,11 @@ default: help status
 
 #-------------------------------------
 #NMME
-NMME NMME_Ensmean Stats Decadal Decadal_Ensmean Observations:
+$(TYPES):
 	make cluster TYPE=$@
 
 cluster:  todo $(OKs)
-	@TASK_IDS=`paste -s -d "," $(TODO)`; bsub -J PE_$(TYPE)[$$TASK_IDS] -o PE_$(TYPE).%J.%I.out -e PE_$(TYPE).%J.%I.err -n 1 -R "rusage[mem=8GB]" -W 72:00   $(MASTER) $(TYPE) 
+	@TASK_IDS=`paste -s -d "," $(TODO)`; bsub -J PE_$(TYPE)[$$TASK_IDS] -o PE_$(TYPE).%J.%I.out -e PE_$(TYPE).%J.%I.err -n 1 -R "rusage[mem=8GB]" -R "span[hosts=-1]" -W 72:00 $(MASTER) $(TYPE) 
 	
 $(OUTDIR)/%.ok: 
 	@echo $* >> $(TODO)
@@ -74,7 +74,7 @@ todo: $(TODOs)
 $(TODO_DIR)/%.todo: FORCE 
 	@cat /dev/null  > $@ 
 
-status: $(addsuffix .status,$(TYPES))
+status: $(sort $(addsuffix .status,$(TYPES)))
 
 %.status: $(CFG_DIR)/%.cfg
 	@echo `printf "%-50s" "$*"`  : `ls $(CFG_DIR)/$*/ | wc -l` out of `grep -c "^[0-9]\+," $<` jobs
