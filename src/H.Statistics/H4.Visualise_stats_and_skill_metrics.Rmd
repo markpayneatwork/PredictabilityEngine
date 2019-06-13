@@ -71,11 +71,14 @@ cat(sprintf("Visualisations generated  %s\n",date()))
 ```
 
 
+## Configuration
+
 ```{r}
 #==========================================================================
 # Configure
 #==========================================================================
 pcfg <- readRDS(PE.cfg$config.path)
+show(pcfg)
 
 #'========================================================================
 # Setup ####
@@ -122,8 +125,8 @@ for(this.sp in names(sp.skill.l)) {
   sp.obj <- pcfg@spatial.subdomains[[this.sp]]
   xtent <- extend(extent(sp.obj),10)
   g <- ggplot()+
-    annotation_map(map_data("worldHires"),fill="black",colour="grey")+
     geom_sf(data=st_as_sf(sp.obj@boundary)) +
+    annotation_map(map_data("worldHires"),fill="black",colour="grey")+
     coord_sf(xlim=xtent[1:2],ylim=xtent[3:4])
   print(g)
   
