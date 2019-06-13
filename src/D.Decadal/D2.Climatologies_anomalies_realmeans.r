@@ -86,7 +86,7 @@ log_msg("Processing %s data source for %s subdomain ...\n",this.src@name,this.sp
 #Import fragstack meta data from the chunks
 chunk.names <- names(this.src@sources)
 fragstack.meta.fnames <- file.path(base.dir,
-                                   ifelse(is.null(chunk.names),"",chunk.names),
+                                   if(is.null(chunk.names)) {""} else {chunk.names},
                                   PE.cfg$files$fragstack.meta)
 fragstack.meta.l <- lapply(fragstack.meta.fnames,readRDS)
 fragstack.meta <- bind_rows(fragstack.meta.l)
