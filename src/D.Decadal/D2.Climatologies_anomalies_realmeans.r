@@ -76,13 +76,20 @@ base.dir <- define_dir(subdomain.dir,"Decadal",this.src@name)
 lead.clim.dir <- define_dir(base.dir,"5.lead.clims")
 anom.dir <- define_dir(base.dir,"A.anom")
 realmean.dir <- define_dir(base.dir,"B.realmean")
-misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
 analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$files$analysis.grid)
 
 #'========================================================================
 # Setup ####
 #'========================================================================
-log_msg("Processing %s data source for %s subdomain ...\n",this.src@id,this.sp@name)
+log_msg("Processing %s data source for %s subdomain ...\n",this.src@name,this.sp@name)
+
+#Import fragstack meta data from the chunks
+chunk.names <- names(this.src@sources)
+fragstack.meta.fnames <- file.path(base.dir,
+                                   ifelse(is.null(chunk.names),"",chunk.names),
+                                  PE.cfg$files$fragstack.meta)
+fragstack.meta.l <- lapply(fragstack.meta.fnames,readRDS)
+fragstack.meta <- bind_rows(fragstack.meta.l)
 
 #'========================================================================
 # Calculate climatologies ####
