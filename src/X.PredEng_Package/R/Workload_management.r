@@ -33,7 +33,7 @@ partition.workload <- function(obj,
   if(length(obj@NMME)!=0) other.srcs.l[[2]] <- tibble(src.type="NMME",src.name=PE.cfg$files$ensmean.name)
   if(length(obj@Decadal)!=0) other.srcs.l[[3]] <- tibble(src.type="Decadal",src.name=PE.cfg$files$ensmean.name)
   all.chunks <- bind_rows(dat.srcs,other.srcs.l) 
-  all.srcs <- select(all.chunks,-chunk.id) %>%
+  all.srcs <- dplyr::select(all.chunks,-chunk.id) %>%
               unique()
 
   #If we have global statistics in the mix, then we need to handle this accordingly
@@ -78,7 +78,7 @@ partition.workload <- function(obj,
   work.cfg <- expand.grid(src.num=dat.srcs$src.num,
                           sp=sp.subdomains) %>%
     left_join(dat.srcs,by="src.num") %>%
-    select(-src.num) %>%
+    dplyr::select(-src.num) %>%
     add_column(cfg.id=seq(nrow(.)),.before=1) %>%
     as_tibble()
   
