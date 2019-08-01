@@ -20,8 +20,9 @@
 #  To do:
 #
 #  Notes:
-# - While this script contains reminants of RMarkdown, it is not in a state
-#    where it can be compiled in a meaningful manner
+#   - Note that this script is intended to run independently from the rest of
+#     the PredEng workflow, and therefore does not require (or use) a 
+#     configuration object
 #/*##########################################################################*/
 
 # ========================================================================
@@ -36,12 +37,9 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 
 #Helper functions, externals and libraries
 library(PredEng)
-library(readr)
-library(dplyr)
-library(tibble)
+library(tidyverse)
 library(ncdf4)
 library(parallel)
-load("objects/configuration.RData")
 
 # ========================================================================
 # Configuration
@@ -49,8 +47,6 @@ load("objects/configuration.RData")
 #Take input arguments, if any
 if(interactive()) {
   cfg.no <- 1
-  set.debug.level(0)  #0 complete fresh run
-  set.condexec.silent(TRUE)
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
   set.nco.defaults("--ovewrite")
@@ -60,82 +56,69 @@ if(interactive()) {
   cfg.no <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
   if(cfg.no=="") stop("Cannot find LSB_JOBINDEX")
   #Do everything and tell us all about it
-  set.debug.level(0)  #0 complete fresh run
-  set.condexec.silent(FALSE)
   set.cdo.defaults()
   set.log_msg.silent(FALSE)
   options("mc.cores"= as.numeric(Sys.getenv("LSB_MAX_NUM_PROCESSORS"))-1)
-  options("mc.cores"=1)  
 }
 
 #Other configurations
 set.nco.defaults("--overwrite")
 
-#Retrieve configurations
-this.src <- get.this.src(file.path(PE.cfg$dirs$cfg,"NMME.cfg"),cfg.no,pcfg)
-
 #Configure directories
 base.dir <- define_dir(PE.cfg$dirs$datasrc,"NMME")
-download.dir <- define_dir(base.dir,this.src@name)
 
-config.summary(pcfg,this.src)
+#'========================================================================
+# Setup ####
+#'========================================================================
+#Import configurations from config object
+NMME.cfg <- read_csv2(file.path(PE.cfg$dirs$datasrc,"NMME","NMME_SST_urls.csv"),
+                      col_types = cols())
 
 # ========================================================================
 # Retrieve meta data
 # ========================================================================
-#Import configurations from config object
-NMME.cfg <-tibble(Model=this.src@name,
-                  type=names(this.src@source),
-                  URL=this.src@source) %>%
-  mutate(mdl.str=sprintf("%s_%s",Model,type))
+#Choose source to work with
+this.src <-NMME.cfg[cfg.no,] %>% mutate(mdl.str=sprintf("%s_%s",Model,type))
 
-#Data storage
-meta.db.l <- list()
-SLM.l <- list()
-#Loop over files
-for(i in seq(nrow(NMME.cfg))) {
-  mdl <- NMME.cfg[i,]
-  log_msg("Now retrieving metadata from %s...\n",mdl$mdl.str)
-  #open file via OpenDAP
-  ncid <- nc_open(mdl$URL)
-  #Extract meta data
-  res <- tibble(forecast_period=ncid$dim$L$len,
-                ensemble_members=ncid$dim$M$len,
-                first.start=min(ncid$dim$S$vals),
-                last.start=max(ncid$dim$S$vals),
-                n.starts=ncid$dim$S$len,
-                n.leads=ncid$dim$L$len,
-                start_units=ncid$dim$S$units) %>%
-    bind_cols(mdl)
-  meta.db.l[[mdl$mdl.str]] <- res
-  
-  #List of starts and leads
-  SLM.l[[mdl$mdl.str]]$S <- ncid$dim$S$vals
-  SLM.l[[mdl$mdl.str]]$L <- ncid$dim$L$vals
-  SLM.l[[mdl$mdl.str]]$M <- ncid$dim$M$vals
-  
-  #Close file
-  nc_close(ncid)
-}
+#open file via OpenDAP
+log_msg("Now retrieving metadata from %s...\n",this.src$mdl.str)
+ncid <- nc_open(this.src$URL)
+#Extract meta data
+meta <- tibble(forecast_period=ncid$dim$L$len,
+               ensemble_members=ncid$dim$M$len,
+               first.start=min(ncid$dim$S$vals),
+               last.start=max(ncid$dim$S$vals),
+               n.starts=ncid$dim$S$len,
+               n.leads=ncid$dim$L$len,
+               start_units=ncid$dim$S$units) %>%
+  bind_cols(this.src)
 
-#Collate meta data
-meta <- bind_rows(meta.db.l)
 
-#Collate list of starts and leads
-SLM <- do.call(cbind,SLM.l)
+#List of starts and leads
+SLM <- list(S=ncid$dim$S$vals,
+            L=ncid$dim$L$vals,
+            M=ncid$dim$M$vals)
+
+#Close file
+nc_close(ncid)
 
 #Correct dates etc
 meta$first.start.date <-  PE.cfg$NMME.epoch.start  + months(meta$first.start)
 meta$last.start.date  <-  PE.cfg$NMME.epoch.start  + months(meta$last.start)
 
-#Save results
-save(meta,SLM,file=file.path(base.dir,sprintf("%s_metadata.RData",this.src@name)))
+# #Save results
+# saveRDS(meta,file=file.path(base.dir,sprintf("%s_metadata.rds",this.src$mdl.str)))
+# saveRDS(SLM,file=file.path(base.dir,sprintf("%s_SLM.rds",this.src$mdl.str)))
 
 # ========================================================================
 # Setup
 # ========================================================================
 #Download datetime
 download.datetime <- format(Sys.time(),"%Y%m%d_%H%M%S")
+download.dir <- define_dir(base.dir,this.src$Model)
+
+#Remove any incomplete files (ie ending with .tmp)
+file.remove(dir(download.dir,full.names=TRUE,pattern=".tmp$"))
 
 #Now, to allow for easy updating of data sets, we can first check what we have 
 #already available in the archive
@@ -147,99 +130,90 @@ downloaded.dates.l <- lapply(downloaded.fnames,function(f) {
                       return(dates)
                       })
 downloaded.dates <- unlist(downloaded.dates.l)
-starts.to.download <- lapply(SLM["S",meta$mdl.str],function(x) {
-                      x[!(x %in% downloaded.dates)]})
-names(starts.to.download) <- meta$mdl.str
+starts.to.download <- SLM$S[!(SLM$S %in% downloaded.dates)]
 
 #'========================================================================
 # Download data ####
 #'========================================================================
-#Loop over model data sets
-for(i in seq(nrow(meta))) {
-  #Setup download details
-  mdl.cfg <- meta[i,]
-  mdl.id <- mdl.cfg$mdl.str
-  to.download <- tibble(starts=starts.to.download[[mdl.id]],
-                        idxs=which(SLM[["S",mdl.id]] %in% starts))
+#Setup download details
+to.download <- tibble(starts=starts.to.download,
+                      idxs=which(SLM$S%in% starts))
+
+#We are now downloading the entire dataset, so we don't need to worry
+#about spatial subsetting anymore
+
+# #Define spatial ROI string (for input into NCKS)
+# #NMME works on the basis of a 0 to 360 grid, so we need to account for that
+# #We do so by taking advantage of the multislab capabilities in NCO
+# #See here: http://nco.sourceforge.net/nco.html#mlt
+# extract.ROI <- as.vector(extent(this.sp))
+# if(all(extract.ROI[1:2]<0)) {
+#   #Just need to adjust coordinates
+#   extract.ROI[1:2] <- Pacific.centered(extract.ROI[1:2])
+#   ROI.str <- do.call(sprintf,c("-d X,%.2f,%.2f -d Y,%.2f,%.2f",
+#                                as.list(extract.ROI)))
+# } else if(identical(extract.ROI[1:2],c(-180,180))) { 
+#   #Download the whole lot (in the X-direction anyway)
+#   ROI.str <- do.call(sprintf,c("-d Y,%.2f,%.2f",
+#                                as.list(extract.ROI[3:4])))
+# 
+#   } else if(any(extract.ROI[1:2]<0)) { 
+#     stop("don't know how to handle crossing of Greenwich properly")
+#   # #Need to make multi slabs, as we are crossing the wrapping point at Greenwich
+#   # slab.1 <- c(0,max(extract.ROI[1:2]))
+#   # slab.2 <- c(Pacific.centered(min(extract.ROI[1:2])),360)
+#   # ROI.str <- do.call(sprintf,c("-d X,%.2f,%.2f -d X,%.2f,%.2f -d Y,%.2f,%.2f",
+#   #                              as.list(c(slab.1,slab.2,extract.ROI[3:4]))))
+#   
+# } else {
+#   ROI.str <- do.call(sprintf,c("-d X,%.2f,%.2f -d Y,%.2f,%.2f",
+#                                as.list(extract.ROI)))
+# }
+# 
+
+#However!! We can save ourselves a lot of pain at a later stage by converting from a
+#Pacific centered to a Greenwich centered orientation right now. We take advantage of the
+#multislab functionality of nco to do this
+# ROI.str <- "--msa_user_order -d X,181.00,360.00 -d X,0.00,180.00"
+ROI.str <- ""
+
+if(nrow(to.download)!=0){
   
-  #We are now downloading the entire dataset, so we don't need to worry
-  #about spatial subsetting anymore
-  
-  # #Define spatial ROI string (for input into NCKS)
-  # #NMME works on the basis of a 0 to 360 grid, so we need to account for that
-  # #We do so by taking advantage of the multislab capabilities in NCO
-  # #See here: http://nco.sourceforge.net/nco.html#mlt
-  # extract.ROI <- as.vector(extent(this.sp))
-  # if(all(extract.ROI[1:2]<0)) {
-  #   #Just need to adjust coordinates
-  #   extract.ROI[1:2] <- Pacific.centered(extract.ROI[1:2])
-  #   ROI.str <- do.call(sprintf,c("-d X,%.2f,%.2f -d Y,%.2f,%.2f",
-  #                                as.list(extract.ROI)))
-  # } else if(identical(extract.ROI[1:2],c(-180,180))) { 
-  #   #Download the whole lot (in the X-direction anyway)
-  #   ROI.str <- do.call(sprintf,c("-d Y,%.2f,%.2f",
-  #                                as.list(extract.ROI[3:4])))
-  # 
-  #   } else if(any(extract.ROI[1:2]<0)) { 
-  #     stop("don't know how to handle crossing of Greenwich properly")
-  #   # #Need to make multi slabs, as we are crossing the wrapping point at Greenwich
-  #   # slab.1 <- c(0,max(extract.ROI[1:2]))
-  #   # slab.2 <- c(Pacific.centered(min(extract.ROI[1:2])),360)
-  #   # ROI.str <- do.call(sprintf,c("-d X,%.2f,%.2f -d X,%.2f,%.2f -d Y,%.2f,%.2f",
-  #   #                              as.list(c(slab.1,slab.2,extract.ROI[3:4]))))
-  #   
-  # } else {
-  #   ROI.str <- do.call(sprintf,c("-d X,%.2f,%.2f -d Y,%.2f,%.2f",
-  #                                as.list(extract.ROI)))
-  # }
-  # 
-  
-  #However!! We can save ourselves a lot of pain at a later stage by converting from a
-  #Pacific centered to a Greenwich centered orientation right now. We take advantage of the
-  #multislab functionality of nco to do this
- # ROI.str <- "--msa_user_order -d X,181.00,360.00 -d X,0.00,180.00"
-  ROI.str <- ""
-  
-  if(nrow(to.download)!=0){
+  #Download by chunks
+  download.fn <- function(i) {   
+    log_msg("Downloading chunk %i of %i from %s (S%i) ...\n",i,nrow(to.download),meta$mdl.str,
+            to.download$starts[i])
     
-    #Download by chunks
-    download.fn <- function(i) {   
-      log_msg("Downloading chunk %i of %i from %s (S%i) ...\n",i,nrow(to.download),mdl.id,to.download$starts[i])
-      
-      #Setup time range
-      timeROI.str <- sprintf("-F -d S,%i",to.download$idxs[i])  #Remember Fortran indexing..
-      
-      #Setup for download
-      download.fname <- sprintf("%s_S%03i.nc",mdl.cfg$Model,to.download$starts[i])
-      download.full.path <- file.path(download.dir,download.fname)
-      download.cmd <- ncks("--netcdf4 --deflate 1",  #Deflation
-                           ROI.str,
-                           timeROI.str,
-                           mdl.cfg$URL,
-                           download.full.path)
-      
-      #Download missing file
-      condexec(1,download.cmd,silent=TRUE)
-      
-      #Set _FillValue
-      # missval.cmd <- ncrename("-a .missing_value,_FillValue",download.full.path)
-      # condexec(2,missval.cmd,silent=TRUE)
-      # 
-      # # Convert X axis to [-180,180]
-      # # Note that this is not necessary when we are using cdo later to do the remapping
-      # ncid <- nc_open(download.full.path,write=TRUE)
-      # new.X <- Greenwich.centered(ncid$dim$X$vals)
-      # ncvar_put(ncid,"X",vals=new.X)
-      # nc_close(ncid)
+    #Setup time range
+    timeROI.str <- sprintf("-F -d S,%i",to.download$idxs[i])  #Remember Fortran indexing..
+    
+    #Setup for download
+    download.fname <- sprintf("%s_S%03i.nc",meta$Model,to.download$starts[i])
+    download.full.path <- file.path(download.dir,download.fname)
+    download.cmd <- ncks("--netcdf4 --deflate 1",  #Deflation
+                         ROI.str,
+                         timeROI.str,
+                         meta$URL,
+                         download.full.path)
 
-    }
-
-    mclapply(seq(nrow(to.download)),download.fn)    
-
-  } else {
-    log_msg("Skipping download from %s (all dates present).\n",mdl.id)
-  } 
-}
+    #Set _FillValue
+    # missval.cmd <- ncrename("-a .missing_value,_FillValue",download.full.path)
+    # condexec(2,missval.cmd,silent=TRUE)
+    # 
+    # # Convert X axis to [-180,180]
+    # # Note that this is not necessary when we are using cdo later to do the remapping
+    # ncid <- nc_open(download.full.path,write=TRUE)
+    # new.X <- Greenwich.centered(ncid$dim$X$vals)
+    # ncvar_put(ncid,"X",vals=new.X)
+    # nc_close(ncid)
+    
+  }
+  
+  mclapply(seq(nrow(to.download)),download.fn)    
+  
+} else {
+  log_msg("Skipping download from %s (all dates present).\n",mdl.id)
+} 
 
 # ========================================================================
 # Complete
