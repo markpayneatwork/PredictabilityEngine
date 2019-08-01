@@ -34,7 +34,7 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 library(PredEng)
 library(dplyr)
 library(pbapply)
-load("objects/configuration.RData")
+pcfg <- readRDS(PE.cfg$config.path)
 
 #==========================================================================
 # Configure
@@ -42,29 +42,25 @@ load("objects/configuration.RData")
 #Take input arguments, if any
 if(interactive()) {
   cfg.id <- 1
-  set.debug.level(0)  #0 complete fresh run
-  set.condexec.silent(TRUE)
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
   set.nco.defaults("--ovewrite")
   options("mc.cores"= 7)
 } else {
   #Taking inputs from the system environment
-  cfg.id <- as.numeric(Sys.getenv("PBS_ARRAYID"))
-  if(cfg.id=="") stop("Cannot find PBS_ARRAYID")
+  cfg.id <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
+  if(cfg.id=="") stop("Cannot find LSB_JOBINDEX")
   #Do everything and tell us all about it
-  set.debug.level(0)  #0 complete fresh run
-  set.condexec.silent(FALSE)
   set.cdo.defaults()
   set.log_msg.silent(FALSE)
-  options("mc.cores"= as.numeric(Sys.getenv("PBS_NUM_PPN"))-1)
+  options("mc.cores"= as.numeric(Sys.getenv("LSB_MAX_NUM_PROCESSORS"))-1)
 }
 
 #Other configurations
 set.nco.defaults("--overwrite")
 
 #Retrieve configurations
-this.sp <- get.this.sp(file.path(PE.cfg$dirs$cfg,"NMME_Ensmean.cfg"),cfg.id,pcfg)
+this.sp <- get.this.sp(file.path(PE.cfg$dirs$job.cfg,"NMME_Ensmean.cfg"),cfg.id,pcfg)
 config.summary(pcfg,this.sp)
 
 #Configure directories
@@ -81,8 +77,7 @@ anom.dir <- define_dir(ensmean.dir,"A.anoms")
 metadat.l <- list()
 for(m in pcfg@NMME){
   if(class(m)=="data.source") {
-    load(file.path(base.dir,m@name,PE.cfg$files$realmean.meta))
-    metadat.l[[m@name]] <- realmean.meta
+    metadat.l[[m@name]] <- readRDS(file.path(base.dir,m@name,PE.cfg$files$realmean.meta))
   }
 }
 metadat.all <- bind_rows(metadat.l)
@@ -103,8 +98,7 @@ ensmean.fn <- function(em.gp){
                              gsub("^.*?(_.*)_realmean.nc$","NMME-ensmean\\1_anom.nc",basename(em.gp$fname[1])))
 
   ensmean.cmd <- cdo("ensmean",em.gp$fname,ensmean.fname)
-  condexec(1,ensmean.cmd)
-  
+
   #Store new meta data
   res <- em.gp[1,] %>%
     select(-fname,-n.realizations) %>%
@@ -118,7 +112,7 @@ ensmean.meta.l <- pblapply(ensmean.group,ensmean.fn,cl=getOption("mc.cores"))
 #Form meta data
 ensmean.meta <- bind_rows(ensmean.meta.l) %>%
                 mutate(name="NMME-ensmean")
-save(ensmean.meta,file=file.path(ensmean.dir,PE.cfg$files$realmean.meta))
+saveRDS(ensmean.meta,file=file.path(ensmean.dir,PE.cfg$files$realmean.meta))
 
 
 #==========================================================================

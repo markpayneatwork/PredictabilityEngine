@@ -33,18 +33,16 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 
 #Helper functions, externals and libraries
 library(PredEng)
-library(dplyr)
+library(tidyverse)
 library(pbapply)
-load("objects/configuration.RData")
+pcfg <- readRDS(PE.cfg$config.path)
 
 #'==========================================================================
 # Configure ####
 #'==========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.no <- 2
-  set.debug.level(0)  #0 complete fresh run
-  set.condexec.silent(TRUE)
+  cfg.no <- 1
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
   set.nco.defaults("--ovewrite")
@@ -55,8 +53,6 @@ if(interactive()) {
   cfg.no <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
   if(cfg.no=="") stop("Cannot find LSB_JOBINDEX")
   #Do everything and tell us all about it
-  set.debug.level(0)  #0 complete fresh run
-  set.condexec.silent(FALSE)
   set.cdo.defaults()
   set.log_msg.silent(FALSE)
   options("mc.cores"= as.numeric(Sys.getenv("LSB_MAX_NUM_PROCESSORS"))-1)
@@ -68,7 +64,7 @@ if(interactive()) {
 set.nco.defaults("--overwrite")
 
 #Retrieve configurations
-cfg.fname <- file.path(PE.cfg$dirs$cfg,"NMME.cfg")
+cfg.fname <- file.path(PE.cfg$dirs$job.cfg,"NMME_by_sources.cfg")
 these.cfgs <- get.this.cfgs(cfg.fname)
 this.sp <- get.this.sp(cfg.fname,cfg.no,pcfg)
 this.src <- get.this.src(cfg.fname,cfg.no,pcfg)
@@ -83,13 +79,13 @@ realmean.dir <- define_dir(base.dir,"B.realmean")
 analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$files$analysis.grid)
 remapping.wts.fname <- file.path(base.dir,PE.cfg$files$remapping.wts)
 
-config.summary(pcfg,this.src,this.sp)
+config.summary(pcfg,cfg.no,this.src,this.sp)
 
 #'==========================================================================
 # Setup ####
 #'==========================================================================
 #Load fragstack metadata
-load(file.path(base.dir,PE.cfg$files$fragstack.meta))
+fragstack.meta <- readRDS(file.path(base.dir,PE.cfg$files$fragstack.meta))
 
 #Modify meta data to include climatology and anomaly filenames
 anom.meta <- mutate(fragstack.meta,
@@ -112,15 +108,15 @@ log_msg("Generating climatologies...\n")
 clim.fn <- function(cf) {
   #Setup   
   clim.out.fname <- unique(cf$clim.fname)
-
+  
   #Calculate climatology use CDO - averaging over realisation means (levels) as well
   ensmean.tmp <- tempfile()
-  condexec(1,clim.cmd <- cdo("ensmean",
-                             cf$fragstack.fname,
-                             ensmean.tmp))
-  condexec(1,clim.cmd <- cdo("vertmean",
-                             ensmean.tmp,
-                             clim.out.fname))
+  clim.cmd <- cdo("ensmean",
+                  cf$fragstack.fname,
+                  ensmean.tmp)
+  clim.cmd <- cdo("vertmean,weights=F",  #No layer bonds available, so don't weight
+                  ensmean.tmp,
+                  clim.out.fname)
   unlink((ensmean.tmp))
   return(invisible(NULL))
   
@@ -158,9 +154,7 @@ anom.fn <- function(am) {
                   am$fragstack.fname,
                   am$clim.fname,
                   am$fname)
-  
-  condexec(3,anom.cmd)
-  
+
   ### 2018.10.05 Functionality removed, remapping is now done in E2
   # #Remap - using weights
   # # condexec(3,regrid.cmd <- cdo("-f nc",
@@ -178,7 +172,7 @@ anom.fn <- function(am) {
 dmp <- pblapply(df2list(anom.meta),anom.fn,cl=getOption("mc.cores"))
 
 #Done. Save the results
-save(anom.meta,file=file.path(base.dir,"Anom_metadata.RData"))
+saveRDS(anom.meta,file=file.path(base.dir,PE.cfg$files$anom.meta))
 
 #'==========================================================================
 # Realization means ####
@@ -197,16 +191,15 @@ realmean.meta <- mutate(anom.meta,
 log_msg("Processing realization means...\n")
 realmean.fn <- function(this.rm) {
   #Average
-  realmean.cmd <- cdo("vertmean",this.rm$anom.fname,this.rm$fname)
-  condexec(4,realmean.cmd)
-  
+  realmean.cmd <- cdo("vertmean,weights=F",this.rm$anom.fname,this.rm$fname)
+
   return(invisible(NULL))
   
 }
 dmp <- pblapply(df2list(realmean.meta),realmean.fn,cl=getOption("mc.cores"))
 
 #Save data
-save(realmean.meta,file=file.path(base.dir,"Realmean_metadata.RData"))
+saveRDS(realmean.meta,file=file.path(base.dir,PE.cfg$files$realmean.meta))
 
 
 #'==========================================================================

@@ -38,24 +38,19 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 
 #Helper functions, externals and libraries
 library(PredEng)
+library(tidyverse)
 library(reshape2)
-library(stringr)
 library(ncdf4)
 library(raster)
-library(lubridate)
-library(tibble)
-library(dplyr)
 library(parallel)
-load("objects/configuration.RData")
+pcfg <- readRDS(PE.cfg$config.path)
 
 #'========================================================================
 # Configuration ####
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.no <- 2
-  set.debug.level(0)  #0 complete fresh run
-  set.condexec.silent(TRUE)
+  cfg.no <- 1
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
   set.nco.defaults("--ovewrite")
@@ -66,21 +61,16 @@ if(interactive()) {
   cfg.no <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
   if(cfg.no=="") stop("Cannot find LSB_JOBINDEX")
   #Do everything and tell us all about it
-  set.debug.level(0)  #0 complete fresh run
-  set.condexec.silent(FALSE)
   set.cdo.defaults()
   set.log_msg.silent(FALSE)
-  options("mc.cores"= as.numeric(Sys.getenv("LSB_MAX_NUM_PROCESSORS"))-1)
-  options("mc.cores"=1)  
-  
-  
+  options("mc.cores"= as.numeric(Sys.getenv("LSB_MAX_NUM_PROCESSORS")))
 }
 
 #Other configurations
 set.nco.defaults("--overwrite")
 
 #Retrieve configurations
-cfg.file <- file.path(PE.cfg$dirs$cfg,"NMME.cfg")
+cfg.file <- file.path(PE.cfg$dirs$job.cfg,"NMME_by_sources.cfg")
 cfgs <- get.this.cfgs(cfg.file)
 this.sp <- get.this.sp(cfg.file,cfg.no,pcfg)
 this.src <- get.this.src(cfg.file,cfg.no,pcfg)
@@ -95,13 +85,13 @@ misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
 analysis.grid.fname <- file.path(pcfg@scratch.dir,this.sp@name,PE.cfg$files$analysis.grid)
 
 #Display configuration
-config.summary(pcfg,this.src,this.sp)
+config.summary(pcfg,cfg.no,this.src,this.sp)
 
 #'========================================================================
 # Setup ####
 #'========================================================================
 #Get metadata of files available
-downloaded.fnames <- dir(data.dir,full.names = TRUE)
+downloaded.fnames <- dir(data.dir,full.names = TRUE,pattern=".nc$")
 
 #'========================================================================
 # Explode data ####
@@ -120,7 +110,7 @@ for(i in seq(downloaded.fnames)) {
   ncid <- nc_open(this.file)
   all.SL <- expand.grid(S.idx=seq(ncid$dim$S$len),
                         L.idx=seq(ncid$dim$L$len)) %>%
-    as.tibble() %>%
+    as_tibble() %>%
     mutate(S.val=ncid$dim$S$val[S.idx],
            L.val=ncid$dim$L$val[L.idx],
            start.date=PE.cfg$NMME.epoch.start+months(S.val),
@@ -152,8 +142,7 @@ for(i in seq(downloaded.fnames)) {
                         SL.ROI.str,
                         this.file,
                         frag.temp)
-    condexec(1,explode.cmd)
-    
+
     #This leaves us with a file that is still 5D, but there are two
     #degenerate dimensions now. If we drop them, then we end up with
     #something that CDO can work with. For safety's sake, we first
@@ -168,15 +157,14 @@ for(i in seq(downloaded.fnames)) {
     #Now drop the start.date and lead dimensions
     ncwa.cmd <- ncwa(sprintf("-a %s,S,L",this.src@var),
                      frag.temp,frag.temp)
-    condexec(1,ncwa.cmd)
 
     
     #This leaves us with something that is compatible with CDO. Now we can do the
     #remapping onto the grid of interest.
-    condexec(2,regrid.cmd <- cdo("-f nc4",
-                                 csl("remapbil", analysis.grid.fname),
-                                 frag.temp,
-                                 fragstack.full.path))
+    regrid.cmd <- cdo("-f nc4",
+                      csl("remapbil", analysis.grid.fname),
+                      frag.temp,
+                      fragstack.full.path)
     
     #Finally, drop the temp file
     file.remove(frag.temp)
@@ -205,7 +193,7 @@ fragstack.meta <- bind_rows(fragstack.meta.l) %>%
              type=this.src@type,
              .before=1)
 
-save(fragstack.meta,file=file.path(base.dir,PE.cfg$files$fragstack.meta))
+saveRDS(fragstack.meta,file=file.path(base.dir,PE.cfg$files$fragstack.meta))
 
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
