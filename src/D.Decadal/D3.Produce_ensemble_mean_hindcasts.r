@@ -57,7 +57,7 @@ if(interactive()) {
 }
 
 #Extract configurations
-this.sp <- get.this.sp(file.path(PE.cfg$dirs$job.cfg,"Decadal.cfg"),cfg.id,pcfg)
+this.sp <- get.this.sp(file.path(PE.cfg$dirs$job.cfg,"Decadal_ensmean.cfg"),cfg.id,pcfg)
 
 #Directory setup
 sp.dir <- file.path(pcfg@scratch.dir,this.sp@name)
@@ -74,7 +74,7 @@ log_msg("Calculating Ensemble mean for %s subdomain ...\n",this.sp@name)
 metadat.l <- list()
 for(m in pcfg@Decadal){
   if(class(m)=="data.source") {
-    realmean.meta <- readRDS(file.path(base.dir,m@id,PE.cfg$files$realmean.meta))
+    realmean.meta <- readRDS(file.path(base.dir,m@name,PE.cfg$files$realmean.meta))
     metadat.l[[m@name]] <- realmean.meta
   }
 }

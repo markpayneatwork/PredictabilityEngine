@@ -20,16 +20,17 @@
 # using 
 #   make status
 #
-# Available targets
+# Additional targets
 #    help      ; Displays Makefile header with list of target
 #    purge     : Remove all todo files
 #    clean     : Remove all log files from working directory
 #    status    : List of available types and their current status
 #    setup     : Creates necessary subdirectories
-#    install   : Installs various R packages
-#    NMME_sync : Downloads NMME data via OpenDAP
+#    install   : Installs support R packages
 #
-#    collate   : Collates summary statistics (non-parallel)
+#    NMME_sync : Downloads NMME data via OpenDAP
+#    PPStats   : Collates statistics (non-parallel) and postprocesses them
+#
 #    cluster   : Used together with TYPE argument to build a qsub job
 #                and distribute across cluster
 # ----------------------------------------------------------------------
@@ -55,16 +56,16 @@ default: help status
 
 #-------------------------------------
 #NMME
-NMME NMME_Ensmean Stats Decadal Decadal_Ensmean Observations:
+$(TYPES):
 	make cluster TYPE=$@
 
 cluster:  todo $(OKs)
-	@TASK_IDS=`paste -s -d "," $(TODO)`; bsub -J PE_$(TYPE)[$$TASK_IDS] -o PE_$(TYPE).%J.%I.out -e PE_$(TYPE).%J.%I.err -n 1 -R "rusage[mem=8GB]" -W 72:00   $(MASTER) $(TYPE) 
+	@TASK_IDS=`paste -s -d "," $(TODO)`; bsub -J PE_$(TYPE)[$$TASK_IDS] -o PE_$(TYPE).%J.%I.out -e PE_$(TYPE).%J.%I.err -n 1 -R "rusage[mem=8GB]" -R "span[hosts=-1]" -W 72:00 $(MASTER) $(TYPE) 
 	
 $(OUTDIR)/%.ok: 
 	@echo $* >> $(TODO)
 
-collate:
+PPStats:
 	@TYPE=$@; bsub -J PE_$$TYPE -o PE_$$TYPE.%J.%I.out -e PE_$$TYPE.%J.%I.err -n 1 -R "rusage[mem=8GB]" -W 72:00 $(MASTER) $$TYPE 
 	
 #-------------------------------------
@@ -74,7 +75,7 @@ todo: $(TODOs)
 $(TODO_DIR)/%.todo: FORCE 
 	@cat /dev/null  > $@ 
 
-status: $(addsuffix .status,$(TYPES))
+status: $(sort $(addsuffix .status,$(TYPES)))
 
 %.status: $(CFG_DIR)/%.cfg
 	@echo `printf "%-50s" "$*"`  : `ls $(CFG_DIR)/$*/ | wc -l` out of `grep -c "^[0-9]\+," $<` jobs

@@ -38,10 +38,9 @@ decadal.dir <- file.path(PE.cfg$dirs$datasrc,"Decadal")
 #originally by SPECS
 SST.Decadal <- list()
 SST.Decadal$IPSL  <- data.source(name="IPSL-CM5A-LR",
-                                 id="IPSL-CM5A-LR",
                                  type="Decadal",
-                                 source=dir(file.path(decadal.dir,"IPSL-CM5A-LR"),
-                                            pattern="\\.nc$",full.names = TRUE),
+                                 sources=list(dir(file.path(decadal.dir,"IPSL-CM5A-LR"),
+                                            pattern="\\.nc$",full.names = TRUE)),
                                  var="tos",
                                  realization.fn=function(f) {
                                    underscore_field(f,6)},
@@ -54,17 +53,15 @@ SST.Decadal$IPSL  <- data.source(name="IPSL-CM5A-LR",
 SST.Decadal$"MPI-MR" <-  new("data.source",
                              SST.Decadal$IPSL,
                              name="MPI-ESM-MR",
-                             id="MPI-ESM-MR",
-                             source=dir(file.path(decadal.dir,"MPI-ESM-MR"),
-                                        pattern="\\.nc$",full.names = TRUE))
+                             sources=list(dir(file.path(decadal.dir,"MPI-ESM-MR"),
+                                        pattern="\\.nc$",full.names = TRUE)))
 
 #MPI-LR is different,
 SST.Decadal$"MPI-LR" <-  data.source(name="MPI-ESM-LR",
-                                     id="MPI-ESM-LR",
                                      type="Decadal",
                                      var="thetao",
-                                     source=dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","thetao"),
-                                                pattern="\\.nc$",full.names = TRUE),
+                                     sources=list(dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","thetao"),
+                                                pattern="\\.nc$",full.names = TRUE)),
                                      realization.fn=CMIP5_realisation,
                                      init.fn=function(f){
                                        init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
@@ -74,10 +71,9 @@ SST.Decadal$"MPI-LR" <-  data.source(name="MPI-ESM-LR",
 
 #MPI - NCEP requires all three to be specified
 SST.Decadal$"MPI-NCEP" <- data.source(name="MPI-NCEP-forced",
-                                      id="MPI-NCEP-forced",
                                       type="Decadal",
-                                      source=dir(file.path(decadal.dir,"MPI-ESM-LR_NCEP-forced"),
-                                                 pattern="\\.nc$",full.names = TRUE),
+                                      sources=list(dir(file.path(decadal.dir,"MPI-ESM-LR_NCEP-forced"),
+                                                 pattern="\\.nc$",full.names = TRUE)),
                                       var="var2",
                                       realization.fn=function(f){return(rep("r1",length(f)))},
                                       date.fn=function(f){
@@ -93,10 +89,9 @@ SST.Decadal$"MPI-NCEP" <- data.source(name="MPI-NCEP-forced",
 
 #GFDL is largely in CMIP5 format
 SST.Decadal$GFDL <-   data.source(name="GFDL-CM2.1",
-                                  id="GFDL-CM2.1",
                                   type="Decadal",
-                                  source=dir(file.path(decadal.dir,"GFDL-CM2.1"),
-                                             pattern="\\.nc$",full.names = TRUE),
+                                  sources=list(dir(file.path(decadal.dir,"GFDL-CM2.1"),
+                                             pattern="\\.nc$",full.names = TRUE)),
                                   var="tos",
                                   realization.fn=CMIP5_realisation,
                                   init.fn=function(f){
@@ -109,7 +104,7 @@ SST.Decadal$GFDL <-   data.source(name="GFDL-CM2.1",
 #This could be split into multiple sub-sources, but then that starts to create problems when
 #it comes time to calculate the ensemble mean etc. We need to think that one through a bit....
 CESM.DPLE.src <-   data.source(name="CESM-DPLE",
-                                       id="foo",
+                               var="SST",
                                type="Decadal",
                                levels=as.numeric(NA),
                                time.correction="-15days",
@@ -121,23 +116,13 @@ CESM.DPLE.src <-   data.source(name="CESM-DPLE",
                                  return(ymd(sprintf("%s-01",val)))},
                                date.fn=date.by.brick)
 
-n.CESM.chunks <- 10
-CESM.DPLE.SST.df <- tibble(fname=dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SST"),
-                                      pattern="\\.nc$",full.names = TRUE),
-                            init=factor(CESM.DPLE.src@init.fn(fname)),
-                            chunk=as.numeric(init)%%n.CESM.chunks)
-CESM.DPLE.SST <- lapply(split(CESM.DPLE.SST.df,CESM.DPLE.SST.df$chunk),function(x) {
-  rtn <- CESM.DPLE.src
-  rtn@var <- "SST"
-  rtn@source <- x$fname
-  rtn@id <- sprintf("CESM-DPLE-%03i",unique(x$chunk))
-  return(rtn)
-})
+CESM.DPLE.src@sources <- list(dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SST"),
+                                      pattern="\\.nc$",full.names = TRUE))
 
-SST.Decadal <- c(SST.Decadal,CESM.DPLE.SST)
+SST.Decadal$CESM.DPLE <- CESM.DPLE.src
 
 #Set list names and ids
-names(SST.Decadal) <- sapply(SST.Decadal,slot,"id")
+names(SST.Decadal) <- sapply(SST.Decadal,slot,"name")
 
 
 #'========================================================================
@@ -153,10 +138,9 @@ MPI.LR.srcs <- dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","so"),
                    pattern="\\.nc$",full.names = TRUE) %>%
                 subset(!grepl("r1i1p1",.))
 Sal.Decadal$"MPI-LR" <-  data.source(name="MPI-ESM-LR",
-                                     id="MPI-ESM-LR",
                                      type="Decadal",
                                      var="so",
-                                     source=MPI.LR.srcs,
+                                     sources=list(MPI.LR.srcs),
                                      realization.fn=CMIP5_realisation,
                                      init.fn=function(f){
                                        init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
@@ -164,22 +148,15 @@ Sal.Decadal$"MPI-LR" <-  data.source(name="MPI-ESM-LR",
                                        return(init.date)},
                                      date.fn=date.by.brick)
 #CESM-DPLE
-CESM.DPLE.SALT.df <- tibble(fname=dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SALT"),
-                                      pattern="\\.nc$",full.names = TRUE),
-                            init=factor(CESM.DPLE.src@init.fn(fname)),
-                            chunk=as.numeric(init)%%n.CESM.chunks)
-CESM.DPLE.SALT <- lapply(split(CESM.DPLE.SALT.df,CESM.DPLE.SALT.df$chunk),function(x) {
-  rtn <- CESM.DPLE.src
-  rtn@var <- "SALT"
-  rtn@source <- x$fname
-  rtn@id <- sprintf("CESM-DPLE-%03i",unique(x$chunk))
-  return(rtn)
-  })
-Sal.Decadal <- c(Sal.Decadal,CESM.DPLE.SALT)
+CESM.DPLE.SALT <- data.source(CESM.DPLE.src,
+                      var="SALT",
+                      sources=list(dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SALT"),
+                                      pattern="\\.nc$",full.names = TRUE)))
+Sal.Decadal$CESM.DPLE.SALT <- CESM.DPLE.SALT
 
 
 #Set list names
-names(Sal.Decadal) <- sapply(Sal.Decadal,slot,"id")
+names(Sal.Decadal) <- sapply(Sal.Decadal,slot,"name")
 
 
 # ========================================================================
@@ -210,31 +187,29 @@ names(Sal.Decadal) <- sapply(Sal.Decadal,slot,"id")
 # ========================================================================
 SST_obs <- list()
 SST_obs$HadISST <- data.source(name="HadISST",
-                               id="HadISST",
                                type="Observations",
                                var="sst",
-                               source="data_srcs/Observations/HadISST/HadISST_sst.nc")
+                               sources=list("data_srcs/Observations/HadISST/HadISST_sst.nc"))
 SST_obs$EN4  <- data.source(name="EN4",
-                            id="EN4",
                             type="Observations",
                             var="temperature",
-                            source=dir("data_srcs/Observations/EN4/",
-                                       pattern="\\.zip$",full.names = TRUE))
+                            sources=list(dir("data_srcs/Observations/EN4/",
+                                       pattern="\\.zip$",full.names = TRUE)))
 
 Sal.obs <- list()
 Sal.obs$EN4  <- data.source(name="EN4",
-                            id="EN4",
                             type="Observations",
                             var="salinity",
-                            source=dir("data_srcs/Observations/EN4/",
-                                       pattern="\\.zip$",full.names = TRUE))
+                            sources=list(dir("data_srcs/Observations/EN4/",
+                                       pattern="\\.zip$",full.names = TRUE)))
 
 
 # ========================================================================
 # Setup NMME models
 # ========================================================================
 library(readr)
-NMME.cfg <- read_csv2(file.path(PE.cfg$dirs$datasrc,"NMME","NMME_SST_urls.csv"))
+NMME.cfg <- read_csv2(file.path(PE.cfg$dirs$datasrc,"NMME","NMME_SST_urls.csv"),
+                      col_types = cols())
 NMME.mdls <- split(NMME.cfg,NMME.cfg$Model)
 NMME.sst.l <- list()
 for(mdl.name in names(NMME.mdls)){
@@ -242,10 +217,9 @@ for(mdl.name in names(NMME.mdls)){
   mdl.src <- mdl$URL
   names(mdl.src) <- mdl$type
   obj <- data.source(name=mdl.name,#sprintf("NMME-%s",mdl.name),
-                     id=mdl.name,
                      type="NMME",
                      var="sst",
-                     source=mdl.src)  
+                     sources=list(mdl.src))  
   NMME.sst.l[[mdl.name]] <- obj
 }
 
@@ -283,10 +257,9 @@ CMIP5.grp <- split(CMIP5.meta,CMIP5.meta$CMIP5.chunk)
 CMIP5.mdls.l <- list()
 for(i in seq(CMIP5.grp)) {
   CMIP5.mdls.l[[i]] <- data.source(name=sprintf("Chunk %03i",i),
-                                   id=sprintf("Chunk %03i",i),
                                    type="CMIP5",
                                    var="tos",
-                                   source=CMIP5.grp[[i]]$fname)
+                                   sources=list(CMIP5.grp[[i]]$fname))
 }
 names(CMIP5.mdls.l) <- sapply(CMIP5.mdls.l,slot,"name")
 

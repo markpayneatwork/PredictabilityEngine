@@ -42,7 +42,7 @@
 PredEng.config <- setClass("PredEng.config",
                            slots=list(project.name="character",
                                       recalculate="logical",
-                                      Observations="PredEng.source",
+                                      Observations="data.source",
                                       Decadal="list",
                                       NMME="list",
                                       CMIP5="list",
@@ -115,8 +115,8 @@ setMethod("show","PredEng.config", function(object) {
   show.slot <- function(ob,slt) {
     obj <- slot(ob,slt)
     if(class(obj) %in% c("logical","formula","character",
-                         "numeric","Extent","integer","PredEng.list","list",
-                         "data.source","data.ensemble","PredEng.source")) {
+                         "numeric","Extent","integer","list",
+                         "data.source")) {
       cat(sprintf("%-20s : ",slt))
     } else {return(NULL)}
     if(is(obj,"formula")) {
@@ -142,7 +142,7 @@ setMethod("show","PredEng.config", function(object) {
           cat("\n")
         }
           
-   } else if(is(obj,"PredEng.source") ){
+   } else if(is(obj,"data.source") ){
       cat(obj@name,"\n")
     # } else if(is(obj,"Date") & length(obj) < 5){
     #   cat(as.character(obj),"\n")

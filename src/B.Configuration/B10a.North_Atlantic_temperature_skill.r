@@ -1,5 +1,5 @@
 #'========================================================================
-# B9. Mackerel Summer Feeding
+# B10a. North Atlantic SST skill
 #'========================================================================
 #
 # by Mark R Payne
@@ -8,10 +8,8 @@
 #
 # Created Thu Jul 26 14:50:42 2018
 #
-# Defines the configuration parameters for assessing the predictability of
-# Mackerel summer feeding conditions and the possible predictability of the
-# the Mackerel war
-
+# Assesses the predictability of SST in the North Atlantic
+#
 # This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 # You are largely free to do what you like with it, so long as you "attribute"
 # me for my contribution. See the fine print at the end for exact details.
@@ -44,8 +42,8 @@ source("src/B.Configuration/B0.Define_common_data_srcs.r")
 # Project Configuration ####
 #'========================================================================
 #Global project configuration
-pcfg <- PredEng.config(project.name= "Mackerel_summer",
-                       recalculate=TRUE,
+pcfg <- PredEng.config(project.name= "NA_SST_Predictability",
+                       recalculate=FALSE,
                        MOI=8,
                        average.months=FALSE,
                        clim.years=1983:2010,  
@@ -72,39 +70,9 @@ if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
 #'========================================================================
 #Set global variables
 pcfg@use.global.ROI <- TRUE
-pcfg@global.ROI <- extent(-70,0,50,80)
-pcfg@global.res  <- 0.5
+pcfg@global.ROI <- extent(-70,0,40,70)
+pcfg@global.res  <- 1 #0.25
 pcfg@retain.realizations <- TRUE
-
-#Import EEZ's
-load("resources/EEZs/EEZs.RData",verbose=TRUE)
-
-#Split Greenlandic EEZ into an east and west EEZ, and carve off the top
-eez.gland.full <- filter(eez.sf,str_detect(GeoName,c("Greenland")))
-N.lim <- 70
-greenland.EW.split <- -45
-eez.gland.W <- st_crop(eez.gland.full,xmin=-180,xmax=greenland.EW.split,ymin=0,ymax=N.lim) %>%
-                mutate(GeoName="West_Greenland")
-eez.gland.E <- st_crop(eez.gland.full,xmin=greenland.EW.split,xmax=180,ymin=0,ymax=N.lim) %>%
-                mutate(GeoName="East_Greenland")
-
-#Extract Iceland
-eez.iceland <- filter(eez.sf,str_detect(GeoName,c("Iceland")),Pol_type=="200NM") %>%
-               mutate(GeoName="Iceland")
-
-
-#Correct names and add to object
-eez.sel <- rbind(eez.iceland, eez.gland.E,eez.gland.W) 
-EEZ.objs <- list()
-for(i in seq(nrow(eez.sel))) {
-  this.sp <- eez.sel[i,]
-  EEZ.objs[[i]] <- spatial.domain(name=as.character(this.sp$GeoName),
-                                  desc=this.sp$GeoName,
-                                  boundary=as(this.sp$geometry,"Spatial"))
-}
-names(EEZ.objs) <- eez.sel$GeoName
-pcfg@spatial.subdomains <- EEZ.objs
-
 
 #'========================================================================
 # Extraction configuration ####
@@ -116,43 +84,11 @@ pcfg@spatial.subdomains <- EEZ.objs
 #'========================================================================
 #Configure summary stats
 statsum.l <- list()
-statsum.l[[1]] <- area.threshold(name = "Area above 8.5 degrees",
-                                 skill.metrics=c("cor","RMSE"),
-                                 above=TRUE,
-                                 use.realmeans=TRUE,
-                                 threshold=8.5)  #Based on Teunis' paper
-# statsum.l[[2]] <- threshold(name="Threshold Field",
-#                             skill.metrics="brier",
-#                             is.global.stat = TRUE,
-#                             above=TRUE,
-#                             use.realmeans=FALSE,
-#                             threshold=8.5)  #Based on Teunis' paper
-statsum.l[[2]] <- pass.through(name="Temperature anomaly",
+statsum.l[[1]] <- pass.through(name="Anomaly",
                                skill.metrics = "correlation",
                                is.global.stat=TRUE,
                                use.anomalies = TRUE,
                                use.realmeans=TRUE)
-
-# statsum.l[[3]]  <- spatial.mean(name="Spatial mean - means",
-#                                 use.realmeans=TRUE,
-#                                 use.anomalies=TRUE)
-# statsum.l[[4]]  <- spatial.mean(name="Spatial mean - realizations",
-#                                 use.realmeans=FALSE,
-#                                 use.anomalies=TRUE)
-#statsum.l[[3]] <-isoline.lat(threshold=11)
-
-#Setup habitat suitability functionality
-habitat.mdl.dat <- readRDS("resources/Mackerel_summer_QR_values.rds")
-habitat.mdl.fn <-  approxfun(habitat.mdl.dat$temp,habitat.mdl.dat$value,rule=2)
-statsum.l[[3]] <-  habitat.suitability(name="Habitat - means",
-                                        model=habitat.mdl.fn,
-                                        use.realmeans=TRUE,
-                                        use.anomalies = FALSE)
-statsum.l[[4]] <-  habitat.suitability(name="Habitat - realisations",
-                                        model=habitat.mdl.fn,
-                                        use.realmeans=FALSE,
-                                        use.anomalies = FALSE)
-
 
 #Merge it all in
 names(statsum.l) <- sapply(statsum.l,slot,"name")

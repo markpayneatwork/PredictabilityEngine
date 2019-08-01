@@ -10,7 +10,7 @@ LazyData: TRUE
 Depends:
     raster,
     ClimateTools,
-    dplyr,
+    tidyverse,
     lubridate,
     stringr,
     sp

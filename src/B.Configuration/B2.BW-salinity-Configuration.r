@@ -73,18 +73,19 @@ pcfg@spatial.subdomains <- sp.objs
 pcfg@Observations <- Sal.obs$EN4
 pcfg@Observations@levels <- 17:23
 
-
 #Decadal salinity models
 pcfg@Decadal <- Sal.Decadal
-
-#Set vertical levels
 pcfg@Decadal[["MPI-ESM-LR"]]@levels <- 13:19  #Set depth layers
+pcfg@Decadal[["CESM-DPLE"]]@levels <- 24:35    
 
-for(i in seq(pcfg@Decadal)) {
-  if(pcfg@Decadal[[i]]@name=="CESM-DPLE"){
-    pcfg@Decadal[[i]]@levels <- 24:35    
-  }
-}
+#Break CESM-DPLE into chunks
+n.CESM.chunks <- 10
+CESM.src <- pcfg@Decadal[["CESM-DPLE"]]
+chunk.src.df <- tibble(source=unlist(CESM.src@sources),
+                       init=factor(CESM.src@init.fn(source)),
+                       chunk.num=(as.numeric(init)-1)%%n.CESM.chunks,
+                       chunk.str=sprintf("Chunk_%03i",chunk.num))
+pcfg@Decadal[["CESM-DPLE"]]@sources <- split(chunk.src.df$source,chunk.src.df$chunk.str)
 
 
 

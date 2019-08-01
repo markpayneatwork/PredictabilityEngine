@@ -66,7 +66,7 @@ this.src <- pcfg@Observations
 config.summary(pcfg,this.sp,this.src)
 
 #Data source
-HadISST.dat <- file.path(PE.cfg$dirs$datasrc,"Observations/HadISST","HadISST_sst.nc")
+HadISST.dat <- unlist(pcfg@Observations@sources)
 
 #'========================================================================
 # Setup ####
