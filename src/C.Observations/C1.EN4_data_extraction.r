@@ -109,10 +109,11 @@ log_msg("Extracting metadata...\n")
 #                            remove=FALSE,convert=TRUE)
 
 #Loop over files
-pb <- progress_estimated(length(this.src@source),-1)
+src.files <- unlist(this.src@sources)
+pb <- progress_estimated(length(src.files),-1)
 extract.meta.l <- list()  #Meta data list of the extracted files
   
-for(this.src.zip in this.src@source) {
+for(this.src.zip in src.files) {
   
   #Unzip all files from the archive to the temp directory
   unzip.args <- ssl("-o",this.src.zip,
