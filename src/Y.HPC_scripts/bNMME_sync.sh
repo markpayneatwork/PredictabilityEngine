@@ -3,7 +3,7 @@
 ### -- specify queue -- 
 #BSUB -q hpc
 ### -- set the job Name and array-- 
-#BSUB -J NMME_sync[1-7]
+#BSUB -J NMME_sync[1-10]
 ### -- ask for number of cores (default: 1) -- 
 ##BSUB -n 1 
 ### -- specify that the cores must be on the same host -- 
@@ -24,8 +24,8 @@
 ##BSUB -N 
 ### -- Specify the output and error file. %J is the job-id -- 
 ### -- -o and -e mean append, -oo and -eo mean overwrite -- 
-#BSUB -oo NMME_sync.%J_%I.out 
-#BSUB -eo NMME_sync.%J_%I.err 
+#BSUB -oo NMME_sync.%J.%I.out 
+#BSUB -eo NMME_sync.%J.%I.err 
 
 #Some preliminaries for good measure
 echo "=========================================================="
