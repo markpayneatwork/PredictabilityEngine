@@ -50,11 +50,11 @@ pcfg <- readRDS(PE.cfg$config.path)
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.no <- 1
+  cfg.no <- 5
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
   set.nco.defaults("--ovewrite")
-  options("mc.cores"=7)  
+  options("mc.cores"=1)  
   
 } else {
   #Taking inputs from the system environment
@@ -175,9 +175,11 @@ for(i in seq(downloaded.fnames)) {
                   n.realizations=ncid$dim$M$len)
     return(res)}
   
-  #Parallelise it
-  rtn.l <- mclapply(df2list(sel.SL),frag.fn)
-  fragstack.meta.l[[this.file]] <- bind_rows(rtn.l)
+  #Parallelise it - but only if there is something to parallelise!
+  if(nrow(sel.SL)!=0) {
+    rtn.l <- mclapply(df2list(sel.SL),frag.fn)
+    fragstack.meta.l[[this.file]] <- bind_rows(rtn.l)
+  }
   pb$tick()$print()
 }
 pb$stop()
