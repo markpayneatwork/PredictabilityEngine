@@ -45,7 +45,7 @@ source("src/B.Configuration/B0.Define_common_data_srcs.r")
 #'========================================================================
 #Global project configuration
 pcfg <- PredEng.config(project.name= "Mackerel_summer",
-                       recalculate=FALSE,
+                       recalculate=TRUE,
                        MOI=8,
                        average.months=FALSE,
                        clim.years=1983:2010,  
@@ -73,7 +73,7 @@ if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
 #Set global variables
 pcfg@use.global.ROI <- TRUE
 pcfg@global.ROI <- extent(-70,0,50,80)
-pcfg@global.res  <- 2 #0.25
+pcfg@global.res  <- 0.5
 pcfg@retain.realizations <- TRUE
 
 #Import EEZ's
@@ -142,16 +142,16 @@ statsum.l[[2]] <- pass.through(name="Temperature anomaly",
 #statsum.l[[3]] <-isoline.lat(threshold=11)
 
 #Setup habitat suitability functionality
-# habitat.mdl.dat <- readRDS("resources/Mackerel_summer_QR_values.rds")
-# habitat.mdl.fn <-  approxfun(habitat.mdl.dat$temp,habitat.mdl.dat$value,rule=2)
-# statsum.l[[5]] <-  habitat.suitability(name="Habitat - means",
-#                                        model=habitat.mdl.fn,
-#                                        use.realmeans=TRUE,
-#                                        use.anomalies = FALSE)
-# statsum.l[[6]] <-  habitat.suitability(name="Habitat - realisations",
-#                                        model=habitat.mdl.fn,
-#                                        use.realmeans=FALSE,
-#                                        use.anomalies = FALSE)
+habitat.mdl.dat <- readRDS("resources/Mackerel_summer_QR_values.rds")
+habitat.mdl.fn <-  approxfun(habitat.mdl.dat$temp,habitat.mdl.dat$value,rule=2)
+statsum.l[[3]] <-  habitat.suitability(name="Habitat - means",
+                                        model=habitat.mdl.fn,
+                                        use.realmeans=TRUE,
+                                        use.anomalies = FALSE)
+statsum.l[[4]] <-  habitat.suitability(name="Habitat - realisations",
+                                        model=habitat.mdl.fn,
+                                        use.realmeans=FALSE,
+                                        use.anomalies = FALSE)
 
 
 #Merge it all in
