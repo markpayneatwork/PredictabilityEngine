@@ -93,6 +93,8 @@ cfgs <- partition.workload(pcfg,"NMME","Ensmean")
 cfgs <- partition.workload(pcfg,"Decadal","Sources")
 cfgs <- partition.workload(pcfg,"Decadal","Chunks")
 cfgs <- partition.workload(pcfg,"Decadal","Ensmean")
+cfgs <- partition.workload(pcfg,"CMIP5","Chunks")
+cfgs <- partition.workload(pcfg,"CMIP5","Ensmean")
 cfgs <- partition.workload(pcfg,"Observations")
 cfgs <- partition.workload(pcfg,"Stats",space.partition=TRUE)
 

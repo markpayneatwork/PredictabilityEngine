@@ -234,7 +234,8 @@ NMME.sst.l[["NCEP-CFSv2"]]@realizations <- as.character(1:24)  #Forecast has 32 
 # Setup CMIP5 models ####
 #'========================================================================
 #Get list of files
-CMIP5.fnames <- dir(file.path("data_srcs","CMIP5"),pattern=".nc",full.names = TRUE,recursive=TRUE)
+CMIP5.fnames <- dir(file.path(PE.cfg$dirs$datasrc,"CMIP5"),
+                    pattern=".nc",full.names = TRUE,recursive=TRUE)
 if(length(CMIP5.fnames)==0) stop("Cannot find source files")
 
 #Extract metadata
@@ -252,17 +253,13 @@ CMIP5.meta.all <- tidyr::extract(CMIP5.meta.all,realization,
 CMIP5.meta <- subset(CMIP5.meta.all,realization.i=="1" &realization.p=="1")
 
 #Split the CMIP5 data into chunks
-CMIP5.meta$CMIP5.chunk <- as.numeric(factor(CMIP5.meta$model)) %% PE.cfg$n.CMIP.chunks
-CMIP5.grp <- split(CMIP5.meta,CMIP5.meta$CMIP5.chunk)
+CMIP5.meta <- mutate(CMIP5.meta,
+                     chunk.no=as.numeric(factor(model)) %% PE.cfg$n.CMIP.chunks,
+                     chunk.str=sprintf("Chunk_%03i",chunk.no))
+CMIP5.chunks <- split(CMIP5.meta,CMIP5.meta$chunk.str)
 
-#Now create the PredEng.source objects
-CMIP5.mdls.l <- list()
-for(i in seq(CMIP5.grp)) {
-  CMIP5.mdls.l[[i]] <- data.source(name=sprintf("Chunk %03i",i),
-                                   type="CMIP5",
-                                   var="tos",
-                                   sources=list(CMIP5.grp[[i]]$fname))
-}
-names(CMIP5.mdls.l) <- sapply(CMIP5.mdls.l,slot,"name")
-
-
+#Create the object
+CMIP5.obj <- data.source(name="CMIP5",
+                         type="CMIP5",
+                         var="tos",
+                         sources=CMIP5.chunks)

@@ -47,7 +47,7 @@ pcfg <- PredEng.config(project.name= "Bluefin",
                comp.years=1985:2015,
                landmask="data_srcs/NMME/landmask.nc",
                Observations=SST_obs[[c("HadISST")]],
-               #CMIP5.models=CMIP5.mdls.l,    #Disable
+               CMIP5=CMIP5.obj,    
                NMME=NMME.sst.l)
 
 #Setup scratch directory
