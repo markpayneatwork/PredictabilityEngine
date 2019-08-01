@@ -101,8 +101,6 @@ SST.Decadal$GFDL <-   data.source(name="GFDL-CM2.1",
                                   date.fn=date.by.brick)
 
 #Add in the CESM DPLE
-#This could be split into multiple sub-sources, but then that starts to create problems when
-#it comes time to calculate the ensemble mean etc. We need to think that one through a bit....
 CESM.DPLE.src <-   data.source(name="CESM-DPLE",
                                var="SST",
                                type="Decadal",
@@ -134,9 +132,13 @@ Sal.Decadal <- list()
 #There is a problem with the date-time stamps on the first realisation in this hindcast
 #ensemble. It could be corrected, but to start with we just drop it, awaiting the updated
 #data set from Daniela. 2019.06.04
-MPI.LR.srcs <- dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","so"),
-                   pattern="\\.nc$",full.names = TRUE) %>%
-                subset(!grepl("r1i1p1",.))
+# MPI.LR.srcs <- dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","so"),
+#                    pattern="\\.nc$",full.names = TRUE) %>%
+#                 subset(!grepl("r1i1p1",.))
+#Received the corrected files and the full 10 member ensemble, so this should work properly now
+MPI.LR.srcs <- dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","so_10member"),
+                   pattern="\\.nc$",full.names = TRUE) 
+
 Sal.Decadal$"MPI-LR" <-  data.source(name="MPI-ESM-LR",
                                      type="Decadal",
                                      var="so",
