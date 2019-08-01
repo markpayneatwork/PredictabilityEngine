@@ -60,7 +60,7 @@ $(TYPES):
 	make cluster TYPE=$@
 
 cluster:  todo $(OKs)
-	@TASK_IDS=`paste -s -d "," $(TODO)`; bsub -J PE_$(TYPE)[$$TASK_IDS] -o PE_$(TYPE).%J.%I.out -e PE_$(TYPE).%J.%I.err -n 1 -R "rusage[mem=8GB]" -R "span[hosts=-1]" -W 72:00 $(MASTER) $(TYPE) 
+	@TASK_IDS=`paste -s -d "," $(TODO)`; bsub -J PE_$(TYPE)[$$TASK_IDS] -o PE_$(TYPE).%J.%I.out -e PE_$(TYPE).%J.%I.out -n 1 -R "rusage[mem=8GB]" -R "span[hosts=-1]" -W 72:00 $(MASTER) $(TYPE) 
 	
 $(OUTDIR)/%.ok: 
 	@echo $* >> $(TODO)
