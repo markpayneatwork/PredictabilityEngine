@@ -46,8 +46,8 @@ pcfg <- PredEng.config(project.name= "NA_SST_Predictability",
                        recalculate=FALSE,
                        MOI=8,
                        average.months=FALSE,
-                       clim.years=1983:2010,  
-                       comp.years=1970:2012,
+                       clim.years=1985:2004,  
+                       comp.years=1985:2015,
                        landmask="data_srcs/NMME/landmask.nc",
                        Observations=SST_obs[[c("HadISST")]])#,
                        #CMIP5.models=CMIP5.mdls.l,    #Disable
@@ -71,7 +71,7 @@ if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
 #Set global variables
 pcfg@use.global.ROI <- TRUE
 pcfg@global.ROI <- extent(-70,0,40,70)
-pcfg@global.res  <- 1 #0.25
+pcfg@global.res  <- 0.5 #0.25
 pcfg@retain.realizations <- TRUE
 
 #'========================================================================
