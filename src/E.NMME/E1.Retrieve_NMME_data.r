@@ -212,7 +212,7 @@ if(nrow(to.download)!=0){
   mclapply(seq(nrow(to.download)),download.fn)    
   
 } else {
-  log_msg("Skipping download from %s (all dates present).\n",mdl.id)
+  log_msg("Skipping download from %s (all dates present).\n",meta$mdl.str)
 } 
 
 # ========================================================================
