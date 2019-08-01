@@ -11,6 +11,7 @@ echo "=========================================================="
 #Setup
 module load cdo
 module load nco
+module load gdal
 source ~/.bashrc
 
 #Run R 
