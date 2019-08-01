@@ -58,7 +58,8 @@ if(interactive()) {
   #Do everything and tell us all about it
   set.cdo.defaults()
   set.log_msg.silent(FALSE)
-  options("mc.cores"= as.numeric(Sys.getenv("LSB_MAX_NUM_PROCESSORS"))-1)
+  options("mc.cores"= as.numeric(Sys.getenv("LSB_MAX_NUM_PROCESSORS")))
+  options("mc.cores"=1)  
 }
 
 #Other configurations
