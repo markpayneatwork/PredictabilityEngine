@@ -229,38 +229,89 @@ for(mdl.name in names(NMME.mdls)){
 NMME.sst.l[["NASA-GEOS5"]]@realizations <- as.character(1:11)  #12th realization is very intermittant
 NMME.sst.l[["NCEP-CFSv2"]]@realizations <- as.character(1:24)  #Forecast has 32 but hindcast 24. 
 
-#Restrict to be the same for simplicity
 #'========================================================================
 # Setup CMIP5 models ####
+# CMIP5 setup is probably easiest done via a configuration function that
+# takes a set of arguments
 #'========================================================================
-#Get list of files
-CMIP5.fnames <- dir(file.path(PE.cfg$dirs$datasrc,"CMIP5"),
-                    pattern=".nc",full.names = TRUE,recursive=TRUE)
-if(length(CMIP5.fnames)==0) stop("Cannot find CMIP5 source files")
-
-#Extract metadata
-CMIP5.meta.all <- tibble(model=CMIP5_model(CMIP5.fnames),
-                         var=CMIP5_var(CMIP5.fnames),
-                         expt=CMIP5_experiment(CMIP5.fnames),
-                         realization=CMIP5_realisation(CMIP5.fnames),
-                         fname=CMIP5.fnames)
-
-#Check for perturbed physics runs and differing initialisation methods
-#Generally, I don't know how to interpret these, so we just drop them
-CMIP5.meta.all <- tidyr::extract(CMIP5.meta.all,realization,
-                                 c("realization.r","realization.i","realization.p"),
-                                 "r([0-9]+)i([0-9]+)p([0-9]+)",
-                                 remove=FALSE)
-CMIP5.meta <- subset(CMIP5.meta.all,realization.i=="1" &realization.p=="1")
-
-#Split the CMIP5 data into individual sources
-CMIP5.SST.meta <- filter(CMIP5.meta,var=="tos") %>%
-                    split(f=.$model)
-CMIP5.SST <- list()
-for(mdl.name in names(CMIP5.SST.meta)){
-  CMIP5.SST[[mdl.name]] <- data.source(name=mdl.name,
-                     type="CMIP5",
-                     var="tos",
-                     sources=list(CMIP5.SST.meta[[mdl.name]]$fname))  
+CMIP5.srcs <- function(var,
+                       expts,
+                       end.yr=NA,  
+                       r=NA,i=1,p=1) {
+  
+  #Get list of files
+  CMIP5.fnames <- dir(file.path(PE.cfg$dirs$datasrc,"CMIP5"),
+                      pattern=".nc",full.names = TRUE,recursive=TRUE)
+  if(length(CMIP5.fnames)==0) stop("Cannot find CMIP5 source files")
+  
+  #Extract metadata
+  CMIP5.meta <- tibble(model=CMIP5_model(CMIP5.fnames),
+                       variable=CMIP5_var(CMIP5.fnames),
+                       experiment=CMIP5_experiment(CMIP5.fnames),
+                       realization=CMIP5_realisation(CMIP5.fnames),
+                       years=underscore_field(CMIP5.fnames,6),
+                       fname=CMIP5.fnames) %>%
+    tidyr::extract(realization,
+                   c("real.r","real.i","real.p"),
+                   "r([0-9]+)i([0-9]+)p([0-9]+)",
+                   remove=FALSE) %>%
+    tidyr::extract(years,c("start.date","end.date"),
+                   "([0-9]+)-([0-9]+)",
+                   remove=TRUE) %>%
+    mutate(start.date=ymd(paste0(start.date,15)),
+           end.date=ymd(paste0(end.date,15)))
+  
+  #Apply filters
+  #Select variable and experiment
+  CMIP5.sel <- filter(CMIP5.meta,
+                      variable==var,
+                      experiment%in%expts)
+  
+  #Check for perturbed physics runs and differing initialisation methods
+  #Generally, I don't know how to interpret these, so we just drop them
+  if(!is.na(r)) {
+    CMIP5.sel <- filter(CMIP5.sel,real.r%in%r)
+  }
+  if(!is.na(i)) {
+    CMIP5.sel <- filter(CMIP5.sel,real.i%in%i)
+  }
+  if(!is.na(p)) {
+    CMIP5.sel <- filter(CMIP5.sel,real.p%in%p)
+  }
+  
+  #Now do selection by models that run at least all the way to the end year
+  if(!is.na(end.yr)) {
+    #Find model-expt-realization combinations to retain
+    mdl.expt.max.yr <- CMIP5.sel %>%
+      filter(experiment!="historical") %>%
+      group_by(model,experiment,realization) %>%
+      summarise(last.year=max(year(end.date))) %>%
+      unite(key,model,experiment,realization,remove=FALSE)
+    retain.these <- filter(mdl.expt.max.yr,last.year>=end.yr)
+    retain.key <- c(retain.these$key,
+                    with(retain.these,paste(model,"historical",realization,sep="_")))
+    
+    #Apply filter
+    CMIP5.sel <- unite(CMIP5.sel,key,model,experiment,realization,remove=FALSE) %>%
+      filter(key %in% retain.key) %>%
+      dplyr::select(-key)
+  }
+  
+  g <- ggplot(CMIP5.sel,aes(x=model,group=realization))+
+    geom_linerange(aes(ymin=start.date,ymax=end.date),position=position_dodge(0.5))+
+    geom_point(aes(y=start.date),position=position_dodge(0.5))+
+    geom_point(aes(y=end.date),position=position_dodge(0.5))+
+    labs(title="CMIP5 file structure",x="Model",y="Date")+
+    coord_flip()
+  print(g)
+  
+  #Split the remaining CMIP5 data into individual sources
+  mdl.l <- split(CMIP5.sel,CMIP5.sel$model)
+  rtn <- lapply(mdl.l,function(f) {
+    data.source(name=unique(f$model),
+                type="CMIP5",
+                var=var,
+                sources=list(f$fname))  
+  })
+  return(rtn)
 }
-
