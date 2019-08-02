@@ -236,10 +236,11 @@ NMME.sst.l[["NCEP-CFSv2"]]@realizations <- as.character(1:24)  #Forecast has 32 
 #Get list of files
 CMIP5.fnames <- dir(file.path(PE.cfg$dirs$datasrc,"CMIP5"),
                     pattern=".nc",full.names = TRUE,recursive=TRUE)
-if(length(CMIP5.fnames)==0) stop("Cannot find source files")
+if(length(CMIP5.fnames)==0) stop("Cannot find CMIP5 source files")
 
 #Extract metadata
 CMIP5.meta.all <- tibble(model=CMIP5_model(CMIP5.fnames),
+                         var=CMIP5_var(CMIP5.fnames),
                          expt=CMIP5_experiment(CMIP5.fnames),
                          realization=CMIP5_realisation(CMIP5.fnames),
                          fname=CMIP5.fnames)
@@ -252,14 +253,14 @@ CMIP5.meta.all <- tidyr::extract(CMIP5.meta.all,realization,
                                  remove=FALSE)
 CMIP5.meta <- subset(CMIP5.meta.all,realization.i=="1" &realization.p=="1")
 
-#Split the CMIP5 data into chunks
-CMIP5.meta <- mutate(CMIP5.meta,
-                     chunk.no=as.numeric(factor(model)) %% PE.cfg$n.CMIP.chunks,
-                     chunk.str=sprintf("Chunk_%03i",chunk.no))
-CMIP5.chunks <- split(CMIP5.meta,CMIP5.meta$chunk.str)
+#Split the CMIP5 data into individual sources
+CMIP5.SST.meta <- filter(CMIP5.meta,var=="tos") %>%
+                    split(f=.$model)
+CMIP5.SST <- list()
+for(mdl.name in names(CMIP5.SST.meta)){
+  CMIP5.SST[[mdl.name]] <- data.source(name=mdl.name,
+                     type="CMIP5",
+                     var="tos",
+                     sources=list(CMIP5.SST.meta[[mdl.name]]$fname))  
+}
 
-#Create the object
-CMIP5.obj <- data.source(name="CMIP5",
-                         type="CMIP5",
-                         var="tos",
-                         sources=CMIP5.chunks)

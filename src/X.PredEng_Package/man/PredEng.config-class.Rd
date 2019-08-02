@@ -33,7 +33,7 @@ Different extraction modes can be combined in the same list.
 
 \item{\code{NMME}}{A list of GCM objects defining the NMME models to be analysed}
 
-\item{\code{CMIP5}}{A data source object to configure extraction from the CMIP5 ensemble.}
+\item{\code{CMIP5}}{A list of data source objects to configure extraction from the CMIP5 ensemble.}
 
 \item{\code{spatial.subdomains}}{List of spatial.config objects defining the spatial subdomains over which 
 to operate}

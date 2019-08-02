@@ -5,7 +5,7 @@
 #' @slot Observations A data.source object defining the observational dataset to include. 
 #' @slot Decadal A list of GCM objects defining the decadal forecast systems to be analysed
 #' @slot NMME A list of GCM objects defining the NMME models to be analysed
-#' @slot CMIP5 A data source object to configure extraction from the CMIP5 ensemble. 
+#' @slot CMIP5 A list of data source objects to configure extraction from the CMIP5 ensemble. 
 #' @slot spatial.subdomains List of spatial.config objects defining the spatial subdomains over which 
 #' to operate
 #' @slot statistics PredEng.list of statistics to apply over each spatial area
@@ -45,7 +45,7 @@ PredEng.config <- setClass("PredEng.config",
                                       Observations="data.source",
                                       Decadal="list",
                                       NMME="list",
-                                      CMIP5="data.source",
+                                      CMIP5="list",
                                       spatial.subdomains="list",
                                       statistics="list",
                                       extraction="list",
