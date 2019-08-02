@@ -98,7 +98,7 @@ for(i in seq(length(src.fnames))) {
   #Extract file
   this.f <- src.fnames[i]
   temp.stem <- tempfile()
-  log_msg("Fragmenting %s...\n",basename(f),silenceable = TRUE)
+  log_msg("Fragmenting %s...\n",basename(this.f),silenceable = TRUE)
  
   #Subset out the surface layer from the field of interest
   #TODO: Note that we will probably need to change this in the future
