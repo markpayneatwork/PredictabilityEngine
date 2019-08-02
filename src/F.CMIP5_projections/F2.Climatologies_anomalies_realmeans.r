@@ -36,151 +36,49 @@ log.msg <- function(fmt,...) {cat(sprintf(fmt,...));
   flush.console();return(invisible(NULL))}
 
 library(PredEng)
-library(dplyr)
-library(lubridate)
 library(ncdf4)
-library(tibble)
-library(tidyr)
-load("objects/configuration.RData")
+library(tidyverse)
+pcfg <- readRDS(PE.cfg$config.path)
 
 #'========================================================================
 # Configuration ####
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  chunk.no <- 3
-  set.debug.level(5)  #0 complete fresh run
-  set.condexec.silent()
+  cfg.id <- 1
   set.cdo.defaults("--silent -O --no_warnings")
   set.log_msg.silent(TRUE)
 } else {
   #Taking inputs from the system environment
-  chunk.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
-  if(chunk.no=="") stop("Cannot find PBS_ARRAYID")
+  cfg.id <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
+  if(cfg.id=="") stop("Cannot find LSB_JOBINDEX")
   #Do everything
-  set.debug.level(0)  #0 complete fresh run
   set.log_msg.silent(FALSE)
 }
 set.nco.defaults("--netcdf4 --overwrite --history")
 
+#Retrieve configurations
+cfg.fname <- file.path(PE.cfg$dirs$job.cfg,"CMIP5_by_sources.cfg")
+this.cfgs <- get.this.cfgs(cfg.fname)
+this.sp <- get.this.sp(cfg.fname,cfg.id,pcfg)
+this.src <- get.this.src(cfg.fname,cfg.id,pcfg)
+config.summary(pcfg,this.sp,this.src)
 
 #Directory setup
-src.dir <- file.path("data_srcs","CMIP5")
-base.dir <- define_dir(define_dir(pcfg@scratch.dir,"CMIP5"),sprintf("%02i",chunk.no))
+CMIP5.dir <- define_dir(pcfg@scratch.dir,"CMIP5")
+base.dir <- define_dir(CMIP5.dir,this.src@name)
 frag.dir <- define_dir(base.dir,"3.fragments")
 fragstack.dir <- define_dir(base.dir,"4.fragstacks")
 clim.dir <- define_dir(base.dir,"5.clim")
 anom.dir <- define_dir(base.dir,"A.anom")
 realmean.dir <- define_dir(base.dir,"B.realmean")
 ensmean.dir <- define_dir(base.dir,"C.ensmean")
-
-#Check that climatology range is valid
-if(any(pcfg@clim.years>2005))stop("Climatology years extend beyond 2005.")
+misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
 
 #'========================================================================
 # Setup ####
 #'========================================================================
-#Get list of fragments
-frag.fnames <- dir(frag.dir,pattern=".nc",full.names = TRUE,recursive=TRUE)
-if(length(frag.fnames)==0) stop("Cannot find fragment files")
-
-#Fragment metadata
-
-#'========================================================================
-# Retrieve metadata ####
-#'========================================================================
-#Loop over the individual files getting the meta information
-log_msg("Preparing metadata\n")
-
-
-#We used to do the date extraction directly out of the files
-#but now that we are doing the fragmenting down to 2D fields, that
-#is no longer necessary - we can just take it directly from the filename
-#At some point we should do a check that they line up, but its not 
-#directly necessary at the moment
-# date.meta.l  <- list()
-# pb <- progress_estimated(length(frag.fnames))
-# for(f in frag.fnames) {
-#   pb$tick()$print()
-#   log_msg("Processing metadata for %s...\n",basename(f),silenceable = TRUE)
-# 
-#   #Doing it with a NetCDF read is faster, but doesn't
-#   #do a very good job of parsing the dates correctly
-#   #We use raster instead
-#   b <- brick(f)
-#   b.dates <- getZ(b)
-#   date.meta.l[[f]] <-  tibble(date= b.dates)  
-# }
-# Sys.sleep(0.1)
-# print(pb$stop())
-# log_msg("\n")
-
-#Form metadata table
-frag.meta <- tibble(name=underscore_field(frag.fnames,1),
-                    expt=underscore_field(frag.fnames,2),
-                    realization=underscore_field(frag.fnames,3),
-                    date=as.Date(ISOdate(underscore_field(frag.fnames,4),
-                                         pcfg@MOI,15))) %>%
-  add_column(fname=frag.fnames)
-
-#Extract out the individual realization numbers as well. At some point it
-#might be good to store these in the fragstacks
-frag.meta <- extract(frag.meta,"realization",
-                     c("realization.r","realization.i","realization.p"),
-                     "r([0-9]+)i([0-9]+)p([0-9]+)",
-                     remove=FALSE) %>%
-             mutate(realization.r =as.numeric(realization.r))
-
-#Sort, for good measure
-frag.meta <- arrange(frag.meta,name,expt,date,realization.r)
-
-save(frag.meta,file=file.path(base.dir,"Fragment_metadata.RData"))
-
-
-#'========================================================================
-# Generate fragment stacks ####
-# Now we stack the fragments together to form 3D stacks, with each lon-lat
-# layer corresponding to a realisation
-#'========================================================================
-log_msg("Building fragstacks...\n")
-# Group data into the fragment stacks
-fragstack.grp <- split(frag.meta,
-                       frag.meta[,c("date","expt","name")],drop=TRUE)
-
-#Loop over groups and build the stacks
-pb <- progress_estimated(length(fragstack.grp))
-fragstack.meta.l <- list()
-for(i in seq(fragstack.grp)) {
-  pb$tick()$print()
-  grp <- fragstack.grp[[i]]
-  log_msg("Building fragstack %i of %i...\n",i,
-          length(fragstack.grp),silenceable = TRUE)
-  
-  #Stack
-  fragstack.fname <- file.path(fragstack.dir,
-                               with(grp[1,],
-                                    sprintf("%s_%s_%s_fragstack.nc",
-                                            name,expt,year(date))))
-  # condexec(1,fragstack.cmd <- cdo("merge",
-  #                                 grp$fname,
-  #                                 fragstack.fname))
-  condexec(1,fragstack.cmd <- ncecat("--rcd_nm realization -M",
-                                     grp$fname,fragstack.fname))
-
-  #Store metadata
-  fragstack.meta.l[[i]] <- grp[1,] %>%
-                          mutate(n.realizations=nrow(grp),
-                                 fname=fragstack.fname)
-
-}
-Sys.sleep(0.1)
-print(pb$stop())
-log_msg("\n")
-
-#Save metadata
-fragstack.meta <- bind_rows(fragstack.meta.l) %>%
-                  select(-starts_with("realization")) 
-save(fragstack.meta,file=file.path(base.dir,"Fragstack_metadata.RData"))
+fragstack.meta <- readRDS(file.path(base.dir,PE.cfg$files$fragstack.meta))
 
 #'========================================================================
 # Calculate climatologies ####
@@ -196,6 +94,7 @@ save(fragstack.meta,file=file.path(base.dir,"Fragstack_metadata.RData"))
 # and then proceed accordingly
 #'========================================================================
 log_msg("Calculating climatologies...\n")
+if(any(pcfg@clim.years>2005)) stop("Climatology years extend beyond 2005.")
 
 #Setup metadata table for next round of processing (climatologies and anoms)
 anom.meta <-  mutate(fragstack.meta,
@@ -207,8 +106,7 @@ anom.meta <-  mutate(fragstack.meta,
 
 #Now select the files to work with. As we have fragstacks, we can select for
 #both year and experiment simultaneously
-hist.meta <- subset(anom.meta,expt=="historical" & year(date) %in% pcfg@clim.years)
-clim.grp.l <- split(hist.meta,hist.meta[,c("name")])
+clim.meta <- subset(anom.meta,expt=="historical" & year(date) %in% pcfg@clim.years)
 
 # Calculate climatologies
 # Calculating the climatology could be complicated by the fact
@@ -216,37 +114,26 @@ clim.grp.l <- split(hist.meta,hist.meta[,c("name")])
 # necessarily have the same number of realizations. If not, then this
 # requires averaging over the fragstack first and then over the years.
 # We check for this along the way
-pb <- progress_estimated(length(clim.grp.l))
-for(i in seq(clim.grp.l)) {
-  pb$tick()$print()
-  log_msg("Calculating climatology %i of %i...\n",i,
-          length(clim.grp.l),silenceable = TRUE)
-  g <- clim.grp.l[[i]]
-  
-  #Check that all fragstacks have the same number of realizations. If not, 
-  #throw an error (to start with)
-  unique.n.reals <- table(g$n.realizations)
-  if(length(unique.n.reals)!=1) {
-    stop("Uneven number of realizations in selected fragstacks")
-  }
-  
-  #Calculate the climatology
-  #We need to use nco here, rather than CDO - not sure why, but it
-  #seems that the dimensionality is a bit too strange for CDO
-  #First we do the ensemble averaging, then we need to average
-  #over the realization climatologies to get the total climatology
-  #Note that we need to do the averaging with ncwa rather than ncra so 
-  #anomaly creation via ncdiff works properly
-  realclim.tmp <- tempfile()
-  condexec(5,realclim.cmd <- ncra(g$fragstack.fname,realclim.tmp))
-  condexec(5,clim.cmd2 <- ncwa("-a tos,realization", 
-                               realclim.tmp,unique(g$clim.fname)))
-  
+# Prescreening of CMIP5 files should avoid this, but it is still worth checking
+
+#Check that all fragstacks have the same number of realizations. If not, 
+#throw an error (to start with)
+unique.n.reals <- table(clim.meta$n.realizations)
+if(length(unique.n.reals)!=1) {
+  stop("Uneven number of realizations in selected fragstacks")
 }
 
-Sys.sleep(0.1)
-print(pb$stop())
-log_msg("\n")
+#Calculate the climatology
+#We need to use nco here, rather than CDO - not sure why, but it
+#seems that the dimensionality is a bit too strange for CDO
+#First we do the ensemble averaging, then we need to average
+#over the realization climatologies to get the total climatology
+#Note that we need to do the averaging with ncwa rather than ncra so 
+#anomaly creation via ncdiff works properly
+realclim.tmp <- tempfile()
+realclim.cmd <- ncra(clim.meta$fragstack.fname,realclim.tmp)
+clim.cmd2 <- ncwa("-a tos,realization", 
+                  realclim.tmp,unique(clim.meta$clim.fname))
 
 #'========================================================================
 # Calculate anomalies ####
@@ -262,14 +149,13 @@ for(m in seq(nrow(anom.meta))){
           basename(am$fname),silenceable = TRUE)
 
   #Calculate the anomaly
-  #condexec(6,anom.cmd <- cdo("sub",am$fragstack.fname,am$clim.fname,am$fname))
-  condexec(6,anom.cmd <- ncdiff(am$fragstack.fname,am$clim.fname,am$fname))
+  anom.cmd <- ncdiff(am$fragstack.fname,am$clim.fname,am$fname)
 }
 Sys.sleep(0.1)
 print(pb$stop())
 log_msg("\n")
 
-save(anom.meta,file=file.path(base.dir,"Anom_metadata.RData"))
+saveRDS(anom.meta,file=file.path(base.dir,PE.cfg$files$anom.meta))
 
 #'========================================================================
 # Calculate realisation means ####
@@ -298,8 +184,8 @@ for(i in seq(nrow(realmean.meta))) {
           silenceable = TRUE)
 
   #Perform averaging over realizations
-  condexec(7,realmean.cmd <- ncwa("-a realization",
-                                  rlm$anom.fname,rlm$fname))
+  realmean.cmd <- ncwa("-a realization",
+                                  rlm$anom.fname,rlm$fname)
   
 }
 
@@ -308,8 +194,7 @@ print(pb$stop())
 log_msg("\n")
 
 #Save realmeta data
-save(realmean.meta,file=file.path(base.dir,"Realmean_metadata.RData"))
-
+saveRDS(realmean.meta,file=file.path(base.dir,PE.cfg$files$realmean.meta))
 
 #'========================================================================
 # Complete ####
