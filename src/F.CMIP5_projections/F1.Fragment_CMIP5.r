@@ -42,7 +42,7 @@ pcfg <- readRDS(PE.cfg$config.path)
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.id <- 3
+  cfg.id <- 1
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
 } else {
@@ -52,6 +52,7 @@ if(interactive()) {
   #Do everything
   set.log_msg.silent(silent=FALSE)
 }
+set.nco.defaults("--netcdf4 --overwrite --history")
 
 #Retrieve configurations
 cfg.fname <- file.path(PE.cfg$dirs$job.cfg,"CMIP5_by_sources.cfg")
@@ -66,13 +67,15 @@ base.dir <- define_dir(CMIP5.dir,this.src@name)
 wts.dir <- define_dir(base.dir,"1.remapping_wts")
 remap.dir <- define_dir(base.dir,"2.remap")
 frag.dir <- define_dir(base.dir,"3.fragments")
+fragstack.dir <- define_dir(base.dir,"4.fragstacks")
+misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
 analysis.grid.fname <- file.path(pcfg@scratch.dir,PE.cfg$files$analysis.grid)
 
 #Error checking
 if(length(pcfg@MOI)!=1) stop("CMIP5 processing currently only supports single month extraction")
 
 #'========================================================================
-# Extract data ####
+# Extract data to fragments ####
 #'========================================================================
 #Get list of fnames
 src.fnames <- unlist(this.src@sources)
@@ -141,6 +144,106 @@ for(i in seq(length(src.fnames))) {
 
 print(pb$stop())
 log_msg("\n")
+
+#'========================================================================
+# Build metadata database ####
+#'========================================================================
+#Loop over the individual files getting the meta information
+log_msg("Preparing metadata\n")
+
+
+#We used to do the date extraction directly out of the files
+#but now that we are doing the fragmenting down to 2D fields, that
+#is no longer necessary - we can just take it directly from the filename
+#At some point we should do a check that they line up, but its not 
+#directly necessary at the moment
+# date.meta.l  <- list()
+# pb <- progress_estimated(length(frag.fnames))
+# for(f in frag.fnames) {
+#   pb$tick()$print()
+#   log_msg("Processing metadata for %s...\n",basename(f),silenceable = TRUE)
+# 
+#   #Doing it with a NetCDF read is faster, but doesn't
+#   #do a very good job of parsing the dates correctly
+#   #We use raster instead
+#   b <- brick(f)
+#   b.dates <- getZ(b)
+#   date.meta.l[[f]] <-  tibble(date= b.dates)  
+# }
+# Sys.sleep(0.1)
+# print(pb$stop())
+# log_msg("\n")
+
+#Get list of fragments
+frag.fnames <- dir(frag.dir,pattern=".nc",full.names = TRUE,recursive=TRUE)
+
+#Form metadata table
+frag.meta <- tibble(name=underscore_field(frag.fnames,1),
+                    expt=underscore_field(frag.fnames,2),
+                    realization=underscore_field(frag.fnames,3),
+                    date=as.Date(ISOdate(underscore_field(frag.fnames,4),
+                                         pcfg@MOI,15)),
+                    fname=frag.fnames)
+
+#Extract out the individual realization numbers as well. At some point it
+#might be good to store these in the fragstacks
+frag.meta <- extract(frag.meta,"realization",
+                     c("realization.r","realization.i","realization.p"),
+                     "r([0-9]+)i([0-9]+)p([0-9]+)",
+                     remove=FALSE) %>%
+  mutate(realization.r =as.numeric(realization.r))
+
+#Sort, for good measure
+frag.meta <- arrange(frag.meta,name,expt,date,realization.r)
+
+#Save
+saveRDS(frag.meta,file=file.path(base.dir,PE.cfg$files$fragment.meta))
+
+#'========================================================================
+# Generate fragment stacks ####
+# Now we stack the fragments together to form 3D stacks, with each lon-lat
+# layer corresponding to a realisation
+#'========================================================================
+log_msg("Building fragstacks...\n")
+# Group data into the fragment stacks
+fragstack.grp <- split(frag.meta,
+                       frag.meta[,c("date","expt","name")],drop=TRUE)
+
+#Loop over groups and build the stacks
+pb <- progress_estimated(length(fragstack.grp))
+fragstack.meta.l <- list()
+for(i in seq(fragstack.grp)) {
+  grp <- fragstack.grp[[i]]
+  log_msg("Building fragstack %i of %i...\n",i,
+          length(fragstack.grp),silenceable = TRUE)
+  
+  #Stack
+  fragstack.fname <- file.path(fragstack.dir,
+                               with(grp[1,],
+                                    sprintf("%s_%s_%s_fragstack.nc",
+                                            name,expt,year(date))))
+  # condexec(1,fragstack.cmd <- cdo("merge",
+  #                                 grp$fname,
+  #                                 fragstack.fname))
+  fragstack.cmd <- ncecat("--rcd_nm realization -M",
+                                     grp$fname,fragstack.fname)
+  
+  #Store metadata
+  fragstack.meta.l[[i]] <- grp[1,] %>%
+    mutate(n.realizations=nrow(grp),
+           fname=fragstack.fname)
+  
+  pb$tick()$print()
+}
+Sys.sleep(0.1)
+print(pb$stop())
+log_msg("\n")
+
+#Save metadata
+fragstack.meta <- bind_rows(fragstack.meta.l) %>%
+  select(-starts_with("realization")) 
+saveRDS(fragstack.meta,file=file.path(base.dir,PE.cfg$files$fragstack.meta))
+
 
 #'========================================================================
 # Complete ####

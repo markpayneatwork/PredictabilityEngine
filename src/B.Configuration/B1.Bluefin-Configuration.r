@@ -43,7 +43,7 @@ source("src/B.Configuration/B0.Define_common_data_srcs.r")
 pcfg <- PredEng.config(project.name= "Bluefin",
                MOI=8,  #August
                average.months=FALSE,
-               clim.years=1985:2004,  
+               clim.years=1982:2005,  
                comp.years=1985:2015,
                landmask="data_srcs/NMME/landmask.nc",
                Observations=SST_obs[[c("HadISST")]],
