@@ -12,12 +12,11 @@
 #' are the names of the chunks
 #' @slot n.chunks Number of chunks into which to split the processing
 #' @slot var Variable name from which to extract data
-#' @slot levels Level(s) in the source data set containing the relevant data. A value of NA means that averaging 
-#' take place over all available layers. Also an epic track by Avicii (RIP).
 #' @slot realizations Character string, naming the realization(s) to use. NA indicates all.
 #' @slot time.correction A string suitable for use with the "cdo shifttime,x" command string that can be used to 
 #' correcct for time-bound versus time value problems.
 #' @slot realization.fn A function to extract the realisation ID
+#' @slot layermids.fn Returns the midpoints of the vertical layers for this data set. 
 #' @slot init.fn Function to extract the initialisation dates
 #' @slot date.fn A function to extract the time stamps for each time step
 #'
@@ -29,14 +28,14 @@ data.source <- setClass("data.source",
                                    chunk="character",
                                    sources="list",
                                    var="character",
-                                   levels="numeric",
                                    realizations="character",
                                    time.correction="character",
                                    realization.fn="function",
+                                   layermids.fn="function",
                                    init.fn="function",  #TODO: Consider dropping this slot
                                    date.fn="function"),
-                        prototype=list(levels=1,
-                                       chunk="",
+                        prototype=list(chunk="",
+                                       layermids.fn=function(x) {stop("z2idx.fn not specified")},
                                        realizations=as.character(NA),
                                        date.fn=function(x) {stop("Date.fn not specified")},
                                        realization.fn=function(x) {stop("Realization function not specified")},
@@ -109,5 +108,4 @@ test.data.source <- function(obj,f="missing"){
   log_msg("\nForecast Initialisation\n")
   print(obj@init.fn(f))
 }
-
 

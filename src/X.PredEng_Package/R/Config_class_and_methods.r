@@ -11,6 +11,7 @@
 #' @slot statistics PredEng.list of statistics to apply over each spatial area
 #' @slot extraction PredEng.list definining temporal and spatial extraction characteristics
 #' @slot MOI The months of interest (a vector of integers between 1 and 12 inclusive)
+#' @slot vert.range The vertical range, in m, over which to average. NULL indicates no vertical averaging
 #' @slot clim.years The years to include in the climatology and analysis of hindcast skill (vector of 
 #' integers)
 #' @slot comp.years The years over which to make comparisons between observations and models
@@ -52,6 +53,7 @@ PredEng.config <- setClass("PredEng.config",
                                       global.ROI="Extent",
                                       global.res="numeric",
                                       MOI="numeric",
+                                      vert.range="numeric",
                                       clim.years="numeric",
                                       comp.years="numeric",
                                       landmask="character",
@@ -123,6 +125,8 @@ setMethod("show","PredEng.config", function(object) {
       cat(deparse(obj,width.cutoff=options()$width),"\n")
     } else if(is(obj,"Extent")){
       cat(paste(obj[],collapse=", "),"\n")
+    } else if(is(obj,"numeric") & length(obj) ==0){
+      cat("\n")
     } else if(is(obj,"numeric") & length(obj) ==1){
       cat(obj,"\n")
     } else if(is(obj,"numeric") & length(obj) >=12){
@@ -157,4 +161,31 @@ setMethod("show","PredEng.config", function(object) {
   for(i in slotNames("PredEng.config")) {show.slot(object,i)}
 
 })
+
+#' Get vertical layers
+#' 
+#' Extracts a list of vertical layers
+#'
+#' @param cfg A PredEng configuration object, with the vert.range slot populated
+#' @param src A data source object, containing a valid layermids.fn()
+#' @param f The name of the file from which to extract the layers
+#'
+#' @return A vector of layer integers corresponding to the vertical range. In cases where the vertical
+#' range limits fall within a layer, the layer is included if it covers more than 50%.
+#' @export
+#'
+setGeneric("verticalLayers",function(cfg,src,...) standardGeneric("verticalLayers"))
+
+
+
+setMethod("verticalLayers",signature = c("PredEng.config","data.source"),function(cfg,src,f){
+  layer.mids <- src@layermids.fn(f)
+  #Which layer are the vert.range boundaries in?
+  layer.idxs <- round(approx(layer.mids,seq_along(layer.mids)+0.5,cfg@vert.range,method="linear",rule=2)$y)
+  #Now return the appropriate value - if more than 50% of a layer is in, then include it
+  return(min(layer.idxs):(max(layer.idxs)-1))})
+
+
+
+
 

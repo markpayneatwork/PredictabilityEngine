@@ -44,6 +44,8 @@ to operate}
 
 \item{\code{MOI}}{The months of interest (a vector of integers between 1 and 12 inclusive)}
 
+\item{\code{vert.range}}{The vertical range, in m, over which to average. NULL indicates no vertical averaging}
+
 \item{\code{clim.years}}{The years to include in the climatology and analysis of hindcast skill (vector of 
 integers)}
 

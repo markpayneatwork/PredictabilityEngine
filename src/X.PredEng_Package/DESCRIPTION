@@ -13,7 +13,8 @@ Depends:
     tidyverse,
     lubridate,
     stringr,
-    sp
+    sp,
+    ncdf4
 RoxygenNote: 6.1.1
 Suggests:
     maps

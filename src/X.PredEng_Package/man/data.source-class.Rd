@@ -26,15 +26,14 @@ are the names of the chunks}
 
 \item{\code{var}}{Variable name from which to extract data}
 
-\item{\code{levels}}{Level(s) in the source data set containing the relevant data. A value of NA means that averaging 
-take place over all available layers. Also an epic track by Avicii (RIP).}
-
 \item{\code{realizations}}{Character string, naming the realization(s) to use. NA indicates all.}
 
 \item{\code{time.correction}}{A string suitable for use with the "cdo shifttime,x" command string that can be used to 
 correcct for time-bound versus time value problems.}
 
 \item{\code{realization.fn}}{A function to extract the realisation ID}
+
+\item{\code{layermids.fn}}{Returns the midpoints of the vertical layers for this data set.}
 
 \item{\code{init.fn}}{Function to extract the initialisation dates}
 
