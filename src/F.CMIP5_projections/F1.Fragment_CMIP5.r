@@ -106,10 +106,16 @@ for(i in seq(length(src.fnames))) {
   #Subset out the layers of interest from the field of interest
   if(!length(pcfg@vert.range)==0) {
     tmp.in <- this.f
-    tmp.out <- sprintf("%s_sellevel",tmp.stem)
-    vert.idxs <- verticalLayers(pcfg,this.chunk,tmp.in)
+    tmp.out <- sprintf("%s_sellevel",temp.stem)
+    vert.idxs <- verticalLayers(pcfg,this.src,tmp.in)
     sellev.cmd <- cdo(csl("sellevidx",vert.idxs),
                       tmp.in,tmp.out)
+    
+    #Average over the layers
+    tmp.in <- tmp.out
+    tmp.out <- sprintf("%s_vertmean",tmp.in)
+    levmean.cmd <- cdo("vertmean",tmp.in,tmp.out)
+    
   } else {
     tmp.out <- this.f
   }
