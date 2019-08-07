@@ -104,7 +104,6 @@ SST.Decadal$GFDL <-   data.source(name="GFDL-CM2.1",
 CESM.DPLE.src <-   data.source(name="CESM-DPLE",
                                var="SST",
                                type="Decadal",
-                               levels=as.numeric(NA),
                                time.correction="-15days",
                                realization.fn=function(f) {
                                  val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,3]
@@ -149,11 +148,19 @@ Sal.Decadal$"MPI-LR" <-  data.source(name="MPI-ESM-LR",
                                        init.date <- ymd(paste(init.str,"01",sep=""))
                                        return(init.date)},
                                      date.fn=date.by.brick)
+
 #CESM-DPLE
 CESM.DPLE.SALT <- data.source(CESM.DPLE.src,
                       var="SALT",
                       sources=list(dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SALT"),
-                                      pattern="\\.nc$",full.names = TRUE)))
+                                      pattern="\\.nc$",full.names = TRUE)),
+                      layermids.fn = function(f) {
+                        #z.idx are the indices, v is the vertical coordinate in metres
+                        ncid <- nc_open(f)
+                        layer.mids <- ncid$dim$z_t$vals/100 #[m]
+                        nc_close(ncid)
+                      return(layer.mids)})
+
 Sal.Decadal$CESM.DPLE.SALT <- CESM.DPLE.SALT
 
 
@@ -203,7 +210,13 @@ Sal.obs$EN4  <- data.source(name="EN4",
                             type="Observations",
                             var="salinity",
                             sources=list(dir("data_srcs/Observations/EN4/",
-                                       pattern="\\.zip$",full.names = TRUE)))
+                                       pattern="\\.zip$",full.names = TRUE)),
+                            layermids.fn = function(f) {
+                              #z.idx are the indices, v is the vertical coordinate in metres
+                              ncid <- nc_open(f)
+                              layer.mids <- ncid$dim$depth$vals
+                              nc_close(ncid)
+                              return(layer.mids)})
 
 
 # ========================================================================
@@ -296,7 +309,7 @@ CMIP5.srcs <- function(var,
       filter(key %in% retain.key) %>%
       dplyr::select(-key)
   }
-  
+
   g <- ggplot(CMIP5.sel,aes(x=model,group=realization))+
     geom_linerange(aes(ymin=start.date,ymax=end.date),position=position_dodge(0.5))+
     geom_point(aes(y=start.date),position=position_dodge(0.5))+
@@ -305,11 +318,24 @@ CMIP5.srcs <- function(var,
     coord_flip()
   print(g)
   
+  #Setup vert selection function
+  layermids.fn <- function(f) {
+    #z.idx are the indices, v is the vertical coordinate in metres
+    ncid <- nc_open(f)
+    stopifnot(length(ncid$dim$lev)==0)  #Must be a level variable
+    stopifnot(ncid$dim$lev$units=="m")  #with units of metres
+    layer.mids <- ncid$dim$lev$vals
+    nc_close(ncid)
+    return(layer.mids)}
+    
+  
+  
   #Split the remaining CMIP5 data into individual sources
   mdl.l <- split(CMIP5.sel,CMIP5.sel$model)
   rtn <- lapply(mdl.l,function(f) {
     data.source(name=unique(f$model),
                 type="CMIP5",
+                layermids.fn = layermids.fn,
                 var=var,
                 sources=list(f$fname))  
   })

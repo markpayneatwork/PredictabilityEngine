@@ -136,12 +136,17 @@ for(this.src.zip in src.files) {
   for(j in seq(nrow(manifest.meta)))  {
     this.meta <- manifest.meta[j,]
     #Select the levels and field of interest first
-    sellev.cmd <- cdo(csl("sellevidx",this.src@levels),
-                               csl("-selname",this.src@var),
-                               this.meta$fname,
-                               this.meta$sellev.fname)
+    if(!length(pcfg@vert.range)==0) {
+      vert.idxs <- verticalLayers(pcfg,this.src,this.meta$fname)
+      sellev.cmd <- cdo(csl("sellevidx",vert.idxs),
+                        csl("-selname",this.src@var),
+                        this.meta$fname,
+                        this.meta$sellev.fname)
+    } else {
+      stop("EN4 requires a vertical range specification, as the fields are 3D.")
+    }
 
-    #If we are dealing with temperature, need to convert from K to C
+    #If we are dealing with temperature, need to conver½t from K to C
     if(this.src@var=="temperature") {
       next.fname <- this.temp$tempcor.fname
       levmean.cmd <- cdo("addc,-273.15",

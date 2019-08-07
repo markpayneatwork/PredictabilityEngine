@@ -103,14 +103,17 @@ for(i in seq(length(src.fnames))) {
   temp.stem <- tempfile()
   log_msg("Fragmenting %s...\n",basename(this.f),silenceable = TRUE)
  
-  #Subset out the surface layer from the field of interest
-  #TODO: Note that we will probably need to change this in the future
-  #to allow sub-surface properties - however, this is a bit of work
-  #so we leave it for the moment.
-  temp.in <- this.f
-  temp.out <- sprintf("%s_sellevidx",temp.stem)
-  sellev.cmd <- cdo("sellevidx,1",temp.in,temp.out)
-  
+  #Subset out the layers of interest from the field of interest
+  if(!length(pcfg@vert.range)==0) {
+    tmp.in <- this.f
+    tmp.out <- sprintf("%s_sellevel",tmp.stem)
+    vert.idxs <- verticalLayers(pcfg,this.chunk,tmp.in)
+    sellev.cmd <- cdo(csl("sellevidx",vert.idxs),
+                      tmp.in,tmp.out)
+  } else {
+    tmp.out <- this.f
+  }
+
   #Select the field of interest, just to be sure
   temp.in <- temp.out
   temp.out <- sprintf("%s_selname",temp.in)

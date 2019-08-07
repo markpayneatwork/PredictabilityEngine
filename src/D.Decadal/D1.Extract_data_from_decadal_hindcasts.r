@@ -120,15 +120,16 @@ if(!file.exists(frag.meta.fname) | pcfg@recalculate) {
     
     #Subset out the layer(s) from the field of interest
     #log_msg("Select and remap...")
-    if(!any(is.na(this.chunk@levels))) {
+    if(!length(pcfg@vert.range)==0) {
       tmp.in <- f
-      tmp.out <- sprintf("%s_sellevidx",tmp.stem)
-      sellev.cmd <- cdo(csl("sellevidx",this.chunk@levels),
+      tmp.out <- sprintf("%s_sellevel",tmp.stem)
+      vert.idxs <- verticalLayers(pcfg,this.chunk,tmp.in)
+      sellev.cmd <- cdo(csl("sellevidx",vert.idxs),
                         tmp.in,tmp.out)
     } else {
       tmp.out <- f
     }
-    
+
     #Average over the layers
     tmp.in <- tmp.out
     tmp.out <- sprintf("%s_vertmean",tmp.in)

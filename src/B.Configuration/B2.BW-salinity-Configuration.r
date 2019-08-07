@@ -57,6 +57,7 @@ define_dir(pcfg@scratch.dir)
 pcfg@use.global.ROI <- TRUE
 pcfg@global.ROI <- extent(-25,0,40,65)
 pcfg@global.res  <- 0.5
+pcfg@vert.range <- c(250,600)
 
 #Polygons
 sp.objs <- list()
@@ -71,12 +72,9 @@ pcfg@spatial.subdomains <- sp.objs
 #'========================================================================
 #Define observational sources
 pcfg@Observations <- Sal.obs$EN4
-pcfg@Observations@levels <- 17:23
 
 #Decadal salinity models
 pcfg@Decadal <- Sal.Decadal
-pcfg@Decadal[["MPI-ESM-LR"]]@levels <- 14:19  #Set depth layers
-pcfg@Decadal[["CESM-DPLE"]]@levels <- 24:35    
 
 #Break CESM-DPLE into chunks
 n.CESM.chunks <- 4
@@ -86,6 +84,14 @@ chunk.src.df <- tibble(source=unlist(CESM.src@sources),
                        chunk.num=(as.numeric(init)-1)%%n.CESM.chunks,
                        chunk.str=sprintf("Chunk_%03i",chunk.num))
 pcfg@Decadal[["CESM-DPLE"]]@sources <- split(chunk.src.df$source,chunk.src.df$chunk.str)
+
+#CMIP5 salinity
+#Select CMIP5 models
+pcfg@CMIP5 <- CMIP5.srcs(var="so",
+                         expts=c("historical","rcp26","rcp85"),
+                         end.yr = 2100,
+                         r=NA,i=1,p=1)
+
 
 #'========================================================================
 # Statistics ####
