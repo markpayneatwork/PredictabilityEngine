@@ -253,27 +253,8 @@ CMIP5.srcs <- function(var,
                        r=NA,i=1,p=1) {
   
   #Get list of files
-  CMIP5.fnames <- dir(file.path(PE.cfg$dirs$datasrc,"CMIP5"),
-                      pattern=".nc",full.names = TRUE,recursive=TRUE)
-  if(length(CMIP5.fnames)==0) stop("Cannot find CMIP5 source files")
-  
-  #Extract metadata
-  CMIP5.meta <- tibble(model=CMIP5_model(CMIP5.fnames),
-                       variable=CMIP5_var(CMIP5.fnames),
-                       experiment=CMIP5_experiment(CMIP5.fnames),
-                       realization=CMIP5_realisation(CMIP5.fnames),
-                       years=underscore_field(CMIP5.fnames,6),
-                       fname=CMIP5.fnames) %>%
-    tidyr::extract(realization,
-                   c("real.r","real.i","real.p"),
-                   "r([0-9]+)i([0-9]+)p([0-9]+)",
-                   remove=FALSE) %>%
-    tidyr::extract(years,c("start.date","end.date"),
-                   "([0-9]+)-([0-9]+)",
-                   remove=TRUE) %>%
-    mutate(start.date=ymd(paste0(start.date,15)),
-           end.date=ymd(paste0(end.date,15)))
-  
+  CMIP5.meta <- CMIP5_meta(file.path(PE.cfg$dirs$datasrc,"CMIP5"))
+
   #Apply filters
   #Select variable and experiment
   CMIP5.sel <- filter(CMIP5.meta,
@@ -310,14 +291,6 @@ CMIP5.srcs <- function(var,
       dplyr::select(-key)
   }
 
-  g <- ggplot(CMIP5.sel,aes(x=model,group=realization))+
-    geom_linerange(aes(ymin=start.date,ymax=end.date),position=position_dodge(0.5))+
-    geom_point(aes(y=start.date),position=position_dodge(0.5))+
-    geom_point(aes(y=end.date),position=position_dodge(0.5))+
-    labs(title="CMIP5 file structure",x="Model",y="Date")+
-    coord_flip()
-  print(g)
-  
   #Setup vert selection function
   layermids.fn <- function(f) {
     #z.idx are the indices, v is the vertical coordinate in metres
