@@ -322,7 +322,7 @@ CMIP5.srcs <- function(var,
   layermids.fn <- function(f) {
     #z.idx are the indices, v is the vertical coordinate in metres
     ncid <- nc_open(f)
-    stopifnot(length(ncid$dim$lev)==0)  #Must be a level variable
+    stopifnot(length(ncid$dim$lev)!=0)  #Must be a level variable
     stopifnot(ncid$dim$lev$units=="m")  #with units of metres
     layer.mids <- ncid$dim$lev$vals
     nc_close(ncid)
