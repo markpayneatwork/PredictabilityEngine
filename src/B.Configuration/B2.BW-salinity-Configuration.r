@@ -61,7 +61,7 @@ pcfg@vert.range <- c(250,600)
 
 #Polygons
 sp.objs <- list()
-sp.objs$spawing.area <- spatial.domain("Spawning.area",extent(-20,-5,50,60))
+sp.objs$spawing.area <- spatial.domain("ROI",extent(-20,-5,50,60))
 
 #Correct names and add to object
 names(sp.objs) <- sapply(sp.objs,slot,"name")
@@ -93,27 +93,65 @@ pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="so")
 #'========================================================================
 #Configure stats
 stat.l <- list()
-stat.l[[1]]  <- spatial.mean(name="Mean Salinity")
+stat.l[[1]]  <- spatial.mean(name="Mean Salinity",
+                             use.full.field=TRUE)
 
 stat.l[[2]] <- pass.through(name="Salinity field anomaly",
                                skill.metrics = "correlation",
                                is.global.stat=TRUE,
-                               use.anomalies = TRUE,
+                               use.full.field = FALSE,
                                use.realmeans=TRUE)
 
-stat.l[[3]] <- area.threshold(name="Suitable spawning area",
+stat.l[[3]] <- threshold(name="Suitable spawning area",
                             skill.metrics = "correlation",
-                            is.global.stat=FALSE,
-                            use.anomalies = FALSE,
+                            is.global.stat=TRUE,
+                            use.full.field = TRUE,
                             threshold=c(35.3,35.5),
                             use.realmeans=TRUE)
 
-stat.l[[4]] <- threshold(name="Spawning suitability",
-                              skill.metrics = "correlation",
-                              is.global.stat=TRUE,
-                              use.anomalies = FALSE,
-                              threshold=c(35.3,35.5),
-                              use.realmeans=TRUE)
+#Setup Miesner & Payne habitat model
+require(mgcv)
+#Setup bathymetric grid 
+#Note that we need to account for the extraction buffer here, to get a 
+#perfect match with the rest of the data
+log10bath <- raster("resources/BlueWhiting/ETOPO1_Bed_c_gmt4.grd") %>%
+              crop(extend(pcfg@global.ROI,PE.cfg$ROI.extraction.buffer)) %>%
+              raster::aggregate(fact=pcfg@global.res/res(.),fun=mean)
+log10bath <- log10(-log10bath)
+
+#if(max(abs(extent(log10bath)[1:4]-pcfg@global.ROI[1:4]))>1e-9) stop("Mismatch in bathymetric dimensions")
+if(!identical(res(log10bath)[1],pcfg@global.res)) stop("Mismatch in bathymetric resolution")
+
+#Setup latitude raster
+lat.rast <- log10bath
+lat.rast[] <- yFromCell(lat.rast,1:ncell(log10bath))
+
+#Setup prediction grid
+pred.l <- list(latitude=lat.rast,
+                       log10bath=log10bath)
+pred.consts <- data.frame(doy=105,sol.el=0)
+
+#Setup resource list
+GAM.sdm.resources <- list(model=readRDS("resources/BlueWhiting/BW_GAM_SDM.rds"),
+                          pred.l=pred.l,
+                          pred.consts=pred.consts)
+
+#Setup prediction function
+GAM.sdm.fn <- function(dat,resources) {
+  #Crop the prediction data down to the same scale as the values
+  names(dat) <- "EN4.salinity"
+  pred.dat <- brick(c(resources$pred.l,dat))
+  p <- raster::predict(object=pred.dat,model=resources$model,fun=predict.gam,
+                  const=resources$pred.consts, type="response")
+  PA <- p > resources$model$threshold
+  return(PA)
+}
+stat.l[[4]] <- habitat(name="SDM habitat model",
+                       fn=GAM.sdm.fn,
+                       resources=GAM.sdm.resources,
+                       skill.metrics = "correlation",
+                       use.full.field = TRUE)
+
 
 #Merge it all in
 names(stat.l) <- sapply(stat.l,slot,"name")

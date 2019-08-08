@@ -112,17 +112,11 @@ pcfg@extraction <- extr
 #'========================================================================
 #Configure stats
 stat.l <- list()
-stat.l[[1]] <- area.threshold(name="Area above 11 degrees",
+stat.l[[1]] <- threshold(name="11 degree threshold",
                               threshold=11,
                               above=TRUE,
+                              use.full.field = TRUE,
                               use.realmeans=TRUE)
-stat.l[[2]] <- threshold(name="11 degree threshold",
-                         above=TRUE,
-                         threshold=11,
-                         use.realmeans=TRUE)
-
-#stat.l[[2]]  <- spatial.mean()
-#stat.l[[3]] <-isoline.lat(threshold=11)
 
 #Set type of data to use for all
 for(i in seq(stat.l)){

@@ -1,13 +1,12 @@
-# ========================================================================
-# Statistics classes and methods
-# ========================================================================
+# Base stats class ========================================================================
+
 #' Statistics class
 #'
 #' @param name Name of the statistics class
 #' @param use.realmeans Indicates whether to use the mean of the individ realisations or
 #' the realisation values themselves. This slot essentially acts as a flag telling
 #' the script whether it wants 2D (lat-lon) or 3D (lat-lon-realization) data.
-#' @param use.anomalies Should the statistic be calculated on the basis of
+#' @param use.full.field Should the statistic be calculated on the basis of
 #' anomalies only or should the full field be used?
 #' @param is.global.stat Indicates whether the stat should be calculated on a global or local basis ie. for 
 #' each individual spatial domain, or once for the entire global ROI
@@ -18,18 +17,18 @@
 stat <- setClass("stat",
                      slots=list(name="character",
                                 use.realmeans="logical",
-                                use.anomalies="logical",
+                                use.full.field="logical",
                                 is.global.stat="logical",
                                 skill.metrics="character"),
                      prototype = list(use.realmeans=TRUE,
-                                      use.anomalies=FALSE,
+                                      use.full.field=TRUE,
                                       is.global.stat=FALSE))
 
 
 #' Evaluate an stat
 #' @export
 setGeneric("eval.stat",
-           function(st,vals, ...)
+           function(st,dat)
              standardGeneric("eval.stat")
 )
 
@@ -39,36 +38,60 @@ setGeneric("returns.field",
            function(st)
              standardGeneric("returns.field"))
 
+# Thresholds ========================================================================
+
 #' Thresholds
 #'
-#' Determines where each pixel sits in relation to a threshold value, potentially integrating over the
-#' area of interest
-#' @param threshold Critical threshold value - a numeric of length 1 or 2
+#' Determines where each pixel sits in relation to a threshold value and integrates  over the
+#' area of interest to get the area satisfying the threshold
+#' @param thre shold Critical threshold value - a numeric of length 1 or 2
 #' @param above Logical value - TRUE indicates that we wish to test for values above the threshold. FALSE below. 
 #' Ignored if two thresholds are supplied.
 #' @export threshold
-
 #' @return  \code{threshold} returns a tibble containing the Raster* object matching the raster object supplied as an
 #' argument. If two thresholds are supplied, the raster corresponds to that between the two thresholds
 threshold <- setClass("threshold",
-                                 slots=list(threshold="numeric",
-                                            above="logical"),
-                                 prototype=list(name="threshold",
-                                                above=TRUE),
-                                 contains="stat",
-                                 validity = function(object) {
-                                   err.msg <- NULL
-                                   if(!length(object@threshold) %in% c(1,2)) {
-                                     err.msg <- c(err.msg,
-                                                  sprintf("Length of 'threshold' slot should be 1 or 2 but is %i.",length(object@threshold)))
-                                   }
-                                   if(length(err.msg)==0) return(TRUE) else err.msg
-                                 })
+                      slots=list(threshold="numeric",
+                                 above="logical"),
+                      prototype=list(name="threshold",
+                                     above=TRUE),
+                      contains="stat",
+                      validity = function(object) {
+                        err.msg <- NULL
+                        if(!length(object@threshold) %in% c(1,2)) {
+                          err.msg <- c(err.msg,
+                                       sprintf("Length of 'threshold' slot should be 1 or 2 but is %i.",length(object@threshold)))
+                        }
+                        if(length(err.msg)==0) return(TRUE) else err.msg
+                      })
 
 #' @export
-setMethod("eval.stat",signature(st="threshold",vals="Raster"),
-          function(st,vals,...){
-            return(threshold.fn(st,vals,integrate=FALSE))
+setMethod("eval.stat",signature(st="threshold",dat="Raster"),
+          function(st,dat){
+            
+            #Apply thresholding
+            if(length(st@threshold)==2) {
+              pass.threshold <- dat > min(st@threshold) & dat < max(st@threshold)
+            } else if(st@above) {
+              pass.threshold <- dat > st@threshold
+            } else {
+              pass.threshold <- dat < st@threshold
+            }
+
+            #Now calculate the area
+            pxl.area <- area(dat)
+            area.masked <- pxl.area * pass.threshold
+            names(area.masked) <- names(dat)
+            area.satistfying.thresh <- cellStats(area.masked,sum)
+            
+            #Filter areas where it doesn't work.
+            mean.temp <- cellStats(dat,mean)
+            area.filt <- ifelse(is.na(mean.temp),NA,area.satistfying.thresh)
+            
+            #Return
+            thresh.layers <- purrr::map(1:nlayers(pass.threshold),function(i) pass.threshold[[i]])
+            return(tibble(field=thresh.layers,realization=1:nlayers(dat),value=area.filt)) 
+
           })
 
 #' @export
@@ -78,56 +101,8 @@ setMethod("returns.field",signature(st="threshold"),
           })
 
 
-threshold.fn <- function(st,vals,integrate){
-  
-  if(length(st@threshold)==2) {
-    pass.threshold <- vals > min(st@threshold) & vals < max(st@threshold)
-  } else if(st@above) {
-    pass.threshold <- vals > st@threshold
-  } else {
-    pass.threshold <- vals < st@threshold
-  }
-  
-  if(integrate) {
-    #Now calculate the area
-    pxl.area <- area(vals)
-    area.masked <- pxl.area * pass.threshold
-    names(area.masked) <- names(vals)
-    area.statistfying.thresh <- cellStats(area.masked,sum)
-    
-    #Filter areas where it doesn't work.
-    mean.temp <- cellStats(vals,mean)
-    area.filt <- ifelse(is.na(mean.temp),NA,area.statistfying.thresh)
-    
-    #Return
-    return(tibble(realization=1:nlayers(vals),value=area.filt)) 
-    
-  } else { #Return the results
-    return(tibble(field=list(pass.threshold)))
-  }}
 
-#' Threshold area
-#' 
-#' Returns the area of water defined by threshold(s)
-#' 
-#' @export area.threshold
-#' @param threshold Critical threshold value(s) - a numeric of length 1 or 2
-#' @param above Logical value - TRUE indicates that we wish to test for values above the threshold. FALSE below. 
-#' If threshold is a length two vector, then this argument is ignored
-#' @return  \code{threshold.area} returns a tibble  corresponding to the integrated area above (or below) the threshold value. 
-#' If two thresholds are supplied, the integrated area corresponds to that between the two thresholds
-area.threshold <- setClass("area.threshold",contains="threshold")
-
-#' @export
-setMethod("eval.stat",signature(st="area.threshold",vals="Raster"),
-          function(st,vals,...){
-            return(threshold.fn(st,vals,integrate=TRUE))
-          })
-
-setMethod("returns.field",signature(st="area.threshold"),
-          function(st){
-            return(FALSE)
-          })
+# Averaging ========================================================================
 
 
 #' Average value within an ROI
@@ -139,23 +114,21 @@ spatial.mean <- setClass("spatial.mean",contains="stat",
                          prototype=list(name="spatial.mean"))
 
 #' @export
-setMethod("eval.stat",signature(st="spatial.mean",vals="Raster"),
-          function(st,vals,...) {
-            require(reshape2)
+setMethod("eval.stat",signature(st="spatial.mean",dat="Raster"),
+          function(st,dat) {
             #Crop supplied object to the spatial polygon and then mask
             #b.crop <- crop(x,m@poly.ROI)
             #b <- mask(r,sp@boundary)
-            b <- vals
 
             #Get pixel area
-            pxl.area <- area(b)
+            pxl.area <- area(dat)
 
             #Calculate the terms in the weighted average
-            temp.by.area <- b*pxl.area
-            na.by.area   <- (!is.na(b))*pxl.area
+            temp.by.area <- dat*pxl.area
+            na.by.area   <- (!is.na(dat))*pxl.area
             wt.temp <- cellStats(temp.by.area,sum)/cellStats(na.by.area,sum)
 
-            return(data.frame(realization=1:nlayers(b),value=wt.temp))
+            return(data.frame(realization=1:nlayers(dat),value=wt.temp))
           })
 
 
@@ -164,6 +137,7 @@ setMethod("returns.field",signature(st="spatial.mean"),
             return(FALSE)
           })
 
+# Pass through ========================================================================
 
 #' Pass-through statistic
 #'
@@ -175,9 +149,9 @@ pass.through <- setClass("pass.through",contains="stat",
                          prototype=list(name="pass.through"))
 
 #' @export
-setMethod("eval.stat",signature(st="pass.through",vals="Raster"),
-          function(st,vals,...) {
-            return(tibble(field=list(vals)))
+setMethod("eval.stat",signature(st="pass.through",dat="Raster"),
+          function(st,dat) {
+            return(tibble(field=list(dat)))
           })
 
 setMethod("returns.field",signature(st="pass.through"),
@@ -185,6 +159,7 @@ setMethod("returns.field",signature(st="pass.through"),
             return(TRUE)
           })
 
+# Isoline ========================================================================
 
 
 #' Northward extent of an isolone
@@ -196,32 +171,28 @@ isoline.lat <- setClass("isoline.lat",slots=list(threshold="numeric"),
                             prototype=list(name="isoline.lat"))
 
 #' @export
-setMethod("eval.stat",signature(st="isoline.lat",vals="Raster"),
-          function(st,vals,...){
-
-            require(reshape2)
-
+setMethod("eval.stat",signature(st="isoline.lat",dat="Raster"),
+          function(st,dat){
             #Crop supplied object to the spatial polygon and then mask
             # b.crop <- crop(x,m@poly.ROI)
             # b <- mask(b.crop,m@poly.ROI)
-            b <- vals
 
             #Calculate the zonal averages - this has to be done
             #by hand, as there is no direct support
-            zonal.mean <- raster::rowSums(b,na.rm=TRUE)/raster::rowSums(!is.na(b))
+            zonal.mean <- raster::rowSums(dat,na.rm=TRUE)/raster::rowSums(!is.na(dat))
 
             #Loop over temperature thresholds
             lat.val.l <- list()
             for(i in seq(length(m@threshold))) {
               lat.val <- apply(as.matrix(zonal.mean),2,
                                       function(zm) {
-                                        res <- try(approx(zm,yFromRow(b),
+                                        res <- try(approx(zm,yFromRow(dat),
                                                       m@threshold[i],
                                                       rule=2,ties=min)$y)
                                         if(is(res,"try-error")) {res <- NA}
 
                                         return(res) })
-              lat.val.l[[i]] <- data.frame(realization=getZ(b),
+              lat.val.l[[i]] <- data.frame(realization=getZ(dat),
                                            threshold=m@threshold[i],
                                            value=lat.val)
             }
@@ -235,36 +206,49 @@ setMethod("returns.field",signature(st="isoline.lat"),
             return(FALSE)
           })
 
+# Habitat Model ========================================================================
 
-#' Habitat suitability model 
+#' Habitat model 
 #'
-#' Applies a habitat suitability model
-#' @export habitat.suitability
-habitat.suitability <- setClass("habitat.suitability",
-                                slots=list(model="function"),
-                                prototype=list(name="habitat.suitability"),
-                                contains="stat")
+#' Applies a habitat suitability model to calculate the habitat suitability on a pixel-by-pixel
+#' basis and then integrates it
+#' @name habitat
+#' @export habitat
+habitat <- setClass("habitat",
+                    slots=list(fn="function",
+                               resources="list"),
+                    prototype=list(name="habitat"),
+                    contains="stat",
+                    validity = function(object) {
+                      err.msg <- NULL
+                      if(!identical(names(formals(object@fn)),c("dat","resources"))) {
+                        err.msg <- c(err.msg,
+                                     'Function in fn slot must have exactly two arguments: "dat" and "resources"')
+                      }
+                      if(length(err.msg)==0) return(TRUE) else err.msg
+                    })
 
-#' @export
-setMethod("eval.stat",signature(st="habitat.suitability",vals="Raster"),
-          function(st,vals,...){
-            
-            require(dplyr)
-            
+setMethod("eval.stat",signature(st="habitat",dat="Raster"),
+          function(st,dat){
+
             #Apply the habitat model
-            hab.r <- vals
-            hab.r[] <- st@model(vals[])
-            
+            hab.r <- st@fn(dat,st@resources)
+
             #Get pixel area
             pxl.area <- area(hab.r)
             
-            #Calculate total carrying capacity
-            pxl.cap <- pxl.area*exp(hab.r)
+            #Calculate total carrying capacity over ROI
+            pxl.cap <- pxl.area*hab.r
             car.cap <- cellStats(pxl.cap,sum,na.rm=TRUE)
-            return(data.frame(realization=1:nlayers(vals),value=car.cap)) })
+            
+            #Break the field into indvidual layers
+            hab.layers <- map(1:nlayers(hab.r),function(i) hab.r[[i]])
+            
+            #Return
+            return(tibble(field=hab.layers,realization=1:nlayers(dat),value=car.cap)) })
 
 
-setMethod("returns.field",signature(st="habitat.suitability"),
+setMethod("returns.field",signature(st="habitat"),
           function(st){
             return(FALSE)
           })

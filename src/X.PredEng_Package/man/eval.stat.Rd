@@ -4,7 +4,7 @@
 \alias{eval.stat}
 \title{Evaluate an stat}
 \usage{
-eval.stat(st, vals, ...)
+eval.stat(st, dat)
 }
 \description{
 Evaluate an stat

@@ -6,7 +6,7 @@
 \alias{threshold}
 \title{Thresholds}
 \arguments{
-\item{threshold}{Critical threshold value - a numeric of length 1 or 2}
+\item{thre}{shold Critical threshold value - a numeric of length 1 or 2}
 
 \item{above}{Logical value - TRUE indicates that we wish to test for values above the threshold. FALSE below. 
 Ignored if two thresholds are supplied.}
@@ -16,6 +16,6 @@ Ignored if two thresholds are supplied.}
 argument. If two thresholds are supplied, the raster corresponds to that between the two thresholds
 }
 \description{
-Determines where each pixel sits in relation to a threshold value, potentially integrating over the
-area of interest
+Determines where each pixel sits in relation to a threshold value and integrates  over the
+area of interest to get the area satisfying the threshold
 }

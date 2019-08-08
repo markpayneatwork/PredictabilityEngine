@@ -11,7 +11,7 @@
 the realisation values themselves. This slot essentially acts as a flag telling
 the script whether it wants 2D (lat-lon) or 3D (lat-lon-realization) data.}
 
-\item{use.anomalies}{Should the statistic be calculated on the basis of
+\item{use.full.field}{Should the statistic be calculated on the basis of
 anomalies only or should the full field be used?}
 
 \item{is.global.stat}{Indicates whether the stat should be calculated on a global or local basis ie. for 
