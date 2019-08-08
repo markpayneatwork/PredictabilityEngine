@@ -37,6 +37,7 @@ log_msg <- function(fmt,...) {cat(sprintf(fmt,...));
 
 library(devtools)
 
+install_github("markpayneatwork/ClimateOperators",git="external")
 install_git("git@gitlab.gbar.dtu.dk:PayneLab/ClimateTools.git",git="external")
 install.packages("src/X.PredEng_Package", repos = NULL, type="source")
 

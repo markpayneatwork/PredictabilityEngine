@@ -9,6 +9,7 @@ License: What license is it under?
 LazyData: TRUE
 Depends:
     raster,
+    ClimateOperators,
     ClimateTools,
     tidyverse,
     lubridate,
