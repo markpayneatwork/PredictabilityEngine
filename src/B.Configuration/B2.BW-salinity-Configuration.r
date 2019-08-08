@@ -86,12 +86,7 @@ chunk.src.df <- tibble(source=unlist(CESM.src@sources),
 pcfg@Decadal[["CESM-DPLE"]]@sources <- split(chunk.src.df$source,chunk.src.df$chunk.str)
 
 #CMIP5 salinity
-#Select CMIP5 models
-pcfg@CMIP5 <- CMIP5.srcs(var="so",
-                         expts=c("historical","rcp26","rcp85"),
-                         end.yr = 2100,
-                         r=NA,i=1,p=1)
-
+pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="so")
 
 #'========================================================================
 # Statistics ####

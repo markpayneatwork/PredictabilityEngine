@@ -57,10 +57,7 @@ define_dir(pcfg@scratch.dir)
 pcfg@Decadal <- SST.Decadal[!grepl(c("^MPI-NCEP-forced$"),names(SST.Decadal))]
 
 #Select CMIP5 models
-pcfg@CMIP5 <- CMIP5.srcs(var="tos",
-                         expts=c("historical","rcp26","rcp85"),
-                         end.yr = 2100,
-                         r=NA,i=1,p=1)
+pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="tos")
 
 # #If working locally, only keep the simplest two models
 # if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
