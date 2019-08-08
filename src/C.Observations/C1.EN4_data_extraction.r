@@ -80,8 +80,7 @@ mon.clim.dir <- define_dir(base.dir,"A.monthly_climatologies")
 mon.anom.dir <- define_dir(base.dir,"B.monthly_anom")
 misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
 
-
-unzip.dir <- tempdir()
+tmp.dir <- tempdir()
 # misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
 # mon.clim.dir <- define_dir(base.dir,"A.monthly_climatologies")
 # mon.anom.dir <- define_dir(base.dir,"B.monthly_anom")
@@ -98,43 +97,20 @@ log_msg("Extracting metadata...\n")
 
 #First thing to do is to get metadata of the available files, and 
 #use this to define future files
-#src.zips.l <- dir(src.dir,pattern="*.zip",full.names = TRUE)
-# src.meta.l <- lapply(src.file.l,function(f) {
-#   zipinfo.args <- ssl("-1" ,file.path(getwd(),f))
-#   manifest.l <- system2("zipinfo",zipinfo.args,stdout=TRUE)
-#   return(tibble(zip.fname=f,content.fname=manifest.l))
-# })
-# src.meta.all <- bind_rows(src.meta.l) %>%
-#             tidyr::extract(content.fname,c("year","month"),".*.([0-9]{4})([0-9]{2}).nc",
-#                            remove=FALSE,convert=TRUE)
+meta.db <- tibble(fname=unlist(this.src@sources)) %>%
+  mutate(sellev.fname=sprintf("%s.sellev.nc",fname),
+         selROI.fname=sprintf("%s.selROI.nc",fname),
+         tempcor.fname=sprintf("%s.degC.nc",sellev.fname),
+         vertmean.fname=sprintf("%s.vertmean.nc",fname)) %>%
+  mutate(extract.fname=file.path(extract.dir,basename(fname)))
 
 #Loop over files
-src.files <- unlist(this.src@sources)
-pb <- progress_estimated(length(src.files),-1)
-extract.meta.l <- list()  #Meta data list of the extracted files
-  
-for(this.src.zip in src.files) {
-  
-  #Unzip all files from the archive to the temp directory
-  unzip.args <- ssl("-o",this.src.zip,
-                     sprintf("-d %s",unzip.dir))
-  system2("unzip",unzip.args,stdout=FALSE)
-  
-  #Setup the manifest metadata
-  manifest.meta <- tibble(fname=system2("zipinfo",ssl("-1",this.src.zip),stdout=TRUE)) %>%
-                   mutate(sellev.fname=sprintf("%s.sellev.nc",fname),
-                          selROI.fname=sprintf("%s.selROI.nc",fname),
-                          tempcor.fname=sprintf("%s.degC.nc",sellev.fname),
-                          vertmean.fname=sprintf("%s.vertmean.nc",fname)) %>%
-                  mutate_all(function(x) file.path(unzip.dir,x)) %>%
-                  mutate(src.fname=this.src.zip,
-                         extract.fname=file.path(extract.dir,basename(fname)))
-  extract.meta.l[[this.src.zip]] <- manifest.meta
+pb <- progress_estimated(nrow(meta.db),-1)
 
+for(j in seq(nrow(meta.db))) {
   #For each individual file, strip out as much extra info as possible
   #by selecting the field of interest, region of interest and the layers of interest
-  for(j in seq(nrow(manifest.meta)))  {
-    this.meta <- manifest.meta[j,]
+    this.meta <- meta.db[j,]
     #Select the levels and field of interest first
     if(!length(pcfg@vert.range)==0) {
       vert.idxs <- verticalLayers(pcfg,this.src,this.meta$fname)
@@ -148,7 +124,7 @@ for(this.src.zip in src.files) {
 
     #If we are dealing with temperature, need to conver½t from K to C
     if(this.src@var=="temperature") {
-      next.fname <- this.temp$tempcor.fname
+      next.fname <- this.meta$tempcor.fname
       levmean.cmd <- cdo("addc,-273.15",
                          this.meta$sellev.fname,
                          next.fname)
@@ -165,17 +141,14 @@ for(this.src.zip in src.files) {
     remap.cmd <- cdo(csl("remapbil", file.path(subdomain.dir,PE.cfg$files$analysis.grid)),
                         this.meta$vertmean.fname, 
                         this.meta$extract.fname)
-  }
-
   #Tidy up
-  unlink(with(manifest.meta,c(fname,sellev.fname,selROI.fname,vertmean.fname,tempcor.fname)))
+  unlink(with(this.meta,c(sellev.fname,selROI.fname,vertmean.fname,tempcor.fname)))
   pb$tick()$print()
 }
-print(pb$stop())
+pb$stop()$print()
 
 #Tweak metadata
-extract.meta <- bind_rows(extract.meta.l) %>%
-                select(src.fname,extract.fname) %>%
+extract.meta <- select(meta.db,extract.fname) %>%
                 tidyr::extract(extract.fname,c("year","month"),".*.([0-9]{4})([0-9]{2}).nc",
                              remove=FALSE,convert=TRUE)
 

@@ -210,7 +210,7 @@ Sal.obs$EN4  <- data.source(name="EN4",
                             type="Observations",
                             var="salinity",
                             sources=list(dir("data_srcs/Observations/EN4/",
-                                       pattern="\\.zip$",full.names = TRUE)),
+                                       pattern="\\.nc$",full.names = TRUE)),
                             layermids.fn = function(f) {
                               #z.idx are the indices, v is the vertical coordinate in metres
                               ncid <- nc_open(f)
