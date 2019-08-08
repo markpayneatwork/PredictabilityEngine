@@ -34,7 +34,6 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 library(PredEng)
 library(tibble)
 library(raster)
-load("objects/PredEng_config.RData")
 source("src/B.Configuration/B0.Define_SST_data_srcs.r")
 
 #'========================================================================
@@ -70,6 +69,7 @@ if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
 pcfg@use.global.ROI <- TRUE
 pcfg@global.ROI <- extent(-180,180,-90,90)
 pcfg@global.res  <- 1 #0.25
+pcfg@retain.realizations <- FALSE
 
 #Import EEZ's
 load("resources/EEZs/EEZs.RData")
