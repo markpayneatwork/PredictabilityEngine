@@ -121,6 +121,7 @@ SST.Decadal$CESM.DPLE <- CESM.DPLE.src
 #Set list names and ids
 names(SST.Decadal) <- sapply(SST.Decadal,slot,"name")
 
+SST.Decadal.production <- SST.Decadal[c("CESM-DPLE","MPI-ESM-LR")]
 
 #'========================================================================
 # Salinity data sources ####

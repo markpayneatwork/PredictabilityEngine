@@ -48,8 +48,8 @@ pcfg <- PredEng.config(project.name= "Mackerel_summer",
                        recalculate=TRUE,
                        MOI=8,
                        average.months=FALSE,
-                       clim.years=1985:2004,  
-                       comp.years=1985:2015,
+                       clim.years=1982:2005,  
+                       comp.years=1982:2015,
                        landmask="data_srcs/NMME/landmask.nc",
                        Observations=SST_obs[[c("HadISST")]])#,
                        #CMIP5.models=CMIP5.mdls.l,    #Disable
@@ -59,8 +59,8 @@ pcfg <- PredEng.config(project.name= "Mackerel_summer",
 pcfg@scratch.dir <- file.path("scratch",pcfg@project.name)
 define_dir(pcfg@scratch.dir)
 
-#Drop NCEP forced model
-pcfg@Decadal <- SST.Decadal[-which(names(SST.Decadal)=="MPI-NCEP-forced")]
+#Select decadal models
+pcfg@Decadal <- SST.Decadal.production
 
 #Select CMIP5 models
 pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="tos")

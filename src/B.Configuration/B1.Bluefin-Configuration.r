@@ -44,7 +44,7 @@ pcfg <- PredEng.config(project.name= "Bluefin",
                MOI=8,  #August
                average.months=FALSE,
                clim.years=1982:2005,  
-               comp.years=1985:2015,
+               comp.years=1982:2015,
                landmask="data_srcs/NMME/landmask.nc",
                Observations=SST_obs[[c("HadISST")]],
                NMME=NMME.sst.l)
@@ -53,16 +53,11 @@ pcfg <- PredEng.config(project.name= "Bluefin",
 pcfg@scratch.dir <- file.path("scratch",pcfg@project.name)
 define_dir(pcfg@scratch.dir)
 
-#Drop NCEP forced model
-pcfg@Decadal <- SST.Decadal[!grepl(c("^MPI-NCEP-forced$"),names(SST.Decadal))]
+#Select decadal models
+pcfg@Decadal <- SST.Decadal.production
 
 #Select CMIP5 models
 pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="tos")
-
-# #If working locally, only keep the simplest two models
-# if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
-#   pcfg@Decadal <- pcfg@Decadal[c(1,4)]
-# }
 
 #'========================================================================
 # Spatial Configurations ####

@@ -42,8 +42,8 @@ source("src/B.Configuration/B0.Define_common_data_srcs.r")
 pcfg <- PredEng.config(project.name= "BW-Salinity",
                        MOI=3,  #March - ideally should be Feb-March-april average (??)
                        average.months=FALSE,
-                       clim.years=1985:2004,  
-                       comp.years=1985:2015,
+                       clim.years=1982:2005,  
+                       comp.years=1982:2015,
                        landmask="data_srcs/NMME/landmask.nc")
 
 #Setup scratch directory
