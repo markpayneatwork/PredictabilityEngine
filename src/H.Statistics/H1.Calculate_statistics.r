@@ -49,7 +49,7 @@ pcfg <- readRDS(PE.cfg$config.path)
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.no <- 61
+  cfg.no <- 12
   debug.mode <- FALSE
   set.cdo.defaults("--silent --no_warnings")
   set.log_msg.silent()
@@ -181,7 +181,10 @@ for(j in seq(nrow(sel.stats))) {
     #20190508 There was previously a problem working with a single layered brick in the raster
     #package. However, this seems to have been resolved now, so we can do everything as a simple
     #brick, which is the way God intended. 
+    #20190811 Or maybe not... Maybe a solution is to convert it to a raster, if it only has one
+    #layer
     mdl.anom <- brick(f)  
+    if(nlayers(mdl.anom)==1) mdl.anom <- mdl.anom[[1]]
 
     #Choose whether we use full fields or anomalies
     if(this.stat@use.full.field) {      #Calculate the full field by adding in the appropriate climatology
