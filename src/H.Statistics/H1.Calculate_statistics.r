@@ -49,7 +49,7 @@ pcfg <- readRDS(PE.cfg$config.path)
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.no <- 18
+  cfg.no <- 61
   debug.mode <- FALSE
   set.cdo.defaults("--silent --no_warnings")
   set.log_msg.silent()
@@ -73,7 +73,7 @@ this.src <- get.this.src(cfg.fname,cfg.no,pcfg)
 config.summary(pcfg, this.src,this.sp)
 
 if(this.src@type=="Persistence" & !pcfg@average.months & length(pcfg@MOI) >1 &
-   any(!sapply(pcfg@statistics,slot,"use.anomalies"))){
+   any(!purrr::map_lgl(pcfg@statistics,slot,"use.full.field"))){
   stop("Don't know how to handle a persistence forecast for full
        field statistics in presence of multiple months")
 }
@@ -116,7 +116,7 @@ sum.stats.l <- list()
 #as well - particularly for statistics that return fields, instead of singular
 #values, we want to process the entire global domain, rather than just a single
 #local spatial domain. Hence, we need to select the spatial statistics accordingly.
-stats.tb <- tibble(name=sapply(pcfg@statistics,slot,name="name"),
+stats.tb <- tibble(name=sapply(pcfg@statistics ,slot,name="name"),
                    is.global.stat=sapply(pcfg@statistics,slot,name="is.global.stat"),
                    stat=pcfg@statistics)
 #Only apply spatial stats to global spatial domains
@@ -184,10 +184,8 @@ for(j in seq(nrow(sel.stats))) {
     mdl.anom <- brick(f)  
 
     #Choose whether we use full fields or anomalies
-    if(this.stat@use.anomalies) {
-      mdl.val <- mdl.anom
-      
-    } else { #Calculate the full field by adding in the appropriate climatology
+    if(this.stat@use.full.field) {      #Calculate the full field by adding in the appropriate climatology
+
       #Select the appropriate observation climatology
       obs.clim <- obs.clim.l[[m$which.clim]]
       
@@ -198,16 +196,19 @@ for(j in seq(nrow(sel.stats))) {
       
       #Build up the modelled value by combining the observational climatology
       #with the modelled anomaly.
-      mdl.val <- brick(obs.clim + mdl.anom)
-      mdl.val <- setZ(mdl.val,getZ(mdl.anom))  #...and correcting the Z values
+      mdl.dat <- brick(obs.clim + mdl.anom)
+      mdl.dat <- setZ(mdl.dat,getZ(mdl.anom))  #...and correcting the Z values
+      
+    } else { #Use the anomaly
+      mdl.dat <- mdl.anom
     }
     
     
     #Apply the masks 
-    masked.vals <- mask(mdl.val,comb.mask,maskvalue=1)
+    masked.dat <- mask(mdl.dat,comb.mask,maskvalue=1)
   
     #And we're ready. Lets calculate some summary statistics
-    res <- eval.stat(st=this.stat,vals=masked.vals) 
+    res <- eval.stat(st=this.stat,dat=masked.dat) 
     
     #Add in the metadata and store the results
     #Doing the bind diretly like this is ok when we are dealing with
@@ -225,7 +226,7 @@ for(j in seq(nrow(sel.stats))) {
   
   #Tidy up results a bit more
   stat.res <- bind_rows(res.l) %>% 
-              as.tibble() %>%
+              as_tibble() %>%
               add_column(sp.subdomain=this.sp@name,
                          stat.name=this.stat@name,
                          .before=1) %>%
