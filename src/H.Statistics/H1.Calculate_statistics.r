@@ -49,7 +49,7 @@ pcfg <- readRDS(PE.cfg$config.path)
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.no <- 12
+  cfg.no <- 1
   debug.mode <- FALSE
   set.cdo.defaults("--silent --no_warnings")
   set.log_msg.silent()
@@ -217,7 +217,8 @@ for(j in seq(nrow(sel.stats))) {
     #Doing the bind diretly like this is ok when we are dealing with
     #rasterLayer fragments, but we will need to be caseful when dealing with 
     #bricks, for example
-    res.l[[i]] <- bind_cols(m,res)
+    res.l[[i]] <- bind_cols(slice(m,rep(1,nrow(res))),res)
+    
   }
   
   Sys.sleep(0.1)
@@ -233,7 +234,7 @@ for(j in seq(nrow(sel.stats))) {
               add_column(sp.subdomain=this.sp@name,
                          stat.name=this.stat@name,
                          .before=1) %>%
-              select(-fname,-which.clim)
+              dplyr::select(-fname,-which.clim)
 
   #Store results
   save.fname <- gsub(" ","-",sprintf("%s_%s_%s_%s.rds",
