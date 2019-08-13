@@ -345,6 +345,12 @@ CMIP5.db <- constrain.CMIP5(var.constraints = c("tos","so"),
                             start.yr=1950,
                             end.yr=2100)
 
+#If working on laptop, use a copy of the database from the server instead
+if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
+  CMIP5.db <- readRDS("objects/CMIP5db.rds")
+}
+
+
 #Function to make data.sources for CMIP5 slot
 make.CMIP5.srcs <- function(meta,var) {
   #Select variable of interest
