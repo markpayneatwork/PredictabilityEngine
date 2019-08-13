@@ -149,7 +149,7 @@ CMIP5.db <- do.call(constrain.CMIP5,config.arg.l)
 # Complete ####
 #'========================================================================
 #Turn off the lights
-save(CMIP5.db,file="objects/CMIP5db.rds")
+saveRDS(CMIP5.db,file="objects/CMIP5db.rds")
 
 log.msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
