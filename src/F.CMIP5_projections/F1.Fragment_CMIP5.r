@@ -116,13 +116,16 @@ for(i in seq(length(src.fnames))) {
     temp.out <- sprintf("%s_vertmean",temp.in)
     levmean.cmd <- cdo("vertmean",temp.in,temp.out)
     
+    #Update temp.stem to reflect these edits
+    temp.stem <- temp.out
+    
   } else {
     temp.out <- this.f
   }
 
   #Select the field of interest, just to be sure
   temp.in <- temp.out
-  temp.out <- sprintf("%s_selname",temp.in)
+  temp.out <- sprintf("%s_selname",temp.stem)
   selname.cmd <- cdo(csl("selname",this.src@var),temp.in,temp.out)
 
   #Select the months of interest 
