@@ -46,7 +46,6 @@ if(interactive()) {
   cfg.id <- 1
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
-  set.nco.defaults("--overwrite")
 } else {
   #Taking inputs from the system environment
   cfg.id <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
@@ -55,6 +54,8 @@ if(interactive()) {
   set.cdo.defaults()
   set.log_msg.silent(FALSE)
 }
+
+set.nco.defaults("--overwrite")
 
 #Extract configurations
 this.sp <- get.this.sp(file.path(PE.cfg$dirs$job.cfg,"Decadal_ensmean.cfg"),cfg.id,pcfg)
