@@ -5,6 +5,8 @@ output:
     keep_md: false
     toc: true
     toc_float: true
+editor_options: 
+  chunk_output_type: inline
 ---
 
 ```{r setup, include="FALSE"}
@@ -85,8 +87,8 @@ show(pcfg)
 #'========================================================================
 #Import data
 base.dir <- pcfg@scratch.dir
-skill.mets <- readRDS(file.path(base.dir,PE.cfg$files$skill.metrics))
-stat.dat <- readRDS(file.path(base.dir,PE.cfg$files$stats))
+skill.mets.all <- readRDS(file.path(base.dir,PE.cfg$files$scalar.skill.metrics))
+stat.dat <- readRDS(file.path(base.dir,PE.cfg$files$scalar.stats))
 
 #Rescale time axis
 rescale.fn <- function(m) {  #Converts a leadtime in months into a rescale value
@@ -95,25 +97,82 @@ rescale.fn <- function(m) {  #Converts a leadtime in months into a rescale value
          rescale(m,from=c(0,12),to=c(0,1)))
 }
 
-skill.mets <- ungroup(skill.mets) %>%
+skill.mets <- ungroup(skill.mets.all) %>%
               filter(skill.type=="mean.skill",
                      src.type!="Observations") %>%
               mutate(t=rescale.fn(lead),
                      ensmean=src.name=="Ensmean"|src.type=="Persistence")
 
-#Plot!
+field.skill.mets <- ungroup(skill.mets.all) %>%
+                filter(skill.type=="field")
+
+#Plot misc!
 x.lbls <- tibble(months=c(seq(0,12,by=3),seq(24,120,by=24)),t=rescale.fn(months)) %>%
   mutate(lbl=ifelse(months<=12,sprintf("%g m",months),
                     sprintf("%g y",months/12)))
 x.minor <- tibble(months=c(0:12,seq(24,120,by=12)),t=rescale.fn(months))
 
-#Present results by spatial region
-sp.skill.l <- split(skill.mets,skill.mets$sp.subdomain)
 
 ```
 
 
+
 ```{r results="asis"}
+#'========================================================================
+# Field skills ####
+#'========================================================================
+if(nrow(field.skill.mets)>0) {
+    cat("## Field statistics\n")
+  
+  #For simplicity, we only look at the skill of the ensemble mean
+  ensmean.field.skill <- field.skill.mets %>%
+                          filter(src.name==PE.cfg$files$ensmean.name) 
+  
+  #Now extract the raster-based skill fields into a format ready for plotting
+  plt.dat.all <- rowwise(ensmean.field.skill) %>%
+    group_split() %>%
+    lapply(function(x) {
+      rast.df <- rasterToPoints(x$field.skill[[1]])
+      colnames(rast.df)[3] <- "skill"
+      cbind(x,rast.df)}) %>%
+    bind_rows() %>%
+    as_tibble() %>%
+    dplyr::select(-src.name,-sp.subdomain,-skill.type,-value,-field.skill) 
+  
+  #Now split into plots
+  plt.dat.stat <- group_by(plt.dat.all) %>% group_split(stat.name)
+  for(this.stat.dat in plt.dat.stat) {
+    cat(sprintf("\n\n### %s\n",unique(this.stat.dat$stat.name)))
+
+    #Now split into the individual plots
+    plt.dat.l <- group_by(this.stat.dat,src.type,skill.metric) %>% group_split()
+    for(plt.dat in plt.dat.l) {
+      g <- ggplot(plt.dat,aes(x,y,fill=skill))+
+        geom_raster()+
+        facet_wrap(~lead)+
+        coord_quickmap()+
+        annotation_map(map_data("world"))+
+        scale_fill_viridis_c()+
+        labs(fill=unique(plt.dat$skill.metric),x="",y="")+
+        ggtitle(unique(plt.dat$src.type))
+      print(g)
+      
+      
+    }
+    
+    
+  }
+  
+    
+  
+}
+
+#'========================================================================
+# Stat skills ####
+#'========================================================================
+#Present results by spatial region
+sp.skill.l <- split(skill.mets,skill.mets$sp.subdomain)
+
 for(this.sp in names(sp.skill.l)) {
   #Extract data 
   sp.dat <- sp.skill.l[[this.sp]]
@@ -194,7 +253,7 @@ for(this.sp in names(sp.skill.l)) {
         labs(x="Lead time (months / years)",y=this.sk,colour="Forecast System")
       print(g)
       
-    }    
+    }  #Plot  
     
   }
   

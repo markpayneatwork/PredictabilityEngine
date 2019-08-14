@@ -8,7 +8,7 @@
 #
 # Created Wed May  1 10:48:18 2019
 #
-# Calculates skill metrics based on a supplied database of statistics
+# Calculates skill metrics based on a supplied database of scalar statistics
 #
 # This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 # You are largely free to do what you like with it, so long as you "attribute"
@@ -23,7 +23,7 @@
 #'========================================================================
 # Initialise system ####
 #'========================================================================
-cat(sprintf("\n%s\n","Calculate_skill_metrics"))
+cat(sprintf("\n%s\n","Calculate scalar skill metrics"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Do house cleaning
@@ -55,8 +55,8 @@ stats.meta <- slotNames("stat") %>%
   c(list(returns.field=sapply(pcfg@statistics,returns.field))) %>%
   bind_rows()
 
-#Import stat results
-all.stats <- readRDS(file.path(base.dir,PE.cfg$files$stats))
+#Import scalar results
+all.scalars <- readRDS(file.path(base.dir,PE.cfg$files$scalar.stats))
 
 #'========================================================================
 # Split and Merge Observations ####
@@ -64,34 +64,34 @@ all.stats <- readRDS(file.path(base.dir,PE.cfg$files$stats))
 log.msg("Split and merge...\n")
 
 #Extract out the observational data
-obs.dat <- filter(all.stats,src.type=="Observations") %>%
-  dplyr::select(sp.subdomain,ym,stat.name,value,field) 
-
+obs.dat <- 
+  filter(all.scalars,src.type=="Observations") %>%
+  dplyr::select(sp.subdomain,ym,stat.name,value) 
 
 #And merge it back into the comparison dataframe. This way we have both the
 #modelled and the observed results together in the same dataframe. We note
 #that we do the merging by yearmonth - this should generally be ok for most of the
 #situations where we envisage using PredEnd i.e. one data point per year - but
 #we need to be aware that this is not exactly the case 
-comp.dat.all <- left_join(all.stats,obs.dat,
-                          by=c("ym","stat.name","sp.subdomain"),
-                          suffix=c(".mdl",".obs"))
+comp.dat.all <- 
+  left_join(all.scalars,obs.dat,
+            by=c("ym","stat.name","sp.subdomain"),
+            suffix=c(".mdl",".obs"))
 
 #Subset further and add start.month
-comp.dat <- filter(comp.dat.all,
-                   year(date) %in% pcfg@comp.years) %>%
+comp.dat <- 
+  filter(comp.dat.all,
+         year(date) %in% pcfg@comp.years) %>%
   mutate(start.month=month(start.date))
 
 
 #'========================================================================
-# Calculate the metrics for single-value statistics ####
+# Calculate the metrics for scalar statistics ####
 #'========================================================================
 #Looking to calculate a set of metrics here. In particular, we want to have
 #the mean skill, but also the range across initialisation dates as well
 
-log.msg("Metrics for single-value statistics...\n")
-svstats <- filter(stats.meta,!returns.field)
-svstat.dat <- filter(comp.dat,stat.name %in% svstats$name)
+log.msg("Metrics for scalar statistics...\n")
 
 #Skill functions
 RMSE <- function(x,y) { sqrt(mean((x-y)^2,na.rm=TRUE))}
@@ -102,7 +102,7 @@ skill.sum <- function(d) {
 
 #Now calculate the mean skill over all start dates
 g.vars <- c("src.name","src.type","sp.subdomain","stat.name","lead")
-skill.mean <- svstat.dat %>%
+skill.mean <- comp.dat %>%
   group_by_at(vars(one_of(g.vars))) %>%
   skill.sum() %>%
   gather("skill.metric","value",-one_of(g.vars)) %>%
@@ -110,7 +110,7 @@ skill.mean <- svstat.dat %>%
 
 
 #Now calculate the range of skill over start dates
-skill.range <- svstat.dat %>%
+skill.range <- comp.dat %>%
   group_by_at(vars(one_of(c(g.vars,"start.month")))) %>%
   skill.sum()%>%  
   gather("skill.metric","value",-one_of(c(g.vars,"start.month"))) %>%
@@ -123,38 +123,38 @@ skill.range <- svstat.dat %>%
 
 #Merge into one tibble 
 skill.mets <- rbind(skill.range,skill.mean)
-#saveRDS(skill.mets,file=file.path(base.dir,PE.cfg$files$skill.metrics))
+saveRDS(skill.mets,file=file.path(base.dir,PE.cfg$files$scalar.skill.metrics))
 
-#'========================================================================
-# Calculate the metrics for field statistics ####
-#'========================================================================
-log.msg("Metrics for field statistics...\n")
-fldstats <- filter(stats.meta,returns.field)
-fldstats.dat <- filter(comp.dat,stat.name %in% fldstats$name)
-
-cor.field.skill.fn <- function(mdl.l,obs.l){
-  mdl.b <- brick(mdl.l)
-  obs.b <- brick(obs.l)
-  return(list(corLocal(mdl.b,obs.b)))
-} 
-
-RMSE.field.skill.fn <- function(mdl.l,obs.l){
-  mdl.b <- brick(mdl.l)
-  obs.b <- brick(obs.l)
-  err.b <- mdl.b - obs.b
-  rmse.b <- sqrt(mean(err.b^2))
-  return(list(rmse.b))
-} 
-
-field.skill <- fldstats.dat %>%
-  group_by_at(vars(one_of(g.vars))) %>%
-  summarize(cor=cor.field.skill.fn(field.mdl,field.obs),
-            RMSE=RMSE.field.skill.fn(field.mdl,field.obs)) %>%
-  gather("skill.metric","field.skill",-one_of(g.vars)) %>%
-  mutate(skill.type="field")
-
-comb.skill <- bind_rows(skill.mets,field.skill)
-saveRDS(comb.skill,file=file.path(base.dir,PE.cfg$files$skill.metrics))
+#' #'========================================================================
+#' # Calculate the metrics for field statistics ####
+#' #'========================================================================
+#' log.msg("Metrics for field statistics...\n")
+#' fldstats <- filter(stats.meta,returns.field)
+#' fldstats.dat <- filter(comp.dat,stat.name %in% fldstats$name)
+#' 
+#' cor.field.skill.fn <- function(mdl.l,obs.l){
+#'   mdl.b <- brick(mdl.l)
+#'   obs.b <- brick(obs.l)
+#'   return(list(corLocal(mdl.b,obs.b)))
+#' } 
+#' 
+#' RMSE.field.skill.fn <- function(mdl.l,obs.l){
+#'   mdl.b <- brick(mdl.l)
+#'   obs.b <- brick(obs.l)
+#'   err.b <- mdl.b - obs.b
+#'   rmse.b <- sqrt(mean(err.b^2))
+#'   return(list(rmse.b))
+#' } 
+#' 
+#' field.skill <- d <- fldstats.dat %>%
+#'   group_by_at(vars(one_of(g.vars))) %>%
+#'   summarize(cor=cor.field.skill.fn(field.mdl,field.obs),
+#'             RMSE=RMSE.field.skill.fn(field.mdl,field.obs)) %>%
+#'   gather("skill.metric","field.skill",-one_of(g.vars)) %>%
+#'   mutate(skill.type="field")
+#' 
+#' comb.skill <- bind_rows(skill.mets,field.skill)
+#' saveRDS(comb.skill,file=file.path(base.dir,PE.cfg$files$skill.metrics))
 
 
 #'========================================================================

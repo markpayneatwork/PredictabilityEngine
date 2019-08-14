@@ -88,13 +88,15 @@ stats.l <- list()
 for(sp.d in sp.dirs){
   stats.fnames <- dir(file.path(base.dir,sp.d,PE.cfg$dirs$statistics),full.names = TRUE)
   for(f in stats.fnames){
-    stats.l[[f]]   <- readRDS(f)
+    #Drop the field statistics though, to avoid things getting out of control size-wise
+    stats.l[[f]]   <- readRDS(f) %>%
+                      select(-field)
   }
   
 }
 
 #Merge into one big object and add meta information
-all.stats.raw <- bind_rows(stats.l) %>%
+all.scalars <- bind_rows(stats.l) %>%
                mutate(ym=sprintf("%i-%02i",year(date),month(date))) 
 
 #'========================================================================
@@ -102,31 +104,36 @@ all.stats.raw <- bind_rows(stats.l) %>%
 #'========================================================================
 log_msg("Setting up persistence forecasts...\n")
 #Extract persistence and observation data
-obs.stats <- subset(all.stats.raw,src.type=="Observations")
-persis.stats <- subset(all.stats.raw,src.type=="Persistence") %>%
+obs.stats <- subset(all.scalars,src.type=="Observations")
+persis.stats <- subset(all.scalars,src.type=="Persistence") %>%
               dplyr::select(-start.date)  %>%
               mutate(ym.date=sprintf("%i-%02i",year(date),month(date))) 
 
 #Generate the forecast grid
-lead.times <- 1:120
-forecast.dates <- filter(tibble(date=unique(obs.stats$date)),year(date) %in% pcfg@comp.years)
-persis.forecast.grid <- expand.grid(date=forecast.dates$date,
-                                    sp.subdomain=names(pcfg@spatial.subdomains),
-                                    lead=lead.times) %>%
-                        as_tibble() %>%
-                        mutate(sp.subdomain=as.character(sp.subdomain),
-                               start.date=date-months(lead),
-                               ym.start=sprintf("%i-%02i",year(start.date),month(start.date)))
-persis.forecast.stats <- left_join(persis.forecast.grid,
-                                 persis.stats,
-                                 by=c("ym.start"="ym.date","sp.subdomain") ) %>%
-                        mutate(date=date.x,
-                               date.x=NULL,date.y=NULL,ym.start=NULL,lead=NULL,
-                               ym=sprintf("%i-%02i",year(date),month(date)))
+forecast.dates <- filter(tibble(date=unique(obs.stats$date)),
+                         year(date) %in% pcfg@comp.years)
 
-#Add it back to the stat list
-all.stats <- rbind(subset(all.stats.raw,src.type!="Persistence"),
-                 persis.forecast.stats)
+persis.forecast.grid <- 
+  expand.grid(date=forecast.dates$date,
+              sp.subdomain=names(pcfg@spatial.subdomains),
+              lead=pcfg@persistence.leads) %>%
+  as_tibble() %>%
+  mutate(sp.subdomain=as.character(sp.subdomain),
+         start.date=date-months(lead),
+         ym.start=sprintf("%i-%02i",year(start.date),month(start.date)))
+
+persis.forecast.stats <- 
+  left_join(persis.forecast.grid,
+            persis.stats,
+            by=c("ym.start"="ym.date","sp.subdomain") ) %>%
+  mutate(date=date.x,
+         date.x=NULL,date.y=NULL,ym.start=NULL,lead=NULL,
+         ym=sprintf("%i-%02i",year(date),month(date)))
+
+#Add it back to the stat list for output
+out.stats <- 
+  filter(all.scalars,src.type!="Persistence") %>%
+  bind_rows(persis.forecast.stats)
 
 #Calculate lead time using udunits
 # ud.from <- "days since 1970-01-01"
@@ -139,8 +146,8 @@ date.to.months <- function(x) {
   #Months since 1 Jan 1900
   (year(x)-1900)*12 + (month(x)-1) + (day(x)-1)/days_in_month(x)
 }
-all.stats$lead.raw <- date.to.months(all.stats$date)- date.to.months(all.stats$start.date)
-all.stats$lead <- round(all.stats$lead.raw/0.5)*0.5  #Half month accuracy
+out.stats$lead.raw <- date.to.months(out.stats$date)- date.to.months(out.stats$start.date)
+out.stats$lead <- round(out.stats$lead.raw/0.5)*0.5  #Half month accuracy
 
 #' #'========================================================================
 #' # Split and Merge ####
@@ -184,8 +191,7 @@ all.stats$lead <- round(all.stats$lead.raw/0.5)*0.5  #Half month accuracy
 # Complete ####
 #'========================================================================
 #Save results
-saveRDS(all.stats, file=file.path(base.dir,PE.cfg$files$stats))
-
+saveRDS(out.stats, file=file.path(base.dir,PE.cfg$files$scalar.stats))
 
 #Turn off the lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
