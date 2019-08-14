@@ -192,7 +192,7 @@ log_msg("\n")
 fragstack.meta <- bind_rows(fragstack.meta.l) %>%
   select(start.date,date=forecast.date,lead=L.val,n.realizations,fname) %>%
   add_column(name=this.src@name,
-             type=this.src@type,
+             src.type=this.src@type,
              .before=1)
 
 saveRDS(fragstack.meta,file=file.path(base.dir,PE.cfg$files$fragstack.meta))
