@@ -128,7 +128,7 @@ setMethod("eval.stat",signature(st="spatial.mean",dat="Raster"),
             na.by.area   <- (!is.na(dat))*pxl.area
             wt.temp <- cellStats(temp.by.area,sum)/cellStats(na.by.area,sum)
 
-            return(data.frame(realization=1:nlayers(dat),value=wt.temp))
+            return(tibble(realization=1:nlayers(dat),value=wt.temp))
           })
 
 
@@ -192,7 +192,7 @@ setMethod("eval.stat",signature(st="isoline.lat",dat="Raster"),
                                         if(is(res,"try-error")) {res <- NA}
 
                                         return(res) })
-              lat.val.l[[i]] <- data.frame(realization=getZ(dat),
+              lat.val.l[[i]] <- tibble(realization=getZ(dat),
                                            threshold=m@threshold[i],
                                            value=lat.val)
             }
