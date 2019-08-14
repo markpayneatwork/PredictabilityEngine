@@ -217,7 +217,7 @@ for(j in seq(nrow(sel.stats))) {
     #Doing the bind diretly like this is ok when we are dealing with
     #rasterLayer fragments, but we will need to be caseful when dealing with 
     #bricks, for example
-    res.l[[i]] <- bind_cols(m,!!!res)
+    res.l[[i]] <- bind_cols(slice(m,rep(1,nrow(res))),res)
 
   }
   
