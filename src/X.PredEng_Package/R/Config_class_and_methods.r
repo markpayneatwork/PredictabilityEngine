@@ -6,6 +6,7 @@
 #' @slot Decadal A list of GCM objects defining the decadal forecast systems to be analysed
 #' @slot NMME A list of GCM objects defining the NMME models to be analysed
 #' @slot CMIP5 A list of data source objects to configure extraction from the CMIP5 ensemble. 
+#' @slot persistence.leads A vector (in months) of lead times at which to generate persistence forcasts
 #' @slot spatial.subdomains List of spatial.config objects defining the spatial subdomains over which 
 #' to operate
 #' @slot statistics PredEng.list of statistics to apply over each spatial area
@@ -47,6 +48,7 @@ PredEng.config <- setClass("PredEng.config",
                                       Decadal="list",
                                       NMME="list",
                                       CMIP5="list",
+                                      persistence.leads="numeric",
                                       spatial.subdomains="list",
                                       statistics="list",
                                       extraction="list",
@@ -62,6 +64,7 @@ PredEng.config <- setClass("PredEng.config",
                                       retain.realizations="logical",
                                       average.months="logical"),
                            prototype = list(global.ROI=extent(as.numeric(rep(NA,4))),
+                                            persistence.leads=1:120,  #1-10 years
                                             recalculate=TRUE,
                                             retain.realizations=TRUE))
 

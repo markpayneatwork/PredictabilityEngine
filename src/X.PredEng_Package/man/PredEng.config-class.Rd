@@ -35,6 +35,8 @@ Different extraction modes can be combined in the same list.
 
 \item{\code{CMIP5}}{A list of data source objects to configure extraction from the CMIP5 ensemble.}
 
+\item{\code{persistence.leads}}{A vector (in months) of lead times at which to generate persistence forcasts}
+
 \item{\code{spatial.subdomains}}{List of spatial.config objects defining the spatial subdomains over which 
 to operate}
 
