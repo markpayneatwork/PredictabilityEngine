@@ -22,7 +22,7 @@
 #
 # Additional targets
 #    help      ; Displays Makefile header with list of target
-#    purge     : Remove all todo files
+#    reset     : Remove all todo files
 #    clean     : Remove all log files from working directory
 #    status    : List of available types and their current status
 #    setup     : Creates necessary subdirectories
@@ -66,7 +66,7 @@ $(OUTDIR)/%.ok:
 	@echo $* >> $(TODO)
 
 PPStats:
-	@TYPE=$@; bsub -J PE_$$TYPE -o PE_$$TYPE.%J.%I.out -e PE_$$TYPE.%J.%I.err -n 1 -R "rusage[mem=8GB]" -W 72:00 $(MASTER) $$TYPE 
+	@TYPE=$@; bsub -J PE_$$TYPE -o PE_$$TYPE.%J.%I.out -e PE_$$TYPE.%J.%I.out -n 1 -R "rusage[mem=32GB]" -W 72:00 $(MASTER) $$TYPE 
 	
 #-------------------------------------
 #Remove any existing To do files
@@ -94,8 +94,8 @@ NMME_sync:
 clean:
 	-@rm PE_* -f
 
-purge:
-	-@rm $(addsuffix /*,$(TYPE_DIRS))
+reset:
+	-@find $(TYPE_DIRS) -name "*.ok" -print -delete
 	-@rm $(TODO_DIR)/*
 
 FORCE:
