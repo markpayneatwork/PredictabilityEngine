@@ -55,7 +55,7 @@ MASTER=./src/Y.HPC_scripts/bMaster.sh
 default: help status
 
 #-------------------------------------
-#NMME
+#Types
 $(TYPES):
 	make cluster TYPE=$@
 
@@ -66,8 +66,9 @@ $(OUTDIR)/%.ok:
 	@echo $* >> $(TODO)
 
 PPStats:
+	@touch $(CFG_DIR)/$@.cfg
+	@mkdir -p $(CFG_DIR)/$@
 	@TYPE=$@; bsub -J PE_$$TYPE -o PE_$$TYPE.%J.%I.out -e PE_$$TYPE.%J.%I.out -n 1 -R "rusage[mem=32GB]" -W 72:00 $(MASTER) $$TYPE 
-	
 #-------------------------------------
 #Remove any existing To do files
 todo: $(TODOs)
