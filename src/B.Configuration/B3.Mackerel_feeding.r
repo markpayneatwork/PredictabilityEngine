@@ -146,6 +146,11 @@ statsum.l[[3]] <-  habitat(name="Habitat",
                            use.realmeans=FALSE,
                            use.full.field = TRUE)
 
+statsum.l[[4]] <-  new("habitat",
+                       statsum.l[[3]],
+                       name="Global Habitat",
+                       use.globally=TRUE)
+
 #Merge it all in
 names(statsum.l) <- sapply(statsum.l,slot,"name")
 pcfg@statistics <- statsum.l
