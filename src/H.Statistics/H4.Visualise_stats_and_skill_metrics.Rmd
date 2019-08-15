@@ -181,7 +181,14 @@ for(this.sp in names(sp.skill.l)) {
   cat(sprintf("\n\n## %s\n",this.sp))
   
   #Map of the Spatial region
-  sp.obj <- pcfg@spatial.subdomains[[this.sp]]
+  if(this.sp==PE.cfg$misc$global.sp.name) {
+    #Use the global ROI
+    sp.obj <- spatial.domain(pcfg@global.ROI,
+                            name=PE.cfg$misc$global.sp.name)
+  } else {
+    #Use the normal object
+    sp.obj <- pcfg@spatial.subdomains[[this.sp]]
+  }
   xtent <- extend(extent(sp.obj),10)
   g <- ggplot()+
     geom_sf(data=st_as_sf(sp.obj@boundary)) +
