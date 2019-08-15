@@ -126,7 +126,7 @@ statsum.l[[1]] <- threshold(name = "Area above 8.5 degrees",
                                  threshold=8.5)  #Based on Teunis' paper
 statsum.l[[2]] <- pass.through(name="Temperature anomaly",
                                skill.metrics = "correlation",
-                               is.global.stat=TRUE,
+                               use.globally=TRUE,
                                use.full.field = FALSE,
                                use.realmeans=TRUE)
 

@@ -3,19 +3,19 @@
 \name{job_management}
 \alias{job_management}
 \alias{partition.workload}
-\alias{get.this.src}
-\alias{get.this.sp}
-\alias{get.this.cfgs}
+\alias{configure.src}
+\alias{configure.sp}
+\alias{get.cfgs}
 \title{Manage job distribution}
 \usage{
 partition.workload(obj, src.slot, data.partition.type = "",
   space.partition = !obj@use.global.ROI)
 
-get.this.src(fname, cfg.idx, obj)
+configure.src(fname, cfg.idx, obj)
 
-get.this.sp(fname, cfg.idx, obj)
+configure.sp(fname, cfg.idx, obj)
 
-get.this.cfgs(fname)
+get.cfgs(fname)
 }
 \arguments{
 \item{obj}{A PredEng.config object}

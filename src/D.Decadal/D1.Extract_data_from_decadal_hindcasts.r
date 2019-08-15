@@ -62,9 +62,9 @@ set.nco.defaults("--overwrite")
 
 #Retrieve configurations
 cfg.fname <- file.path(PE.cfg$dirs$job.cfg,"Decadal_by_chunks.cfg")
-this.cfgs <- get.this.cfgs(cfg.fname)
-this.sp <- get.this.sp(cfg.fname,cfg.id,pcfg)
-this.chunk <- get.this.src(cfg.fname,cfg.id,pcfg)
+this.cfgs <- get.cfgs(cfg.fname)
+this.sp <- configure.sp(cfg.fname,cfg.id,pcfg)
+this.chunk <- configure.src(cfg.fname,cfg.id,pcfg)
 config.summary(pcfg,this.sp,this.chunk)
 
 #Directory setup

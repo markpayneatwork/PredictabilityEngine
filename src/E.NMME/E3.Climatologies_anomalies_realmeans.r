@@ -65,9 +65,9 @@ set.nco.defaults("--overwrite")
 
 #Retrieve configurations
 cfg.fname <- file.path(PE.cfg$dirs$job.cfg,"NMME_by_sources.cfg")
-these.cfgs <- get.this.cfgs(cfg.fname)
-this.sp <- get.this.sp(cfg.fname,cfg.no,pcfg)
-this.src <- get.this.src(cfg.fname,cfg.no,pcfg)
+these.cfgs <- get.cfgs(cfg.fname)
+this.sp <- configure.sp(cfg.fname,cfg.no,pcfg)
+this.src <- configure.src(cfg.fname,cfg.no,pcfg)
 
 #Configure directories
 subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)

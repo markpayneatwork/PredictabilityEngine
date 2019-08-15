@@ -86,7 +86,7 @@ pcfg@retain.realizations <- TRUE
 statsum.l <- list()
 statsum.l[[1]] <- pass.through(name="Anomaly",
                                skill.metrics = "correlation",
-                               is.global.stat=TRUE,
+                               use.globally=TRUE,
                                use.anomalies = TRUE,
                                use.realmeans=TRUE)
 

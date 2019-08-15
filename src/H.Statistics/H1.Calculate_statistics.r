@@ -49,7 +49,7 @@ pcfg <- readRDS(PE.cfg$config.path)
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.no <- 1
+  cfg.no <- 79
   debug.mode <- FALSE
   set.cdo.defaults("--silent --no_warnings")
   set.log_msg.silent()
@@ -67,9 +67,9 @@ if(interactive()) {
 #'========================================================================
 #Retrieve configurations
 cfg.fname <- file.path(PE.cfg$dirs$job.cfg,"Stats.cfg")
-this.cfgs <- get.this.cfgs(cfg.fname)
-this.sp <- get.this.sp(cfg.fname,cfg.no,pcfg)
-this.src <- get.this.src(cfg.fname,cfg.no,pcfg)
+this.cfgs <- get.cfgs(cfg.fname)
+this.sp <- configure.sp(cfg.fname,cfg.no,pcfg)
+this.src <- configure.src(cfg.fname,cfg.no,pcfg)
 config.summary(pcfg, this.src,this.sp)
 
 if(this.src@type=="Persistence" & !pcfg@average.months & length(pcfg@MOI) >1 &
@@ -113,17 +113,17 @@ sum.stats.l <- list()
 #it makes most sense to it this way around.
 
 #The statistics can also inform the spatial domain that we are interested in
-#as well - particularly for statistics that return fields, instead of singular
+#as well - particularly for statistics that work with  fields, instead of singular
 #values, we want to process the entire global domain, rather than just a single
 #local spatial domain. Hence, we need to select the spatial statistics accordingly.
 stats.tb <- tibble(name=sapply(pcfg@statistics ,slot,name="name"),
-                   is.global.stat=sapply(pcfg@statistics,slot,name="is.global.stat"),
+                   use.globally=sapply(pcfg@statistics,slot,name="use.globally"),
                    stat=pcfg@statistics)
-#Only apply spatial stats to global spatial domains
-if(this.sp@name=="" & this.sp@desc=="global.ROI") {
-  sel.stats <- filter(stats.tb,is.global.stat)
+#Only apply global stats intended to be used globally on the global spatial domains
+if(this.sp@name==PE.cfg$misc$global.sp.name) {
+  sel.stats <- filter(stats.tb,use.globally)
 } else {
-  sel.stats <- filter(stats.tb,!is.global.stat)
+  sel.stats <- filter(stats.tb,!use.globally)
 }
 
 for(j in seq(nrow(sel.stats))) {

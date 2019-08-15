@@ -63,8 +63,8 @@ if(interactive()) {
 #interactively or from a script
 # if(partition.collation){
 #   cfg.fname <- file.path(PE.cfg$dirs$job.cfg,"SumStat_Collate.cfg")
-#   this.cfgs <- get.this.cfgs(cfg.fname)
-#   this.sp <- get.this.sp(cfg.fname,cfg.no,pcfg)
+#   this.cfgs <- get.cfgs(cfg.fname)
+#   this.sp <- configure.sp(cfg.fname,cfg.no,pcfg)
 #   sp.dirs <- this.sp@name
 #   config.summary(this.sp)
 # } else 

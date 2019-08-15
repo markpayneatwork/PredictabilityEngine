@@ -98,13 +98,13 @@ stat.l[[1]]  <- spatial.mean(name="Mean Salinity",
 
 stat.l[[2]] <- pass.through(name="Salinity field anomaly",
                                skill.metrics = "correlation",
-                               is.global.stat=TRUE,
+                               use.globally=TRUE,
                                use.full.field = FALSE,
                                use.realmeans=TRUE)
 
 stat.l[[3]] <- threshold(name="Suitable spawning area",
                             skill.metrics = "correlation",
-                            is.global.stat=TRUE,
+                            use.globally=TRUE,
                             use.full.field = TRUE,
                             threshold=c(35.3,35.5),
                             use.realmeans=TRUE)

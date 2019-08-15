@@ -65,9 +65,9 @@ set.nco.defaults("--overwrite")
 
 #Retrieve configurations
 cfg.fname <- file.path(PE.cfg$dirs$job.cfg,"Decadal_by_sources.cfg")
-this.cfgs <- get.this.cfgs(cfg.fname)
-this.sp <- get.this.sp(cfg.fname,cfg.id,pcfg)
-this.src <- get.this.src(cfg.fname,cfg.id,pcfg)
+this.cfgs <- get.cfgs(cfg.fname)
+this.sp <- configure.sp(cfg.fname,cfg.id,pcfg)
+this.src <- configure.src(cfg.fname,cfg.id,pcfg)
 config.summary(pcfg,this.sp,this.src)
 
 #Directory setup

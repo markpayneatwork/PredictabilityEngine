@@ -36,8 +36,8 @@ partition.workload <- function(obj,
   all.srcs <- dplyr::select(all.chunks,-chunk.id) %>%
               unique()
 
-  #If we have global statistics in the mix, then we need to handle this accordingly
-  global.stats.present <- any(sapply(obj@statistics,slot,name="is.global.stat"))
+  #If we want to use some stats globally, then we need to make sure to include the Global spatial domain
+  using.stats.globally <- any(map_lgl(obj@statistics,slot,name="use.globally"))
   
   #Retain the data sources requested
   if(src.slot=="Stats") {
@@ -63,12 +63,15 @@ partition.workload <- function(obj,
     
   #Setup spatial domains
   if(space.partition ) { #Overrides the use.global.ROI switch
-    if(global.stats.present & src.slot=="Stats") {
-      sp.subdomains <- c(names(obj@spatial.subdomains),NA)  #Add a global spatial config
+    if(using.stats.globally & src.slot=="Stats") {
+      #Then need to add a global spatial config as well
+      sp.subdomains <- c(names(obj@spatial.subdomains),PE.cfg$misc$global.sp.name)
     } else {
+      #Otherwise just use the supplied spatial domains
       sp.subdomains <- names(obj@spatial.subdomains)
     }
   } else if (obj@use.global.ROI) {
+    #Spatial domains are not relevant in this case - flag with an NA
     sp.subdomains <- as.character(NA)
   } else {
     sp.subdomains <- names(obj@spatial.subdomains)
@@ -92,8 +95,8 @@ partition.workload <- function(obj,
 #'
 #' @export
 #' @rdname job_management
-get.this.src <- function(fname,cfg.idx,obj){
-  cfgs <- get.this.cfgs(fname)
+configure.src <- function(fname,cfg.idx,obj){
+  cfgs <- get.cfgs(fname)
   this.cfg <- cfgs[cfg.idx,]
   if(is.na(this.cfg$src.name) | is.na(this.cfg$src.type)) {
     stop("Source not defined for this configuration")
@@ -120,11 +123,11 @@ get.this.src <- function(fname,cfg.idx,obj){
 
 #' @export
 #' @rdname job_management
-get.this.sp <- function(fname,cfg.idx,obj){
-  cfgs <- get.this.cfgs(fname)
+configure.sp <- function(fname,cfg.idx,obj){
+  cfgs <- get.cfgs(fname)
   this.cfg <- cfgs[cfg.idx,]
-  if(is.na(this.cfg$sp)) {
-    this.sp  <- spatial.domain(obj@global.ROI,name="",desc="global.ROI")
+  if(is.na(this.cfg$sp) | this.cfg$sp==PE.cfg$misc$global.sp.name) {
+    this.sp  <- spatial.domain(obj@global.ROI,name=PE.cfg$misc$global.sp.name,desc="global.ROI")
   } else { #Working with subdomains
     this.sp <- obj@spatial.subdomains[[as.character(this.cfg$sp)]]
   }
@@ -133,7 +136,7 @@ get.this.sp <- function(fname,cfg.idx,obj){
 
 #' @export
 #' @rdname job_management
-get.this.cfgs <- function(fname){
+get.cfgs <- function(fname){
   cfgs <- read_csv(fname,col_types = cols())
   return(cfgs)
 }

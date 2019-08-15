@@ -58,7 +58,7 @@ if(interactive()) {
 set.nco.defaults("--overwrite")
 
 #Extract configurations
-this.sp <- get.this.sp(file.path(PE.cfg$dirs$job.cfg,"Decadal_ensmean.cfg"),cfg.id,pcfg)
+this.sp <- configure.sp(file.path(PE.cfg$dirs$job.cfg,"Decadal_ensmean.cfg"),cfg.id,pcfg)
 
 #Directory setup
 sp.dir <- file.path(pcfg@scratch.dir,this.sp@name)

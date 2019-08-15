@@ -60,7 +60,7 @@ if(interactive()) {
 set.nco.defaults("--overwrite")
 
 #Retrieve configurations
-this.sp <- get.this.sp(file.path(PE.cfg$dirs$job.cfg,"NMME_ensmean.cfg"),cfg.id,pcfg)
+this.sp <- configure.sp(file.path(PE.cfg$dirs$job.cfg,"NMME_ensmean.cfg"),cfg.id,pcfg)
 config.summary(pcfg,this.sp)
 
 #Configure directories
