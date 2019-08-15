@@ -117,9 +117,10 @@ sum.stats.l <- list()
 #values, we want to process the entire global domain, rather than just a single
 #local spatial domain. Hence, we need to select the spatial statistics accordingly.
 stats.tb <- tibble(name=sapply(pcfg@statistics ,slot,name="name"),
-                   use.globally=sapply(pcfg@statistics,slot,name="use.globally"),
-                   stat=pcfg@statistics)
-#Only apply global stats intended to be used globally on the global spatial domains
+                   use.globally=map_lgl(pcfg@statistics,slot,name="use.globally"),
+                   stat=pcfg@statistics,
+                   returns.field=map_lgl(pcfg@statistics,returns.field))
+#Only apply stats intended to be used globally on the global spatial domains
 if(this.sp@name==PE.cfg$misc$global.sp.name) {
   sel.stats <- filter(stats.tb,use.globally)
 } else {
@@ -238,7 +239,7 @@ for(j in seq(nrow(sel.stats))) {
 
   #Store results
   save.fname <- gsub(" ","-",sprintf("%s_%s_%s_%s.rds",
-                                     ifelse(this.sp@name=="",this.sp@desc,this.sp@name),
+                                     this.sp@name,
                                      this.src@type,
                                      this.src@name,
                                      this.stat@name))
