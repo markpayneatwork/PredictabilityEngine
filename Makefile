@@ -22,7 +22,7 @@
 #
 # Additional targets
 #    help      ; Displays Makefile header with list of target
-#    reset     : Remove all todo files
+#    reset     : Remove all todo files - specify a subset using TYPE=...
 #    clean     : Remove all log files from working directory
 #    status    : List of available types and their current status
 #    setup     : Creates necessary subdirectories
@@ -95,8 +95,7 @@ clean:
 	-@rm PE_* -f
 
 reset:
-	-@find $(TYPE_DIRS) -name "*.ok" -print -delete
-	-@rm $(TODO_DIR)/*
+	-@find $(CFG_DIR)/$(TYPE) -name "*.ok" -print 
 
 FORCE:
 
