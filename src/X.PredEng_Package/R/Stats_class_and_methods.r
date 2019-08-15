@@ -33,14 +33,34 @@ stat <- setClass("stat",
 #' @export
 setGeneric("eval.stat",
            function(st,dat)
-             standardGeneric("eval.stat")
-)
+             standardGeneric("eval.stat"))
 
 #' Return type
 #' @export
 setGeneric("returns.field",
            function(st)
              standardGeneric("returns.field"))
+
+#' @export
+#Defaults to retain value
+setMethod("returns.field",signature(st="stat"),
+          function(st){
+            return(st@retain.field)
+          })
+
+#' Return type
+#' @export
+setGeneric("returns.scalar",
+           function(st)
+             standardGeneric("returns.scalar"))
+
+#' @export
+#Defaults to TRUE
+setMethod("returns.scalar",signature(st="stat"),
+          function(st){
+            return(TRUE)
+          })
+
 
 # Thresholds ========================================================================
 
@@ -100,12 +120,6 @@ setMethod("eval.stat",signature(st="threshold",dat="Raster"),
 
           })
 
-#' @export
-setMethod("returns.field",signature(st="threshold"),
-          function(st){
-            return(st@retain.field)
-          })
-
 
 
 # Averaging ========================================================================
@@ -145,6 +159,7 @@ setMethod("returns.field",signature(st="spatial.mean"),
             return(FALSE)
           })
 
+
 # Pass through ========================================================================
 
 #' Pass-through statistic
@@ -165,6 +180,11 @@ setMethod("eval.stat",signature(st="pass.through",dat="Raster"),
 setMethod("returns.field",signature(st="pass.through"),
           function(st){
             return(TRUE)
+          })
+
+setMethod("returns.scalar",signature(st="pass.through"),
+          function(st){
+            return(FALSE)
           })
 
 # Isoline ========================================================================
@@ -214,6 +234,7 @@ setMethod("returns.field",signature(st="isoline.lat"),
             return(FALSE)
           })
 
+
 # Habitat Model ========================================================================
 
 #' Habitat model 
@@ -257,9 +278,4 @@ setMethod("eval.stat",signature(st="habitat",dat="Raster"),
                           realization=1:nlayers(dat),
                           value=car.cap)) })
 
-
-setMethod("returns.field",signature(st="habitat"),
-          function(st){
-            return(st@retain.field)
-          })
 
