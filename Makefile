@@ -95,7 +95,7 @@ clean:
 	-@rm PE_* -f
 
 reset:
-	-@find $(CFG_DIR)/$(TYPE) -name "*.ok" -print 
+	-@find $(CFG_DIR)/$(TYPE) -name "*.ok" -print -delete 
 
 FORCE:
 
