@@ -2,10 +2,6 @@
 #  Define common directories etc
 #/*======================================================================*/
 PE.cfg <- list()
-PE.cfg$VOI.name <- "Variable_of_interest"
-PE.cfg$ROI.extraction.buffer <- 2  #Degrees
-PE.cfg$n.CMIP.chunks <- 5  #How many chunks should the CMIP5 ensemble be broken into?
-PE.cfg$NMME.epoch.start <- as.Date("1960-01-01")
 
 #Configuration
 PE.cfg$config.fname <- "configuration.rds"
@@ -33,5 +29,12 @@ PE.cfg$files <- list(Obs.monthly.anom.metadata=file.path(PE.cfg$dir$Misc.meta,"M
                      remapping.wts="remapping_wts.nc",
                      ensmean.name="Ensmean",
                      regridded.landmask="Regridded_landmask.nc")
+
+#Misc
+PE.cfg$misc <- list(global.sp.name = "Global",
+                    VOI.name= "Variable_of_interest",
+                    ROI.extraction.buffer=2,  #Degrees
+                    NMME.epoch.start = as.Date("1960-01-01"))
+                    
 
 usethis::use_data(PE.cfg,overwrite = TRUE)

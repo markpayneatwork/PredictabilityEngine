@@ -104,8 +104,8 @@ SLM <- list(S=ncid$dim$S$vals,
 nc_close(ncid)
 
 #Correct dates etc
-meta$first.start.date <-  PE.cfg$NMME.epoch.start  + months(meta$first.start)
-meta$last.start.date  <-  PE.cfg$NMME.epoch.start  + months(meta$last.start)
+meta$first.start.date <-  PE.cfg$misc$NMME.epoch.start  + months(meta$first.start)
+meta$last.start.date  <-  PE.cfg$misc$NMME.epoch.start  + months(meta$last.start)
 
 # #Save results
 # saveRDS(meta,file=file.path(base.dir,sprintf("%s_metadata.rds",this.src$mdl.str)))

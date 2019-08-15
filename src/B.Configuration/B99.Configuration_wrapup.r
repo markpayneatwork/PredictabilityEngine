@@ -36,7 +36,7 @@ base.dir <- define_dir(pcfg@scratch.dir)
 if(pcfg@use.global.ROI){
   log_msg("Writing Global Outputs...\n")
   #Write CDO grid descriptors
-  this.ROI <- extend(pcfg@global.ROI,PE.cfg$ROI.extraction.buffer)
+  this.ROI <- extend(pcfg@global.ROI,PE.cfg$misc$ROI.extraction.buffer)
   analysis.grid.fname <- file.path(base.dir,PE.cfg$files$analysis.grid)
   griddes.txt <- griddes(this.ROI,res=pcfg@global.res)
   writeLines(griddes.txt,analysis.grid.fname)
@@ -53,7 +53,7 @@ if(pcfg@use.global.ROI){
     log_msg("Writing outputs for %s...\n",sp@name)
     #Write CDO grid descriptors
     sp.dir <- define_dir(base.dir,sp@name)
-    this.ROI <- extend(extent(sp),PE.cfg$ROI.extraction.buffer)
+    this.ROI <- extend(extent(sp),PE.cfg$misc$ROI.extraction.buffer)
     griddes.txt <- griddes(this.ROI,res=pcfg@global.res) 
     analysis.grid.fname <- file.path(sp.dir,PE.cfg$files$analysis.grid)
     writeLines(griddes.txt,analysis.grid.fname)

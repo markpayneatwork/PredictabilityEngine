@@ -115,7 +115,7 @@ require(mgcv)
 #Note that we need to account for the extraction buffer here, to get a 
 #perfect match with the rest of the data
 log10bath <- raster("resources/BlueWhiting/ETOPO1_Bed_c_gmt4.grd") %>%
-              crop(extend(pcfg@global.ROI,PE.cfg$ROI.extraction.buffer)) %>%
+              crop(extend(pcfg@global.ROI,PE.cfg$misc$ROI.extraction.buffer)) %>%
               raster::aggregate(fact=pcfg@global.res/res(.),fun=mean)
 log10bath <- log10(-log10bath)
 

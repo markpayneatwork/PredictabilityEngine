@@ -113,7 +113,7 @@ for(i in seq(downloaded.fnames)) {
     as_tibble() %>%
     mutate(S.val=ncid$dim$S$val[S.idx],
            L.val=ncid$dim$L$val[L.idx],
-           start.date=PE.cfg$NMME.epoch.start+months(S.val),
+           start.date=PE.cfg$misc$NMME.epoch.start+months(S.val),
            forecast.date=start.date+months(floor(L.val)),
            forecast.month=month(forecast.date))
   nc_close(ncid)

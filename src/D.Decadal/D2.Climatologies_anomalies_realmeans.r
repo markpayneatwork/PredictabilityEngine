@@ -220,11 +220,11 @@ if(!file.exists(realmean.meta.fname) | pcfg@recalculate) {
     
     #Rename into a format suitable for combining into an ensmean
     realmean.tmp2 <- tempfile()
-    rename.cmd <- ncrename(sprintf("-v %s,%s",this.src@var,PE.cfg$VOI.name),
+    rename.cmd <- ncrename(sprintf("-v %s,%s",this.src@var,PE.cfg$misc$VOI.name),
                            realmean.tmp,realmean.tmp2)
     
     #And retain only this variable (and associated dimensions)
-    drop.cmd <- ncks(sprintf("-v %s",PE.cfg$VOI.name),
+    drop.cmd <- ncks(sprintf("-v %s",PE.cfg$misc$VOI.name),
                      realmean.tmp2,realmean.meta$fname[i])
     
     unlink(c(realmean.tmp,realmean.tmp2))
