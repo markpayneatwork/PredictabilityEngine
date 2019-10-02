@@ -25,7 +25,7 @@
 ### -- Specify the output and error file. %J is the job-id -- 
 ### -- -o and -e mean append, -oo and -eo mean overwrite -- 
 #BSUB -oo NMME_sync.%J.%I.out 
-#BSUB -eo NMME_sync.%J.%I.err 
+#BSUB -eo NMME_sync.%J.%I.out 
 
 #Some preliminaries for good measure
 echo "=========================================================="
@@ -40,6 +40,7 @@ echo "=========================================================="
 module load cdo
 module load gcc
 module load nco
+source ~/.bashrc
 
 
 Rscript ./src/E.NMME/E1.Retrieve_NMME_data.r
