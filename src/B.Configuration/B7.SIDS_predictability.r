@@ -34,7 +34,7 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 library(PredEng)
 library(tibble)
 library(raster)
-source("src/B.Configuration/B0.Define_SST_data_srcs.r")
+source("src/B.Configuration/B0.Define_common_data_srcs.r")
 
 #'========================================================================
 # Project Configuration ####
@@ -54,13 +54,8 @@ pcfg <- PredEng.config(project.name= "SIDS_Predictability",
 pcfg@scratch.dir <- file.path("scratch",pcfg@project.name)
 define_dir(pcfg@scratch.dir)
 
-#Drop NCEP forced model
-pcfg@Decadal <- hindcast_mdls[-which(names(hindcast_mdls)=="MPI-NCEP-forced")]
-
-#If working locally, only keep the simplest two models
-if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
-  pcfg@Decadal <- pcfg@Decadal[c(1,4)]
-}
+#Select decadal models
+pcfg@Decadal <- SST.Decadal.production
 
 #'========================================================================
 # Spatial Configurations ####
@@ -84,7 +79,7 @@ load("resources/EEZs/EEZs.RData")
 
 #Exclude small EEZs
 eez.sel <- subset(eez.sp,Area_km2 >1e3)
-EEZ.objs <- PredEng.list()
+EEZ.objs <- list()
 for(i in seq(nrow(eez.sel))) {
   this.sp <- eez.sel[i,]
   EEZ.objs[[i]] <- spatial.domain(name=as.character(this.sp$MRGID),
@@ -106,14 +101,19 @@ pcfg@spatial.subdomains <- EEZ.objs
 # Summary statistics ####
 #'========================================================================
 #Configure summary stats
-statsum.l <- PredEng.list()
-#statsum.l[[1]] <- area.above.threshold(threshold=11)
-statsum.l[[1]]  <- spatial.mean(data.type="means",use.anomalies=TRUE)
-#statsum.l[[3]] <-isoline.lat(threshold=11)
+stat.l <- list()
+stat.l[[1]]  <- spatial.mean(name="Mean Temperature",
+                             use.full.field=TRUE)
+
+stat.l[[2]] <- pass.through(name="Temperature anomaly",
+                            skill.metrics = "correlation",
+                            use.globally=TRUE,
+                            use.full.field = FALSE,
+                            use.realmeans=TRUE)
 
 #Merge it all in
-names(statsum.l) <- sapply(statsum.l,slot,"name")
-pcfg@summary.statistics <- statsum.l
+names(stat.l) <- sapply(stat.l,slot,"name")
+pcfg@statistics <- stat.l
 
 
 #'========================================================================
@@ -124,8 +124,7 @@ source("src/B.Configuration/B99.Configuration_wrapup.r")
 
 #As this project is so big, we also need to partition the collation
 #process as well
-cfgs <- partition.workload(file.path(cfg.dir,"SumStat_Collate.cfg"),
-                           pcfg,NA,partition.by.space=TRUE)
+#cfgs <- partition.workload(pcfg,NA,space.partition = TRUE)
 
 
 #Turn off thte lights
