@@ -94,6 +94,7 @@ NMME_sync:
 #-------------------------------------
 clean:
 	-@rm PE_* -f
+	-@rm NMME_* -f
 
 reset:
 	-@find $(CFG_DIR)/$(TYPE) -name "*.ok" -print -delete 
