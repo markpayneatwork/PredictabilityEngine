@@ -70,7 +70,9 @@ this.sp <- configure.sp(cfg.fname,cfg.no,pcfg)
 this.src <- configure.src(cfg.fname,cfg.no,pcfg)
 
 #Configure directories
-subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)
+subdomain.dir <- 
+  get.subdomain.dir(pcfg,this.sp) %>%
+  define_dir()
 base.dir <- define_dir(subdomain.dir,"NMME",this.src@name)
 fragstack.dir <- define_dir(base.dir,"1.fragstacks")
 lead.clim.dir <- define_dir(base.dir,"2.lead.clims")

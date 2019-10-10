@@ -140,3 +140,19 @@ get.cfgs <- function(fname){
   cfgs <- read_csv(fname,col_types = cols())
   return(cfgs)
 }
+
+#' Get Subdomain directory
+#' 
+#' Gets the scratch directory in which to place any subdomain processing
+#'
+#' @param cfg A PredEng config object 
+#' @param sp  A Spatial configuration object
+#'
+#' @return Path to the scratch directory
+#' @export
+get.subdomain.dir <- function(cfg,sp) {
+  if(cfg@use.global.ROI) {
+    return(cfg@scratch.dir)
+  } else {
+    return(file.path(cfg@scratch.dir,sp@name))}
+}

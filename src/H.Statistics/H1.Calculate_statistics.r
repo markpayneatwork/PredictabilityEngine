@@ -82,10 +82,7 @@ if(this.src@type=="Persistence" & !pcfg@average.months & length(pcfg@MOI) >1 &
 # Setup ####
 #'========================================================================
 #Directory setup
-if(pcfg@use.global.ROI) {
-	base.dir <- pcfg@scratch.dir
-} else {
-	base.dir <- file.path(pcfg@scratch.dir,this.sp@name)}
+base.dir <-  get.subdomain.dir(pcfg,this.sp) 
 obs.dir <- file.path(base.dir,pcfg@Observations@type,pcfg@Observations@name)
 stat.dir <- define_dir(base.dir,PE.cfg$dirs$statistics)
 

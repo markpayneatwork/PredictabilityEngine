@@ -77,10 +77,7 @@ HadISST.dat <- unlist(pcfg@Observations@sources)
 log_msg("\nProcessing %s...\n",this.sp@name)
 
 #Working directories
-subdomain.dir <- 
-  file.path(pcfg@scratch.dir,
-            ifelse(this.sp@name==PE.cfg$misc$global.sp.name,
-                   "",this.sp@name))
+subdomain.dir <- get.subdomain.dir(pcfg,this.sp)
 base.dir <- define_dir(subdomain.dir,"Observations","HadISST")
 work.dir <- tempdir()
 misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)

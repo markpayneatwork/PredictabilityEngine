@@ -62,7 +62,7 @@ for(this.sp in this.sps) {
   log_msg("Creating pseudo metadata for %s...\n",this.sp@name)
   
   #Working directories
-  subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)
+  subdomain.dir <- get.subdomain.dir(pcfg,this.sp)
   base.dir <- define_dir(subdomain.dir,"Persistence",pcfg@Observations@name)
 
   #Load the monthly anomaly data

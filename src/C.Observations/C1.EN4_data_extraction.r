@@ -73,10 +73,7 @@ if(!this.src@name=="EN4") stop("Not configured to use EN4 data")
 log_msg("\nProcessing %s...\n",this.sp@name)
 
 #Working directories
-subdomain.dir <- 
-  file.path(pcfg@scratch.dir,
-                           ifelse(this.sp@name==PE.cfg$misc$global.sp.name,
-                                  "",this.sp@name))
+subdomain.dir <- get.subdomain.dir(pcfg,this.sp)
 base.dir <- define_dir(subdomain.dir,"Observations","EN4")
 extract.dir <- define_dir(base.dir,"1.extracted")
 mon.clim.dir <- define_dir(base.dir,"A.monthly_climatologies")

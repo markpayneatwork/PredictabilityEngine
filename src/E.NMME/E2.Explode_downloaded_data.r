@@ -76,13 +76,17 @@ this.sp <- configure.sp(cfg.file,cfg.no,pcfg)
 this.src <- configure.src(cfg.file,cfg.no,pcfg)
 
 #Configure directories
-base.dir <- define_dir(pcfg@scratch.dir,this.sp@name,"NMME",this.src@name)
+subdomain.dir <- 
+  get.subdomain.dir(pcfg,this.sp) %>%
+  define_dir()
+base.dir <- define_dir(subdomain.dir,
+                       "NMME",this.src@name)
 data.dir <- file.path(PE.cfg$dirs$datasrc,"NMME",this.src@name)
 
 fragstack.dir <- define_dir(base.dir,"1.fragstacks")
 misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
 
-analysis.grid.fname <- file.path(pcfg@scratch.dir,this.sp@name,PE.cfg$files$analysis.grid)
+analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$files$analysis.grid)
 
 #Display configuration
 config.summary(pcfg,cfg.no,this.src,this.sp)

@@ -61,7 +61,7 @@ set.nco.defaults("--overwrite")
 this.sp <- configure.sp(file.path(PE.cfg$dirs$job.cfg,"Decadal_ensmean.cfg"),cfg.id,pcfg)
 
 #Directory setup
-sp.dir <- file.path(pcfg@scratch.dir,this.sp@name)
+sp.dir <- get.subdomain.dir(pcfg,this.sp)
 base.dir <- define_dir(sp.dir,"Decadal")
 ensmean.dir <- define_dir(base.dir,PE.cfg$files$ensmean.name,"B.realmean")
 

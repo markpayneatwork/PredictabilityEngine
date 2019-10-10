@@ -68,7 +68,7 @@ this.chunk <- configure.src(cfg.fname,cfg.id,pcfg)
 config.summary(pcfg,this.sp,this.chunk)
 
 #Directory setup
-subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)
+subdomain.dir <- get.subdomain.dir(pcfg,this.sp)
 datsrc.dir <- define_dir(subdomain.dir,"Decadal",this.chunk@name)
 chunk.dir <- define_dir(datsrc.dir,this.chunk@chunk)
 remap.dir <- define_dir(chunk.dir,"1.remapping_wts")

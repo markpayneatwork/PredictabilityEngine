@@ -64,7 +64,9 @@ this.sp <- configure.sp(file.path(PE.cfg$dirs$job.cfg,"NMME_ensmean.cfg"),cfg.id
 config.summary(pcfg,this.sp)
 
 #Configure directories
-subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)
+subdomain.dir <- 
+  get.subdomain.dir(pcfg,this.sp) %>%
+  define_dir()
 base.dir <- define_dir(subdomain.dir,"NMME")
 ensmean.dir <- define_dir(base.dir,PE.cfg$files$ensmean.name)
 anom.dir <- define_dir(ensmean.dir,"A.anoms")
