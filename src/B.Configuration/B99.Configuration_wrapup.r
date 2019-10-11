@@ -97,7 +97,7 @@ cfgs <- partition.workload(pcfg,"Decadal","Ensmean")
 cfgs <- partition.workload(pcfg,"CMIP5","Sources")
 cfgs <- partition.workload(pcfg,"CMIP5","Ensmean")
 cfgs <- partition.workload(pcfg,"Observations")
-cfgs <- partition.workload(pcfg,"Stats",space.partition=TRUE)
+cfgs <- partition.workload(pcfg,"Stats")
 
 #' -----------
 #' <small>*This work by Mark R Payne is licensed under a  Creative Commons
