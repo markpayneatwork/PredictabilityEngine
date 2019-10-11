@@ -76,7 +76,11 @@ todo: $(TODOs)
 $(TODO_DIR)/%.todo: FORCE 
 	@cat /dev/null  > $@ 
 
-status: $(sort $(addsuffix .status,$(TYPES)))
+status: configuration.name  $(sort $(addsuffix .status,$(TYPES)))
+
+configuration.name:
+	@cat objects/configuration.name
+	@echo " configuration"
 
 %.status: $(CFG_DIR)/%.cfg
 	@echo `printf "%-50s" "$*"`  : `ls $(CFG_DIR)/$*/ | wc -l` out of `grep -c "^[0-9]\+," $<` jobs

@@ -71,6 +71,7 @@ if(pcfg@use.global.ROI){
 cfg.fname <- file.path(pcfg@scratch.dir,PE.cfg$config.fname)
 cfg.linked <- PE.cfg$config.path
 saveRDS(pcfg,file=cfg.fname)
+cat(pcfg@project.name,file=file.path("objects","configuration.name"))
 if(file.exists(cfg.linked)) {
  file.remove(cfg.linked)
 }
