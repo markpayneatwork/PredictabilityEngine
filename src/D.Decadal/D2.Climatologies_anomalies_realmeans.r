@@ -71,7 +71,7 @@ this.src <- configure.src(cfg.fname,cfg.id,pcfg)
 config.summary(pcfg,this.sp,this.src)
 
 #Directory setup
-subdomain.dir <- file.path(pcfg@scratch.dir,this.sp@name)
+subdomain.dir <- get.subdomain.dir(pcfg,this.sp)
 base.dir <- define_dir(subdomain.dir,"Decadal",this.src@name)
 lead.clim.dir <- define_dir(base.dir,"5.lead.clims")
 anom.dir <- define_dir(base.dir,"A.anom")
