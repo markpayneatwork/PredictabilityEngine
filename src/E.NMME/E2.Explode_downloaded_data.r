@@ -195,7 +195,7 @@ log_msg("\n")
 #Build meta data object
 fragstack.meta <- bind_rows(fragstack.meta.l) %>%
   select(start.date,date=forecast.date,lead=L.val,n.realizations,fname) %>%
-  add_column(name=this.src@name,
+  add_column(src.name=this.src@name,
              src.type=this.src@type,
              .before=1)
 

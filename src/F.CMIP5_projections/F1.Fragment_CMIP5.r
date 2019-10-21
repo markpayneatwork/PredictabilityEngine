@@ -190,8 +190,8 @@ log_msg("Preparing metadata\n")
 frag.fnames <- dir(frag.dir,pattern=".nc",full.names = TRUE,recursive=TRUE)
 
 #Form metadata table
-frag.meta <- tibble(name=underscore_field(frag.fnames,1),
-                    expt=underscore_field(frag.fnames,2),
+frag.meta <- tibble(src.name=underscore_field(frag.fnames,1),
+                    src.expt=underscore_field(frag.fnames,2),
                     realization=underscore_field(frag.fnames,3),
                     date=as.Date(ISOdate(underscore_field(frag.fnames,4),
                                          pcfg@MOI,15)),
@@ -206,7 +206,7 @@ frag.meta <- extract(frag.meta,"realization",
   mutate(realization.r =as.numeric(realization.r))
 
 #Sort, for good measure
-frag.meta <- arrange(frag.meta,name,expt,date,realization.r)
+frag.meta <- arrange(frag.meta,src.name,src.expt,date,realization.r)
 
 #Save
 saveRDS(frag.meta,file=file.path(base.dir,PE.cfg$files$fragment.meta))
@@ -219,7 +219,7 @@ saveRDS(frag.meta,file=file.path(base.dir,PE.cfg$files$fragment.meta))
 log_msg("Building fragstacks...\n")
 # Group data into the fragment stacks
 fragstack.grp <- split(frag.meta,
-                       frag.meta[,c("date","expt","name")],drop=TRUE)
+                       frag.meta[,c("date","src.expt","src.name")],drop=TRUE)
 
 #Loop over groups and build the stacks
 pb <- progress_estimated(length(fragstack.grp))
@@ -233,7 +233,7 @@ for(i in seq(fragstack.grp)) {
   fragstack.fname <- file.path(fragstack.dir,
                                with(grp[1,],
                                     sprintf("%s_%s_%s_fragstack.nc",
-                                            name,expt,year(date))))
+                                            src.name,src.expt,year(date))))
   # condexec(1,fragstack.cmd <- cdo("merge",
   #                                 grp$fname,
   #                                 fragstack.fname))

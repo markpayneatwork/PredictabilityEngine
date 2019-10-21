@@ -95,7 +95,7 @@ anom.meta <- mutate(fragstack.meta,
                     start.month=month(start.date),
                     forecast.year=year(date),
                     clim.fname=file.path(lead.clim.dir,
-                                         sprintf("%s_%s_S%02i_L%s_clim.nc",name,this.sp@name,start.month,lead)),
+                                         sprintf("%s_%s_S%02i_L%s_clim.nc",src.name,this.sp@name,start.month,lead)),
                     fname=file.path(anom.dir,gsub("_fragstack.nc$","_anom.nc",basename(fragstack.fname))))
 
 #Define climatology file to use, based on grouping by  lead time and model

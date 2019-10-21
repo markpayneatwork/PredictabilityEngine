@@ -98,15 +98,15 @@ if(any(pcfg@clim.years>2005)) stop("Climatology years extend beyond 2005.")
 
 #Setup metadata table for next round of processing (climatologies and anoms)
 anom.meta <-  mutate(fragstack.meta,
-                     src.type=sprintf("%s.%s","CMIP5",expt),
+                     src.type=sprintf("%s.%s","CMIP5",src.expt),
                      start.date=NA,
                      fragstack.fname=fname,
-                     fname=file.path(anom.dir,sprintf("%s_%s_%s_anom.nc",name,expt,year(date))),
-                     clim.fname=file.path(clim.dir,sprintf("%s_clim.nc",name)))
+                     fname=file.path(anom.dir,sprintf("%s_%s_%s_anom.nc",src.name,src.expt,year(date))),
+                     clim.fname=file.path(clim.dir,sprintf("%s_clim.nc",src.name)))
 
 #Now select the files to work with. As we have fragstacks, we can select for
 #both year and experiment simultaneously
-clim.meta <- subset(anom.meta,expt=="historical" & year(date) %in% pcfg@clim.years)
+clim.meta <- subset(anom.meta,src.expt=="historical" & year(date) %in% pcfg@clim.years)
 
 # Calculate climatologies
 # Calculating the climatology could be complicated by the fact
