@@ -174,7 +174,9 @@ anom.fn <- function(am) {
 dmp <- pblapply(df2list(anom.meta),anom.fn,cl=getOption("mc.cores"))
 
 #Done. Save the results
-saveRDS(anom.meta,file=file.path(base.dir,PE.cfg$files$anom.meta))
+anom.meta %>%
+  select(src.name,src.type,start.date,date,fname) %>%
+  saveRDS(file=file.path(base.dir,PE.cfg$files$anom.meta))
 
 #'==========================================================================
 # Realization means ####
@@ -201,7 +203,9 @@ realmean.fn <- function(this.rm) {
 dmp <- pblapply(df2list(realmean.meta),realmean.fn,cl=getOption("mc.cores"))
 
 #Save data
-saveRDS(realmean.meta,file=file.path(base.dir,PE.cfg$files$realmean.meta))
+realmean.meta %>%
+  select(src.name,src.type,start.date,date,fname) %>%
+  saveRDS(file=file.path(base.dir,PE.cfg$files$realmean.meta))
 
 
 #'==========================================================================

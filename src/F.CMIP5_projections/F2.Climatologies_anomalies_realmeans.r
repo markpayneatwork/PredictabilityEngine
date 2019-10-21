@@ -155,7 +155,9 @@ Sys.sleep(0.1)
 print(pb$stop())
 log_msg("\n")
 
-saveRDS(anom.meta,file=file.path(base.dir,PE.cfg$files$anom.meta))
+anom.meta %>%
+  select(src.type,src.name,start.date,date,fname)%>%
+  saveRDS(file=file.path(base.dir,PE.cfg$files$anom.meta))
 
 #'========================================================================
 # Calculate realisation means ####
@@ -194,7 +196,9 @@ print(pb$stop())
 log_msg("\n")
 
 #Save realmeta data
-saveRDS(realmean.meta,file=file.path(base.dir,PE.cfg$files$realmean.meta))
+realmean.meta %>%
+  select(src.type,src.name,start.date,date,fname)%>%
+  saveRDS(file=file.path(base.dir,PE.cfg$files$realmean.meta))
 
 #'========================================================================
 # Complete ####
