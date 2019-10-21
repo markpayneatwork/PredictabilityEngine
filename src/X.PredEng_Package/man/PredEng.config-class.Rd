@@ -42,6 +42,8 @@ to operate}
 
 \item{\code{statistics}}{PredEng.list of statistics to apply over each spatial area}
 
+\item{\code{stat.chunk.size}}{Integer. Number of files to process in a single job array task}
+
 \item{\code{extraction}}{PredEng.list definining temporal and spatial extraction characteristics}
 
 \item{\code{MOI}}{The months of interest (a vector of integers between 1 and 12 inclusive)}

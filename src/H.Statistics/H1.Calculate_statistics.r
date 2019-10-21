@@ -49,7 +49,7 @@ pcfg <- readRDS(PE.cfg$config.path)
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.no <- 1
+  cfg.no <- 34
   debug.mode <- FALSE
   set.cdo.defaults("--silent --no_warnings")
   set.log_msg.silent()
@@ -67,9 +67,11 @@ if(interactive()) {
 #'========================================================================
 #Retrieve configurations
 cfg.fname <- file.path(PE.cfg$dirs$job.cfg,"Stats.cfg")
-this.cfgs <- get.cfgs(cfg.fname)
+these.cfgs <- get.cfgs(cfg.fname)
+this.cfg <- these.cfgs[cfg.no,]
 this.src <- configure.src(cfg.fname,cfg.no,pcfg)
-config.summary(pcfg, this.src)
+this.sp <- configure.sp(cfg.fname,cfg.no,pcfg)
+config.summary(pcfg, this.src,this.sp)
 
 if(this.src@type=="Persistence" & !pcfg@average.months & length(pcfg@MOI) >1 &
    any(!purrr::map_lgl(pcfg@statistics,slot,"use.full.field"))){
@@ -77,175 +79,179 @@ if(this.src@type=="Persistence" & !pcfg@average.months & length(pcfg@MOI) >1 &
        field statistics in presence of multiple months")
 }
 
+if(!is.na(this.cfg$sp)) {
+  stop("This code hasn't been checked recently using subdomain focused analyses. Check it before proceeding")
+}
+
 #'========================================================================
 # Setup ####
 #'========================================================================
-#Loop over sp already at this stage
-for(this.sp in pcfg@spatial.subdomains) {
-  #Directory setup
-  base.dir <-  get.subdomain.dir(pcfg,this.sp) 
-  obs.dir <- file.path(base.dir,pcfg@Observations@type,pcfg@Observations@name)
-  stat.dir <- define_dir(base.dir,PE.cfg$dirs$statistics)
+#Directory setup
+base.dir <-  get.subdomain.dir(pcfg,this.sp) 
+obs.dir <- file.path(base.dir,pcfg@Observations@type,pcfg@Observations@name)
+stat.dir <- define_dir(base.dir,PE.cfg$dirs$statistics)
+
+#Setup observational climatology
+clim.meta <- readRDS(file.path(obs.dir,PE.cfg$files$Obs.climatology.metadata))
+obs.clim.l <- lapply(clim.meta$fname,brick)
+names(obs.clim.l) <- sprintf("%02i",month(clim.meta$date))
+
+#Setup landmask 
+landmask <- raster(file.path(base.dir,PE.cfg$files$regridded.landmask))
+
+#Apply the spatial ROI to the mask as well
+comb.mask <- mask(landmask,this.sp@boundary,updatevalue=1)
+
+#Result storage
+sum.stats.l <- list()
+
+#'========================================================================
+# Setup metadata ####
+#'========================================================================
+#Load metadata
+#Remember that the metadata is preselected at the workload partitioning stage
+if(file.exists(this.cfg$metadat.path)) {
+  # metadat.varname <- load(metadat.path)
+  # metadat <- get(metadat.varname)    
+  metadat.all <-readRDS(this.cfg$metadat.path)
   
-  #Setup observational climatology
-  clim.meta <- readRDS(file.path(obs.dir,PE.cfg$files$Obs.climatology.metadata))
-  obs.clim.l <- lapply(clim.meta$fname,brick)
-  names(obs.clim.l) <- sprintf("%02i",month(clim.meta$date))
-  
-  #Setup landmask 
-  landmask <- raster(file.path(base.dir,PE.cfg$files$regridded.landmask))
-  
-  #Apply the spatial ROI to the mask as well
-  comb.mask <- mask(landmask,this.sp@boundary,updatevalue=1)
-  
-  #Result storage
-  sum.stats.l <- list()
-  
-  #'========================================================================
-  # Calculate statistics ####
-  #'========================================================================
-  #Outer loop is over the  statistics This is probably not the most effective
-  #strategy, as it involves some duplication around the calculation of the
-  #input fields. However, the statistics, in principle, determine the type
-  #of data that should be used as an input (i.e. realmeans, realizations etc), so 
-  #it makes most sense to it this way around.
-  
-  #The statistics can also inform the spatial domain that we are interested in
-  #as well - particularly for statistics that work with  fields, instead of singular
-  #values, we want to process the entire global domain, rather than just a single
-  #local spatial domain. Hence, we need to select the spatial statistics accordingly.
-  stats.tb <- tibble(name=sapply(pcfg@statistics ,slot,name="name"),
-                     use.globally=map_lgl(pcfg@statistics,slot,name="use.globally"),
-                     stat=pcfg@statistics,
-                     returns.field=map_lgl(pcfg@statistics,returns.field))
-  #Only apply stats intended to be used globally on the global spatial domains
-  if(this.sp@name==PE.cfg$misc$global.sp.name) {
-    sel.stats <- filter(stats.tb,use.globally)
-  } else {
-    sel.stats <- filter(stats.tb,!use.globally)
-  }
-  
-  for(j in seq(nrow(sel.stats))) {
-    this.stat <- sel.stats[j,]$stat[[1]]
-    log_msg("Processing '%s' statistic for %s subdomain...\n",
-            this.stat@name,this.sp@name)
-    
-    #Load the appropriate metadata
-    if(this.src@name==PE.cfg$files$ensmean.name) { #Obviously only going to use ensmean data
-      metadat.fname <- PE.cfg$files$realmean.meta
-    } else if(this.stat@use.realmeans) { #Use realmeans
-      metadat.fname <- PE.cfg$files$realmean.meta
-    } else if(!this.stat@use.realmeans) { #Use individual realizations
-      metadat.fname <- PE.cfg$files$anom.meta
-    } 
-    
-    #Load Metadata
-    metadat.path <- file.path(base.dir,this.src@type,this.src@name,metadat.fname)
-    if(file.exists(metadat.path)) {
-      # metadat.varname <- load(metadat.path)
-      # metadat <- get(metadat.varname)    
-      metadat <-readRDS(metadat.path)
-      
-    } else {#Fail gracefully
-      log_msg(sprintf("Error:Cannot find file %s.",metadat.path))
-      stop()
-      
-    }
-    
-    #Configure the observation climatology
-    if(pcfg@average.months | length(pcfg@MOI)==1) {
-      metadat$which.clim <- 1  #Just use the value that is there
-    } else {
-      metadat$which.clim <- sprintf("%02i",month(metadat$date))
-    }
-    
-    #Subset to make it run a bit quicker
-    if(debug.mode) {
-      metadat <- metadat[1:10,]
-    }
-    
-    #Setup for looping
-    res.l <- list()
-    pb <- progress_estimated(nrow(metadat))
-    
-    #Then loop over files
-    for(i in seq(nrow(metadat))) {
-      pb$tick()$print()
-      m <- metadat[i,]
-      f <- m$fname
-      log_msg("Processing summary statistic %s, file %s...\n",
-              this.stat@name,basename(f),silenceable = TRUE)    
-      
-      #Import model anom as a brick 
-      #20190508 There was previously a problem working with a single layered brick in the raster
-      #package. However, this seems to have been resolved now, so we can do everything as a simple
-      #brick, which is the way God intended. 
-      #20190811 Or maybe not... Maybe a solution is to convert it to a raster, if it only has one
-      #layer
-      mdl.anom <- brick(f)  
-      if(nlayers(mdl.anom)==1) mdl.anom <- mdl.anom[[1]]
-      
-      #Choose whether we use full fields or anomalies
-      if(this.stat@use.full.field) {      #Calculate the full field by adding in the appropriate climatology
-        
-        #Select the appropriate observation climatology
-        obs.clim <- obs.clim.l[[m$which.clim]]
-        
-        #The resolutions of the observational climatology and the modelled anomaly match 
-        #automatically, because an earlier step involves the interpolations of both the 
-        #model output and observations onto the same analysis grid. This saves lots
-        #of messing around with resolution adjustments etc
-        
-        #Build up the modelled value by combining the observational climatology
-        #with the modelled anomaly.
-        mdl.dat <- brick(obs.clim + mdl.anom)
-        mdl.dat <- setZ(mdl.dat,getZ(mdl.anom))  #...and correcting the Z values
-        
-      } else { #Use the anomaly
-        mdl.dat <- mdl.anom
-      }
-      
-      
-      #Apply the masks 
-      masked.dat <- mask(mdl.dat,comb.mask,maskvalue=1)
-      
-      #And we're ready. Lets calculate some summary statistics
-      res <- eval.stat(st=this.stat,dat=masked.dat) 
-      
-      #Add in the metadata and store the results
-      #Doing the bind diretly like this is ok when we are dealing with
-      #rasterLayer fragments, but we will need to be caseful when dealing with 
-      #bricks, for example
-      res.l[[i]] <- bind_cols(slice(m,rep(1,nrow(res))),res)
-      
-    }
-    
-    Sys.sleep(0.1)
-    print(pb$stop())
-    log_msg("\n")
-    
-    #Combine results with metadata
-    
-    
-    #Tidy up results a bit more
-    stat.res <- bind_rows(res.l) %>% 
-      as_tibble() %>%
-      thisadd_column(sp.subdomain=this.sp@name,
-                     stat.name=this.stat@name,
-                     .before=1) %>%
-      dplyr::select(-fname,-which.clim)
-    
-    #Store results
-    save.fname <- gsub(" ","-",sprintf("%s_%s_%s_%s.rds",
-                                       this.sp@name,
-                                       this.src@type,
-                                       this.src@name,
-                                       this.stat@name))
-    saveRDS(stat.res,file=file.path(stat.dir,save.fname))
-  }
-  
+} else {#Fail gracefully
+  log_msg(sprintf("Error:Cannot find file %s.",this.cfg$metadat.path))
+  stop()
 }
 
+#Partition the whole metadata into chunks
+#Note that we make these into equally sized jobs
+metadat <- 
+  metadat.all %>%
+  mutate(job.idx=ceiling(seq(nrow(.))/nrow(.)*this.cfg$n.jobs)) %>%
+  filter(job.idx == this.cfg$job.idx)
+
+#'========================================================================
+# Setup spatial subdomains / statistics ####
+#'========================================================================
+#The statistics can inform the spatial domain that we need to apply - 
+# particularly for statistics that work with  fields, instead of singular
+#values, we want to process the entire global domain, rather than just a single
+#local spatial domain. Hence, we need to ensure that there is a match between
+#these two aspects
+sp.stat.all <- 
+  expand.grid(sp=c(global.ROI(pcfg),
+                   pcfg@spatial.subdomains),
+              stat=pcfg@statistics) %>%
+  mutate(sp.name=map_chr(sp,slot,"name"),
+         is.global.sp=sp.name==PE.cfg$misc$global.sp.name,
+         stat.name=map_chr(stat,slot,"name"),
+         use.stat.globally=map_lgl(stat,slot,"use.globally"))
+
+#Now restrict, by ensuring that there is agreement between the stats to be 
+#calculated and the spatial subdomain
+sp.stat.sel <-
+  sp.stat.all %>%
+  filter(is.global.sp==use.stat.globally)
+
+#'========================================================================
+# Apply statistics ####
+#'========================================================================
+# Loop over statistics ------------------------------------------------------------
+for(j in seq(nrow(sp.stat.sel))) {
+  this.stat <- sp.stat.sel[j,"stat"][[1]]
+  this.sp <- sp.stat.sel[j,"sp"][[1]]
+  log_msg("Processing '%s' statistic for %s subdomain...\n",
+          this.stat@name,this.sp@name)
+  
+  
+  #Configure the observation climatology
+  if(pcfg@average.months | length(pcfg@MOI)==1) {
+    metadat$which.clim <- 1  #Just use the value that is there
+  } else {
+    metadat$which.clim <- sprintf("%02i",month(metadat$date))
+  }
+  
+  #Subset to make it run a bit quicker
+  if(debug.mode) {
+    metadat <- metadat[1:10,]
+  }
+  
+  #Setup for looping
+  res.l<- vector("list",nrow(metadat))
+  pb <- progress_estimated(nrow(metadat))
+  
+  #Then loop over files
+  for(i in seq(nrow(metadat))) {
+    pb$tick()$print()
+    m <- metadat[i,]
+    f <- m$fname
+    log_msg("Processing summary statistic %s, file %s...\n",
+            this.stat@name,basename(f),silenceable = TRUE)    
+    
+    #Import model anom as a brick 
+    #20190508 There was previously a problem working with a single layered brick in the raster
+    #package. However, this seems to have been resolved now, so we can do everything as a simple
+    #brick, which is the way God intended. 
+    #20190811 Or maybe not... Maybe a solution is to convert it to a raster, if it only has one
+    #layer
+    mdl.anom <- brick(f)  
+    if(nlayers(mdl.anom)==1) mdl.anom <- mdl.anom[[1]]
+    
+    #Choose whether we use full fields or anomalies
+    if(this.stat@use.full.field) {      #Calculate the full field by adding in the appropriate climatology
+      
+      #Select the appropriate observation climatology
+      obs.clim <- obs.clim.l[[m$which.clim]]
+      
+      #The resolutions of the observational climatology and the modelled anomaly match 
+      #automatically, because an earlier step involves the interpolations of both the 
+      #model output and observations onto the same analysis grid. This saves lots
+      #of messing around with resolution adjustments etc
+      
+      #Build up the modelled value by combining the observational climatology
+      #with the modelled anomaly.
+      mdl.dat <- brick(obs.clim + mdl.anom)
+      mdl.dat <- setZ(mdl.dat,getZ(mdl.anom))  #...and correcting the Z values
+      
+    } else { #Use the anomaly
+      mdl.dat <- mdl.anom
+    }
+    
+    
+    #Apply the masks 
+    masked.dat <- mask(mdl.dat,comb.mask,maskvalue=1)
+    
+    #And we're ready. Lets calculate some summary statistics
+    res <- eval.stat(st=this.stat,dat=masked.dat) 
+    
+    #Add in the metadata and store the results
+    #Doing the bind diretly like this is ok when we are dealing with
+    #rasterLayer fragments, but we will need to be caseful when dealing with 
+    #bricks, for example
+    res.l[[i]] <- bind_cols(slice(m,rep(1,nrow(res))),res)
+    
+  }
+  
+  Sys.sleep(0.1)
+  print(pb$stop())
+  log_msg("\n")
+  
+  #Combine results with metadata
+  
+  
+  #Tidy up results a bit more
+  stat.res <- bind_rows(res.l) %>% 
+    as_tibble() %>%
+    add_column(sp.subdomain=this.sp@name,
+                   stat.name=this.stat@name,
+                   .before=1) %>%
+    dplyr::select(-fname,-which.clim)
+  
+  #Store results
+  save.fname <- gsub(" ","-",sprintf("%s_%s_%s_%s.rds",
+                                     this.sp@name,
+                                     this.src@type,
+                                     this.src@name,
+                                     this.stat@name))
+  saveRDS(stat.res,file=file.path(stat.dir,save.fname))
+}
 
 #'========================================================================
 # Complete ####

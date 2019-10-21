@@ -14,7 +14,7 @@
 #' @export
 #' @name job_management
 partition.workload <- function(obj,
-                               src.slot,
+                               src.slot="missing",
                                data.partition.type="",
                                space.partition=!obj@use.global.ROI) {
   
@@ -40,7 +40,7 @@ partition.workload <- function(obj,
   using.stats.globally <- any(map_lgl(obj@statistics,slot,name="use.globally"))
   
   #Retain the data sources requested
-  if(src.slot=="Stats") {
+  if(missing(src.slot)) {
     dat.srcs <- all.srcs
     out.prefix <- src.slot
   } else if(toupper(data.partition.type)=="ENSMEAN") {
@@ -85,10 +85,13 @@ partition.workload <- function(obj,
     add_column(cfg.id=seq(nrow(.)),.before=1) %>%
     as_tibble()
   
-  #Save file
-  out.dir <- define_dir(PE.cfg$dirs$job.cfg,out.prefix)
-  
-  write_csv(work.cfg,path = file.path(PE.cfg$dirs$job.cfg,sprintf("%s.cfg",out.prefix)))
+  #Save file / return value
+  if(missing(src.slot)) {
+    return(work.cfg)
+  } else {
+    out.dir <- define_dir(PE.cfg$dirs$job.cfg,out.prefix)
+    write_csv(work.cfg,path = file.path(PE.cfg$dirs$job.cfg,sprintf("%s.cfg",out.prefix)))
+  }
 }
 
 #' @param cfg.idx Configuration index, indicating which job configration to extract
@@ -118,7 +121,6 @@ configure.src <- function(fname,cfg.idx,obj){
       this.src@chunk <- this.cfg$chunk.id
     }}
   return(this.src)
-  
 }
 
 #' @export
@@ -127,11 +129,21 @@ configure.sp <- function(fname,cfg.idx,obj){
   cfgs <- get.cfgs(fname)
   this.cfg <- cfgs[cfg.idx,]
   if(is.na(this.cfg$sp) | this.cfg$sp==PE.cfg$misc$global.sp.name) {
-    this.sp  <- spatial.domain(obj@global.ROI,name=PE.cfg$misc$global.sp.name,desc="global.ROI")
+    this.sp  <- global.ROI(obj)
   } else { #Working with subdomains
     this.sp <- obj@spatial.subdomains[[as.character(this.cfg$sp)]]
   }
   return(this.sp)
+}
+
+#' Create a global ROI
+#'
+#' @param obj 
+#'
+#' @export
+#'
+global.ROI <- function(obj) {
+  spatial.domain(obj@global.ROI,name=PE.cfg$misc$global.sp.name,desc="global.ROI")
 }
 
 #' @export
@@ -153,6 +165,6 @@ get.cfgs <- function(fname){
 get.subdomain.dir <- function(cfg,sp) {
   if(cfg@use.global.ROI) {
     return(cfg@scratch.dir)
-  } else {
+} else {
     return(file.path(cfg@scratch.dir,sp@name))}
 }

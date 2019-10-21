@@ -10,6 +10,7 @@
 #' @slot spatial.subdomains List of spatial.config objects defining the spatial subdomains over which 
 #' to operate
 #' @slot statistics PredEng.list of statistics to apply over each spatial area
+#' @slot stat.chunk.size Integer. Number of files to process in a single job array task
 #' @slot extraction PredEng.list definining temporal and spatial extraction characteristics
 #' @slot MOI The months of interest (a vector of integers between 1 and 12 inclusive)
 #' @slot vert.range The vertical range, in m, over which to average. NULL indicates no vertical averaging
@@ -51,6 +52,7 @@ PredEng.config <- setClass("PredEng.config",
                                       persistence.leads="numeric",
                                       spatial.subdomains="list",
                                       statistics="list",
+                                      stat.chunk.size="numeric",
                                       extraction="list",
                                       global.ROI="Extent",
                                       global.res="numeric",
@@ -66,7 +68,8 @@ PredEng.config <- setClass("PredEng.config",
                            prototype = list(global.ROI=extent(as.numeric(rep(NA,4))),
                                             persistence.leads=1:120,  #1-10 years
                                             recalculate=TRUE,
-                                            retain.realizations=TRUE))
+                                            retain.realizations=TRUE,
+                                            stat.chunk.size=1000))
 
 
 
