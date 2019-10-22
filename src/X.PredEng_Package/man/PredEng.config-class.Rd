@@ -42,7 +42,7 @@ to operate}
 
 \item{\code{statistics}}{PredEng.list of statistics to apply over each spatial area}
 
-\item{\code{stat.chunk.size}}{Integer. Number of files to process in a single job array task}
+\item{\code{stat.jobs}}{Integer. Number of job array elements to use in processing statistics}
 
 \item{\code{extraction}}{PredEng.list definining temporal and spatial extraction characteristics}
 

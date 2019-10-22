@@ -86,24 +86,29 @@ stat.cfg.all <-
 stat.cfg <-
   stat.cfg.all %>%
   filter(file.exists) %>%
-  #Import metadata and assign number of jobs
+  #Import metadata 
   mutate(metadat=map(metadat.path,readRDS),
          n.files=map_int(metadat,nrow),
-         n.jobs=ceiling(n.files/pcfg@stat.chunk.size)) %>%
+         file.size=map_dbl(metadat,~ sum(file.size(.x$fname),na.rm=TRUE))) %>%
   select(-metadat)%>%
+  #Only process files where we have data to process
+  filter(file.size!=0) %>%
+  mutate(n.chunks=ceiling(file.size/sum(file.size)*pcfg@stat.jobs)) %>%
   #Split into chunks
-  mutate(job.idx=map(n.jobs,seq)) %>%
-  unnest(job.idx)%>%
+  mutate(chunk.idx=map(n.chunks,seq)) %>%
+  unnest(chunk.idx)%>%
   mutate(cfg.id=seq(nrow(.)))
 
-
-#Write data
+#'========================================================================
+# Output and setup ####
+#'========================================================================
+#Write configuration data
 write_csv(stat.cfg,path = file.path(PE.cfg$dirs$job.cfg,"Stats.cfg"))
 
-#Load metadata
-# metadat.all <-
-#   map(stat.cfg$metadat.path,readRDS) %>%
-#   bind_rows()
+#Clear the existing statistics, to avoid incomplete duplication etc
+#Directory setup
+stat.dir <- define_dir(pcfg@scratch.dir,PE.cfg$dirs$statistics)
+unlink(dir(stat.dir,full.names=TRUE))
 
 #'========================================================================
 # Complete ####

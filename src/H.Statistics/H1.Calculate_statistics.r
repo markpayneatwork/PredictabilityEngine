@@ -50,7 +50,7 @@ pcfg <- readRDS(PE.cfg$config.path)
 #Take input arguments, if any
 if(interactive()) {
   cfg.no <- 34
-  debug.mode <- FALSE
+  debug.mode <- TRUE
   set.cdo.defaults("--silent --no_warnings")
   set.log_msg.silent()
 } else {
@@ -99,9 +99,6 @@ names(obs.clim.l) <- sprintf("%02i",month(clim.meta$date))
 #Setup landmask 
 landmask <- raster(file.path(base.dir,PE.cfg$files$regridded.landmask))
 
-#Apply the spatial ROI to the mask as well
-comb.mask <- mask(landmask,this.sp@boundary,updatevalue=1)
-
 #Result storage
 sum.stats.l <- list()
 
@@ -121,11 +118,13 @@ if(file.exists(this.cfg$metadat.path)) {
 }
 
 #Partition the whole metadata into chunks
-#Note that we make these into equally sized jobs
+#Note that we make these into equally sized chunks based on the number of
+#files - this a little bit different to how the original division was performed
+#(i.e. based on file size)
 metadat <- 
   metadat.all %>%
-  mutate(job.idx=ceiling(seq(nrow(.))/nrow(.)*this.cfg$n.jobs)) %>%
-  filter(job.idx == this.cfg$job.idx)
+  mutate(chunk.idx=ceiling(seq(nrow(.))/nrow(.)*this.cfg$n.chunks)) %>%
+  filter(chunk.idx == this.cfg$chunk.idx)
 
 #'========================================================================
 # Setup spatial subdomains / statistics ####
@@ -154,10 +153,11 @@ sp.stat.sel <-
 # Apply statistics ####
 #'========================================================================
 # Loop over statistics ------------------------------------------------------------
+res.l <- vector("list",nrow(sp.stat.sel))
 for(j in seq(nrow(sp.stat.sel))) {
   this.stat <- sp.stat.sel[j,"stat"][[1]]
   this.sp <- sp.stat.sel[j,"sp"][[1]]
-  log_msg("Processing '%s' statistic for %s subdomain...\n",
+  log_msg("Processing '%s' statistic for '%s' subdomain...\n",
           this.stat@name,this.sp@name)
   
   
@@ -170,11 +170,15 @@ for(j in seq(nrow(sp.stat.sel))) {
   
   #Subset to make it run a bit quicker
   if(debug.mode) {
-    metadat <- metadat[1:10,]
+    metadat <- head(metadat,10)
   }
   
+  #Setup the mask for the corresponding spatial boundary
+  #based on the combination of the landmask and the spatial boundary mask
+  combined.mask <- mask(landmask,this.sp@boundary,updatevalue=1)
+  
   #Setup for looping
-  res.l<- vector("list",nrow(metadat))
+  file.res.l<- vector("list",nrow(metadat))
   pb <- progress_estimated(nrow(metadat))
   
   #Then loop over files
@@ -214,9 +218,8 @@ for(j in seq(nrow(sp.stat.sel))) {
       mdl.dat <- mdl.anom
     }
     
-    
-    #Apply the masks 
-    masked.dat <- mask(mdl.dat,comb.mask,maskvalue=1)
+    #Apply the masks to data
+    masked.dat <- mask(mdl.dat,combined.mask,maskvalue=1)
     
     #And we're ready. Lets calculate some summary statistics
     res <- eval.stat(st=this.stat,dat=masked.dat) 
@@ -225,7 +228,7 @@ for(j in seq(nrow(sp.stat.sel))) {
     #Doing the bind diretly like this is ok when we are dealing with
     #rasterLayer fragments, but we will need to be caseful when dealing with 
     #bricks, for example
-    res.l[[i]] <- bind_cols(slice(m,rep(1,nrow(res))),res)
+    file.res.l[[i]] <- bind_cols(slice(m,rep(1,nrow(res))),res)
     
   }
   
@@ -237,21 +240,20 @@ for(j in seq(nrow(sp.stat.sel))) {
   
   
   #Tidy up results a bit more
-  stat.res <- bind_rows(res.l) %>% 
+  res.l[[j]] <- 
+    bind_rows(file.res.l) %>% 
     as_tibble() %>%
     add_column(sp.subdomain=this.sp@name,
-                   stat.name=this.stat@name,
-                   .before=1) %>%
-    dplyr::select(-fname,-which.clim)
+               stat.name=this.stat@name,
+               .before=1) %>%
+    dplyr::select(-fname,-which.clim,-chunk.idx)
   
-  #Store results
-  save.fname <- gsub(" ","-",sprintf("%s_%s_%s_%s.rds",
-                                     this.sp@name,
-                                     this.src@type,
-                                     this.src@name,
-                                     this.stat@name))
-  saveRDS(stat.res,file=file.path(stat.dir,save.fname))
 }
+
+#Store results
+bind_rows(res.l) %>%
+saveRDS(file=file.path(stat.dir,sprintf("Stats_chunk_%04i.rds",this.cfg$cfg.id)))
+
 
 #'========================================================================
 # Complete ####

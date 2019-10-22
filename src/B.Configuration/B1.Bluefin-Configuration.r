@@ -47,8 +47,7 @@ pcfg <- PredEng.config(project.name= "Bluefin",
                comp.years=1982:2015,
                landmask="data_srcs/NMME/landmask.nc",
                Observations=SST_obs[[c("HadISST")]],
-               NMME=NMME.sst.l,
-               stat.chunk.size = 250)
+               NMME=NMME.sst.l)
 
 #Setup scratch directory
 pcfg@scratch.dir <- file.path("scratch",pcfg@project.name)
