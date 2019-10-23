@@ -105,11 +105,8 @@ stat.l <- list()
 stat.l[[1]]  <- spatial.mean(name="Mean Temperature",
                              use.full.field=TRUE)
 
-stat.l[[2]] <- pass.through(name="Temperature anomaly",
-                            skill.metrics = "correlation",
-                            use.globally=TRUE,
-                            use.full.field = FALSE,
-                            use.realmeans=TRUE)
+stat.l[[2]]  <- spatial.mean(name="Mean Anomaly",
+                             use.full.field=FALSE)
 
 #Merge it all in
 names(stat.l) <- sapply(stat.l,slot,"name")
