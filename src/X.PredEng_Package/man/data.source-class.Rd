@@ -35,7 +35,9 @@ correcct for time-bound versus time value problems.}
 
 \item{\code{layermids.fn}}{Returns the midpoints of the vertical layers for this data set.}
 
-\item{\code{init.fn}}{Function to extract the initialisation dates}
+\item{\code{start.date}}{Function to extract the initialisation dates}
+
+\item{\code{start.id}}{Function to extract unique identifiers for the particular initialization}
 
 \item{\code{date.fn}}{A function to extract the time stamps for each time step}
 }}

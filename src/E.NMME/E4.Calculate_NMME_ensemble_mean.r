@@ -76,17 +76,18 @@ anom.dir <- define_dir(ensmean.dir,"A.anoms")
 #==========================================================================
 #Start by loading the metadata associated with each of the NMME
 #models
-metadat.l <- list()
-for(m in pcfg@NMME){
-  if(class(m)=="data.source") {
-    metadat.l[[m@name]] <- readRDS(file.path(base.dir,m@name,PE.cfg$files$realmean.meta))
-  }
-}
-metadat.all <- bind_rows(metadat.l)
+metadat.all <- 
+  #Load metadata
+  tibble(dat.src=pcfg@NMME,
+         is.data.source=map_lgl(dat.src,~class(.x)=="data.source")) %>%
+  filter(is.data.source)%>%
+  transmute(metadata=map(dat.src,~readRDS(file.path(base.dir,.x@name,PE.cfg$files$realmean.meta)))) %>%
+  unnest(metadata) %>%
+  #Calculate ym dates, so as to simplify the matching up by lead time
+  mutate(start.date.ym=format(start.date,"%Y%m"),
+         date.ym=format(date,"%Y%m"))
 
-#Split files into processing chunks, where the common factor is that 
-#everything is the same apart from the realisation
-ensmean.group <- split(metadat.all,metadat.all[,c("start.date","lead")],
+ensmean.group <- split(metadat.all,metadat.all[,c("start.date.ym","date.ym")],
                         drop=TRUE,sep="_")
 
 #==========================================================================
@@ -102,7 +103,8 @@ ensmean.fn <- function(em.gp){
   ensmean.cmd <- cdo("ensmean",em.gp$fname,ensmean.fname)
 
   #Store new meta data
-  res <- em.gp[1,] %>%
+  res <- 
+    em.gp[1,] %>%
     select(-fname,-n.realizations) %>%
     mutate(n.mdls=nrow(em.gp),
            fname=ensmean.fname)
@@ -112,8 +114,9 @@ ensmean.fn <- function(em.gp){
 ensmean.meta.l <- pblapply(ensmean.group,ensmean.fn,cl=getOption("mc.cores"))
 
 #Form meta data
-ensmean.meta <- bind_rows(ensmean.meta.l) %>%
-                mutate(src.name="NMME-ensmean")
+ensmean.meta <- 
+  bind_rows(ensmean.meta.l) %>%
+  mutate(src.name="NMME-ensmean")
 saveRDS(ensmean.meta,file=file.path(ensmean.dir,PE.cfg$files$realmean.meta))
 
 
