@@ -17,7 +17,8 @@
 #' correcct for time-bound versus time value problems.
 #' @slot realization.fn A function to extract the realisation ID
 #' @slot layermids.fn Returns the midpoints of the vertical layers for this data set. 
-#' @slot init.fn Function to extract the initialisation dates
+#' @slot start.date Function to extract the initialisation dates
+#' @slot start.id Function to extract unique identifiers for the particular initialization
 #' @slot date.fn A function to extract the time stamps for each time step
 #'
 #' @export data.source
@@ -32,14 +33,16 @@ data.source <- setClass("data.source",
                                    time.correction="character",
                                    realization.fn="function",
                                    layermids.fn="function",
-                                   init.fn="function",  #TODO: Consider dropping this slot
+                                   start.date="function",  
+                                   start.id="function", 
                                    date.fn="function"),
                         prototype=list(chunk="",
                                        layermids.fn=function(x) {stop("z2idx.fn not specified")},
                                        realizations=as.character(NA),
                                        date.fn=function(x) {stop("Date.fn not specified")},
                                        realization.fn=function(x) {stop("Realization function not specified")},
-                                       init.fn=function(x) { stop("Init.fn not specified")}),
+                                       start.date=function(x) { stop("Start.date function not specified")},
+                                       start.id=function(x) { stop("Start.id function not specified")}),
                         validity = function(object) {
                           err.msg <- NULL
                           #Check names on sources
@@ -106,6 +109,7 @@ test.data.source <- function(obj,f="missing"){
   log_msg("\nRealizations\n")
   print(obj@realization.fn(f))
   log_msg("\nForecast Initialisation\n")
-  print(obj@init.fn(f))
+  print(obj@start.date(f))
+  print(obj@start.id(f))
 }
 

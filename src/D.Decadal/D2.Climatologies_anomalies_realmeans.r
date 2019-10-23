@@ -184,7 +184,7 @@ if(!file.exists(anom.meta.fname) | pcfg@recalculate) {
   
   #Tidy up anom.meta for saving
   anom.meta %>%
-    select(src.name,src.type,start.date,date,fname) %>%
+    select(src.name,src.type,start.date,start.id,date,fname) %>%
     saveRDS(file=anom.meta.fname)
   pcfg@recalculate <- TRUE   #If here, then force all subsequent calculations
 } else {
@@ -238,7 +238,7 @@ if(!file.exists(realmean.meta.fname) | pcfg@recalculate) {
   
   #Compile into metadata catalogue by taking the first line in each groupling
   realmean.meta <- realmean.meta %>% 
-    select(src.name,src.type,start.date,date,fname)
+    select(src.name,src.type,start.date,start.id,date,fname)
   saveRDS(realmean.meta,file=realmean.meta.fname)
   pcfg@recalculate <- TRUE   #If here, then force all subsequent calculations
 } else {                                 

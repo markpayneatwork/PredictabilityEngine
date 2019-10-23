@@ -44,7 +44,7 @@ SST.Decadal$IPSL  <- data.source(name="IPSL-CM5A-LR",
                                  var="tos",
                                  realization.fn=function(f) {
                                    underscore_field(f,6)},
-                                 init.fn=function(f){
+                                 start.date=function(f){
                                    init.str <- gsub("S","",underscore_field(f,5))
                                    init.date <- ymd(init.str)
                                    return(init.date)},
@@ -63,10 +63,15 @@ SST.Decadal$"MPI-LR" <-  data.source(name="MPI-ESM-LR",
                                      sources=list(dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","thetao"),
                                                 pattern="\\.nc$",full.names = TRUE)),
                                      realization.fn=CMIP5_realisation,
-                                     init.fn=function(f){
+                                     start.date=function(f){
                                        init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
                                        init.date <- ymd(paste(init.str,"01",sep=""))
                                        return(init.date)},
+                                     start.id=function(f){
+                                       init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
+                                       init.date <- ymd(paste(init.str,"01",sep=""))
+                                       init.id <- year(init.date)
+                                       return(init.id)},
                                      date.fn=date.by.brick)
 
 #MPI - NCEP requires all three to be specified
@@ -82,7 +87,7 @@ SST.Decadal$"MPI-NCEP" <- data.source(name="MPI-NCEP-forced",
                                         day(dates) <- 15  #Adjust to be mid month, rather than end of month
                                         #But adjust
                                         return(dates)},
-                                      init.fn=function(f){
+                                      start.date=function(f){
                                         init.yr <- str_match(basename(f),"^dma([0-9]{4})_.*$")[,2]
                                         init.date <- as.Date(ISOdate(init.yr,1,1))
                                         return(init.date)})
@@ -94,7 +99,7 @@ SST.Decadal$GFDL <-   data.source(name="GFDL-CM2.1",
                                              pattern="\\.nc$",full.names = TRUE)),
                                   var="tos",
                                   realization.fn=CMIP5_realisation,
-                                  init.fn=function(f){
+                                  start.date=function(f){
                                     init.yr <- str_match(basename(f),"^.*?_decadal([0-9]{4})_r.*$")[,2]
                                     init.date <- as.Date(ISOdate(init.yr,1,1))
                                     return(init.date)},
@@ -108,9 +113,13 @@ CESM.DPLE.src <-   data.source(name="CESM-DPLE",
                                realization.fn=function(f) {
                                  val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,3]
                                  return(val)},
-                               init.fn=function(f) {
+                               start.date=function(f) {
                                  val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,2]
                                  return(ymd(sprintf("%s-01",val)))},
+                               start.id=function(f){
+                                 val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,2]
+                                 start.date <- ymd(sprintf("%s-01",val))
+                                 return(year(start.date)+1)},  #November start - round up
                                date.fn=date.by.brick)
 
 CESM.DPLE.src@sources <- list(dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SST"),
@@ -144,23 +153,33 @@ Sal.Decadal$"MPI-LR" <-  data.source(name="MPI-ESM-LR",
                                      var="so",
                                      sources=list(MPI.LR.srcs),
                                      realization.fn=CMIP5_realisation,
-                                     init.fn=function(f){
+                                     start.date=function(f){
                                        init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
                                        init.date <- ymd(paste(init.str,"01",sep=""))
                                        return(init.date)},
+                                     start.id=function(f){
+                                       init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
+                                       init.date <- ymd(paste(init.str,"01",sep=""))
+                                       init.id <- year(init.date)
+                                       return(init.id)},
                                      date.fn=date.by.brick)
 
 #CESM-DPLE
 CESM.DPLE.SALT <- data.source(CESM.DPLE.src,
-                      var="SALT",
-                      sources=list(dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SALT"),
-                                      pattern="\\.nc$",full.names = TRUE)),
-                      layermids.fn = function(f) {
-                        #z.idx are the indices, v is the vertical coordinate in metres
-                        ncid <- nc_open(f)
-                        layer.mids <- ncid$dim$z_t$vals/100 #[m]
-                        nc_close(ncid)
-                      return(layer.mids)})
+                              var="SALT",
+                              sources=list(dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SALT"),
+                                               pattern="\\.nc$",full.names = TRUE)),
+                              layermids.fn = function(f) {
+                                #z.idx are the indices, v is the vertical coordinate in metres
+                                ncid <- nc_open(f)
+                                layer.mids <- ncid$dim$z_t$vals/100 #[m]
+                                nc_close(ncid)
+                                return(layer.mids)},
+                              start.id=function(f){
+                                val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,2]
+                                start.date <- ymd(sprintf("%s-01",val))
+                                return(year(start.date)+1)})  #November start - round up
+
 
 Sal.Decadal$CESM.DPLE.SALT <- CESM.DPLE.SALT
 

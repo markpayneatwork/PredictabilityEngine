@@ -80,7 +80,7 @@ pcfg@Decadal <- Sal.Decadal
 n.CESM.chunks <- 4
 CESM.src <- pcfg@Decadal[["CESM-DPLE"]]
 chunk.src.df <- tibble(source=unlist(CESM.src@sources),
-                       init=factor(CESM.src@init.fn(source)),
+                       init=factor(CESM.src@start.date(source)),
                        chunk.num=(as.numeric(init)-1)%%n.CESM.chunks,
                        chunk.str=sprintf("Chunk_%03i",chunk.num))
 pcfg@Decadal[["CESM-DPLE"]]@sources <- split(chunk.src.df$source,chunk.src.df$chunk.str)
