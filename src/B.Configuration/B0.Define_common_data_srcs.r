@@ -57,22 +57,24 @@ SST.Decadal$"MPI-MR" <-  new("data.source",
                                               pattern="\\.nc$",full.names = TRUE)))
 
 #MPI-LR is different,
-SST.Decadal$"MPI-LR" <-  data.source(name="MPI-ESM-LR",
-                                     type="Decadal",
-                                     var="thetao",
-                                     sources=list(dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","thetao"),
-                                                      pattern="\\.nc$",full.names = TRUE)),
-                                     realization.fn=CMIP5_realisation,
-                                     start.date=function(f){
-                                       init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
-                                       init.date <- ymd(paste(init.str,"01",sep=""))
-                                       return(init.date)},
-                                     start.id=function(f){
-                                       init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
-                                       init.date <- ymd(paste(init.str,"01",sep=""))
-                                       init.id <- year(init.date)
-                                       return(init.id)},
-                                     date.fn=date.by.brick)
+SST.Decadal$"MPI-LR" <-  
+  data.source(name="MPI-ESM-LR",
+              type="Decadal",
+              var="thetao",
+              sources=list(dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","thetao"),
+                               pattern="\\.nc$",full.names = TRUE)),
+              realization.fn=CMIP5_realisation,
+              start.date=function(f){
+                init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
+                init.date <- ymd(paste(init.str,"01",sep=""))
+                return(init.date)},
+              start.id=function(f){
+                init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
+                init.date <- ymd(paste(init.str,"01",sep=""))
+                init.id <- year(init.date)
+                return(init.id)},
+              date.fn=date.by.brick) %>%
+  chunk.data.source(n=5)
 
 #MPI - NCEP requires all three to be specified
 SST.Decadal$"MPI-NCEP" <- data.source(name="MPI-NCEP-forced",
@@ -111,7 +113,7 @@ CESM.DPLE.src <-
               var="SST",
               type="Decadal",
               sources=list(dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SST"),
-                          pattern="\\.nc$",full.names = TRUE)),
+                               pattern="\\.nc$",full.names = TRUE)),
               time.correction="-15days",
               realization.fn=function(f) {
                 val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,3]
@@ -124,7 +126,7 @@ CESM.DPLE.src <-
                 start.date <- ymd(sprintf("%s-01",val))
                 return(year(start.date)+1)},  #November start - round up
               date.fn=date.by.brick) %>%
-  chunk.data.source(n=5)
+  chunk.data.source(n=20)
 
 SST.Decadal$CESM.DPLE <- CESM.DPLE.src
 
@@ -164,14 +166,15 @@ Sal.Decadal$"MPI-LR" <-
                 init.date <- ymd(paste(init.str,"01",sep=""))
                 init.id <- year(init.date)
                 return(init.id)},
-              date.fn=date.by.brick)
+              date.fn=date.by.brick) %>%
+  cchunk.data.source(n=5)
 
 #CESM-DPLE
 CESM.DPLE.SALT <- 
   data.source(CESM.DPLE.src,
               var="SALT",
               sources=list(dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SALT"),
-                          pattern="\\.nc$",full.names = TRUE)),
+                               pattern="\\.nc$",full.names = TRUE)),
               layermids.fn = function(f) {
                 #z.idx are the indices, v is the vertical coordinate in metres
                 ncid <- nc_open(f)
@@ -182,7 +185,7 @@ CESM.DPLE.SALT <-
                 val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,2]
                 start.date <- ymd(sprintf("%s-01",val))
                 return(year(start.date)+1)}) %>%  #November start - round up
-  chunk.data.source(n=5)
+  chunk.data.source(n=20)
 
 Sal.Decadal$CESM.DPLE.SALT <- CESM.DPLE.SALT
 
