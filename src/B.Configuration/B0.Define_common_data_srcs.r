@@ -167,7 +167,7 @@ Sal.Decadal$"MPI-LR" <-
                 init.id <- year(init.date)
                 return(init.id)},
               date.fn=date.by.brick) %>%
-  cchunk.data.source(n=5)
+  chunk.data.source(n=5)
 
 #CESM-DPLE
 CESM.DPLE.SALT <- 

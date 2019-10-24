@@ -101,8 +101,10 @@ setMethod("show","data.source", function(object) {
 #'
 chunk.data.source <- function(obj,n=1) {
   src.fnames <- unlist(obj@sources)
-  obj@sources <- split(src.fnames,rep(1:n,length.out=length(src.fnames)))
-  names(obj@sources) <- sprintf("Chunk_%03i",1:n)
+  if(length(src.fnames!=0)) {
+    obj@sources <- split(src.fnames,rep(1:n,length.out=length(src.fnames)))
+    names(obj@sources) <- sprintf("Chunk_%03i",seq(length(obj@sources)))
+  }
   return(obj)
 }
 
