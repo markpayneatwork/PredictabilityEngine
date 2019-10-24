@@ -6,11 +6,9 @@
 #' @slot name Identifier of data source 
 #' @slot type Type of data source that this object corresponds to - valid 
 #' options are "Decadal", "NMME", "CMIP","Obs", and eventually "C3S" 
-#' @slot chunk Chunk identifier (optional)
+#' @slot chunk.id Chunk identifier (optional)
 #' @slot sources A list of directories or URLs containing the raw information. Each item in the list
-#' corresponds to a processing chunk. If the list is longer than one item, it must be named - these
-#' are the names of the chunks
-#' @slot n.chunks Number of chunks into which to split the processing
+#' corresponds to a processing chunk. 
 #' @slot var Variable name from which to extract data
 #' @slot realizations Character string, naming the realization(s) to use. NA indicates all.
 #' @slot time.correction A string suitable for use with the "cdo shifttime,x" command string that can be used to 
@@ -26,7 +24,7 @@
 data.source <- setClass("data.source",
                         slots=list(name="character",
                                    type="character",
-                                   chunk="character",
+                                   chunk.id="character",
                                    sources="list",
                                    var="character",
                                    realizations="character",
@@ -36,7 +34,7 @@ data.source <- setClass("data.source",
                                    start.date="function",  
                                    start.id="function", 
                                    date.fn="function"),
-                        prototype=list(chunk="",
+                        prototype=list(chunk.id="",
                                        layermids.fn=function(x) {stop("z2idx.fn not specified")},
                                        realizations=as.character(NA),
                                        date.fn=function(x) {stop("Date.fn not specified")},
@@ -89,6 +87,24 @@ setMethod("show","data.source", function(object) {
   for(i in slotNames(object)) {show.slot(object,i)}
 
 })
+
+
+#' Chunk data source
+#' 
+#' Splits an existing data source object into equally sized chunks
+#'
+#' @param obj Data source object
+#' @param n Number of chunks into which to split the object
+#'
+#' @return A data source object configured for use as chunks
+#' @export
+#'
+chunk.data.source <- function(obj,n=1) {
+  src.fnames <- unlist(obj@sources)
+  obj@sources <- split(src.fnames,rep(1:n,length.out=length(src.fnames)))
+  names(obj@sources) <- sprintf("Chunk_%03i",1:n)
+  return(obj)
+}
 
 #' Test Data Source
 #'

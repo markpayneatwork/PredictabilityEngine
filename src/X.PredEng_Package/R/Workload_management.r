@@ -43,6 +43,9 @@ partition.workload <- function(obj,
   if(missing(src.slot)) {
     dat.srcs <- all.srcs
     out.prefix <- src.slot
+  } else if(src.slot %in% c("Observations") | is.na(data.partition.type)) {
+    dat.srcs <- filter(all.srcs,src.type==src.slot)
+    out.prefix <- src.slot
   } else if(toupper(data.partition.type)=="ENSMEAN") {
     dat.srcs <- filter(all.srcs,src.type==src.slot,src.name==PE.cfg$files$ensmean.name)
     out.prefix <- sprintf("%s_ensmean",src.slot)
@@ -52,11 +55,8 @@ partition.workload <- function(obj,
   } else if(toupper(data.partition.type)=="SOURCES") {
     dat.srcs <- filter(all.srcs,src.type==src.slot,src.name!=PE.cfg$files$ensmean.name)
     out.prefix <- sprintf("%s_by_sources",src.slot)
-  } else if(toupper(data.partition.type)=="") {
-    dat.srcs <- filter(all.srcs,src.type==src.slot,)
-    out.prefix <- src.slot
   } else {
-    stop(sprintf('Unknown option "%s"',data.partition.type))
+    stop(sprintf('Unknown data.partition.type "%s"',data.partition.type))
   }
   if(nrow(dat.srcs)==0) return(NULL)  #Catch blanks
   dat.srcs$src.num <- seq(nrow(dat.srcs))
@@ -118,7 +118,7 @@ configure.src <- function(fname,cfg.idx,obj){
   if("chunk.id"%in% names(this.cfg)) {
     if(!is.na(this.cfg$chunk.id)) {
       this.src@sources <- this.src@sources[this.cfg$chunk.id]
-      this.src@chunk <- this.cfg$chunk.id
+      this.src@chunk.id <- this.cfg$chunk.id
     }}
   return(this.src)
 }

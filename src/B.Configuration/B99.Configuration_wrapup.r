@@ -89,14 +89,23 @@ file.symlink(file.path(getwd(),project.cfg),PE.cfg$dirs$job.cfg)
 TODO.dir <- define_dir(PE.cfg$dirs$job.cfg,"TODO")
 
 #Write configurations
-cfgs <- partition.workload(pcfg,"NMME","Sources")
-cfgs <- partition.workload(pcfg,"NMME","Ensmean")
-cfgs <- partition.workload(pcfg,"Decadal","Sources")
-cfgs <- partition.workload(pcfg,"Decadal","Chunks")
-cfgs <- partition.workload(pcfg,"Decadal","Ensmean")
-cfgs <- partition.workload(pcfg,"CMIP5","Sources")
-cfgs <- partition.workload(pcfg,"CMIP5","Ensmean")
-cfgs <- partition.workload(pcfg,"Observations")
+list(NMME=c("Sources","Ensmean"),
+     Decadal=c("Chunks","Sources","Ensmean"),
+     CMIP5=c("Sources"),
+     Observations=NA) %>%
+  enframe("src.slot","data.partition.type") %>%
+  unnest() %>%
+  pmap(partition.workload,obj=pcfg)
+
+# 
+# cfgs <- partition.workload(pcfg,"NMME","Sources")
+# cfgs <- partition.workload(pcfg,"NMME","Ensmean")
+# cfgs <- partition.workload(pcfg,"Decadal","Chunks")
+# cfgs <- partition.workload(pcfg,"Decadal","Sources")
+# cfgs <- partition.workload(pcfg,"Decadal","Ensmean")
+# cfgs <- partition.workload(pcfg,"CMIP5","Sources")
+# cfgs <- partition.workload(pcfg,"CMIP5","Ensmean")
+# cfgs <- partition.workload(pcfg,"Observations")
 
 #' -----------
 #' <small>*This work by Mark R Payne is licensed under a  Creative Commons

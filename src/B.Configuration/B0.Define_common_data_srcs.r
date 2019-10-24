@@ -106,13 +106,12 @@ SST.Decadal$GFDL <-   data.source(name="GFDL-CM2.1",
                                   date.fn=date.by.brick)
 
 #Add in the CESM DPLE
-CESM.SST.fnames <- dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SST"),
-                       pattern="\\.nc$",full.names = TRUE)
 CESM.DPLE.src <-   
   data.source(name="CESM-DPLE",
               var="SST",
               type="Decadal",
-              sources=split(CESM.SST.fnames,rep(1:5,length.out=length(CESM.SST.fnames))),
+              sources=list(dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SST"),
+                          pattern="\\.nc$",full.names = TRUE)),
               time.correction="-15days",
               realization.fn=function(f) {
                 val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,3]
@@ -124,7 +123,8 @@ CESM.DPLE.src <-
                 val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,2]
                 start.date <- ymd(sprintf("%s-01",val))
                 return(year(start.date)+1)},  #November start - round up
-              date.fn=date.by.brick)
+              date.fn=date.by.brick) %>%
+  chunk.data.source(n=5)
 
 SST.Decadal$CESM.DPLE <- CESM.DPLE.src
 
@@ -167,12 +167,11 @@ Sal.Decadal$"MPI-LR" <-
               date.fn=date.by.brick)
 
 #CESM-DPLE
-CESM.DPLE.SALT.fnames <- dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SALT"),
-                             pattern="\\.nc$",full.names = TRUE)
 CESM.DPLE.SALT <- 
   data.source(CESM.DPLE.src,
               var="SALT",
-              sources=split(CESM.DPLE.SALT.fnames,rep(1:5,length.out=length(CESM.DPLE.SALT.fnames))),
+              sources=list(dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SALT"),
+                          pattern="\\.nc$",full.names = TRUE)),
               layermids.fn = function(f) {
                 #z.idx are the indices, v is the vertical coordinate in metres
                 ncid <- nc_open(f)
@@ -182,8 +181,8 @@ CESM.DPLE.SALT <-
               start.id=function(f){
                 val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,2]
                 start.date <- ymd(sprintf("%s-01",val))
-                return(year(start.date)+1)})  #November start - round up
-
+                return(year(start.date)+1)}) %>%  #November start - round up
+  chunk.data.source(n=5)
 
 Sal.Decadal$CESM.DPLE.SALT <- CESM.DPLE.SALT
 
