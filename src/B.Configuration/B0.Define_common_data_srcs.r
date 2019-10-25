@@ -74,7 +74,7 @@ SST.Decadal$"MPI-LR" <-
                 init.id <- year(init.date)
                 return(init.id)},
               date.fn=date.by.brick) %>%
-  chunk.data.source(n=5)
+  chunk.data.source(n=16)  #Around 15 min runtime for Bluefin
 
 #MPI - NCEP requires all three to be specified
 SST.Decadal$"MPI-NCEP" <- data.source(name="MPI-NCEP-forced",
@@ -126,7 +126,7 @@ CESM.DPLE.src <-
                 start.date <- ymd(sprintf("%s-01",val))
                 return(year(start.date)+1)},  #November start - round up
               date.fn=date.by.brick) %>%
-  chunk.data.source(n=20)
+  chunk.data.source(n=22)  #~15 min runtime for Bluefin
 
 SST.Decadal$CESM.DPLE <- CESM.DPLE.src
 
