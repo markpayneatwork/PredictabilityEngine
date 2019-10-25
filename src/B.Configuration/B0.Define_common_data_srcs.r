@@ -24,10 +24,11 @@
 #'========================================================================
 # Helper functions ####
 #'========================================================================
-date.by.brick <- function(f,varname="") {
-  if(length(f)>1) stop("Function not vectorised")
-  dates <- getZ(brick(f,varname=varname))
-  return(dates)}
+date.by.brick <- 
+  function(f,varname="") {
+    if(length(f)>1) stop("Function not vectorised")
+    dates <- getZ(brick(f,varname=varname))
+    return(dates)}
 
 decadal.dir <- file.path(PE.cfg$dirs$datasrc,"Decadal")
 
@@ -154,7 +155,10 @@ NorCPM.src.i1 <-
               start.id=function(f) {
                 val <- gsub("^([[:digit:]]{6})-.*$","\\101",underscore_field(basename(f),7))
                 return(year(ymd(val))+1)},
-              date.fn=function(f) date.by.brick(f,varname="tos")) %>%
+              date.fn=function(f) {
+                  if(length(f)>1) stop("Function not vectorised")
+                  dates <- getZ(brick(f,varname="tos"))
+                  return(dates)}) %>%
   chunk.data.source(n=10) 
 
 NorCPM.src.i2 <- 
