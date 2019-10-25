@@ -24,9 +24,9 @@
 #'========================================================================
 # Helper functions ####
 #'========================================================================
-date.by.brick <- function(f) {
+date.by.brick <- function(f,varname="") {
   if(length(f)>1) stop("Function not vectorised")
-  dates <- getZ(brick(f))
+  dates <- getZ(brick(f,varname=varname))
   return(dates)}
 
 decadal.dir <- file.path(PE.cfg$dirs$datasrc,"Decadal")
@@ -130,10 +130,48 @@ CESM.DPLE.src <-
 
 SST.Decadal$CESM.DPLE <- CESM.DPLE.src
 
+#NorCPM
+#Note that there are two initialisations here, stored in the same directory - i1 and i2.
+#We treat them as different data sources for the purpose of this analysis
+NorCPM.fnames <- 
+  tibble(path=dir(file.path(PE.cfg$dirs$datasrc,"Decadal","NorCPM"),recursive = TRUE,full.names = TRUE),
+         fname=basename(path)) %>%
+  separate(fname,into=c("field","table","model","experiment","variant","grid","time"),sep="_") %>%
+  separate(variant,into=c("start","realization"),sep="-") %>%
+  extract(realization,c("realization","initialization","other"),"^(r[[:digit:]]+)(i[[:digit:]]+)(.+)$")
+
+NorCPM.src.i1 <- 
+  data.source(name="NorCPM.i1",
+              var="tos",
+              type="Decadal",
+              sources=list(filter(NorCPM.fnames,
+                             field=="tos",
+                             initialization=="i1")$path),
+              realization.fn = function(f) {
+                gsub("^.*_s[[:digit:]]{4}-r([[:digit:]]+)i.*$","\\1",basename(f))},
+              start.date=function(f){
+                ymd(gsub("^([[:digit:]]{6})-.*$","\\101",underscore_field(basename(f),7)))},
+              start.id=function(f) {
+                val <- gsub("^([[:digit:]]{6})-.*$","\\101",underscore_field(basename(f),7))
+                return(year(ymd(val))+1)},
+              date.fn=function(f) date.by.brick(f,varname="tos")) %>%
+  chunk.data.source(n=10) 
+
+NorCPM.src.i2 <- 
+  new("data.source",
+      NorCPM.src.i1,
+      name="NorCPM.i2",
+      sources=list(filter(NorCPM.fnames,
+                          field=="tos",
+                          initialization=="i2")$path)) %>%
+  chunk.data.source(n=10) 
+
+SST.Decadal <- c(SST.Decadal,NorCPM.src.i1,NorCPM.src.i2)
+
 #Set list names and ids
 names(SST.Decadal) <- sapply(SST.Decadal,slot,"name")
 
-SST.Decadal.production <- SST.Decadal[c("CESM-DPLE","MPI-ESM-LR")]
+SST.Decadal.production <- SST.Decadal[c("CESM-DPLE","MPI-ESM-LR","NorCPM.i1","NorCPM.i2")]
 
 #'========================================================================
 # Salinity data sources ####
