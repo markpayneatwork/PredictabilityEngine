@@ -45,7 +45,7 @@ pcfg <- readRDS(PE.cfg$config.path)
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.id <- 2
+  cfg.id <- 1
   set.cdo.defaults("--silent --no_warnings -O")
   #set.cdo.defaults("-O")
   set.log_msg.silent()
@@ -73,6 +73,7 @@ config.summary(pcfg,this.sp,this.src)
 #Directory setup
 subdomain.dir <- get.subdomain.dir(pcfg,this.sp)
 base.dir <- define_dir(subdomain.dir,"Decadal",this.src@name)
+fragstack.dir <- define_dir(base.dir,"4.fragstacks")
 lead.clim.dir <- define_dir(base.dir,"5.lead.clims")
 anom.dir <- define_dir(base.dir,"A.anom")
 realmean.dir <- define_dir(base.dir,"B.realmean")
@@ -83,13 +84,69 @@ analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$files$analysis.grid)
 #'========================================================================
 log_msg("Processing %s data source for %s subdomain ...\n",this.src@name,this.sp@name)
 
-#Import fragstack meta data from the chunks
+#Import fragment meta data from the chunks
 chunk.names <- names(this.src@sources)
-fragstack.meta.fnames <- file.path(base.dir,
+fragment.meta.fnames <- file.path(base.dir,
                                    if(is.null(chunk.names)) {""} else {chunk.names},
-                                  PE.cfg$files$fragstack.meta)
-fragstack.meta.l <- lapply(fragstack.meta.fnames,readRDS)
-fragstack.meta <- bind_rows(fragstack.meta.l)
+                                  PE.cfg$files$fragment.meta)
+fragment.meta.l <- lapply(fragment.meta.fnames,readRDS)
+fragment.meta <- bind_rows(fragment.meta.l)
+
+#'========================================================================
+# Generate fragment stacks ####
+# Now we stack the fragments together to form 3D stacks, with each lon-lat
+# layer corresponding to a realisation
+# Note that this used to be in D1, but apparently it doesn't work 
+# with chunking. We therefore have moved it into D2 to work by sources
+#'========================================================================
+log_msg("Building fragstacks...\n")
+fragstack.meta.fname <- file.path(base.dir,PE.cfg$files$fragstack.meta)
+
+if(!file.exists(fragstack.meta.fname)| pcfg@recalculate) {
+  # Group data into the fragment stacks
+  fragstack.grp <- split(fragment.meta,
+                         fragment.meta[,c("date","lead.idx")],drop=TRUE)
+  
+  #Loop over groups and build the stacks
+  pb <- progress_estimated(length(fragstack.grp))
+  fragstack.meta.l <- list()
+  for(i in seq(fragstack.grp)) {
+    pb$tick()$print()
+    grp <- fragstack.grp[[i]]
+    log_msg("Building fragstack %i of %i...\n",i,
+            length(fragstack.grp),silenceable = TRUE)
+    
+    #Stack
+    fragstack.fname <- file.path(fragstack.dir,
+                                 with(grp[1,],
+                                      sprintf("%s_L%s_fragstack.nc",
+                                              format(date,"%Y%m%d"),lead.idx)))
+    # condexec(1,fragstack.cmd <- cdo("merge",
+    #                                 grp$fname,
+    #                                 fragstack.fname))
+    fragstack.cmd <- ncecat("--rcd_nm realization -M",grp$fname,fragstack.fname)
+    
+    #Store metadata
+    fragstack.meta.l[[i]] <- grp[1,] %>%
+      mutate(#n.realizations=nrow(grp),
+        fname=fragstack.fname)
+    
+  }
+  Sys.sleep(0.1)
+  print(pb$stop())
+  log_msg("\n")
+  
+  #Save metadata
+  fragstack.meta <- bind_rows(fragstack.meta.l) %>%
+    select(-starts_with("realization")) 
+  saveRDS(fragstack.meta,file=fragstack.meta.fname)
+  
+  pcfg@recalculate <- TRUE   #If here, then force all subsequent calculations
+  
+} else {
+  fragstack.meta <- readRDS(fragstack.meta.fname)
+}
+
 
 #'========================================================================
 # Calculate climatologies ####
@@ -101,14 +158,14 @@ clim.meta.fname <-  file.path(base.dir,PE.cfg$files$clim.meta)
 if(!file.exists(clim.meta.fname) | pcfg@recalculate) {
   
   #Break into chunks for climatology calculation by lead time and start month
-  clim.meta <- mutate(fragstack.meta,
-                      in.clim=year(date) %in% pcfg@clim.years,
-                      start.month=month(start.date),
-                      clim.idx=sprintf("S%02i.L%s",start.month,lead.idx),
-                      clim.fname=file.path(lead.clim.dir,
-                                           sprintf("%s_%s_clim.nc",
-                                                   this.src@name,clim.idx)))
-  rm(fragstack.meta)
+  clim.meta <- 
+    fragstack.meta %>%
+    mutate(in.clim=year(date) %in% pcfg@clim.years,
+           start.month=month(start.date),
+           clim.idx=sprintf("S%02i.L%s",start.month,lead.idx),
+           clim.fname=file.path(lead.clim.dir,
+                                sprintf("%s_%s_clim.nc",
+                                        this.src@name,clim.idx)))
   lead.clim.files <- subset(clim.meta,in.clim)
   lead.clim.files.l <- split(lead.clim.files,lead.clim.files$clim.idx)
   
@@ -158,13 +215,15 @@ anom.meta.fname <- file.path(base.dir,PE.cfg$files$anom.meta)
 
 if(!file.exists(anom.meta.fname) | pcfg@recalculate) {
   #Simple loop over files
-  anom.meta <- dplyr::select(clim.meta,-in.clim,-clim.idx,-start.month) %>%
-               mutate(fragstack.fname=fname,
-                     fname=file.path(anom.dir,
-                                     sprintf("%s_S%s_L%s_anom.nc",
-                                             src.name,
-                                             format(start.date,"%Y%m%d"),
-                                             lead.idx)))
+  anom.meta <- 
+    clim.meta %>%
+    dplyr::select(-in.clim,-clim.idx,-start.month) %>%
+    mutate(fragstack.fname=fname,
+           fname=file.path(anom.dir,
+                           sprintf("%s_S%s_L%s_anom.nc",
+                                   src.name,
+                                   format(start.date,"%Y%m%d"),
+                                   lead.idx)))
   pb <- progress_estimated(nrow(anom.meta))
   for(k in seq(nrow(anom.meta))){
     pb$tick()$print()
@@ -202,12 +261,13 @@ realmean.meta.fname <- file.path(base.dir,PE.cfg$files$realmean.meta)
 if(!file.exists(realmean.meta.fname) | pcfg@recalculate) {
   
   #Break into chunks per lead time and forecast date
-  realmean.meta <- mutate(anom.meta,
-                          anom.fname=fname,
-                          fname=file.path(realmean.dir,
-                                          str_replace(basename(anom.fname),
-                                                      "anom",
-                                                      "realmean")))
+  realmean.meta <- 
+    anom.meta %>%
+    mutate(anom.fname=fname,
+           fname=file.path(realmean.dir,
+                           str_replace(basename(anom.fname),
+                                       "anom",
+                                       "realmean")))
   
   #Average over the individual realisations at given lead time
   pb <- progress_estimated(nrow(realmean.meta),-1)

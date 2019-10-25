@@ -74,7 +74,6 @@ chunk.dir <- define_dir(datsrc.dir,this.chunk@chunk.id)
 remap.dir <- define_dir(chunk.dir,"1.remapping_wts")
 sel.dir <- define_dir(chunk.dir,"2.regrid")
 frag.dir <- define_dir(chunk.dir,"3.fragments")
-fragstack.dir <- define_dir(chunk.dir,"4.fragstacks")
 misc.meta.dir <- define_dir(chunk.dir,PE.cfg$dirs$Misc.meta)
 analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$files$analysis.grid)
 
@@ -250,58 +249,6 @@ if(!file.exists(frag.meta.fname) | pcfg@recalculate) {
   frag.meta <- readRDS(frag.meta.fname)
 }
 
-#'========================================================================
-# Generate fragment stacks ####
-# Now we stack the fragments together to form 3D stacks, with each lon-lat
-# layer corresponding to a realisation
-#'========================================================================
-log_msg("Building fragstacks...\n")
-fragstack.meta.fname <- file.path(chunk.dir,PE.cfg$files$fragstack.meta)
-
-if(!file.exists(fragstack.meta.fname)| pcfg@recalculate) {
-  # Group data into the fragment stacks
-  fragstack.grp <- split(frag.meta,
-                         frag.meta[,c("date","lead.idx")],drop=TRUE)
-  
-  #Loop over groups and build the stacks
-  pb <- progress_estimated(length(fragstack.grp))
-  fragstack.meta.l <- list()
-  for(i in seq(fragstack.grp)) {
-    pb$tick()$print()
-    grp <- fragstack.grp[[i]]
-    log_msg("Building fragstack %i of %i...\n",i,
-            length(fragstack.grp),silenceable = TRUE)
-    
-    #Stack
-    fragstack.fname <- file.path(fragstack.dir,
-                                 with(grp[1,],
-                                      sprintf("%s_L%s_fragstack.nc",
-                                              format(date,"%Y%m%d"),lead.idx)))
-    # condexec(1,fragstack.cmd <- cdo("merge",
-    #                                 grp$fname,
-    #                                 fragstack.fname))
-    fragstack.cmd <- ncecat("--rcd_nm realization -M",grp$fname,fragstack.fname)
-    
-    #Store metadata
-    fragstack.meta.l[[i]] <- grp[1,] %>%
-      mutate(#n.realizations=nrow(grp),
-             fname=fragstack.fname)
-    
-  }
-  Sys.sleep(0.1)
-  print(pb$stop())
-  log_msg("\n")
-  
-  #Save metadata
-  fragstack.meta <- bind_rows(fragstack.meta.l) %>%
-    select(-starts_with("realization")) 
-  saveRDS(fragstack.meta,file=fragstack.meta.fname)
-
-  pcfg@recalculate <- TRUE   #If here, then force all subsequent calculations
-  
-} else {
-  fragstack.meta <- readRDS(fragstack.meta.fname)
-}
 
 
 #'========================================================================
