@@ -3,7 +3,7 @@
 ### -- specify queue -- 
 #BSUB -q hpc
 ### -- set the job Name and array-- 
-#BSUB -J NMME_sync[1-10]
+#BSUB -J NMME_sync[1-11]
 ### -- ask for number of cores (default: 1) -- 
 ##BSUB -n 1 
 ### -- specify that the cores must be on the same host -- 
