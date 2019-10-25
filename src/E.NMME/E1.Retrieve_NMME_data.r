@@ -72,8 +72,10 @@ base.dir <- define_dir(PE.cfg$dirs$datasrc,"NMME")
 # Setup ####
 #'========================================================================
 #Import configurations from config object
-NMME.cfg <- read_csv2(file.path(PE.cfg$dirs$datasrc,"NMME","NMME_SST_urls.csv"),
-                      col_types = cols())
+NMME.cfg <- 
+  read_csv2(file.path(PE.cfg$dirs$datasrc,"NMME","NMME_SST_urls.csv"),
+                      col_types = cols()) %>%
+  filter(active)
 
 # ========================================================================
 # Retrieve meta data

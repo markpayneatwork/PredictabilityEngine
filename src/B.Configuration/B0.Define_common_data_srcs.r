@@ -291,8 +291,10 @@ Sal.obs$EN4  <- data.source(name="EN4",
 # Setup NMME models
 # ========================================================================
 library(readr)
-NMME.cfg <- read_csv2(file.path(PE.cfg$dirs$datasrc,"NMME","NMME_SST_urls.csv"),
-                      col_types = cols())
+NMME.cfg <- 
+  read_csv2(file.path(PE.cfg$dirs$datasrc,"NMME","NMME_SST_urls.csv"),
+                      col_types = cols()) %>%
+  filter(active)
 NMME.mdls <- split(NMME.cfg,NMME.cfg$Model)
 NMME.sst.l <- list()
 for(mdl.name in names(NMME.mdls)){
