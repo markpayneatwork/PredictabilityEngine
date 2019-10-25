@@ -107,16 +107,17 @@ pcfg@extraction <- extr
 #'========================================================================
 #Configure stats
 stat.l <- list()
-stat.l[[1]] <- threshold(name="11 degree threshold",
-                              threshold=11,
-                              above=TRUE,
-                              use.full.field = TRUE,
-                              use.realmeans=TRUE)
+stat.l[[1]] <- threshold(name="11 degree threshold - realmeans",
+                         threshold=11,
+                         above=TRUE,
+                         use.full.field = TRUE,
+                         use.realmeans=TRUE)
 
-#Set type of data to use for all
-for(i in seq(stat.l)){
-  stat.l[[i]]@use.realmeans <- TRUE
-}
+stat.l[[2]] <- new("threshold",
+                   stat.l[[1]],
+                   name="11 degree threshold - realisations",
+                   use.realmeans=FALSE)
+
 
 #Merge it all in
 names(stat.l) <- sapply(stat.l,slot,"name")
