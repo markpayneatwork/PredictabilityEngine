@@ -105,7 +105,7 @@ ensmean.fn <- function(em.gp){
   #Store new meta data
   res <- 
     em.gp[1,] %>%
-    select(-fname,-n.realizations) %>%
+    select(-fname) %>%
     mutate(n.mdls=nrow(em.gp),
            fname=ensmean.fname)
   return(res[1,])
