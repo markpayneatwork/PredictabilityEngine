@@ -127,7 +127,10 @@ if(!file.exists(frag.meta.fname) | pcfg@recalculate) {
       sellev.cmd <- cdo(csl("sellevidx",vert.idxs),
                         tmp.in,tmp.out)
     } else {
-      tmp.out <- f
+      sym.link <- file.path(getwd(),f)
+      file.remove(tmp.stem)
+      file.symlink(sym.link,tmp.stem)
+      tmp.out <- tmp.stem
     }
 
     #Average over the layers
