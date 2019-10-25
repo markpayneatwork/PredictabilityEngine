@@ -56,6 +56,7 @@ default: help status
 
 #-------------------------------------
 #Types
+
 $(TYPES):
 	make cluster TYPE=$@
 
@@ -64,6 +65,10 @@ cluster:  todo $(OKs)
 	
 $(OUTDIR)/%.ok: 
 	@echo $* >> $(TODO)
+
+Stats:	
+	@/appl/R/bin/Rscript-3.5.2-sl73 src/H.Statistics/H0.Collate_metadata.r
+	make cluster TYPE=$@
 
 PPStats:
 	@touch $(CFG_DIR)/$@.cfg
