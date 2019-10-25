@@ -127,7 +127,7 @@ if(!file.exists(frag.meta.fname) | pcfg@recalculate) {
                         tmp.in,tmp.out)
     } else {
       sym.link <- file.path(getwd(),f)
-      file.remove(tmp.stem)
+      if(file.exists(tmp.stem)) file.remove(tmp.stem)
       file.symlink(sym.link,tmp.stem)
       tmp.out <- tmp.stem
     }
