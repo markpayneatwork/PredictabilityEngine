@@ -100,6 +100,8 @@ ggplot(meta,aes(x=first.start,xend=last.start,y=Model,yend=Model,col=type))+
   geom_vline(xintercept=min(meta$first.start))+
   theme_bw()
 
+saveRDS(meta,file="objects/NMME_metadata.rds")
+
 # ========================================================================
 # Complete
 # ========================================================================
