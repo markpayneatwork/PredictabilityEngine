@@ -70,16 +70,14 @@ log_msg("Calculating Ensemble mean for %s subdomain ...\n",this.sp@name)
 #'========================================================================
 # Setup ensemble averaging ####
 #'========================================================================
-#Start by loading the metadata associated with each of the hindcast
-#models that we have chosen to use in our ensmean configuration
-metadat.l <- list()
-for(m in pcfg@Decadal){
-  if(class(m)=="data.source") {
-    realmean.meta <- readRDS(file.path(base.dir,m@name,PE.cfg$files$realmean.meta))
-    metadat.l[[m@name]] <- realmean.meta
-  }
-}
-metadat.all <- bind_rows(metadat.l)
+#Start by loading the metadata associated with each of the decadal models
+metadat.all <- 
+  #Load metadata
+  tibble(dat.src=pcfg@Decadal,
+         is.data.source=map_lgl(dat.src,~class(.x)=="data.source")) %>%
+  filter(is.data.source)%>%
+  transmute(metadata=map(dat.src,~readRDS(file.path(base.dir,.x@name,PE.cfg$files$realmean.meta)))) %>%
+  unnest(metadata)
 
 #Now, start stripping out the files that we won't include in the ensemble mean
 #The basic criteria is that they have to  represent the mean across realisations
@@ -90,15 +88,25 @@ metadat.all <- bind_rows(metadat.l)
 #we have all of the metadata lumped together. This is no longer necesssary. We 
 #retain it here mainly for the note above.
 #metadat <- subset(metadat.all,realization=="realmean") 
-metadat <- metadat.all
+#metadat <- metadat.all
 
 #Now split into groups by leadtime and forecast year
 #We could do the split directly on the date, but this is a bit
 #risky - different models tend to handle and leap-years differently, so the
 #date for one model might be 1964.08.15 and for another 1964.08.16
-#even though they both represent the same thing.
-metadat$forecast.yr <- year(metadat$date)
-grp.l <- split(metadat,metadat[,c("lead.idx","forecast.yr")],drop=TRUE)
+#even though they both represent the same thing. We also have a second problem, where 
+#not all of the models are initialised on the same date e.g. some are at 1 Jan, others
+#in Dec, Nov or even October. However, these are all producing forecasts for the exact same
+#date (e.g. Aug) it's just that their leadtimes are slightly different. We handle this by
+#doing the splitting by forecast date and lead time, where lead is defined as how many years you
+#have to go back to get to the initialisation
+metadat <- 
+  metadat.all %>%
+  #Calculate ym dates, so as to simplify the matching up by lead time
+  mutate(date.ym=format(date,"%Y%m"))
+
+#do the splitting based on the start and the target year/month
+grp.l <- split(metadat,metadat[,c("start.id","date.ym")],drop=TRUE)
 
 #'========================================================================
 # Perform averaging ####
@@ -115,19 +123,18 @@ for(i in seq(grp.l)) {
   d <- grp.l[[i]]
   
   #Build up meta data
-  grp.meta <- tibble(src.name=PE.cfg$files$ensmean.name,
+  grp.meta <- 
+    tibble(src.name=PE.cfg$files$ensmean.name,
                      src.type="Decadal",
-                         date=mean(d$date),
-                         start.date=mean(d$start.date),
-                         lead.idx=unique(d$lead.idx))
-  ensmean.fname <- sprintf("S%s_L%s_ensmean.nc",
-                           format(grp.meta$start.date,"%Y%m%d"),
-                           grp.meta$lead.idx)
-  grp.meta$fname <- file.path(ensmean.dir,ensmean.fname)
+                     date=mean(d$date),
+                     start.date=mean(d$start.date)) %>%
+    mutate(fname=sprintf("S%s_%s_ensmean.nc",
+                         unique(d$start.id),
+                         unique(d$date.ym)),
+           fname=file.path(ensmean.dir,fname))
 
   #Average over realisation means
   ensmean.cmd <- nces(d$fname,grp.meta$fname)
-  
   
   #Average over individual files
   # temp.fname <- tempfile(fileext = ".nc")
