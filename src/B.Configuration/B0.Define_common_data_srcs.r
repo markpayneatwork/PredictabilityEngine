@@ -141,7 +141,7 @@ NorCPM.fnames <-
   separate(variant,into=c("start","realization"),sep="-") %>%
   extract(realization,c("realization","initialization","other"),"^(r[[:digit:]]+)(i[[:digit:]]+)(.+)$")
 
-NorCPM.src.i1 <- 
+NorCPM.SST.src.i1 <- 
   data.source(name="NorCPM.i1",
               var="tos",
               type="Decadal",
@@ -161,16 +161,16 @@ NorCPM.src.i1 <-
                   return(dates)}) %>%
   chunk.data.source(n=10) 
 
-NorCPM.src.i2 <- 
+NorCPM.SST.src.i2 <- 
   new("data.source",
-      NorCPM.src.i1,
+      NorCPM.SST.src.i1,
       name="NorCPM.i2",
       sources=list(filter(NorCPM.fnames,
                           field=="tos",
                           initialization=="i2")$path)) %>%
   chunk.data.source(n=10) 
 
-SST.Decadal <- c(SST.Decadal,NorCPM.src.i1,NorCPM.src.i2)
+SST.Decadal <- c(SST.Decadal,NorCPM.SST.src.i1,NorCPM.SST.src.i2)
 
 #Set list names and ids
 names(SST.Decadal) <- sapply(SST.Decadal,slot,"name")
@@ -230,6 +230,28 @@ CESM.DPLE.SALT <-
   chunk.data.source(n=20)
 
 Sal.Decadal$CESM.DPLE.SALT <- CESM.DPLE.SALT
+
+NorCPM.sal.src.i1 <- 
+  new("data.source",
+      var="so",
+      NorCPM.SST.src.i1,
+      name="NorCPM.i1",
+      sources=list(filter(NorCPM.fnames,
+                          field=="so",
+                          initialization=="i1")$path)) %>%
+  chunk.data.source(n=10) 
+
+NorCPM.sal.src.i2 <- 
+  new("data.source",
+      NorCPM.SST.src.i1,
+      name="NorCPM.i2",
+      sources=list(filter(NorCPM.fnames,
+                          field=="so",
+                          initialization=="i2")$path)) %>%
+  chunk.data.source(n=10) 
+
+Sal.Decadal <- c(Sal.Decadal,NorCPM.sal.src.i1,NorCPM.sal.src.i2)
+
 
 
 #Set list names

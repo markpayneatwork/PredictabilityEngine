@@ -96,19 +96,6 @@ stat.l <- list()
 stat.l[[1]]  <- spatial.mean(name="Mean Salinity",
                              use.full.field=TRUE)
 
-stat.l[[2]] <- pass.through(name="Salinity field anomaly",
-                               skill.metrics = "correlation",
-                               use.globally=TRUE,
-                               use.full.field = FALSE,
-                               use.realmeans=TRUE)
-
-stat.l[[3]] <- threshold(name="Suitable spawning area",
-                            skill.metrics = "correlation",
-                            use.globally=TRUE,
-                            use.full.field = TRUE,
-                            threshold=c(35.3,35.5),
-                            use.realmeans=TRUE)
-
 #Setup Miesner & Payne habitat model
 require(mgcv)
 #Setup bathymetric grid 
@@ -146,11 +133,19 @@ GAM.sdm.fn <- function(dat,resources) {
   PA <- p > resources$model$threshold
   return(PA)
 }
-stat.l[[4]] <- habitat(name="SDM habitat model",
+stat.l[[2]] <- habitat(name="SDM_realmean",
                        fn=GAM.sdm.fn,
                        resources=GAM.sdm.resources,
                        skill.metrics = "correlation",
-                       use.full.field = TRUE)
+                       use.full.field = TRUE,
+                       use.realmeans=TRUE)
+
+stat.l[[3]] <- habitat(name="SDM_realisations",
+                       fn=GAM.sdm.fn,
+                       resources=GAM.sdm.resources,
+                       skill.metrics = "correlation",
+                       use.full.field = TRUE,
+                       use.realmeans = FALSE)
 
 
 #Merge it all in
