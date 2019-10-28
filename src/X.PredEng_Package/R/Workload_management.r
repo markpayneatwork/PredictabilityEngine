@@ -21,45 +21,59 @@ partition.workload <- function(obj,
   #Check inputs
   if(length(src.slot)!=1) stop("Can only partition a single slot at a time")
   
-  #Get the list of all valid data types
-  dat.srcs.l <- unlist(lapply(c("Decadal","NMME","Observations","CMIP5"),slot,object=obj))
-  dat.srcs <- lapply(dat.srcs.l,function(x) {
-                                src.names <- names(x@sources)
-                                tibble(src.type=x@type,
-                                       src.name=x@name,
-                                       chunk.id=if(is.null(src.names)) {NA} else {src.names})})
+  #Get the list of all valid data types and chunks
+  obj.srcs <- 
+    tibble(src.type=c("Decadal","NMME","Observations","CMIP5")) %>%
+    mutate(src=map(src.type,~slot(.x,object=obj)),
+           n.objs=map_int(src,length),
+           src=map2(src,n.objs,~ if(.y<=1) {list(.x)} else {.x})) %>%
+    filter(n.objs!=0)%>%
+    unnest(src) %>%
+    mutate(src.name=map_chr(src,slot,"name"),
+           n.chunks=map_dbl(src,slot,"n.chunks")) %>%
+    select(-src,-n.objs)
+    
+  #Manually add other sources  
   other.srcs.l <- list()
   other.srcs.l[[1]] <- tibble(src.type="Persistence",src.name=obj@Observations@name)
   if(length(obj@NMME)!=0) other.srcs.l[[2]] <- tibble(src.type="NMME",src.name=PE.cfg$files$ensmean.name)
   if(length(obj@Decadal)!=0) other.srcs.l[[3]] <- tibble(src.type="Decadal",src.name=PE.cfg$files$ensmean.name)
-  all.chunks <- bind_rows(dat.srcs,other.srcs.l) 
-  all.srcs <- dplyr::select(all.chunks,-chunk.id) %>%
-              unique()
+  all.srcs <- bind_rows(obj.srcs,other.srcs.l) 
 
   #If we want to use some stats globally, then we need to make sure to include the Global spatial domain
   using.stats.globally <- any(map_lgl(obj@statistics,slot,name="use.globally"))
   
   #Retain the data sources requested
-  if(missing(src.slot)) {
-    dat.srcs <- all.srcs
+  if(missing(src.slot)) { #If nothing, then return all sources
+    these.srcs <- all.srcs
     out.prefix <- src.slot
   } else if(src.slot %in% c("Observations") | is.na(data.partition.type)) {
-    dat.srcs <- filter(all.srcs,src.type==src.slot)
+    these.srcs <- 
+      all.srcs %>%
+      filter(src.type==src.slot)
     out.prefix <- src.slot
   } else if(toupper(data.partition.type)=="ENSMEAN") {
-    dat.srcs <- filter(all.srcs,src.type==src.slot,src.name==PE.cfg$files$ensmean.name)
+    these.srcs <- 
+      all.srcs %>%
+      filter(src.type==src.slot,
+             src.name==PE.cfg$files$ensmean.name)
     out.prefix <- sprintf("%s_ensmean",src.slot)
   } else if(toupper(data.partition.type)=="CHUNKS") {
-    dat.srcs <- filter(all.chunks,src.type==src.slot,src.name!=PE.cfg$files$ensmean.name)
+    these.srcs <- 
+      all.srcs %>%
+      filter(src.type==src.slot,
+             src.name!=PE.cfg$files$ensmean.name) %>%
+      mutate(chunk.id=map(n.chunks,~seq(.x))) %>%
+      unnest(chunk.id)
     out.prefix <- sprintf("%s_by_chunks",src.slot)
   } else if(toupper(data.partition.type)=="SOURCES") {
-    dat.srcs <- filter(all.srcs,src.type==src.slot,src.name!=PE.cfg$files$ensmean.name)
+    these.srcs <- filter(all.srcs,src.type==src.slot,src.name!=PE.cfg$files$ensmean.name)
     out.prefix <- sprintf("%s_by_sources",src.slot)
   } else {
     stop(sprintf('Unknown data.partition.type "%s"',data.partition.type))
   }
-  if(nrow(dat.srcs)==0) return(NULL)  #Catch blanks
-  dat.srcs$src.num <- seq(nrow(dat.srcs))
+  if(nrow(these.srcs)==0) return(NULL)  #Catch blanks
+  these.srcs$src.num <- seq(nrow(these.srcs))
     
   #Setup spatial domains
   if(space.partition ) { #Overrides the use.global.ROI switch
@@ -78,10 +92,10 @@ partition.workload <- function(obj,
   }
   
   #Do the expansion
-  work.cfg <- expand.grid(src.num=dat.srcs$src.num,
+  work.cfg <- expand.grid(src.num=these.srcs$src.num,
                           sp=sp.subdomains) %>%
-    left_join(dat.srcs,by="src.num") %>%
-    dplyr::select(-src.num) %>%
+    left_join(these.srcs,by="src.num") %>%
+    dplyr::select(-src.num,-n.chunks) %>%
     add_column(cfg.id=seq(nrow(.)),.before=1) %>%
     as_tibble()
   
@@ -100,7 +114,10 @@ partition.workload <- function(obj,
 #' @rdname job_management
 configure.src <- function(fname,cfg.idx,obj){
   cfgs <- get.cfgs(fname)
-  this.cfg <- cfgs[cfg.idx,]
+  this.cfg <- 
+    cfgs %>%
+    filter(cfg.id==cfg.idx)
+  stopifnot(nrow(this.cfg)==1)
   if(is.na(this.cfg$src.name) | is.na(this.cfg$src.type)) {
     stop("Source not defined for this configuration")
   }
@@ -113,21 +130,41 @@ configure.src <- function(fname,cfg.idx,obj){
     this.src <- srcs[[as.character(this.cfg$src.name)]]
   }
   
-  #Take care of the chunking, if necessary - only return the
-  #sources in the corresponding chunk
-  if("chunk.id"%in% names(this.cfg)) {
-    if(!is.na(this.cfg$chunk.id)) {
-      this.src@sources <- this.src@sources[this.cfg$chunk.id]
-      this.src@chunk.id <- this.cfg$chunk.id
-    }}
   return(this.src)
 }
+
+#' @param cfg.idx Configuration index, indicating which job configration to extract
+#'
+#' @export
+#' @rdname job_management
+configure.chunk <- function(fname,cfg.idx,obj){
+  #Get the source
+  this.src <- configure.src(fname,cfg.idx,obj)
+  
+  #Now configure the chunks as well
+  cfgs <- get.cfgs(fname)
+  this.cfg <- 
+    cfgs %>%
+    filter(cfg.id==cfg.idx)
+  stopifnot(nrow(this.cfg)==1)
+
+  #Take care of the chunking, if necessary - only return the
+  #sources in the corresponding chunk
+  if(!("chunk.id"%in% names(this.cfg))) stop("Chunking not defined for this configuration")
+  this.src@sources <- this.src@sources[this.cfg$chunk.id]
+  this.src@chunk.id <- names(this.src@sources)
+  return(this.src)
+}
+
 
 #' @export
 #' @rdname job_management
 configure.sp <- function(fname,cfg.idx,obj){
   cfgs <- get.cfgs(fname)
-  this.cfg <- cfgs[cfg.idx,]
+  this.cfg <- 
+    cfgs %>%
+    filter(cfg.id==cfg.idx)
+  stopifnot(nrow(this.cfg)==1)
   if(is.na(this.cfg$sp) | this.cfg$sp==PE.cfg$misc$global.sp.name) {
     this.sp  <- global.ROI(obj)
   } else { #Working with subdomains

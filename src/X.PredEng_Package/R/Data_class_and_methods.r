@@ -6,9 +6,11 @@
 #' @slot name Identifier of data source 
 #' @slot type Type of data source that this object corresponds to - valid 
 #' options are "Decadal", "NMME", "CMIP","Obs", and eventually "C3S" 
+#' @slot n.chunks Numeric. (Max) number of chunks allocated to processing this data source. 
 #' @slot chunk.id Chunk identifier (optional)
 #' @slot sources A list of directories or URLs containing the raw information. Each item in the list
-#' corresponds to a processing chunk. 
+#' corresponds to a processing chunk. The number of chunks here might be less than n.chunks, but
+#' should not exceed it
 #' @slot var Variable name from which to extract data
 #' @slot realizations Character string, naming the realization(s) to use. NA indicates all.
 #' @slot time.correction A string suitable for use with the "cdo shifttime,x" command string that can be used to 
@@ -24,6 +26,7 @@
 data.source <- setClass("data.source",
                         slots=list(name="character",
                                    type="character",
+                                   n.chunks="numeric",
                                    chunk.id="character",
                                    sources="list",
                                    var="character",
@@ -34,7 +37,8 @@ data.source <- setClass("data.source",
                                    start.date="function",  
                                    start.id="function", 
                                    date.fn="function"),
-                        prototype=list(chunk.id="",
+                        prototype=list(n.chunks=1,
+                                       chunk.id="",
                                        layermids.fn=function(x) {stop("z2idx.fn not specified")},
                                        realizations=as.character(NA),
                                        date.fn=function(x) {stop("Date.fn not specified")},
@@ -100,6 +104,7 @@ setMethod("show","data.source", function(object) {
 #' @export
 #'
 chunk.data.source <- function(obj,n=1) {
+  obj@n.chunks <- n
   src.fnames <- unlist(obj@sources)
   if(length(src.fnames!=0)) {
     obj@sources <- split(src.fnames,rep(1:n,length.out=length(src.fnames)))

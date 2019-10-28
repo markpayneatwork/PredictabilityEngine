@@ -4,6 +4,7 @@
 \alias{job_management}
 \alias{partition.workload}
 \alias{configure.src}
+\alias{configure.chunk}
 \alias{configure.sp}
 \alias{get.cfgs}
 \title{Manage job distribution}
@@ -12,6 +13,8 @@ partition.workload(obj, src.slot = "missing", data.partition.type = "",
   space.partition = !obj@use.global.ROI)
 
 configure.src(fname, cfg.idx, obj)
+
+configure.chunk(fname, cfg.idx, obj)
 
 configure.sp(fname, cfg.idx, obj)
 
@@ -31,6 +34,8 @@ partition by space. However, in some cases (e.g. calculation of statistics) it i
 behaviour anyway.}
 
 \item{fname}{Filename (incluiding path) to read / write job configuration to/from}
+
+\item{cfg.idx}{Configuration index, indicating which job configration to extract}
 
 \item{cfg.idx}{Configuration index, indicating which job configration to extract}
 }
