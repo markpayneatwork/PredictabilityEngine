@@ -199,6 +199,11 @@ Sal.Decadal$"MPI-LR" <-
               var="so",
               sources=list(MPI.LR.srcs),
               realization.fn=CMIP5_realisation,
+              layermids.fn = function(f) {
+                ncid <- nc_open(f)
+                layer.mids <- ncid$dim$lev$vals #[m]
+                nc_close(ncid)
+                return(layer.mids)},
               start.date=function(f){
                 init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
                 init.date <- ymd(paste(init.str,"01",sep=""))
@@ -209,7 +214,7 @@ Sal.Decadal$"MPI-LR" <-
                 init.id <- year(init.date)
                 return(init.id)},
               date.fn=date.by.brick) %>%
-  chunk.data.source(n=5)
+  chunk.data.source(n=10)
 
 #CESM-DPLE
 CESM.DPLE.SALT <- 
@@ -227,7 +232,7 @@ CESM.DPLE.SALT <-
                 val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,2]
                 start.date <- ymd(sprintf("%s-01",val))
                 return(year(start.date)+1)}) %>%  #November start - round up
-  chunk.data.source(n=20)
+  chunk.data.source(n=40)
 
 Sal.Decadal$CESM.DPLE.SALT <- CESM.DPLE.SALT
 
