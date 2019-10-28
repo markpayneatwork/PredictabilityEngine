@@ -124,7 +124,7 @@ chunk.data.source <- function(obj,n=1) {
 #' @export
 #'
 test.data.source <- function(obj,f="missing"){
-  if(missing("f")) { f <- obj@source[1]}
+  if(missing("f")) { f <- unlist(obj@sources)[1]}
   show(obj)
   log_msg("\nTest file : %s\n",f)
   log_msg("\nDates\n")

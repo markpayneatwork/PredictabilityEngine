@@ -24,12 +24,6 @@
 #'========================================================================
 # Helper functions ####
 #'========================================================================
-date.by.brick <- 
-  function(f,varname="") {
-    if(length(f)>1) stop("Function not vectorised")
-    dates <- getZ(brick(f,varname=varname))
-    return(dates)}
-
 decadal.dir <- file.path(PE.cfg$dirs$datasrc,"Decadal")
 
 # ========================================================================
@@ -38,24 +32,27 @@ decadal.dir <- file.path(PE.cfg$dirs$datasrc,"Decadal")
 #IPSL and MPI-MR have basically an identifical structure, both being produced
 #originally by SPECS
 SST.Decadal <- list()
-SST.Decadal$IPSL  <- data.source(name="IPSL-CM5A-LR",
-                                 type="Decadal",
-                                 sources=list(dir(file.path(decadal.dir,"IPSL-CM5A-LR"),
-                                                  pattern="\\.nc$",full.names = TRUE)),
-                                 var="tos",
-                                 realization.fn=function(f) {
-                                   underscore_field(f,6)},
-                                 start.date=function(f){
-                                   init.str <- gsub("S","",underscore_field(f,5))
-                                   init.date <- ymd(init.str)
-                                   return(init.date)},
-                                 date.fn=date.by.brick)
-
-SST.Decadal$"MPI-MR" <-  new("data.source",
-                             SST.Decadal$IPSL,
-                             name="MPI-ESM-MR",
-                             sources=list(dir(file.path(decadal.dir,"MPI-ESM-MR"),
-                                              pattern="\\.nc$",full.names = TRUE)))
+# SST.Decadal$IPSL  <- data.source(name="IPSL-CM5A-LR",
+#                                  type="Decadal",
+#                                  sources=list(dir(file.path(decadal.dir,"IPSL-CM5A-LR"),
+#                                                   pattern="\\.nc$",full.names = TRUE)),
+#                                  var="tos",
+#                                  realization.fn=function(f) {
+#                                    underscore_field(f,6)},
+#                                  start.date=function(f){
+#                                    init.str <- gsub("S","",underscore_field(f,5))
+#                                    init.date <- ymd(init.str)
+#                                    return(init.date)},
+#                                  date.fn=function(f,varname="tos") {
+#                                      if(length(f)>1) stop("Function not vectorised")
+#                                      dates <- getZ(brick(f,varname=varname))
+#                                      return(floor_date(dates,"month"))})
+# 
+# SST.Decadal$"MPI-MR" <-  new("data.source",
+#                              SST.Decadal$IPSL,
+#                              name="MPI-ESM-MR",
+#                              sources=list(dir(file.path(decadal.dir,"MPI-ESM-MR"),
+#                                               pattern="\\.nc$",full.names = TRUE)))
 
 #MPI-LR is different,
 SST.Decadal$"MPI-LR" <-  
@@ -74,39 +71,43 @@ SST.Decadal$"MPI-LR" <-
                 init.date <- ymd(paste(init.str,"01",sep=""))
                 init.id <- year(init.date)
                 return(init.id)},
-              date.fn=date.by.brick) %>%
+              date.fn=function(f,varname="thetao") {
+                if(length(f)>1) stop("Function not vectorised")
+                dates <- getZ(brick(f,varname=varname))
+                return(floor_date(dates,"month"))}) %>%
   chunk.data.source(n=16)  #Around 15 min runtime for Bluefin
 
 #MPI - NCEP requires all three to be specified
-SST.Decadal$"MPI-NCEP" <- data.source(name="MPI-NCEP-forced",
-                                      type="Decadal",
-                                      sources=list(dir(file.path(decadal.dir,"MPI-ESM-LR_NCEP-forced"),
-                                                       pattern="\\.nc$",full.names = TRUE)),
-                                      var="var2",
-                                      realization.fn=function(f){return(rep("r1",length(f)))},
-                                      date.fn=function(f){
-                                        dates.str <- getZ(brick(f))
-                                        dates <- ymd(dates.str)
-                                        day(dates) <- 15  #Adjust to be mid month, rather than end of month
-                                        #But adjust
-                                        return(dates)},
-                                      start.date=function(f){
-                                        init.yr <- str_match(basename(f),"^dma([0-9]{4})_.*$")[,2]
-                                        init.date <- as.Date(ISOdate(init.yr,1,1))
-                                        return(init.date)})
+# SST.Decadal$"MPI-NCEP" <- data.source(name="MPI-NCEP-forced",
+#                                       type="Decadal",
+#                                       sources=list(dir(file.path(decadal.dir,"MPI-ESM-LR_NCEP-forced"),
+#                                                        pattern="\\.nc$",full.names = TRUE)),
+#                                       var="var2",
+#                                       realization.fn=function(f){return(rep("r1",length(f)))},
+#                                       date.fn=function(f){
+#                                         stop("Needs to be checked")
+#                                         dates.str <- getZ(brick(f))
+#                                         dates <- ymd(dates.str)
+#                                         day(dates) <- 15  #Adjust to be mid month, rather than end of month
+#                                         #But adjust
+#                                         return(dates)},
+#                                       start.date=function(f){
+#                                         init.yr <- str_match(basename(f),"^dma([0-9]{4})_.*$")[,2]
+#                                         init.date <- as.Date(ISOdate(init.yr,1,1))
+#                                         return(init.date)})
 
 #GFDL is largely in CMIP5 format
-SST.Decadal$GFDL <-   data.source(name="GFDL-CM2.1",
-                                  type="Decadal",
-                                  sources=list(dir(file.path(decadal.dir,"GFDL-CM2.1"),
-                                                   pattern="\\.nc$",full.names = TRUE)),
-                                  var="tos",
-                                  realization.fn=CMIP5_realisation,
-                                  start.date=function(f){
-                                    init.yr <- str_match(basename(f),"^.*?_decadal([0-9]{4})_r.*$")[,2]
-                                    init.date <- as.Date(ISOdate(init.yr,1,1))
-                                    return(init.date)},
-                                  date.fn=date.by.brick)
+# SST.Decadal$GFDL <-   data.source(name="GFDL-CM2.1",
+#                                   type="Decadal",
+#                                   sources=list(dir(file.path(decadal.dir,"GFDL-CM2.1"),
+#                                                    pattern="\\.nc$",full.names = TRUE)),
+#                                   var="tos",
+#                                   realization.fn=CMIP5_realisation,
+#                                   start.date=function(f){
+#                                     init.yr <- str_match(basename(f),"^.*?_decadal([0-9]{4})_r.*$")[,2]
+#                                     init.date <- as.Date(ISOdate(init.yr,1,1))
+#                                     return(init.date)},
+#                                   date.fn=date.by.brick)
 
 #Add in the CESM DPLE
 CESM.DPLE.src <-   
@@ -126,7 +127,10 @@ CESM.DPLE.src <-
                 val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,2]
                 start.date <- ymd(sprintf("%s-01",val))
                 return(year(start.date)+1)},  #November start - round up
-              date.fn=date.by.brick) %>%
+              date.fn=function(f,varname="SST") {
+                if(length(f)>1) stop("Function not vectorised")
+                dates <- getZ(brick(f,varname=varname))
+                return(floor_date(dates,"month")-months(1))}) %>%
   chunk.data.source(n=22)  #~15 min runtime for Bluefin
 
 SST.Decadal$CESM.DPLE <- CESM.DPLE.src
@@ -158,7 +162,7 @@ NorCPM.SST.src.i1 <-
               date.fn=function(f) {
                   if(length(f)>1) stop("Function not vectorised")
                   dates <- getZ(brick(f,varname="tos"))
-                  return(dates)}) %>%
+                  return(floor_date(dates,"month"))}) %>%
   chunk.data.source(n=10) 
 
 NorCPM.SST.src.i2 <- 
@@ -213,7 +217,10 @@ Sal.Decadal$"MPI-LR" <-
                 init.date <- ymd(paste(init.str,"01",sep=""))
                 init.id <- year(init.date)
                 return(init.id)},
-              date.fn=date.by.brick) %>%
+              date.fn=function(f,varname="so") {
+                if(length(f)>1) stop("Function not vectorised")
+                dates <- getZ(brick(f,varname=varname))
+                return(floor_date(dates,"month"))}) %>%
   chunk.data.source(n=10)
 
 #CESM-DPLE
@@ -231,7 +238,11 @@ CESM.DPLE.SALT <-
               start.id=function(f){
                 val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,2]
                 start.date <- ymd(sprintf("%s-01",val))
-                return(year(start.date)+1)}) %>%  #November start - round up
+                return(year(start.date)+1)},
+              date.fn=function(f,varname="SALT") {
+                if(length(f)>1) stop("Function not vectorised")
+                dates <- getZ(brick(f,varname=varname))
+                return(floor_date(dates,"month")-months(1))}) %>%
   chunk.data.source(n=40)
 
 Sal.Decadal$CESM.DPLE.SALT <- CESM.DPLE.SALT
