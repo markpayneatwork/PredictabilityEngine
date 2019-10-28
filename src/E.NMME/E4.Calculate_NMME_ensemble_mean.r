@@ -115,7 +115,7 @@ ensmean.meta.l <- pblapply(ensmean.group,ensmean.fn,cl=getOption("mc.cores"))
 #Form meta data
 ensmean.meta <- 
   bind_rows(ensmean.meta.l) %>%
-  mutate(src.name="NMME-ensmean") %>%
+  mutate(src.name=PE.cfg$files$ensmean.name) %>%
   select(-start.date.ym,-date.ym)
 saveRDS(ensmean.meta,file=file.path(ensmean.dir,PE.cfg$files$realmean.meta))
 
