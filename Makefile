@@ -57,7 +57,7 @@ default: help status
 #-------------------------------------
 #Types
 
-$(TYPES):
+$(filter-out Stats PPStats, $(TYPES)):
 	make cluster TYPE=$@
 
 cluster:  todo $(OKs)
