@@ -138,16 +138,21 @@ sp.stat.all <-
   expand.grid(sp=c(global.ROI(pcfg),
                    pcfg@spatial.subdomains),
               stat=pcfg@statistics) %>%
+  as_tibble() %>%
   mutate(sp.name=map_chr(sp,slot,"name"),
          is.global.sp=sp.name==PE.cfg$misc$global.sp.name,
          stat.name=map_chr(stat,slot,"name"),
+         use.realmeans=map_lgl(stat,slot,"use.realmeans"),
          use.stat.globally=map_lgl(stat,slot,"use.globally"))
 
 #Now restrict, by ensuring that there is agreement between the stats to be 
 #calculated and the spatial subdomain
+#Also need agreement between the metadata being loaded in this configuration
+#and the distinction between realisations/realmeans
 sp.stat.sel <-
   sp.stat.all %>%
-  filter(is.global.sp==use.stat.globally)
+  filter(is.global.sp==use.stat.globally,
+         use.realmeans==this.cfg$use.realmeans)
 
 #'========================================================================
 # Apply statistics ####
@@ -155,8 +160,8 @@ sp.stat.sel <-
 # Loop over statistics ------------------------------------------------------------
 res.l <- vector("list",nrow(sp.stat.sel))
 for(j in seq(nrow(sp.stat.sel))) {
-  this.stat <- sp.stat.sel[j,"stat"][[1]]
-  this.sp <- sp.stat.sel[j,"sp"][[1]]
+  this.stat <- pull(sp.stat.sel,stat)[[j]]
+  this.sp <- pull(sp.stat.sel,sp)[[j]]
   log_msg("Processing '%s' statistic for '%s' subdomain...\n",
           this.stat@name,this.sp@name)
   
@@ -221,15 +226,25 @@ for(j in seq(nrow(sp.stat.sel))) {
     #Apply the masks to data
     masked.dat <- mask(mdl.dat,combined.mask,maskvalue=1)
     
-    #And we're ready. Lets calculate some summary statistics
+    #And we're ready. Lets calculate some statistics
     res <- eval.stat(st=this.stat,dat=masked.dat) 
+    
+    #Need to add in realization labels
+    #Realisations are only an issue when using them explicitly - otherwise we are
+    #working from ensemble means, realisation means or observations => realization = NA
+    if(this.cfg$use.realmeans) {
+      res$realization <- NA
+    } else {
+      res$realization <- 1:nlayers(masked.dat)
+    }
     
     #Add in the metadata and store the results
     #Doing the bind diretly like this is ok when we are dealing with
     #rasterLayer fragments, but we will need to be caseful when dealing with 
     #bricks, for example
-    file.res.l[[i]] <- bind_cols(slice(m,rep(1,nrow(res))),res)
-    
+    file.res.l[[i]] <- 
+      m %>% 
+      mutate(res=list(res))
   }
   
   Sys.sleep(0.1)
@@ -246,13 +261,16 @@ for(j in seq(nrow(sp.stat.sel))) {
     add_column(sp.subdomain=this.sp@name,
                stat.name=this.stat@name,
                .before=1) %>%
-    dplyr::select(-fname,-which.clim,-chunk.idx)
+    dplyr::select(-which.clim,-chunk.idx)
   
 }
 
 #Store results
-bind_rows(res.l) %>%
-saveRDS(file=file.path(stat.dir,sprintf("Stats_chunk_%04i.rds",this.cfg$cfg.id)))
+res.out <- 
+  bind_rows(res.l) %>%
+  unnest(res) 
+
+saveRDS(res.out,file=file.path(stat.dir,sprintf("Stats_chunk_%04i.rds",this.cfg$cfg.id)))
 
 
 #'========================================================================

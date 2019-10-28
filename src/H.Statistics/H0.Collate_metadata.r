@@ -59,7 +59,6 @@ stats.tb <- tibble(name=map_chr(pcfg@statistics ,slot,name="name"),
                    stat=pcfg@statistics,
                    returns.field=map_lgl(pcfg@statistics,returns.field),
                    use.realmeans=map_lgl(pcfg@statistics,slot,name="use.realmeans"))
-if(any(!stats.tb$use.realmeans)) stop("Check that we are handling individual realisations correctly")
 
 #Develop a similar table for the spatial aspects
 sp.tb <- tibble(name=map_chr(pcfg@spatial.subdomains,slot,name="name"),

@@ -115,7 +115,6 @@ setMethod("eval.stat",signature(st="threshold",dat="Raster"),
             #Return
             thresh.layers <- purrr::map(1:nlayers(pass.threshold),function(i) pass.threshold[[i]])
             return(tibble(field=if(st@retain.field) {thresh.layers} else {NA},
-                          realization=1:nlayers(dat),
                           value=area.filt)) 
 
           })
@@ -149,7 +148,6 @@ setMethod("eval.stat",signature(st="spatial.mean",dat="Raster"),
             wt.temp <- cellStats(temp.by.area,sum)/cellStats(na.by.area,sum)
 
             return(tibble(field=NA,
-                          realization=1:nlayers(dat),
                           value=wt.temp))
           })
 
@@ -204,6 +202,7 @@ setMethod("eval.stat",signature(st="isoline.lat",dat="Raster"),
             #Crop supplied object to the spatial polygon and then mask
             # b.crop <- crop(x,m@poly.ROI)
             # b <- mask(b.crop,m@poly.ROI)
+            stop("This needs to be checked before useage to ensure it is up to modern standards")
 
             #Calculate the zonal averages - this has to be done
             #by hand, as there is no direct support
@@ -220,8 +219,7 @@ setMethod("eval.stat",signature(st="isoline.lat",dat="Raster"),
                                         if(is(res,"try-error")) {res <- NA}
 
                                         return(res) })
-              lat.val.l[[i]] <- tibble(realization=getZ(dat),
-                                           threshold=m@threshold[i],
+              lat.val.l[[i]] <- tibble(threshold=m@threshold[i],
                                            value=lat.val)
             }
             lat.vals<- bind_rows(lat.val.l)
@@ -275,7 +273,6 @@ setMethod("eval.stat",signature(st="habitat",dat="Raster"),
             
             #Return
             return(tibble(field=if(st@retain.field) {hab.layers} else {NA},
-                          realization=1:nlayers(dat),
                           value=car.cap)) })
 
 
