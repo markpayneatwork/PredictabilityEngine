@@ -77,10 +77,7 @@ SST.Decadal$"MPI-LR" <-
                 init.date <- ymd(paste(init.str,"01",sep=""))
                 init.id <- year(init.date)
                 return(init.id)},
-              date.fn=function(f,varname="thetao") {
-                if(length(f)>1) stop("Function not vectorised")
-                dates <- getZ(brick(f,varname=varname))
-                return(floor_date(dates,"month"))}) %>%
+              date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) %>%
   chunk.data.source(n=16)  #Around 15 min runtime for Bluefin
 
 #MPI - NCEP requires all three to be specified
@@ -133,10 +130,7 @@ CESM.DPLE.src <-
                 val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,2]
                 start.date <- ymd(sprintf("%s-01",val))
                 return(year(start.date)+1)},  #November start - round up
-              date.fn=function(f,varname="SST") {
-                if(length(f)>1) stop("Function not vectorised")
-                dates <- getZ(brick(f,varname=varname))
-                return(floor_date(dates,"month")-months(1))}) %>%
+              date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) %>%
   chunk.data.source(n=22)  #~15 min runtime for Bluefin
 
 SST.Decadal$CESM.DPLE <- CESM.DPLE.src
@@ -165,10 +159,7 @@ NorCPM.SST.src.i1 <-
               start.id=function(f) {
                 val <- gsub("^([[:digit:]]{6})-.*$","\\101",underscore_field(basename(f),7))
                 return(year(ymd(val))+1)},
-              date.fn=function(f) {
-                  if(length(f)>1) stop("Function not vectorised")
-                  dates <- getZ(brick(f,varname="tos"))
-                  return(floor_date(dates,"month"))}) %>%
+              date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) %>%
   chunk.data.source(n=10) 
 
 NorCPM.SST.src.i2 <- 
@@ -223,10 +214,7 @@ Sal.Decadal$"MPI-LR" <-
                 init.date <- ymd(paste(init.str,"01",sep=""))
                 init.id <- year(init.date)
                 return(init.id)},
-              date.fn=function(f,varname="so") {
-                if(length(f)>1) stop("Function not vectorised")
-                dates <- getZ(brick(f,varname=varname))
-                return(floor_date(dates,"month"))}) %>%
+              date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) %>%
   chunk.data.source(n=10)
 
 #CESM-DPLE
@@ -245,10 +233,7 @@ CESM.DPLE.SALT <-
                 val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,2]
                 start.date <- ymd(sprintf("%s-01",val))
                 return(year(start.date)+1)},
-              date.fn=function(f,varname="SALT") {
-                if(length(f)>1) stop("Function not vectorised")
-                dates <- getZ(brick(f,varname=varname))
-                return(floor_date(dates,"month")-months(1))}) %>%
+              date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) %>%
   chunk.data.source(n=40)
 
 Sal.Decadal$CESM.DPLE.SALT <- CESM.DPLE.SALT
