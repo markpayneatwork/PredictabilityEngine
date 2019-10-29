@@ -70,14 +70,21 @@ log_msg("Calculating Ensemble mean for %s subdomain ...\n",this.sp@name)
 #'========================================================================
 # Setup ensemble averaging ####
 #'========================================================================
-#Start by loading the metadata associated with each of the decadal models
+#Start by loading the metadata associated with each of the decadal models - 
+#but only the data that we actually have
 metadat.all <- 
   #Load metadata
   tibble(dat.src=pcfg@Decadal,
          is.data.source=map_lgl(dat.src,~class(.x)=="data.source")) %>%
   filter(is.data.source)%>%
-  transmute(metadata=map(dat.src,~readRDS(file.path(base.dir,.x@name,PE.cfg$files$realmean.meta)))) %>%
+  mutate(src.name=map_chr(dat.src,slot,"name"),
+         metadat.fname=file.path(base.dir,src.name,PE.cfg$files$realmean.meta),
+         metadat.exists=file.exists(metadat.fname)) %>%
+  filter(metadat.exists) %>%
+  transmute(metadata=map(metadat.fname,readRDS)) %>%  
   unnest(metadata)
+
+if(nrow(metadat.all)==0) stop("Nothing to do - no metadata available!")
 
 #Now, start stripping out the files that we won't include in the ensemble mean
 #The basic criteria is that they have to  represent the mean across realisations

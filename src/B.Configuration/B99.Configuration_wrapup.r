@@ -107,6 +107,9 @@ list(NMME=c("Sources","Ensmean"),
 # cfgs <- partition.workload(pcfg,"CMIP5","Ensmean")
 # cfgs <- partition.workload(pcfg,"Observations")
 
+#Final check
+validObject(pcfg,complete=TRUE)
+
 #' -----------
 #' <small>*This work by Mark R Payne is licensed under a  Creative Commons
 #' Attribution-NonCommercial-ShareAlike 3.0 Unported License.
