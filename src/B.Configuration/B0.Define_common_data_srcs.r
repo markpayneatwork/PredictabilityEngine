@@ -243,17 +243,24 @@ NorCPM.sal.src.i1 <-
       var="so",
       NorCPM.SST.src.i1,
       name="NorCPM.i1",
+      layermids.fn = function(f) {
+        ncid <- nc_open(f)
+        layer.mids <- ncid$dim$lev$vals #[m]
+        nc_close(ncid)
+        return(layer.mids)},
       sources=list(filter(NorCPM.fnames,
                           field=="so",
+                          grid=="gr",
                           initialization=="i1")$path)) %>%
   chunk.data.source(n=10) 
 
 NorCPM.sal.src.i2 <- 
   new("data.source",
-      NorCPM.SST.src.i1,
+      NorCPM.sal.src.i1,
       name="NorCPM.i2",
       sources=list(filter(NorCPM.fnames,
                           field=="so",
+                          grid=="gr",
                           initialization=="i2")$path)) %>%
   chunk.data.source(n=10) 
 
