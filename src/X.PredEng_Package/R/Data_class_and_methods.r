@@ -13,8 +13,9 @@
 #' should not exceed it
 #' @slot var Variable name from which to extract data
 #' @slot realizations Character string, naming the realization(s) to use. NA indicates all.
-#' @slot time.correction A string suitable for use with the "cdo shifttime,x" command string that can be used to 
-#' correcct for time-bound versus time value problems.
+#' @slot use.timebounds Indicates whether to use timebounds instead of "time" variable, when selecting
+#' by time. Valid values are NA (don't use timebounds, use the time variable), 1 (use the lower bound) or
+#' 2 (use the upper bound.)
 #' @slot realization.fn A function to extract the realisation ID
 #' @slot layermids.fn Returns the midpoints of the vertical layers for this data set. 
 #' @slot start.date Function to extract the initialisation dates
@@ -31,13 +32,14 @@ data.source <- setClass("data.source",
                                    sources="list",
                                    var="character",
                                    realizations="character",
-                                   time.correction="character",
+                                   use.timebounds="numeric",
                                    realization.fn="function",
                                    layermids.fn="function",
                                    start.date="function",  
                                    start.id="function", 
                                    date.fn="function"),
-                        prototype=list(n.chunks=1,
+                        prototype=list(use.timebounds=as.numeric(NA),
+                                       n.chunks=1,
                                        chunk.id="",
                                        layermids.fn=function(x) {stop("z2idx.fn not specified")},
                                        realizations=as.character(NA),

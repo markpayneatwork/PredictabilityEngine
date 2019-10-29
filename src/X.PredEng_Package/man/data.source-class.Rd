@@ -28,8 +28,9 @@ should not exceed it}
 
 \item{\code{realizations}}{Character string, naming the realization(s) to use. NA indicates all.}
 
-\item{\code{time.correction}}{A string suitable for use with the "cdo shifttime,x" command string that can be used to 
-correcct for time-bound versus time value problems.}
+\item{\code{use.timebounds}}{Indicates whether to use timebounds instead of "time" variable, when selecting
+by time. Valid values are NA (don't use timebounds, use the time variable), 1 (use the lower bound) or
+2 (use the upper bound.)}
 
 \item{\code{realization.fn}}{A function to extract the realisation ID}
 

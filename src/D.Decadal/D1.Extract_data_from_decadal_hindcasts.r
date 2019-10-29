@@ -146,11 +146,16 @@ if(!file.exists(frag.meta.fname) | pcfg@recalculate) {
     #correction of the time axis. CESM-DPLE, for example, has the time axis
     #set to 2018-08-01 to represent the period 2018-07-01-2018-08-01, meaning
     #that is actually the average value for July, but is labelled as August. It's a trap!
-    #This is where we correct for that effect, and ensure that selmon works properly
-    if(length(this.chunk@time.correction)!=0) {
-      tmp.in <- tmp.out
-      tmp.out <- sprintf("%s_timecorrect",tmp.in)
-      shiftime.cmd <- cdo(csl("shifttime", this.chunk@time.correction),tmp.in,tmp.out)
+    #This is where we correct for that effect by copying the time bounds into the
+    #time variable, and therefore ensuring that e.g. selmon works properly
+    if(!is.na(this.chunk@use.timebounds)) {
+      ncid <- nc_open(tmp.out,write=TRUE)
+      #Get bounds values
+      bnds.var <- ncatt_get(ncid,"time","bounds")$value
+      bnds.vals <- ncvar_get(ncid,bnds.var)
+      #Write new value
+      ncvar_put(ncid,"time",vals=bnds.vals[this.chunk@use.timebounds,])
+      nc_close(ncid)
     }
 
     #Select the months of interest 
