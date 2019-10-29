@@ -139,7 +139,8 @@ SST.Decadal$CESM.DPLE <- CESM.DPLE.src
 #Note that there are two initialisations here, stored in the same directory - i1 and i2.
 #We treat them as different data sources for the purpose of this analysis
 NorCPM.fnames <- 
-  tibble(path=dir(file.path(PE.cfg$dirs$datasrc,"Decadal","NorCPM"),recursive = TRUE,full.names = TRUE),
+  tibble(path=dir(file.path(PE.cfg$dirs$datasrc,"Decadal","NorCPM"),
+		  pattern="*.nc$",recursive = TRUE,full.names = TRUE),
          fname=basename(path)) %>%
   separate(fname,into=c("field","table","model","experiment","variant","grid","time"),sep="_") %>%
   separate(variant,into=c("start","realization"),sep="-") %>%
