@@ -54,13 +54,19 @@ SST.Decadal <- list()
 #                              sources=list(dir(file.path(decadal.dir,"MPI-ESM-MR"),
 #                                               pattern="\\.nc$",full.names = TRUE)))
 
-#MPI-LR is different,
+#MPI-LR
+#There is a problem with the date-time stamps in one of the files in this hindcast
+#ensemble. It could be corrected e.g. by copying the dates from a neighbouring
+#realisation, but to start with we just drop it
+MPI.LR.SST.srcs <- dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","thetao"),
+                    pattern="\\.nc$",full.names = TRUE) %>%
+                 subset(!grepl("thetao_Omon_MPI-ESM-LR_decs4e1964_r3i1p1_196501-197412.nc",.))
+
 SST.Decadal$"MPI-LR" <-  
   data.source(name="MPI-ESM-LR",
               type="Decadal",
               var="thetao",
-              sources=list(dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","thetao"),
-                               pattern="\\.nc$",full.names = TRUE)),
+              sources=list(MPI.LR.SST.srcs),
               realization.fn=CMIP5_realisation,
               start.date=function(f){
                 init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
@@ -194,14 +200,14 @@ Sal.Decadal <- list()
 #                    pattern="\\.nc$",full.names = TRUE) %>%
 #                 subset(!grepl("r1i1p1",.))
 #Received the corrected files and the full 10 member ensemble, so this should work properly now
-MPI.LR.srcs <- dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","so_10member"),
+MPI.LR.so.srcs <- dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","so_10member"),
                    pattern="\\.nc$",full.names = TRUE) 
 
 Sal.Decadal$"MPI-LR" <-  
   data.source(name="MPI-ESM-LR",
               type="Decadal",
               var="so",
-              sources=list(MPI.LR.srcs),
+              sources=list(MPI.LR.so.srcs),
               realization.fn=CMIP5_realisation,
               layermids.fn = function(f) {
                 ncid <- nc_open(f)
