@@ -103,6 +103,8 @@ stat.cfg <-
 #'========================================================================
 #Write configuration data
 write_csv(stat.cfg,path = file.path(PE.cfg$dirs$job.cfg,"Stats.cfg"))
+stat.cfg.dir <-file.path(PE.cfg$dirs$job.cfg,"Stats") 
+if(!dir.exists(stat.cfg.dir)) dir.create(stat.cfg.dir)
 
 #Clear the existing statistics, to avoid incomplete duplication etc
 #Directory setup
