@@ -29,8 +29,8 @@ should not exceed it}
 \item{\code{realizations}}{Character string, naming the realization(s) to use. NA indicates all.}
 
 \item{\code{use.timebounds}}{Indicates whether to use timebounds instead of "time" variable, when selecting
-by time. Valid values are NA (don't use timebounds, use the time variable), 1 (use the lower bound) or
-2 (use the upper bound.)}
+by time. Valid values are NA (don't use timebounds, use the time variable), 1 (use the lower bound),
+2 (use the upper bound) or 3 (use the average value)}
 
 \item{\code{realization.fn}}{A function to extract the realisation ID}
 

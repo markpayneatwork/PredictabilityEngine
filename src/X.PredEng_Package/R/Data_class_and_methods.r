@@ -14,8 +14,8 @@
 #' @slot var Variable name from which to extract data
 #' @slot realizations Character string, naming the realization(s) to use. NA indicates all.
 #' @slot use.timebounds Indicates whether to use timebounds instead of "time" variable, when selecting
-#' by time. Valid values are NA (don't use timebounds, use the time variable), 1 (use the lower bound) or
-#' 2 (use the upper bound.)
+#' by time. Valid values are NA (don't use timebounds, use the time variable), 1 (use the lower bound),
+#' 2 (use the upper bound) or 3 (use the average value)
 #' @slot realization.fn A function to extract the realisation ID
 #' @slot layermids.fn Returns the midpoints of the vertical layers for this data set. 
 #' @slot start.date Function to extract the initialisation dates
@@ -31,6 +31,7 @@ data.source <- setClass("data.source",
                                    chunk.id="character",
                                    sources="list",
                                    var="character",
+                                   time.var="character",
                                    realizations="character",
                                    use.timebounds="numeric",
                                    realization.fn="function",
@@ -39,6 +40,7 @@ data.source <- setClass("data.source",
                                    start.id="function", 
                                    date.fn="function"),
                         prototype=list(use.timebounds=as.numeric(NA),
+                                       time.var="time",
                                        n.chunks=1,
                                        chunk.id="",
                                        layermids.fn=function(x) {stop("z2idx.fn not specified")},
@@ -55,6 +57,10 @@ data.source <- setClass("data.source",
                             if(length(slot(object,n))==0) {
                               err.msg <- c(err.msg,"List of sources must be named with unique names")
                             }
+                          #Check use.timebounds is value
+                          if(!(is.na(object@use.timebounds) | (object@use.timebounds %in% 1:3))) {
+                            err.msg <- c(err.msg,"Use.timebounds must be either NA, or 1,2 or 3")
+                          }
                           if(length(err.msg)==0) return(TRUE) else err.msg
                         })
 
@@ -114,6 +120,33 @@ chunk.data.source <- function(obj,n=1) {
   }
   return(obj)
 }
+
+
+
+#' Timebounds to Time var
+#' 
+#' In cases where a netcdf file has time boundaries associated with it, it can
+#' be useful to copy one of these values into the time variable, to facilitate
+#' easier processing.
+#'
+#' @param this.obj A data source object
+#' @param f The path of the variable to be modified
+#'
+#' @export
+timebounds.to.time <- function(this.obj,f){
+  #Open file
+  ncid <- nc_open(f,write=TRUE)
+  #Get bounds values
+  bnds.var <- ncatt_get(ncid,this.obj@time.var,"bounds")$value
+  bnds.vals <- ncvar_get(ncid,bnds.var)
+  #Calculate average
+  bnds.vals <- rbind(bnds.vals,colMeans(bnds.vals))
+  #Write new value
+  ncvar_put(ncid,this.obj@time.var,vals=bnds.vals[this.obj@use.timebounds,])
+  nc_close(ncid)
+  return(invisible(NULL))
+}
+
 
 #' Test Data Source
 #'

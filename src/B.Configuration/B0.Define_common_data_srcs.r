@@ -119,7 +119,7 @@ CESM.DPLE.src <-
               type="Decadal",
               sources=list(dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SST"),
                                pattern="\\.nc$",full.names = TRUE)),
-              use.timebounds=1,
+              use.timebounds=3,
               realization.fn=function(f) {
                 val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,3]
                 return(val)},

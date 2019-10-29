@@ -149,13 +149,7 @@ if(!file.exists(frag.meta.fname) | pcfg@recalculate) {
     #This is where we correct for that effect by copying the time bounds into the
     #time variable, and therefore ensuring that e.g. selmon works properly
     if(!is.na(this.chunk@use.timebounds)) {
-      ncid <- nc_open(tmp.out,write=TRUE)
-      #Get bounds values
-      bnds.var <- ncatt_get(ncid,"time","bounds")$value
-      bnds.vals <- ncvar_get(ncid,bnds.var)
-      #Write new value
-      ncvar_put(ncid,"time",vals=bnds.vals[this.chunk@use.timebounds,])
-      nc_close(ncid)
+      timebounds.to.time(this.chunk,tmp.out)
     }
 
     #Select the months of interest 
