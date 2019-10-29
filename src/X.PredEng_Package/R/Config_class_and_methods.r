@@ -42,37 +42,43 @@
 #' Different extraction modes can be combined in the same list.
 #' 
 #' @export PredEng.config
-PredEng.config <- setClass("PredEng.config",
-                           slots=list(project.name="character",
-                                      recalculate="logical",
-                                      Observations="data.source",
-                                      Decadal="list",
-                                      NMME="list",
-                                      CMIP5="list",
-                                      persistence.leads="numeric",
-                                      spatial.subdomains="list",
-                                      statistics="list",
-                                      stat.jobs="numeric",
-                                      extraction="list",
-                                      global.ROI="Extent",
-                                      global.res="numeric",
-                                      MOI="numeric",
-                                      vert.range="numeric",
-                                      clim.years="numeric",
-                                      comp.years="numeric",
-                                      landmask="character",
-                                      scratch.dir="character",
-                                      use.global.ROI="logical",
-                                      retain.realizations="logical",
-                                      average.months="logical"),
-                           prototype = list(global.ROI=extent(as.numeric(rep(NA,4))),
-                                            persistence.leads=1:120,  #1-10 years
-                                            recalculate=TRUE,
-                                            retain.realizations=TRUE,
-                                            stat.jobs=50))
-
-
-
+PredEng.config <- 
+  setClass("PredEng.config",
+           slots=list(project.name="character",
+                      recalculate="logical",
+                      Observations="data.source",
+                      Decadal="list",
+                      NMME="list",
+                      CMIP5="list",
+                      persistence.leads="numeric",
+                      spatial.subdomains="list",
+                      statistics="list",
+                      stat.jobs="numeric",
+                      extraction="list",
+                      global.ROI="Extent",
+                      global.res="numeric",
+                      MOI="numeric",
+                      vert.range="numeric",
+                      clim.years="numeric",
+                      comp.years="numeric",
+                      landmask="character",
+                      scratch.dir="character",
+                      use.global.ROI="logical",
+                      retain.realizations="logical",
+                      average.months="logical"),
+           prototype = list(global.ROI=extent(as.numeric(rep(NA,4))),
+                            persistence.leads=1:120,  #1-10 years
+                            recalculate=TRUE,
+                            retain.realizations=TRUE,
+                            stat.jobs=50),
+           validity = function(object) {
+             err.msg <- NULL
+             if(length(object@MOI)!=1 & object@average.months) {
+               err.msg <- c(err.msg,
+                            "Dates are currently not handled correctly when averaging over months")
+             }
+             if(length(err.msg)==0) return(TRUE) else err.msg
+           })
 
 
 #'========================================================================

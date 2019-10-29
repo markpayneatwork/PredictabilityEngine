@@ -24,45 +24,46 @@
 #'
 #' @export data.source
 #' @exportClass data.source
-data.source <- setClass("data.source",
-                        slots=list(name="character",
-                                   type="character",
-                                   n.chunks="numeric",
-                                   chunk.id="character",
-                                   sources="list",
-                                   var="character",
-                                   time.var="character",
-                                   realizations="character",
-                                   use.timebounds="numeric",
-                                   realization.fn="function",
-                                   layermids.fn="function",
-                                   start.date="function",  
-                                   start.id="function", 
-                                   date.fn="function"),
-                        prototype=list(use.timebounds=as.numeric(NA),
-                                       time.var="time",
-                                       n.chunks=1,
-                                       chunk.id="",
-                                       layermids.fn=function(x) {stop("z2idx.fn not specified")},
-                                       realizations=as.character(NA),
-                                       date.fn=function(x) {stop("Date.fn not specified")},
-                                       realization.fn=function(x) {stop("Realization function not specified")},
-                                       start.date=function(x) { stop("Start.date function not specified")},
-                                       start.id=function(x) { stop("Start.id function not specified")}),
-                        validity = function(object) {
-                          err.msg <- NULL
-                          #Check names on sources
-                          src.names <- names(object@sources)
-                          if(length(unique(src.names))!=length(object@sources) & length(src.names)>1)
-                            if(length(slot(object,n))==0) {
-                              err.msg <- c(err.msg,"List of sources must be named with unique names")
-                            }
-                          #Check use.timebounds is value
-                          if(!(is.na(object@use.timebounds) | (object@use.timebounds %in% 1:3))) {
-                            err.msg <- c(err.msg,"Use.timebounds must be either NA, or 1,2 or 3")
-                          }
-                          if(length(err.msg)==0) return(TRUE) else err.msg
-                        })
+data.source <- 
+  setClass("data.source",
+           slots=list(name="character",
+                      type="character",
+                      n.chunks="numeric",
+                      chunk.id="character",
+                      sources="list",
+                      var="character",
+                      time.var="character",
+                      realizations="character",
+                      use.timebounds="numeric",
+                      realization.fn="function",
+                      layermids.fn="function",
+                      start.date="function",  
+                      start.id="function", 
+                      date.fn="function"),
+           prototype=list(use.timebounds=as.numeric(NA),
+                          time.var="time",
+                          n.chunks=1,
+                          chunk.id="",
+                          layermids.fn=function(x) {stop("z2idx.fn not specified")},
+                          realizations=as.character(NA),
+                          date.fn=function(x) {stop("Date.fn not specified")},
+                          realization.fn=function(x) {stop("Realization function not specified")},
+                          start.date=function(x) { stop("Start.date function not specified")},
+                          start.id=function(x) { stop("Start.id function not specified")}),
+           validity = function(object) {
+             err.msg <- NULL
+             #Check names on sources
+             src.names <- names(object@sources)
+             if(length(unique(src.names))!=length(object@sources) & length(src.names)>1)
+               if(length(slot(object,n))==0) {
+                 err.msg <- c(err.msg,"List of sources must be named with unique names")
+               }
+             #Check use.timebounds is value
+             if(!(is.na(object@use.timebounds) | (object@use.timebounds %in% 1:3))) {
+               err.msg <- c(err.msg,"Use.timebounds must be either NA, or 1,2 or 3")
+             }
+             if(length(err.msg)==0) return(TRUE) else err.msg
+           })
 
 
 #' @export
