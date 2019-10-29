@@ -45,7 +45,7 @@ source("src/B.Configuration/B0.Define_common_data_srcs.r")
 #'========================================================================
 #Global project configuration
 pcfg <- PredEng.config(project.name= "North_Sea_Sandeel",
-                       MOI=1:3,
+                       MOI=3,
                        average.months=FALSE,
                        clim.years=1983:2010,  
                        comp.years=1970:2018,
