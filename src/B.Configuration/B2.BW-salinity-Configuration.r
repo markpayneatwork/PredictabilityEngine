@@ -116,12 +116,17 @@ GAM.sdm.resources <- list(model=readRDS("resources/BlueWhiting/BW_GAM_SDM.rds"),
 
 #Setup prediction function
 GAM.sdm.fn <- function(dat,resources) {
+  require(mgcv)
   #Crop the prediction data down to the same scale as the values
-  names(dat) <- "EN4.salinity"
-  pred.dat <- brick(c(resources$pred.l,dat))
-  p <- raster::predict(object=pred.dat,model=resources$model,fun=predict.gam,
-                  const=resources$pred.consts, type="response")
-  PA <- p > resources$model$threshold
+  res.l <- vector("list",nlayers(dat))
+  for(l in seq(nlayers(dat))) {
+    this.layer <- dat[[l]]
+    pred.dat <- brick(c(resources$pred.l,EN4.salinity=this.layer))
+    p <- raster::predict(object=pred.dat,model=resources$model,fun=predict.gam,
+                         const=resources$pred.consts, type="response")
+    res.l[[l]] <- p > resources$model$threshold
+  }
+  PA <- brick(res.l)
   return(PA)
 }
 stat.l[[2]] <- habitat(name="SDM_realmean",
