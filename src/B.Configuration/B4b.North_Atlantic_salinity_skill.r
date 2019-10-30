@@ -1,5 +1,5 @@
 #'========================================================================
-# B10a. North Atlantic SST skill
+# B10a. North Atlantic Salinity skill
 #'========================================================================
 #
 # by Mark R Payne
@@ -8,7 +8,7 @@
 #
 # Created Thu Jul 26 14:50:42 2018
 #
-# Assesses the predictability of SST in the North Atlantic
+# Assesses the predictability of Salinity in the North Atlantic
 #
 # This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 # You are largely free to do what you like with it, so long as you "attribute"
@@ -23,7 +23,7 @@
 #'========================================================================
 # Initialise system ####
 #'========================================================================
-cat(sprintf("\n%s\n","B9. Mackerel Summer Feeding"))
+cat(sprintf("\n%s\n","B4b. NA Salinity"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Do house cleaning
@@ -42,17 +42,13 @@ source("src/B.Configuration/B0.Define_common_data_srcs.r")
 # Project Configuration ####
 #'========================================================================
 #Global project configuration
-pcfg <- PredEng.config(project.name= "NA_SST_Predictability",
-                       recalculate=FALSE,
-                       MOI=8,
+pcfg <- PredEng.config(project.name= "NA_Salinity_Predictability",
+                       recalculate=TRUE,
+                       MOI=3,
                        average.months=FALSE,
                        clim.years=1985:2004,  
                        comp.years=1970:2015,
-                       landmask="data_srcs/NMME/landmask.nc",
-                       Observations=SST_obs[[c("HadISST")]],
-                       #CMIP5.models=CMIP5.mdls.l,    #Disable
-                       Decadal=SST.Decadal,
-                       NMME=NMME.sst.l)
+                       landmask="data_srcs/NMME/landmask.nc")
 
 #Setup scratch directory
 pcfg@scratch.dir <- file.path("scratch",pcfg@project.name)
@@ -66,6 +62,19 @@ pcfg@use.global.ROI <- TRUE
 pcfg@global.ROI <- extent(-70,0,40,70)
 pcfg@global.res  <- 0.5 #0.25
 pcfg@retain.realizations <- TRUE
+pcfg@vert.range <- c(250,600)
+
+#'========================================================================
+# Data Sources ####
+#'========================================================================
+#Define observational sources
+pcfg@Observations <- Sal.obs$EN4
+
+#Decadal salinity models
+pcfg@Decadal <- Sal.Decadal
+
+#CMIP5 salinity
+# pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="so")
 
 #'========================================================================
 # Extraction configuration ####
