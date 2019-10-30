@@ -47,18 +47,17 @@ pcfg <- PredEng.config(project.name= "NA_SST_Predictability",
                        MOI=8,
                        average.months=FALSE,
                        clim.years=1985:2004,  
-                       comp.years=1985:2015,
+                       comp.years=1970:2015,
                        landmask="data_srcs/NMME/landmask.nc",
-                       Observations=SST_obs[[c("HadISST")]])#,
+                       Observations=SST_obs[[c("HadISST")]],
                        #CMIP5.models=CMIP5.mdls.l,    #Disable
-                       #NMME=NMME.sst.l)
+                       Decadal=SST.Decadal,
+                       NMME=NMME.sst.l)
 
 #Setup scratch directory
 pcfg@scratch.dir <- file.path("scratch",pcfg@project.name)
 define_dir(pcfg@scratch.dir)
 
-#Drop NCEP forced model
-pcfg@Decadal <- SST.Decadal[-which(names(SST.Decadal)=="MPI-NCEP-forced")]
 
 #If working locally, only keep the simplest two models
 if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
@@ -87,7 +86,7 @@ statsum.l <- list()
 statsum.l[[1]] <- pass.through(name="Anomaly",
                                skill.metrics = "correlation",
                                use.globally=TRUE,
-                               use.anomalies = TRUE,
+                               use.full.field = FALSE,
                                use.realmeans=TRUE)
 
 #Merge it all in
