@@ -1,5 +1,4 @@
 ---
-title: Statistics and Forecast Skill Visualisations
 output:
   html_document:
     keep_md: false
@@ -7,8 +6,13 @@ output:
     toc_float: true
 editor_options: 
   chunk_output_type: inline
+params:
+  set_title: Statistics and Forecast Skill Visualisations
 ---
 
+---
+title: `r params$set_title`
+---
 ```{r setup, include="FALSE"}
 #'========================================================================
 # Visualise skill metrics
@@ -178,7 +182,7 @@ for(this.sp in names(sp.skill.l)) {
   sp.dat <- sp.skill.l[[this.sp]]
   
   #Show title
-  cat(sprintf("\n\n## %s\n",this.sp))
+  cat(sprintf("\n\n## %s\n",gsub("_"," ",this.sp)))
   
   #Map of the Spatial region
   if(this.sp==PE.cfg$misc$global.sp.name) {

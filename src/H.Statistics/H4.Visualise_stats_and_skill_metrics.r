@@ -52,6 +52,8 @@ html.fname <- render(Rmd.src,
                      intermediates_dir=out.dir,
                      output_dir=out.dir,
                      output_file=out.fname,
+                     params=list(set_title=sprintf("%s Statistics and Skill",
+                                                   gsub("_"," ",pcfg@project.name))),
                      clean=FALSE,
                      encoding="UTF-8",
                      envir=new.env())
