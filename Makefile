@@ -48,6 +48,10 @@ JOB_LIST=$(shell grep --no-messages -o "^[0-9]\+" $(CFG_DIR)/$(TYPE).cfg)
 OKs=$(addprefix $(OUTDIR)/, $(addsuffix .ok, $(JOB_LIST)))
 TODO=$(TODO_DIR)/$(TYPE).todo
 
+ifdef WAIT
+WAIT_CMD='-w numdone( $(WAIT),*)'
+endif
+
 #Master template
 MASTER=./src/Y.HPC_scripts/bMaster.sh
 
@@ -61,7 +65,8 @@ $(filter-out Stats PPStats, $(TYPES)):
 	make cluster TYPE=$@
 
 cluster:  todo $(OKs)
-	@TASK_IDS=`paste -s -d "," $(TODO)`; bsub -J PE_$(TYPE)[$$TASK_IDS] -o PE_$(TYPE).%J.%I.out -e PE_$(TYPE).%J.%I.out -n 1 -R "rusage[mem=8GB]" -R "span[hosts=-1]" -W 72:00 $(MASTER) $(TYPE) 
+	@TASK_IDS=`paste -s -d "," $(TODO)`; \
+	bsub $(WAIT_CMD) -J PE_$(TYPE)[$$TASK_IDS] -o PE_$(TYPE).%J.%I.out -e PE_$(TYPE).%J.%I.out -n 1 -R "rusage[mem=8GB]" -R "span[hosts=-1]" -W 72:00 $(MASTER) $(TYPE) 
 	
 $(OUTDIR)/%.ok: 
 	@echo $* >> $(TODO)
@@ -74,6 +79,7 @@ PPStats:
 	@touch $(CFG_DIR)/$@.cfg
 	@mkdir -p $(CFG_DIR)/$@
 	@TYPE=$@; bsub -J PE_$$TYPE -o PE_$$TYPE.%J.%I.out -e PE_$$TYPE.%J.%I.out -n 1 -R "rusage[mem=32GB]" -W 72:00 $(MASTER) $$TYPE 
+
 #-------------------------------------
 #Remove any existing To do files
 todo: $(TODOs)
@@ -114,6 +120,7 @@ vars:
 	@echo $(CFGS)
 	@echo $(TYPES)
 	@echo $(addsuffix .status,$(TYPES))
+	@echo WAIT: $(WAIT_CMD)
 
 #Targets
 help:
