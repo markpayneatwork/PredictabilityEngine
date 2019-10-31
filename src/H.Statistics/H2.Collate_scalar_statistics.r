@@ -141,13 +141,12 @@ out.stats <-
 # all.ss$lead.raw <- as.numeric(ud.convert(all.ss$date,ud.from,ud.to))-
 #                     as.numeric(ud.convert(all.ss$start.date,ud.from,ud.to))
 
-#Calculate lead time manually
-date.to.months <- function(x) {
-  #Months since 1 Jan 1900
-  (year(x)-1900)*12 + (month(x)-1) + (day(x)-1)/days_in_month(x)
-}
-out.stats$lead.raw <- date.to.months(out.stats$date)- date.to.months(out.stats$start.date)
-out.stats$lead <- round(out.stats$lead.raw/0.5)*0.5  #Half month accuracy
+# #Calculate lead time manually
+# date.to.months <- function(x) {
+#   #Months since 1 Jan 1900
+#   (year(x)-1900)*12 + (month(x)-1) + (day(x)-1)/days_in_month(x)
+# }
+# out.stats$lead <- floor(date.to.months(out.stats$date)- date.to.months(out.stats$start.date)) 
 
 #' #'========================================================================
 #' # Split and Merge ####

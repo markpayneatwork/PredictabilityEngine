@@ -73,16 +73,30 @@ obs.dat <-
 #that we do the merging by yearmonth - this should generally be ok for most of the
 #situations where we envisage using PredEnd i.e. one data point per year - but
 #we need to be aware that this is not exactly the case 
-comp.dat.all <- 
-  left_join(all.scalars,obs.dat,
-            by=c("ym","stat.name","sp.subdomain"),
-            suffix=c(".mdl",".obs"))
-
-#Subset further and add start.month
 comp.dat <- 
-  filter(comp.dat.all,
-         year(date) %in% pcfg@comp.years) %>%
-  mutate(start.month=month(start.date))
+  #Remove observation data first
+  all.scalars %>%
+  filter(src.type!="Observations") %>%
+  #Join in observational data
+  left_join(obs.dat,
+            by=c("ym","stat.name","sp.subdomain"),
+            suffix=c(".mdl",".obs")) %>%
+  #Restrict to the comparison years 
+  filter(year(date) %in% pcfg@comp.years) 
+  
+  
+#Calculate lead time manually
+date.to.months <- function(x) {
+  #Months since 1 Jan 1900
+  (year(x)-1900)*12 + (month(x)-1) + (day(x)-1)/days_in_month(x)
+}
+
+#Do lead calculations here 
+comp.dat <-
+  comp.dat %>%
+  mutate(start.month=month(start.date),
+         target.month=month(date),
+         lead=floor(date.to.months(date)- date.to.months(start.date)))
 
 
 #'========================================================================
@@ -102,27 +116,37 @@ skill.sum <- function(d) {
 
 #Now calculate the mean skill over all start dates
 g.vars <- c("src.name","src.type","sp.subdomain","stat.name","lead")
-skill.mean <- comp.dat %>%
+skill.mean <- 
+  comp.dat %>%
   group_by_at(vars(one_of(g.vars))) %>%
   skill.sum() %>%
   gather("skill.metric","value",-one_of(g.vars)) %>%
   mutate(skill.type="mean.skill")
 
-
 #Now calculate the range of skill over start dates
-skill.range <- comp.dat %>%
+skill.starts <- 
+  comp.dat %>%
   group_by_at(vars(one_of(c(g.vars,"start.month")))) %>%
   skill.sum()%>%  
   gather("skill.metric","value",-one_of(c(g.vars,"start.month"))) %>%
   ungroup() %>%
   filter(!is.infinite(value)) %>%
+  mutate(skill.type=sprintf("start.%02i",start.month)) %>%
+  dplyr::select(-start.month)
+
+#Now calculate the range of skill over start dates
+skill.range <- 
+  skill.starts %>%
   group_by_at(vars(one_of(c(g.vars,"skill.metric")))) %>%
   summarize(max.skill=max(value,na.rm=TRUE),
+            median.skill=median(value,na.rm=TRUE),
             min.skill=min(value,na.rm=TRUE)) %>%
   gather("skill.type","value",ends_with("skill"))
 
 #Merge into one tibble 
-skill.mets <- rbind(skill.range,skill.mean)
+skill.mets <- 
+  bind_rows(skill.range,skill.starts,skill.mean) %>%
+  ungroup()
 saveRDS(skill.mets,file=file.path(base.dir,PE.cfg$files$scalar.skill.metrics))
 
 #' #'========================================================================

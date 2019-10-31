@@ -49,7 +49,7 @@ pcfg <- readRDS(PE.cfg$config.path)
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.no <- 34
+  cfg.no <- 1
   debug.mode <- TRUE
   set.cdo.defaults("--silent --no_warnings")
   set.log_msg.silent()
