@@ -105,7 +105,8 @@ skill.mets <- ungroup(skill.mets.all) %>%
               filter(skill.type=="mean.skill",
                      src.type!="Observations") %>%
               mutate(t=rescale.fn(lead),
-                     ensmean=src.name=="Ensmean"|src.type=="Persistence")
+                     ensmean=src.name=="Ensmean"|src.type=="Persistence")%>%
+              unite(src.type.name,src.type,src.name,remove=FALSE)
 
 field.skill.mets <- ungroup(skill.mets.all) %>%
                 filter(skill.type=="field")
@@ -252,7 +253,7 @@ for(this.sp in names(sp.skill.l)) {
       }
       
       #Plot
-      g <- ggplot(plt.dat,aes(x=t,y=value,group=src.name))+
+      g <- ggplot(plt.dat,aes(x=t,y=value,group=src.type.name))+
         geom_line(aes(colour=src.type,size=ensmean))+
         facet_wrap(~skill.metric,scales = "free_y")+
         coord_cartesian(xlim=c(0,2),ylim=y.rng,expand=FALSE)+
@@ -263,7 +264,7 @@ for(this.sp in names(sp.skill.l)) {
                            minor_breaks = x.minor$t)+
         labs(x="Lead time (months / years)",y=this.sk,colour="Forecast System")
       print(g)
-      
+
     }  #Plot  
     
   }
