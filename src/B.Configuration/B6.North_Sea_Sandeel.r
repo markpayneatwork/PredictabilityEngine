@@ -78,6 +78,7 @@ sp.objs$wadden <- spatial.domain("Wadden_Sea",
                                  as(extent(6.4,9.0,53.9,56.2),"SpatialPolygons"))
 
 #Correct names and add to object
+names(sp.objs) <- purrr::map_chr(sp.objs,slot,name="name")
 pcfg@spatial.subdomains <- sp.objs
 
 #'========================================================================
