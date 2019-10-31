@@ -230,7 +230,6 @@ if(!file.exists(frag.meta.fname) | pcfg@recalculate) {
   frag.meta <- tibble(src.name=this.chunk@name,
                       src.type=this.chunk@type,
                       start.date=this.chunk@start.date(frag.fnames),
-                      start.id=this.chunk@start.id(frag.fnames),
                       date=do.call(c,frag.dates.l),
                       lead.idx=str_match(basename(frag.fnames),"^.*?_L([0-9]+).nc$")[,2],
                       realization=this.chunk@realization.fn(frag.fnames),

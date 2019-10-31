@@ -110,10 +110,11 @@ if(nrow(metadat.all)==0) stop("Nothing to do - no metadata available!")
 metadat <- 
   metadat.all %>%
   #Calculate ym dates, so as to simplify the matching up by lead time
-  mutate(date.ym=format(date,"%Y%m"))
+  mutate(target.date.ym=format(date,"%Y%m"),
+         start.date.ym=format(start.date,"%Y%m"))
 
 #do the splitting based on the start and the target year/month
-grp.l <- split(metadat,metadat[,c("start.id","date.ym")],drop=TRUE)
+grp.l <- split(metadat,metadat[,c("start.date.ym","target.date.ym")],drop=TRUE)
 
 #'========================================================================
 # Perform averaging ####
@@ -136,8 +137,8 @@ for(i in seq(grp.l)) {
                      date=mean(d$date),
                      start.date=mean(d$start.date)) %>%
     mutate(fname=sprintf("S%s_%s_ensmean.nc",
-                         unique(d$start.id),
-                         unique(d$date.ym)),
+                         unique(d$start.date.ym),
+                         unique(d$target.date.ym)),
            fname=file.path(ensmean.dir,fname))
 
   #Average over realisation means

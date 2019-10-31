@@ -72,11 +72,6 @@ SST.Decadal$"MPI-LR" <-
                 init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
                 init.date <- ymd(paste(init.str,"01",sep=""))
                 return(init.date)},
-              start.id=function(f){
-                init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
-                init.date <- ymd(paste(init.str,"01",sep=""))
-                init.id <- year(init.date)
-                return(init.id)},
               date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) %>%
   chunk.data.source(n=16)  #Around 15 min runtime for Bluefin
 
@@ -125,11 +120,8 @@ CESM.DPLE.src <-
                 return(val)},
               start.date=function(f) {
                 val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,2]
-                return(ymd(sprintf("%s-01",val)))},
-              start.id=function(f){
-                val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,2]
-                start.date <- ymd(sprintf("%s-01",val))
-                return(year(start.date)+1)},  #November start - round up
+                init.date <- ymd(sprintf("%s-01",val))
+                return(ceiling_date(init.date,"year"))},  #Round November start up to 1 Jan
               date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) %>%
   chunk.data.source(n=22)  #~15 min runtime for Bluefin
 
@@ -156,10 +148,8 @@ NorCPM.SST.src.i1 <-
               realization.fn = function(f) {
                 gsub("^.*_s[[:digit:]]{4}-r([[:digit:]]+)i.*$","\\1",basename(f))},
               start.date=function(f){
-                ymd(gsub("^([[:digit:]]{6})-.*$","\\101",underscore_field(basename(f),7)))},
-              start.id=function(f) {
-                val <- gsub("^([[:digit:]]{6})-.*$","\\101",underscore_field(basename(f),7))
-                return(year(ymd(val))+1)},
+                init.date <- ymd(gsub("^([[:digit:]]{6})-.*$","\\101",underscore_field(basename(f),7)))
+                return(ceiling_date(init.date,"year"))}, #Round October start up to 1 Jan
               date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) %>%
   chunk.data.source(n=10) 
 
@@ -210,11 +200,6 @@ Sal.Decadal$"MPI-LR" <-
                 init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
                 init.date <- ymd(paste(init.str,"01",sep=""))
                 return(init.date)},
-              start.id=function(f){
-                init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
-                init.date <- ymd(paste(init.str,"01",sep=""))
-                init.id <- year(init.date)
-                return(init.id)},
               date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) %>%
   chunk.data.source(n=10)
 
@@ -230,10 +215,6 @@ CESM.DPLE.SALT <-
                 layer.mids <- ncid$dim$z_t$vals/100 #[m]
                 nc_close(ncid)
                 return(layer.mids)},
-              start.id=function(f){
-                val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,2]
-                start.date <- ymd(sprintf("%s-01",val))
-                return(year(start.date)+1)},
               date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) %>%
   chunk.data.source(n=40)
 
@@ -266,8 +247,6 @@ NorCPM.sal.src.i2 <-
   chunk.data.source(n=10) 
 
 Sal.Decadal <- c(Sal.Decadal,NorCPM.sal.src.i1,NorCPM.sal.src.i2)
-
-
 
 #Set list names
 names(Sal.Decadal) <- sapply(Sal.Decadal,slot,"name")

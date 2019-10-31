@@ -36,9 +36,11 @@ by time. Valid values are NA (don't use timebounds, use the time variable), 1 (u
 
 \item{\code{layermids.fn}}{Returns the midpoints of the vertical layers for this data set.}
 
-\item{\code{start.date}}{Function to extract the initialisation dates}
-
-\item{\code{start.id}}{Function to extract unique identifiers for the particular initialization}
+\item{\code{start.date}}{Function to extract the dates for the start of the forecasts. Note that we define this to
+be different to the initialisation dates (when the model is actually initialised). A decadal model 
+might be initialised on 1 Nov but we are primarily interested in it's post-January output, and so call 
+this an effective start date of 1 Jan. Things are much clearer for seasonal forecast systems, that 
+are initialised monthly.}
 
 \item{\code{date.fn}}{A function to extract the time stamps for each time step}
 }}

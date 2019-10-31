@@ -18,8 +18,11 @@
 #' 2 (use the upper bound) or 3 (use the average value)
 #' @slot realization.fn A function to extract the realisation ID
 #' @slot layermids.fn Returns the midpoints of the vertical layers for this data set. 
-#' @slot start.date Function to extract the initialisation dates
-#' @slot start.id Function to extract unique identifiers for the particular initialization
+#' @slot start.date Function to extract the dates for the start of the forecasts. Note that we define this to
+#' be different to the initialisation dates (when the model is actually initialised). A decadal model 
+#' might be initialised on 1 Nov but we are primarily interested in it's post-January output, and so call 
+#' this an effective start date of 1 Jan. Things are much clearer for seasonal forecast systems, that 
+#' are initialised monthly.
 #' @slot date.fn A function to extract the time stamps for each time step
 #'
 #' @export data.source
@@ -38,7 +41,6 @@ data.source <-
                       realization.fn="function",
                       layermids.fn="function",
                       start.date="function",  
-                      start.id="function", 
                       date.fn="function"),
            prototype=list(use.timebounds=as.numeric(NA),
                           time.var="time",
@@ -48,8 +50,7 @@ data.source <-
                           realizations=as.character(NA),
                           date.fn=function(x) {stop("Date.fn not specified")},
                           realization.fn=function(x) {stop("Realization function not specified")},
-                          start.date=function(x) { stop("Start.date function not specified")},
-                          start.id=function(x) { stop("Start.id function not specified")}),
+                          start.date=function(x) { stop("Start.date function not specified")}),
            validity = function(object) {
              err.msg <- NULL
              #Check names on sources
@@ -167,8 +168,7 @@ test.data.source <- function(obj,f="missing"){
   print(obj@date.fn(f))
   log_msg("\nRealizations\n")
   print(obj@realization.fn(f))
-  log_msg("\nForecast Initialisation\n")
+  log_msg("\nEffective Forecast Start Date\n")
   print(obj@start.date(f))
-  print(obj@start.id(f))
 }
 
