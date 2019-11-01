@@ -61,8 +61,8 @@ stats.tb <- tibble(name=map_chr(pcfg@statistics ,slot,name="name"),
                    use.realmeans=map_lgl(pcfg@statistics,slot,name="use.realmeans"))
 
 #Develop a similar table for the spatial aspects
-sp.tb <- tibble(name=map_chr(pcfg@spatial.subdomains,slot,name="name"),
-                sp=pcfg@spatial.subdomains,
+sp.tb <- tibble(sp=c(global.ROI(pcfg),pcfg@spatial.subdomains),
+                name=map_chr(sp,slot,name="name"),
                 base.dir=map_chr(sp,get.subdomain.dir,cfg=pcfg),
                 is.global=name==PE.cfg$misc$global.sp.name)
 

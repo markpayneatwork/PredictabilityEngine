@@ -200,8 +200,9 @@ for(j in seq(nrow(sp.stat.sel))) {
     #brick, which is the way God intended. 
     #20190811 Or maybe not... Maybe a solution is to convert it to a raster, if it only has one
     #layer
+    #20191101 Appears to be working now with Raster 2.9.23
     mdl.anom <- brick(f)  
-    if(nlayers(mdl.anom)==1) mdl.anom <- mdl.anom[[1]]
+   # if(nlayers(mdl.anom)==1) mdl.anom <- mdl.anom[[1]]
     
     #Choose whether we use full fields or anomalies
     if(this.stat@use.full.field) {      #Calculate the full field by adding in the appropriate climatology
@@ -216,9 +217,8 @@ for(j in seq(nrow(sp.stat.sel))) {
       
       #Build up the modelled value by combining the observational climatology
       #with the modelled anomaly.
-      mdl.dat <- brick(obs.clim + mdl.anom)
-      mdl.dat <- setZ(mdl.dat,getZ(mdl.anom))  #...and correcting the Z values
-      
+      mdl.dat <- obs.clim + mdl.anom
+
     } else { #Use the anomaly
       mdl.dat <- mdl.anom
     }
@@ -232,6 +232,7 @@ for(j in seq(nrow(sp.stat.sel))) {
     #Need to add in realization labels
     #Realisations are only an issue when using them explicitly - otherwise we are
     #working from ensemble means, realisation means or observations => realization = NA
+    #2019.11.01 Not sure we actually need the labels at all
     if(this.cfg$use.realmeans) {
       res$realization <- NA
     } else {
