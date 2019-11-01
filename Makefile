@@ -106,6 +106,24 @@ install: FORCE
 NMME_sync:
 	bsub  < src/Y.HPC_scripts/bNMME_sync.sh
 
+NMME:
+	JOBID=$$(make NMME_by_sources | awk '/is submitted/{print substr($$2, 2, length($$2)-2);}') ;\
+	echo $$JOBID ; \
+	make NMME_ensmean WAIT=$$JOBID
+
+Decadal:
+	JOBID=$$(make Decadal_by_chunks | awk '/is submitted/{print substr($$2, 2, length($$2)-2);}') ;\
+	JOBID2=$$(make Decadal_by_sources WAIT=$$JOBID | awk '/is submitted/{print substr($$2, 2, length($$2)-2);}') ;\
+	make Decadal_ensmean WAIT=$$JOBID2
+
+CMIP:	
+	make CMIP5_by_sources
+
+PP:
+	JOBID=$$(make Stats | awk '/is submitted/{print substr($$2, 2, length($$2)-2);}') ;\
+	make PPStats WAIT=$$JOBID
+	
+
 #-------------------------------------
 clean:
 	-@rm PE_* -f
