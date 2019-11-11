@@ -81,6 +81,8 @@ sp.objs$no.coast <- spatial.domain("Norwegian.Coast",
                                                                                 c(12,73))))
 sp.objs$s.iceland <- spatial.domain("South.of.Iceland",extent(-50,-10,54,70))
 
+sp.objs$Denmark.strait <- spatial.domain("Denmark.strait",extent(-45,-20,58,65))
+
 #Correct names and add to object
 names(sp.objs) <- sapply(sp.objs,slot,"name")
 pcfg@spatial.subdomains <- sp.objs
@@ -118,6 +120,8 @@ stat.l[[2]] <- new("threshold",
                    name="11 degree threshold - realisations",
                    use.realmeans=FALSE)
 
+stat.l[[3]] <- spatial.mean(name="Average temperature",
+			use.full.field=TRUE) 
 
 #Merge it all in
 names(stat.l) <- sapply(stat.l,slot,"name")
