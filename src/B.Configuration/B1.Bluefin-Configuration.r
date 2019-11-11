@@ -79,7 +79,7 @@ sp.objs$no.coast <- spatial.domain("Norwegian.Coast",
                                         as.SpatialPolygons.matrix(rbind(c(-5,62),c(10,62),
                                                                                 c(20,70),c(20,73),
                                                                                 c(12,73))))
-sp.objs$s.iceland <- spatial.domain("South.of.Iceland",extent(-50,-10,55,70))
+sp.objs$s.iceland <- spatial.domain("South.of.Iceland",extent(-50,-10,54,70))
 
 #Correct names and add to object
 names(sp.objs) <- sapply(sp.objs,slot,"name")
