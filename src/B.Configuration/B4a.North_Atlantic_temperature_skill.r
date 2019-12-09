@@ -62,10 +62,17 @@ define_dir(pcfg@scratch.dir)
 # Spatial Configurations ####
 #'========================================================================
 #Set global variables
-pcfg@use.global.ROI <- TRUE
 pcfg@global.ROI <- extent(-70,0,40,70)
 pcfg@global.res  <- 0.5 #0.25
 pcfg@retain.realizations <- TRUE
+
+sp.objs <- list()
+sp.objs$s.iceland <- spatial.domain("South.of.Iceland",extent(-50,-10,55,70))
+
+#Correct names and add to object
+names(sp.objs) <- sapply(sp.objs,slot,"name")
+pcfg@spatial.domains <- sp.objs
+
 
 #'========================================================================
 # Extraction configuration ####
@@ -82,6 +89,13 @@ statsum.l[[1]] <- pass.through(name="Anomaly",
                                use.globally=TRUE,
                                use.full.field = FALSE,
                                use.realmeans=TRUE)
+
+statsum.l[[2]] <- threshold(name="realmean.thresh",
+                         threshold=11,
+                         above=TRUE,
+                         use.full.field = TRUE,
+                         use.realmeans=FALSE)
+
 
 #Merge it all in
 names(statsum.l) <- sapply(statsum.l,slot,"name")

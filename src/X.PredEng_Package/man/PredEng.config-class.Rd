@@ -37,7 +37,7 @@ Different extraction modes can be combined in the same list.
 
 \item{\code{persistence.leads}}{A vector (in months) of lead times at which to generate persistence forcasts}
 
-\item{\code{spatial.subdomains}}{List of spatial.config objects defining the spatial subdomains over which 
+\item{\code{spatial.domains}}{List of spatial.config objects defining the spatial domains over which 
 to operate}
 
 \item{\code{statistics}}{PredEng.list of statistics to apply over each spatial area}
@@ -62,9 +62,6 @@ integers)}
 \item{\code{global.ROI}}{Extent object defining the global ROI to work with.}
 
 \item{\code{global.res}}{Resolution of the analysis to be applied globally}
-
-\item{\code{use.global.ROI}}{Logical to indicator whether we generate a combined set of files, or one set 
-for each area.}
 
 \item{\code{retain.realizations}}{Is there interest in retaining the individual realisations from each model, or
 should we go straight to the realisation means (as a way of saving disk space and simiplifying the

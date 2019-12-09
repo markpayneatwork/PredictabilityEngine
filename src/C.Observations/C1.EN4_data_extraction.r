@@ -57,7 +57,7 @@ if(interactive()) {
 }
 
 #Retrieve configurations
-this.sp <- configure.sp(file.path(PE.cfg$dirs$job.cfg,"Observations.cfg"),cfg.no,pcfg)
+this.sp <- global.ROI(pcfg)
 this.src <- pcfg@Observations
 config.summary(pcfg,this.sp,this.src)
 
@@ -73,8 +73,7 @@ if(!this.src@name=="EN4") stop("Not configured to use EN4 data")
 log_msg("\nProcessing %s...\n",this.sp@name)
 
 #Working directories
-subdomain.dir <- get.subdomain.dir(pcfg,this.sp)
-base.dir <- define_dir(subdomain.dir,"Observations","EN4")
+base.dir <- define_dir(pcfg@scratch.dir,"Observations","EN4")
 extract.dir <- define_dir(base.dir,"1.extracted")
 mon.clim.dir <- define_dir(base.dir,"A.monthly_climatologies")
 mon.anom.dir <- define_dir(base.dir,"B.monthly_anom")
@@ -84,7 +83,6 @@ tmp.dir <- tempdir()
 # misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
 # mon.clim.dir <- define_dir(base.dir,"A.monthly_climatologies")
 # mon.anom.dir <- define_dir(base.dir,"B.monthly_anom")
-# analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$files$analysis.grid)
 
 #Contents of zipfiles
 #EN4.file.stem <- "EN.4.2.0.f.analysis.g10."
@@ -138,7 +136,7 @@ for(j in seq(nrow(meta.db))) {
                        this.meta$vertmean.fname)
     
     #Do the spatial remapping and extraction
-    remap.cmd <- cdo(csl("remapbil", file.path(subdomain.dir,PE.cfg$files$analysis.grid)),
+    remap.cmd <- cdo(csl("remapbil", file.path(base.dir,PE.cfg$files$analysis.grid)),
                         this.meta$vertmean.fname, 
                         this.meta$extract.fname)
   #Tidy up

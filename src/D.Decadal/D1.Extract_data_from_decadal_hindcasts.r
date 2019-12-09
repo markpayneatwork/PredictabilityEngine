@@ -63,25 +63,22 @@ set.nco.defaults("--overwrite")
 #Retrieve configurations
 cfg.fname <- file.path(PE.cfg$dirs$job.cfg,"Decadal_by_chunks.cfg")
 this.cfgs <- get.cfgs(cfg.fname)
-this.sp <- configure.sp(cfg.fname,cfg.id,pcfg)
+this.sp <- global.ROI(pcfg)
 this.chunk <- configure.chunk(cfg.fname,cfg.id,pcfg)
 config.summary(pcfg,this.sp,this.chunk)
 
 #Directory setup
-subdomain.dir <- get.subdomain.dir(pcfg,this.sp)
-datsrc.dir <- define_dir(subdomain.dir,"Decadal",this.chunk@name)
-chunk.dir <- define_dir(datsrc.dir,this.chunk@chunk.id)
+base.dir <- define_dir(pcfg@scratch.dir,"Decadal",this.chunk@name)
+chunk.dir <- define_dir(base.dir,this.chunk@chunk.id)
 remap.dir <- define_dir(chunk.dir,"1.remapping_wts")
 sel.dir <- define_dir(chunk.dir,"2.regrid")
 frag.dir <- define_dir(chunk.dir,"3.fragments")
 misc.meta.dir <- define_dir(chunk.dir,PE.cfg$dirs$Misc.meta)
-analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$files$analysis.grid)
+analysis.grid.fname <- file.path(base.dir,PE.cfg$files$analysis.grid)
 
 #'========================================================================
 # Setup ####
 #'========================================================================
-log_msg("Processing %s data source for %s subdomain ...\n",this.chunk@name,this.sp@name)
-
 #Get list of files
 src.fnames <- unlist(this.chunk@sources)
 if(length(src.fnames)==0 ) stop("Cannot find source files")

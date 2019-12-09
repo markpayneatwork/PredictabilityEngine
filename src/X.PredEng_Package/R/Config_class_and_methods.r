@@ -7,7 +7,7 @@
 #' @slot NMME A list of GCM objects defining the NMME models to be analysed
 #' @slot CMIP5 A list of data source objects to configure extraction from the CMIP5 ensemble. 
 #' @slot persistence.leads A vector (in months) of lead times at which to generate persistence forcasts
-#' @slot spatial.subdomains List of spatial.config objects defining the spatial subdomains over which 
+#' @slot spatial.domains List of spatial.config objects defining the spatial domains over which 
 #' to operate
 #' @slot statistics PredEng.list of statistics to apply over each spatial area
 #' @slot stat.jobs Integer. Number of job array elements to use in processing statistics
@@ -21,8 +21,6 @@
 #' @slot scratch.dir Directory in which processed files are to be stored
 #' @slot global.ROI  Extent object defining the global ROI to work with. 
 #' @slot global.res Resolution of the analysis to be applied globally
-#' @slot use.global.ROI Logical to indicator whether we generate a combined set of files, or one set 
-#' for each area.
 #' @slot retain.realizations Is there interest in retaining the individual realisations from each model, or
 #' should we go straight to the realisation means (as a way of saving disk space and simiplifying the
 #' processing)?
@@ -51,7 +49,7 @@ PredEng.config <-
                       NMME="list",
                       CMIP5="list",
                       persistence.leads="numeric",
-                      spatial.subdomains="list",
+                      spatial.domains="list",
                       statistics="list",
                       stat.jobs="numeric",
                       extraction="list",
@@ -63,7 +61,6 @@ PredEng.config <-
                       comp.years="numeric",
                       landmask="character",
                       scratch.dir="character",
-                      use.global.ROI="logical",
                       retain.realizations="logical",
                       average.months="logical"),
            prototype = list(global.ROI=extent(as.numeric(rep(NA,4))),

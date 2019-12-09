@@ -63,7 +63,6 @@ pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="tos")
 # Spatial Configurations ####
 #'========================================================================
 #Set global variables
-pcfg@use.global.ROI <- TRUE
 pcfg@global.ROI <- extent(-70,30,50,80)
 pcfg@global.res  <- 0.5
 
@@ -83,7 +82,7 @@ sp.objs$s.iceland <- spatial.domain("South.of.Iceland",extent(-50,-10,54,70))
 
 #Correct names and add to object
 names(sp.objs) <- sapply(sp.objs,slot,"name")
-pcfg@spatial.subdomains <- sp.objs
+pcfg@spatial.domains <- sp.objs
 
 
 #'========================================================================

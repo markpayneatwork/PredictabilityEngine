@@ -72,21 +72,18 @@ set.nco.defaults("--overwrite")
 #Retrieve configurations
 cfg.file <- file.path(PE.cfg$dirs$job.cfg,"NMME_by_sources.cfg")
 cfgs <- get.cfgs(cfg.file)
-this.sp <- configure.sp(cfg.file,cfg.no,pcfg)
+this.sp <- global.ROI(pcfg)
 this.src <- configure.src(cfg.file,cfg.no,pcfg)
 
 #Configure directories
-subdomain.dir <- 
-  get.subdomain.dir(pcfg,this.sp) %>%
-  define_dir()
-base.dir <- define_dir(subdomain.dir,
+base.dir <- define_dir(pcfg@scratch.dir,
                        "NMME",this.src@name)
 data.dir <- file.path(PE.cfg$dirs$datasrc,"NMME",this.src@name)
 
 fragstack.dir <- define_dir(base.dir,"1.fragstacks")
 misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
 
-analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$files$analysis.grid)
+analysis.grid.fname <- file.path(base.dir,PE.cfg$files$analysis.grid)
 
 #Display configuration
 config.summary(pcfg,cfg.no,this.src,this.sp)

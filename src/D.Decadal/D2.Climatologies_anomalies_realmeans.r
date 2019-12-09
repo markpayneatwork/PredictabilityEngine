@@ -66,25 +66,22 @@ set.nco.defaults("--overwrite")
 #Retrieve configurations
 cfg.fname <- file.path(PE.cfg$dirs$job.cfg,"Decadal_by_sources.cfg")
 this.cfgs <- get.cfgs(cfg.fname)
-this.sp <- configure.sp(cfg.fname,cfg.id,pcfg)
+this.sp <- global.ROI(pcfg) 
 this.src <- configure.src(cfg.fname,cfg.id,pcfg)
 config.summary(pcfg,this.sp,this.src)
 
 #Directory setup
-subdomain.dir <- get.subdomain.dir(pcfg,this.sp)
-base.dir <- define_dir(subdomain.dir,"Decadal",this.src@name)
+base.dir <- define_dir(pcfg@scratch.dir,"Decadal",this.src@name)
 fragstack.dir <- define_dir(base.dir,"4.fragstacks")
 lead.clim.dir <- define_dir(base.dir,"5.lead.clims")
 anom.dir <- define_dir(base.dir,"A.anom")
 realmean.dir <- define_dir(base.dir,"B.realmean")
 misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
-analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$files$analysis.grid)
+analysis.grid.fname <- file.path(base.dir,PE.cfg$files$analysis.grid)
 
 #'========================================================================
 # Setup ####
 #'========================================================================
-log_msg("Processing %s data source for %s subdomain ...\n",this.src@name,this.sp@name)
-
 #Import fragment meta data from the chunks
 chunk.names <- names(this.src@sources)
 fragment.meta.fnames <- file.path(base.dir,

@@ -65,7 +65,6 @@ pcfg@Decadal <- SST.Decadal.production
 # Spatial Configurations ####
 #'========================================================================
 #Set global variables
-pcfg@use.global.ROI <- TRUE
 pcfg@global.ROI <- extent(-4,11,51,60)
 pcfg@global.res  <- 0.25
 pcfg@retain.realizations <- TRUE
@@ -79,7 +78,7 @@ sp.objs$wadden <- spatial.domain("Wadden_Sea",
 
 #Correct names and add to object
 names(sp.objs) <- purrr::map_chr(sp.objs,slot,name="name")
-pcfg@spatial.subdomains <- sp.objs
+pcfg@spatial.domains <- sp.objs
 
 #'========================================================================
 # Extraction configuration ####

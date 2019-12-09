@@ -54,7 +54,6 @@ define_dir(pcfg@scratch.dir)
 # Spatial Configurations ####
 #'========================================================================
 #Set global variables
-pcfg@use.global.ROI <- TRUE
 pcfg@global.ROI <- extent(-25,0,40,65)
 pcfg@global.res  <- 0.5
 pcfg@vert.range <- c(250,600)
@@ -65,7 +64,7 @@ sp.objs$spawing.area <- spatial.domain("ROI",extent(-20,-5,50,60))
 
 #Correct names and add to object
 names(sp.objs) <- sapply(sp.objs,slot,"name")
-pcfg@spatial.subdomains <- sp.objs
+pcfg@spatial.domains <- sp.objs
 
 #'========================================================================
 # Data Sources ####

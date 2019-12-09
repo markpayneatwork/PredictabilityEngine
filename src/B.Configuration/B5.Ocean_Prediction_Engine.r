@@ -68,7 +68,6 @@ pcfg@Decadal <- SST.Decadal.production
 # Spatial Configurations ####
 #'========================================================================
 #Set global variables
-pcfg@use.global.ROI <- TRUE
 pcfg@global.ROI <- extent(-180,180,-90,90)
 pcfg@global.res  <- 1 #0.25
 pcfg@retain.realizations <- FALSE
@@ -107,7 +106,7 @@ names(MEOW.objs) <- sprintf("MEOW.%i",MEOW.sp$ECO_CODE)
 #
 
 #Correct names and add to object
-pcfg@spatial.subdomains <- c(EEZ.objs,MEOW.objs)
+pcfg@spatial.domains <- c(EEZ.objs,MEOW.objs)
 
 #'========================================================================
 # Extraction configuration ####
