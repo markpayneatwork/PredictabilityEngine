@@ -58,14 +58,11 @@ if(interactive()) {
 set.nco.defaults("--overwrite")
 
 #Extract configurations
-this.sp <- configure.sp(file.path(PE.cfg$dirs$job.cfg,"Decadal_ensmean.cfg"),cfg.id,pcfg)
-
+this.sp <- global.ROI(pcfg)
+  
 #Directory setup
-sp.dir <- get.subdomain.dir(pcfg,this.sp)
-base.dir <- define_dir(sp.dir,"Decadal")
+base.dir <- define_dir(pcfg@scratch.dir,"Decadal")
 ensmean.dir <- define_dir(base.dir,PE.cfg$files$ensmean.name,"B.realmean")
-
-log_msg("Calculating Ensemble mean for %s subdomain ...\n",this.sp@name)
 
 #'========================================================================
 # Setup ensemble averaging ####

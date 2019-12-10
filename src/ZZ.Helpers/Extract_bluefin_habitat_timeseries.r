@@ -47,13 +47,20 @@ stats <- readRDS(file.path(bluefin.dir,"All_scalar_stats.rds"))
 sel <- 
   stats %>%
   filter(src.type=="Observations",
-         sp.subdomain=="South.of.Iceland") %>%
-  select(date,value)
+         sp.subdomain=="South.of.Iceland" & stat.name =="11 degree threshold - realmeans" |
+         sp.subdomain=="Denmark.strait"   & stat.name =="Average temperature") %>%
+  select(stat.name,date,value)
 
 ggplot(sel,aes(x=date,y=value))+
-  geom_line()
+  geom_line()+
+  facet_wrap(~stat.name,scales="free_y")
 
-write_csv2(sel,"outputs/Bluefin_tuna_habitat.csv")
+#Save results
+sel %>%
+  spread(stat.name,value) %>%
+  rename(area="11 degree threshold - realmeans",
+         temperature="Average temperature") %>%
+  write_csv2("outputs/Bluefin_tuna_habitat.csv")
 
 #'========================================================================
 # And Go ####

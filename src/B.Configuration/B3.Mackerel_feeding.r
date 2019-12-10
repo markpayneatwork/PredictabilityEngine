@@ -73,7 +73,6 @@ if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
 # Spatial Configurations ####
 #'========================================================================
 #Set global variables
-pcfg@use.global.ROI <- TRUE
 pcfg@global.ROI <- extent(-70,0,50,80)
 pcfg@global.res  <- 0.5
 pcfg@retain.realizations <- TRUE
@@ -105,7 +104,7 @@ for(i in seq(nrow(eez.sel))) {
                                   boundary=as(this.sp$geometry,"Spatial"))
 }
 names(EEZ.objs) <- eez.sel$GeoName
-pcfg@spatial.subdomains <- EEZ.objs
+pcfg@spatial.domains <- EEZ.objs
 
 
 #'========================================================================

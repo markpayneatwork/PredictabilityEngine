@@ -5,18 +5,14 @@
 \alias{partition.workload}
 \alias{configure.src}
 \alias{configure.chunk}
-\alias{configure.sp}
 \alias{get.cfgs}
 \title{Manage job distribution}
 \usage{
-partition.workload(obj, src.slot = "missing", data.partition.type = "",
-  space.partition = !obj@use.global.ROI)
+partition.workload(obj, src.slot = "missing", data.partition.type = "")
 
 configure.src(fname, cfg.idx, obj)
 
 configure.chunk(fname, cfg.idx, obj)
-
-configure.sp(fname, cfg.idx, obj)
 
 get.cfgs(fname)
 }
@@ -27,11 +23,6 @@ get.cfgs(fname)
 this is set to "Stats", work is partitioned over all relevant model data slots}
 
 \item{data.partition.type}{"ensmean", "source", or "chunk"}
-
-\item{space.partition}{Should the work be split up by spatial subdomain? The default
-behaviour is to follow the use.global.ROI slot in obj i.e. when use.global.ROI is TRUE, we don't want to 
-partition by space. However, in some cases (e.g. calculation of statistics) it is useful to have this 
-behaviour anyway.}
 
 \item{fname}{Filename (incluiding path) to read / write job configuration to/from}
 

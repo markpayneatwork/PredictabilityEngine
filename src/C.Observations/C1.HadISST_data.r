@@ -61,7 +61,7 @@ if(interactive()) {
 }
 
 #Retrieve configurations
-this.sp <- configure.sp(file.path(PE.cfg$dirs$job.cfg,"Observations.cfg"),cfg.no,pcfg)
+this.sp <- global.ROI(pcfg) 
 this.src <- pcfg@Observations
 config.summary(pcfg,this.sp,this.src)
 
@@ -77,13 +77,12 @@ HadISST.dat <- unlist(pcfg@Observations@sources)
 log_msg("\nProcessing %s...\n",this.sp@name)
 
 #Working directories
-subdomain.dir <- get.subdomain.dir(pcfg,this.sp)
-base.dir <- define_dir(subdomain.dir,"Observations","HadISST")
+base.dir <- define_dir(pcfg@scratch.dir,"Observations","HadISST")
 work.dir <- tempdir()
 misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
 mon.clim.dir <- define_dir(base.dir,"A.monthly_climatologies")
 mon.anom.dir <- define_dir(base.dir,"B.monthly_anom")
-analysis.grid.fname <- file.path(subdomain.dir,PE.cfg$files$analysis.grid)
+analysis.grid.fname <- file.path(base.dir,PE.cfg$files$analysis.grid)
 
 #/*======================================================================*/
 #'## Extract HadISST data

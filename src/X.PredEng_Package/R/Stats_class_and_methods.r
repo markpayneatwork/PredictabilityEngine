@@ -2,7 +2,8 @@
 
 #' Statistics class
 #'
-#' @param name Name of the statistics class
+#' @param name Name of the statistics class. Cannot contain spaces, underscores or dots. Must be less than 20 char
+#' @param desc Description of the statistics class. 
 #' @param use.realmeans Indicates whether to use the mean of the individ realisations or
 #' the realisation values themselves. This slot essentially acts as a flag telling
 #' the script whether it wants 2D (lat-lon) or 3D (lat-lon-realization) data.
@@ -19,6 +20,7 @@
 stat <- 
   setClass("stat",
            slots=list(name="character",
+                      desc="character",
                       use.realmeans="logical",
                       use.full.field="logical",
                       retain.field="logical",
@@ -27,8 +29,26 @@ stat <-
            prototype = list(use.realmeans=TRUE,
                             retain.field=TRUE,
                             use.full.field=TRUE,
-                            use.globally=FALSE))
-
+                            use.globally=FALSE),
+           validity = function(object) {
+             err.msg <- NULL
+             if(grepl(" ",object@name)) {
+               err.msg <- c(err.msg,"Object name must not contain spaces.")}
+             if(grepl("\\.",object@name)) {
+               err.msg <- c(err.msg,"Object name must not contain full stops.")}
+             if(grepl("_",object@name)) {
+               err.msg <- c(err.msg,"Object name must not contain underscores.")}
+             if(nchar(object@name)>20) {
+               err.msg <- 
+                 c(err.msg,
+                   sprintf("Object name must not exceed 20 characters. Currently %s characters.",
+                           nchar(object@name)))}
+             if(is_empty(object@desc)) {
+                err.msg <- c(err.msg,".description slot must not be empty.")}              
+             if(is_empty(object@name)) {
+               err.msg <- c(err.msg,".@name slot must not be empty.")}              
+             if(length(err.msg)==0) return(TRUE) else err.msg
+           })
 
 #' Evaluate an stat
 #' @export

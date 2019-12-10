@@ -6,17 +6,12 @@
 #' @param src.slot Name of the slot over which to partition the workload. In the case where
 #'  this is set to "Stats", work is partitioned over all relevant model data slots
 #' @param data.partition.type "ensmean", "source", or "chunk"
-#' @param space.partition Should the work be split up by spatial subdomain? The default
-#' behaviour is to follow the use.global.ROI slot in obj i.e. when use.global.ROI is TRUE, we don't want to 
-#' partition by space. However, in some cases (e.g. calculation of statistics) it is useful to have this 
-#' behaviour anyway.
 #'
 #' @export
 #' @name job_management
 partition.workload <- function(obj,
                                src.slot="missing",
-                               data.partition.type="",
-                               space.partition=!obj@use.global.ROI) {
+                               data.partition.type="") {
   
   #Check inputs
   if(length(src.slot)!=1) stop("Can only partition a single slot at a time")
@@ -24,7 +19,8 @@ partition.workload <- function(obj,
   #Get the list of all valid data types and chunks
   obj.srcs <- 
     tibble(src.type=c("Decadal","NMME","Observations","CMIP5")) %>%
-    mutate(src=map(src.type,~slot(.x,object=obj)),
+    mutate(src=map(src.type,~ slot(.x,object=obj)),
+           src=map(src, ~ if(is(.x,"PElst")) {.x@.Data} else {.x}),
            n.objs=map_int(src,length),
            src=map2(src,n.objs,~ if(.y<=1) {list(.x)} else {.x})) %>%
     filter(n.objs!=0)%>%
@@ -75,26 +71,9 @@ partition.workload <- function(obj,
   if(nrow(these.srcs)==0) return(NULL)  #Catch blanks
   these.srcs$src.num <- seq(nrow(these.srcs))
     
-  #Setup spatial domains
-  if(space.partition ) { #Overrides the use.global.ROI switch
-    if(using.stats.globally & src.slot=="Stats") {
-      #Then need to add a global spatial config as well
-      sp.subdomains <- c(names(obj@spatial.subdomains),PE.cfg$misc$global.sp.name)
-    } else {
-      #Otherwise just use the supplied spatial domains
-      sp.subdomains <- names(obj@spatial.subdomains)
-    }
-  } else if (obj@use.global.ROI) {
-    #Spatial domains are not relevant in this case - flag with an NA
-    sp.subdomains <- as.character(NA)
-  } else {
-    sp.subdomains <- names(obj@spatial.subdomains)
-  }
-  
   #Do the expansion
-  work.cfg <- expand.grid(src.num=these.srcs$src.num,
-                          sp=sp.subdomains) %>%
-    left_join(these.srcs,by="src.num") %>%
+  work.cfg <- 
+    these.srcs %>%
     dplyr::select(-src.num,-n.chunks) %>%
     add_column(cfg.id=seq(nrow(.)),.before=1) %>%
     as_tibble()
@@ -157,22 +136,6 @@ configure.chunk <- function(fname,cfg.idx,obj){
 }
 
 
-#' @export
-#' @rdname job_management
-configure.sp <- function(fname,cfg.idx,obj){
-  cfgs <- get.cfgs(fname)
-  this.cfg <- 
-    cfgs %>%
-    filter(cfg.id==cfg.idx)
-  stopifnot(nrow(this.cfg)==1)
-  if(is.na(this.cfg$sp) | this.cfg$sp==PE.cfg$misc$global.sp.name) {
-    this.sp  <- global.ROI(obj)
-  } else { #Working with subdomains
-    this.sp <- obj@spatial.subdomains[[as.character(this.cfg$sp)]]
-  }
-  return(this.sp)
-}
-
 #' Create a global ROI
 #'
 #' @param obj 
@@ -190,18 +153,3 @@ get.cfgs <- function(fname){
   return(cfgs)
 }
 
-#' Get Subdomain directory
-#' 
-#' Gets the scratch directory in which to place any subdomain processing
-#'
-#' @param cfg A PredEng config object 
-#' @param sp  A Spatial configuration object
-#'
-#' @return Path to the scratch directory
-#' @export
-get.subdomain.dir <- function(cfg,sp) {
-  if(cfg@use.global.ROI) {
-    return(cfg@scratch.dir)
-} else {
-    return(file.path(cfg@scratch.dir,sp@name))}
-}

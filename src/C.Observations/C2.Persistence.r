@@ -44,39 +44,31 @@ pcfg <- readRDS(PE.cfg$config.path)
 #  Configuration
 #/*======================================================================*/
 #Setup spatial configurations
-if(pcfg@use.global.ROI) { #only need to use one single global ROI
-  this.sps <- list(spatial.domain(name="",boundary=pcfg@global.ROI))
-} else { #Working with subdomains
-  this.sps <- pcfg@spatial.subdomains
-}
-
+this.sp <-  global.ROI(pcfg)
+  
 #/*======================================================================*/
 #  Create (pseudo) metadata
 #  The trick here is that we can create a pseudo  persistence forecast
 #  by simply tweaking the metadata properly to reuse existing observational
-#  data files. We loop over the individual spatial subdomains in a single
-#  run.
+#  data files. 
 #/*======================================================================*/
+log_msg("Creating pseudo metadata for %s...\n",this.sp@name)
 
-for(this.sp in this.sps) {
-  log_msg("Creating pseudo metadata for %s...\n",this.sp@name)
-  
-  #Working directories
-  subdomain.dir <- get.subdomain.dir(pcfg,this.sp)
-  base.dir <- define_dir(subdomain.dir,"Persistence",pcfg@Observations@name)
+#Working directories
+base.dir <- define_dir(pcfg@scratch.dir,"Persistence",pcfg@Observations@name)
 
-  #Load the monthly anomaly data
-  mon.anom.meta <- readRDS(file.path(subdomain.dir,"Observations",pcfg@Observations@name,
-                                     PE.cfg$files$Obs.monthly.anom.metadata))
-  
-  #Some tweaks
-  persis.meta <- mutate(mon.anom.meta,
+#Load the monthly anomaly data
+mon.anom.meta <- readRDS(file.path(base.dir,"Observations",pcfg@Observations@name,
+                                   PE.cfg$files$Obs.monthly.anom.metadata))
+
+#Some tweaks
+persis.meta <- mutate(mon.anom.meta,
                       src.type="Persistence")
-  
-  #Save metadata
-  saveRDS(persis.meta,file=file.path(base.dir,PE.cfg$files$anom.meta))
-  saveRDS(persis.meta,file=file.path(base.dir,PE.cfg$files$realmean.meta))
-}
+
+#Save metadata
+saveRDS(persis.meta,file=file.path(base.dir,PE.cfg$files$anom.meta))
+saveRDS(persis.meta,file=file.path(base.dir,PE.cfg$files$realmean.meta))
+
 
 # #/*======================================================================*/
 #  Complete

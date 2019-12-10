@@ -5,7 +5,9 @@
 \alias{stat}
 \title{Statistics class}
 \arguments{
-\item{name}{Name of the statistics class}
+\item{name}{Name of the statistics class. Cannot contain spaces, underscores or dots. Must be less than 20 char}
+
+\item{desc}{Description of the statistics class.}
 
 \item{use.realmeans}{Indicates whether to use the mean of the individ realisations or
 the realisation values themselves. This slot essentially acts as a flag telling

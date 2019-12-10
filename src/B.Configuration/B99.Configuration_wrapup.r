@@ -33,39 +33,20 @@ validObject(pcfg)
 log_msg("Writing output files...\n")
 
 base.dir <- define_dir(pcfg@scratch.dir)
-if(pcfg@use.global.ROI){
-  log_msg("Writing Global Outputs...\n")
-  #Write CDO grid descriptors
-  this.ROI <- extend(pcfg@global.ROI,PE.cfg$misc$ROI.extraction.buffer)
-  analysis.grid.fname <- file.path(base.dir,PE.cfg$files$analysis.grid)
-  griddes.txt <- griddes(this.ROI,res=pcfg@global.res)
-  writeLines(griddes.txt,analysis.grid.fname)
-  
-  #Write regridded landmask
-  regrid.landmask <- file.path(pcfg@scratch.dir,PE.cfg$files$regridded.landmask)
-  landmask.cmd <- cdo("--silent -f nc",
-                           csl(" remapnn", analysis.grid.fname),
-                           pcfg@landmask,
-                           regrid.landmask)
 
-} else { #Loop over spatial subdomains
-  for(sp in pcfg@spatial.subdomains){
-    log_msg("Writing outputs for %s...\n",sp@name)
-    #Write CDO grid descriptors
-    sp.dir <- define_dir(base.dir,sp@name)
-    this.ROI <- extend(extent(sp),PE.cfg$misc$ROI.extraction.buffer)
-    griddes.txt <- griddes(this.ROI,res=pcfg@global.res) 
-    analysis.grid.fname <- file.path(sp.dir,PE.cfg$files$analysis.grid)
-    writeLines(griddes.txt,analysis.grid.fname)
-    
-    #Write regridded landmask
-    regrid.landmask <- file.path(sp.dir,PE.cfg$files$regridded.landmask)
-    exec(landmask.cmd <- cdo("--silent -f nc",
-                             csl("remapnn", analysis.grid.fname),
-                             pcfg@landmask,
-                             regrid.landmask))
-  }  
-}
+log_msg("Writing Global Outputs...\n")
+#Write CDO grid descriptors
+this.ROI <- extend(pcfg@global.ROI,PE.cfg$misc$ROI.extraction.buffer)
+analysis.grid.fname <- file.path(base.dir,PE.cfg$files$analysis.grid)
+griddes.txt <- griddes(this.ROI,res=pcfg@global.res)
+writeLines(griddes.txt,analysis.grid.fname)
+
+#Write regridded landmask
+regrid.landmask <- file.path(pcfg@scratch.dir,PE.cfg$files$regridded.landmask)
+landmask.cmd <- cdo("--silent -f nc",
+                    csl(" remapnn", analysis.grid.fname),
+                    pcfg@landmask,
+                    regrid.landmask)
 
 #Output
 cfg.fname <- file.path(pcfg@scratch.dir,PE.cfg$config.fname)
@@ -95,9 +76,8 @@ list(NMME=c("Sources","Ensmean"),
      Observations=NA) %>%
   enframe("src.slot","data.partition.type") %>%
   unnest() %>%
-  pmap(partition.workload,obj=pcfg)
-
-# 
+  pwalk(partition.workload,obj=pcfg)
+ 
 # cfgs <- partition.workload(pcfg,"NMME","Sources")
 # cfgs <- partition.workload(pcfg,"NMME","Ensmean")
 # cfgs <- partition.workload(pcfg,"Decadal","Chunks")

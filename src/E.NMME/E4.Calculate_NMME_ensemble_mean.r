@@ -60,14 +60,11 @@ if(interactive()) {
 set.nco.defaults("--overwrite")
 
 #Retrieve configurations
-this.sp <- configure.sp(file.path(PE.cfg$dirs$job.cfg,"NMME_ensmean.cfg"),cfg.id,pcfg)
+this.sp <- global.ROI(pcfg)
 config.summary(pcfg,this.sp)
 
 #Configure directories
-subdomain.dir <- 
-  get.subdomain.dir(pcfg,this.sp) %>%
-  define_dir()
-base.dir <- define_dir(subdomain.dir,"NMME")
+base.dir <- define_dir(pcfg@scratch.dir,"NMME")
 ensmean.dir <- define_dir(base.dir,PE.cfg$files$ensmean.name)
 anom.dir <- define_dir(ensmean.dir,"A.anoms")
 
