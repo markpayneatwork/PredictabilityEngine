@@ -76,9 +76,8 @@ list(NMME=c("Sources","Ensmean"),
      Observations=NA) %>%
   enframe("src.slot","data.partition.type") %>%
   unnest() %>%
-  pmap(partition.workload,obj=pcfg)
-
-# 
+  pwalk(partition.workload,obj=pcfg)
+ 
 # cfgs <- partition.workload(pcfg,"NMME","Sources")
 # cfgs <- partition.workload(pcfg,"NMME","Ensmean")
 # cfgs <- partition.workload(pcfg,"Decadal","Chunks")

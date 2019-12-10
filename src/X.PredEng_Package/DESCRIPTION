@@ -21,6 +21,7 @@ Suggests:
     maps
 Collate: 
     'Common_configuration.r'
+    'PElst.r'
     'Data_class_and_methods.r'
     'Config_class_and_methods.r'
     'PredEng.r'

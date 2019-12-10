@@ -31,7 +31,7 @@ decadal.dir <- file.path(PE.cfg$dirs$datasrc,"Decadal")
 # ========================================================================
 #IPSL and MPI-MR have basically an identifical structure, both being produced
 #originally by SPECS
-SST.Decadal <- list()
+SST.Decadal <- PElst()
 # SST.Decadal$IPSL  <- data.source(name="IPSL-CM5A-LR",
 #                                  type="Decadal",
 #                                  sources=list(dir(file.path(decadal.dir,"IPSL-CM5A-LR"),
@@ -165,14 +165,12 @@ NorCPM.SST.src.i2 <-
 SST.Decadal <- c(SST.Decadal,NorCPM.SST.src.i1,NorCPM.SST.src.i2)
 
 #Set list names and ids
-names(SST.Decadal) <- sapply(SST.Decadal,slot,"name")
-
 SST.Decadal.production <- SST.Decadal[c("CESM-DPLE","MPI-ESM-LR","NorCPM.i1","NorCPM.i2")]
 
 #'========================================================================
 # Salinity data sources ####
 #'========================================================================
-Sal.Decadal <- list()
+Sal.Decadal <- PElst()
 
 #MPI-LR
 #There is a problem with the date-time stamps on the first realisation in this hindcast
@@ -248,10 +246,6 @@ NorCPM.sal.src.i2 <-
 
 Sal.Decadal <- c(Sal.Decadal,NorCPM.sal.src.i1,NorCPM.sal.src.i2)
 
-#Set list names
-names(Sal.Decadal) <- sapply(Sal.Decadal,slot,"name")
-
-
 # ========================================================================
 # Setup uninitialised models
 # These should largely be the same...
@@ -278,7 +272,7 @@ names(Sal.Decadal) <- sapply(Sal.Decadal,slot,"name")
 # ========================================================================
 # Setup observational data sets
 # ========================================================================
-SST_obs <- list()
+SST_obs <- PElst()
 SST_obs$HadISST <- data.source(name="HadISST",
                                type="Observations",
                                var="sst",
@@ -289,7 +283,7 @@ SST_obs$EN4  <- data.source(name="EN4",
                             sources=list(dir("data_srcs/Observations/EN4/",
                                              pattern="\\.zip$",full.names = TRUE,recursive=TRUE)))
 
-Sal.obs <- list()
+Sal.obs <- PElst()
 Sal.obs$EN4  <- data.source(name="EN4",
                             type="Observations",
                             var="salinity",
@@ -312,7 +306,7 @@ NMME.cfg <-
                       col_types = cols()) %>%
   filter(active)
 NMME.mdls <- split(NMME.cfg,NMME.cfg$Model)
-NMME.sst.l <- list()
+NMME.sst.l <- PElst()
 for(mdl.name in names(NMME.mdls)){
   mdl <- NMME.mdls[[mdl.name]]
   mdl.src <- mdl$URL
@@ -363,5 +357,5 @@ make.CMIP5.srcs <- function(meta,var) {
                 var=var,
                 sources=list(f$fname))  
   })
-  return(rtn)
+  return(PElst(rtn))
 }

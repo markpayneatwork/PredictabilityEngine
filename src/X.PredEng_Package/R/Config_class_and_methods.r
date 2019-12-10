@@ -26,6 +26,7 @@
 #' @slot average.months Should we average over the months of interest?
 #'
 #' @include Data_class_and_methods.r
+#' @include PElst.r
 #' 
 #' @details Extraction from the data sets can be performed either at specific geographical locations
 #'  (for all  time points), at specific times (for all locations), or at specific points in space-time. 
@@ -44,13 +45,13 @@ PredEng.config <-
            slots=list(project.name="character",
                       recalculate="logical",
                       Observations="data.source",
-                      Decadal="list",
-                      NMME="list",
-                      CMIP5="list",
+                      Decadal="PElst",
+                      NMME="PElst",
+                      CMIP5="PElst",
                       persistence.leads="numeric",
-                      spatial.domains="list",
-                      statistics="list",
-                      extraction="list",
+                      spatial.domains="PElst",
+                      statistics="PElst",
+                      #extraction="list",
                       global.ROI="Extent",
                       global.res="numeric",
                       MOI="numeric",
@@ -69,8 +70,14 @@ PredEng.config <-
              err.msg <- NULL
              if(length(object@MOI)!=1 & object@average.months) {
                err.msg <- c(err.msg,
-                            "Dates are currently not handled correctly when averaging over months")
+                            "Unsupported funcionality. Dates are currently not handled correctly when averaging over months")
              }
+             # TODO:
+             #ALL elements in the object are also valid
+             # if(!all(purrr::map_lgl(object, validObject))) {
+             #   {msg <- c(msg,"Components must be valid objects themselves (validObject == TRUE)")}
+             # }
+             
              if(length(err.msg)==0) return(TRUE) else err.msg
            })
 
@@ -124,7 +131,7 @@ setMethod("show","PredEng.config", function(object) {
     obj <- slot(ob,slt)
     if(class(obj) %in% c("logical","formula","character",
                          "numeric","Extent","integer","list",
-                         "data.source")) {
+                         "PElst","data.source")) {
       cat(sprintf("%-20s : ",slt))
     } else {return(NULL)}
     if(is(obj,"formula")) {

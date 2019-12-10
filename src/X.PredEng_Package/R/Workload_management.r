@@ -19,7 +19,8 @@ partition.workload <- function(obj,
   #Get the list of all valid data types and chunks
   obj.srcs <- 
     tibble(src.type=c("Decadal","NMME","Observations","CMIP5")) %>%
-    mutate(src=map(src.type,~slot(.x,object=obj)),
+    mutate(src=map(src.type,~ slot(.x,object=obj)),
+           src=map(src, ~ if(is(.x,"PElst")) {.x@.Data} else {.x}),
            n.objs=map_int(src,length),
            src=map2(src,n.objs,~ if(.y<=1) {list(.x)} else {.x})) %>%
     filter(n.objs!=0)%>%

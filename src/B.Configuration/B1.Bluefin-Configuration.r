@@ -67,7 +67,7 @@ pcfg@global.ROI <- extent(-70,30,50,80)
 pcfg@global.res  <- 0.5
 
 #Polygons
-sp.objs <- list()
+sp.objs <- PElst()
 sp.objs$irminger.sea <- spatial.domain("Irminger.Sea",
                                      as.SpatialPolygons.matrix(rbind(c(-45,58),c(-45,66),
                                                    c(-20,66),c(-32,58))))
@@ -80,8 +80,7 @@ sp.objs$no.coast <- spatial.domain("Norwegian.Coast",
                                                                                 c(12,73))))
 sp.objs$s.iceland <- spatial.domain("South.of.Iceland",extent(-50,-10,54,70))
 
-#Correct names and add to object
-names(sp.objs) <- sapply(sp.objs,slot,"name")
+#Add to object
 pcfg@spatial.domains <- sp.objs
 
 
@@ -99,14 +98,15 @@ extr$spatial.forecasts <- as.Date("2019-08-15")
 # coordinates(pt) <- ~ lon +lat
 # extr$spacetime.extraction <- pt
 
-pcfg@extraction <- extr
+#pcfg@extraction <- extr
 
 #'========================================================================
 # Statistics ####
 #'========================================================================
 #Configure stats
-stat.l <- list()
-stat.l[[1]] <- threshold(name="11 degree threshold - realmeans",
+stat.l <- PElst()
+stat.l[[1]] <- threshold(name="threshold.realmeans",
+                         desc="11 degree threshold - realmeans",
                          threshold=11,
                          above=TRUE,
                          use.full.field = TRUE,
@@ -114,12 +114,11 @@ stat.l[[1]] <- threshold(name="11 degree threshold - realmeans",
 
 stat.l[[2]] <- new("threshold",
                    stat.l[[1]],
-                   name="11 degree threshold - realisations",
+                   name="threshold.reals",
+                   desc="11 degree threshold - realisations",
                    use.realmeans=FALSE)
 
-
 #Merge it all in
-names(stat.l) <- sapply(stat.l,slot,"name")
 pcfg@statistics <- stat.l
 
 #'========================================================================
