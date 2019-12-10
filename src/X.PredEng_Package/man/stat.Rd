@@ -5,7 +5,7 @@
 \alias{stat}
 \title{Statistics class}
 \arguments{
-\item{name}{Name of the statistics class. Cannot contain spaces (use underscore) or dots. Must be less than 20 char}
+\item{name}{Name of the statistics class. Cannot contain spaces, underscores or dots. Must be less than 20 char}
 
 \item{desc}{Description of the statistics class.}
 
