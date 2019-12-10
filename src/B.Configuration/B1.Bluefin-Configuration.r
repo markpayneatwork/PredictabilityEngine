@@ -68,17 +68,17 @@ pcfg@global.res  <- 0.5
 
 #Polygons
 sp.objs <- PElst()
-sp.objs$irminger.sea <- spatial.domain("Irminger.Sea",
+sp.objs$irminger.sea <- spatial.domain("Irminger_Sea",
                                      as.SpatialPolygons.matrix(rbind(c(-45,58),c(-45,66),
                                                    c(-20,66),c(-32,58))))
-sp.objs$iceland.basin <- spatial.domain("Iceland.Basin",
+sp.objs$iceland.basin <- spatial.domain("Iceland_Basin",
                                       as.SpatialPolygons.matrix(rbind(c(-20,66),c(-32,58),
                                                     c(-15,58),c(-15,66))))
-sp.objs$no.coast <- spatial.domain("Norwegian.Coast",
+sp.objs$no.coast <- spatial.domain("Norwegian_Coast",
                                         as.SpatialPolygons.matrix(rbind(c(-5,62),c(10,62),
                                                                                 c(20,70),c(20,73),
                                                                                 c(12,73))))
-sp.objs$s.iceland <- spatial.domain("South.of.Iceland",extent(-50,-10,54,70))
+sp.objs$s.iceland <- spatial.domain("South_of_Iceland",extent(-50,-10,54,70))
 
 #Add to object
 pcfg@spatial.domains <- sp.objs
@@ -105,7 +105,7 @@ extr$spatial.forecasts <- as.Date("2019-08-15")
 #'========================================================================
 #Configure stats
 stat.l <- PElst()
-stat.l[[1]] <- threshold(name="threshold.realmeans",
+stat.l[[1]] <- threshold(name="threshold_realmeans",
                          desc="11 degree threshold - realmeans",
                          threshold=11,
                          above=TRUE,
@@ -114,7 +114,7 @@ stat.l[[1]] <- threshold(name="threshold.realmeans",
 
 stat.l[[2]] <- new("threshold",
                    stat.l[[1]],
-                   name="threshold.reals",
+                   name="threshold_reals",
                    desc="11 degree threshold - realisations",
                    use.realmeans=FALSE)
 

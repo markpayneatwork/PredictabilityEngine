@@ -139,7 +139,7 @@ NorCPM.fnames <-
   extract(realization,c("realization","initialization","other"),"^(r[[:digit:]]+)(i[[:digit:]]+)(.+)$")
 
 NorCPM.SST.src.i1 <- 
-  data.source(name="NorCPM.i1",
+  data.source(name="NorCPM_i1",
               var="tos",
               type="Decadal",
               sources=list(filter(NorCPM.fnames,
@@ -156,7 +156,7 @@ NorCPM.SST.src.i1 <-
 NorCPM.SST.src.i2 <- 
   new("data.source",
       NorCPM.SST.src.i1,
-      name="NorCPM.i2",
+      name="NorCPM_i2",
       sources=list(filter(NorCPM.fnames,
                           field=="tos",
                           initialization=="i2")$path)) %>%
@@ -165,7 +165,7 @@ NorCPM.SST.src.i2 <-
 SST.Decadal <- c(SST.Decadal,NorCPM.SST.src.i1,NorCPM.SST.src.i2)
 
 #Set list names and ids
-SST.Decadal.production <- SST.Decadal[c("CESM-DPLE","MPI-ESM-LR","NorCPM.i1","NorCPM.i2")]
+SST.Decadal.production <- SST.Decadal[c("CESM-DPLE","MPI-ESM-LR","NorCPM_i1","NorCPM_i2")]
 
 #'========================================================================
 # Salinity data sources ####
@@ -222,7 +222,7 @@ NorCPM.sal.src.i1 <-
   new("data.source",
       var="so",
       NorCPM.SST.src.i1,
-      name="NorCPM.i1",
+      name="NorCPM_i1",
       layermids.fn = function(f) {
         ncid <- nc_open(f)
         layer.mids <- ncid$dim$lev$vals #[m]
@@ -237,7 +237,7 @@ NorCPM.sal.src.i1 <-
 NorCPM.sal.src.i2 <- 
   new("data.source",
       NorCPM.sal.src.i1,
-      name="NorCPM.i2",
+      name="NorCPM_i2",
       sources=list(filter(NorCPM.fnames,
                           field=="so",
                           grid=="gr",

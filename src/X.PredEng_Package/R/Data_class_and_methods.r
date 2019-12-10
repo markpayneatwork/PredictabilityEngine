@@ -53,6 +53,10 @@ data.source <-
                           start.date=function(x) { stop("Start.date function not specified")}),
            validity = function(object) {
              err.msg <- NULL
+             if(grepl(" ",object@name)) {
+               err.msg <- c(err.msg,"Object name must not contain spaces.")}
+             if(grepl("\\.",object@name)) {
+               err.msg <- c(err.msg,"Object name must not contain full stops.")}
              #Check names on sources
              src.names <- names(object@sources)
              if(length(unique(src.names))!=length(object@sources) & length(src.names)>1)

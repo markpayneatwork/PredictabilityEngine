@@ -2,8 +2,8 @@
 
 #' Statistics class
 #'
-#' @param name Name of the statistics class. Cannot contain spaces. Must be less than 20 char
-#' @param desc Description of the statistics class. Spaces, long names fine
+#' @param name Name of the statistics class. Cannot contain spaces (use underscore) or dots. Must be less than 20 char
+#' @param desc Description of the statistics class. 
 #' @param use.realmeans Indicates whether to use the mean of the individ realisations or
 #' the realisation values themselves. This slot essentially acts as a flag telling
 #' the script whether it wants 2D (lat-lon) or 3D (lat-lon-realization) data.
@@ -34,6 +34,8 @@ stat <-
              err.msg <- NULL
              if(grepl(" ",object@name)) {
                err.msg <- c(err.msg,"Object name must not contain spaces.")}
+             if(grepl("\\.",object@name)) {
+               err.msg <- c(err.msg,"Object name must not contain full stops.")}
              if(nchar(object@name)>20) {
                err.msg <- 
                  c(err.msg,
