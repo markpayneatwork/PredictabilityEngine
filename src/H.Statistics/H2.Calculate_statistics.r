@@ -18,13 +18,12 @@
 # To do:
 #
 # Notes:
-# *  We choose to parallelise over datasources, rather than over statistics,
-#    which would be an alternative structure. The logic behind this is that
-#    not all data sets are available on one machine at the same time, due to
-#    storage and practical limitations - however, we can always apply the
-#    statistics (I hope). Thus, it makes more sense to parallelise over datasources
-#    and then loop over statistics.
-#
+# *  This version represents a significant departure from previous strategies.
+#    The looping is now fully configurable - we are looping over "statistic atoms",
+#    the basic indivisible unit of this analysis, consisting of the combination of
+#    a datasrc, a stat and a spatial area. One atom gives one output file, but there
+#    may be multiple atoms processed at a time. We can consider chunking in a future
+#    implementaton if required.
 #'========================================================================
 
 #'========================================================================
@@ -49,7 +48,7 @@ pcfg <- readRDS(PE.cfg$config.path)
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.no <- 1
+  cfg.no <- 2
   debug.mode <- TRUE
   set.cdo.defaults("--silent --no_warnings")
   set.log_msg.silent()
@@ -62,108 +61,60 @@ if(interactive()) {
   set.debug.level(0)  #0 complete fresh run
 }
 
-#'========================================================================
-# Divide work ####
-#'========================================================================
-#Retrieve configurations
-cfg.fname <- file.path(PE.cfg$dirs$job.cfg,"Stats.cfg")
-these.cfgs <- get.cfgs(cfg.fname)
-this.cfg <- these.cfgs[cfg.no,]
-this.src <- configure.src(cfg.fname,cfg.no,pcfg)
-this.sp <- configure.sp(cfg.fname,cfg.no,pcfg)
-config.summary(pcfg, this.src,this.sp)
-
-if(this.src@type=="Persistence" & !pcfg@average.months & length(pcfg@MOI) >1 &
-   any(!purrr::map_lgl(pcfg@statistics,slot,"use.full.field"))){
-  stop("Don't know how to handle a persistence forecast for full
-       field statistics in presence of multiple months")
-}
-
-if(!is.na(this.cfg$sp)) {
-  stop("This code hasn't been checked recently using subdomain focused analyses. Check it before proceeding")
-}
 
 #'========================================================================
 # Setup ####
 #'========================================================================
+#Retrieve configurations
+stats.cfg <- readRDS(file.path(PE.cfg$dirs$job.cfg,"Stats.rds"))
+these.cfgs <- 
+  filter(stats.cfg,cfg.id==cfg.no) %>%
+  unnest(data)
+stopifnot(nrow(these.cfgs)!=0)
+
 #Directory setup
-base.dir <-  get.subdomain.dir(pcfg,this.sp) 
+base.dir <-  pcfg@scratch.dir
 obs.dir <- file.path(base.dir,pcfg@Observations@type,pcfg@Observations@name)
 stat.dir <- define_dir(base.dir,PE.cfg$dirs$statistics)
 
 #Setup observational climatology
 clim.meta <- readRDS(file.path(obs.dir,PE.cfg$files$Obs.climatology.metadata))
-obs.clim.l <- lapply(clim.meta$fname,brick)
+obs.clim.l <- purrr::map(clim.meta$fname,brick)
 names(obs.clim.l) <- sprintf("%02i",month(clim.meta$date))
 
 #Setup landmask 
 landmask <- raster(file.path(base.dir,PE.cfg$files$regridded.landmask))
 
-#Result storage
-sum.stats.l <- list()
-
-#'========================================================================
-# Setup metadata ####
-#'========================================================================
-#Load metadata
-#Remember that the metadata is preselected at the workload partitioning stage
-if(file.exists(this.cfg$metadat.path)) {
-  # metadat.varname <- load(metadat.path)
-  # metadat <- get(metadat.varname)    
-  metadat.all <-readRDS(this.cfg$metadat.path)
-  
-} else {#Fail gracefully
-  log_msg(sprintf("Error:Cannot find file %s.",this.cfg$metadat.path))
-  stop()
+#Check on configs
+if(any(these.cfgs$src.type=="Persistence") & !pcfg@average.months & length(pcfg@MOI) >1 &
+   any(!purrr::map_lgl(pcfg@statistics,slot,"use.full.field"))){
+  stop("Don't know how to handle a persistence forecast for full
+       field statistics in presence of multiple months")
 }
 
-#Partition the whole metadata into chunks
-#Note that we make these into equally sized chunks based on the number of
-#files - this a little bit different to how the original division was performed
-#(i.e. based on file size)
-metadat <- 
-  metadat.all %>%
-  mutate(chunk.idx=ceiling(seq(nrow(.))/nrow(.)*this.cfg$n.chunks)) %>%
-  filter(chunk.idx == this.cfg$chunk.idx)
+#'========================================================================
+# Calculation of statistics ####
+#'========================================================================
+# Loop over configurations  ------------------------------------------------------------
+for(j in seq(nrow(these.cfgs))) {
+  
+  #Extract elements based on configuration
+  this.cfg <- these.cfgs[j,]
+  this.stat <- pcfg@statistics[[this.cfg$stat.name]]
+  this.sp <- pcfg@spatial.domains[[this.cfg$sp.name]]
+  this.src <- data.source(name=this.cfg$src.name,type=this.cfg$src.type) #Doesn't carry much useful info anyway
 
-#'========================================================================
-# Setup spatial subdomains / statistics ####
-#'========================================================================
-#The statistics can inform the spatial domain that we need to apply - 
-# particularly for statistics that work with  fields, instead of singular
-#values, we want to process the entire global domain, rather than just a single
-#local spatial domain. Hence, we need to ensure that there is a match between
-#these two aspects
-sp.stat.all <- 
-  expand.grid(sp=c(global.ROI(pcfg),
-                   pcfg@spatial.subdomains),
-              stat=pcfg@statistics) %>%
-  as_tibble() %>%
-  mutate(sp.name=map_chr(sp,slot,"name"),
-         is.global.sp=sp.name==PE.cfg$misc$global.sp.name,
-         stat.name=map_chr(stat,slot,"name"),
-         use.realmeans=map_lgl(stat,slot,"use.realmeans"),
-         use.stat.globally=map_lgl(stat,slot,"use.globally"))
+  #Load metadata
+  #Remember that the metadata is preselected at the workload partitioning stage
+  if(file.exists(this.cfg$metadat.path)) {
+    metadat <-readRDS(this.cfg$metadat.path)
+  } else {#Fail gracefully
+    log_msg(sprintf("Error:Cannot find file %s.",this.cfg$metadat.path))
+    stop()
+  }
 
-#Now restrict, by ensuring that there is agreement between the stats to be 
-#calculated and the spatial subdomain
-#Also need agreement between the metadata being loaded in this configuration
-#and the distinction between realisations/realmeans
-sp.stat.sel <-
-  sp.stat.all %>%
-  filter(is.global.sp==use.stat.globally,
-         use.realmeans==this.cfg$use.realmeans)
-
-#'========================================================================
-# Apply statistics ####
-#'========================================================================
-# Loop over statistics ------------------------------------------------------------
-res.l <- vector("list",nrow(sp.stat.sel))
-for(j in seq(nrow(sp.stat.sel))) {
-  this.stat <- pull(sp.stat.sel,stat)[[j]]
-  this.sp <- pull(sp.stat.sel,sp)[[j]]
-  log_msg("Processing '%s' statistic for '%s' subdomain...\n",
-          this.stat@name,this.sp@name)
+  log_msg("Processing '%s' statistic for '%s' subdomain, from '%s-%s' dataset...\n",
+          this.stat@name,this.sp@name,this.src@type,this.src@name)
   
   
   #Configure the observation climatology
@@ -185,7 +136,7 @@ for(j in seq(nrow(sp.stat.sel))) {
   #Setup for looping
   file.res.l<- vector("list",nrow(metadat))
   pb <- progress_estimated(nrow(metadat))
-  
+
   #Then loop over files
   for(i in seq(nrow(metadat))) {
     pb$tick()$print()
@@ -200,9 +151,8 @@ for(j in seq(nrow(sp.stat.sel))) {
     #brick, which is the way God intended. 
     #20190811 Or maybe not... Maybe a solution is to convert it to a raster, if it only has one
     #layer
-    #20191101 Appears to be working now with Raster 2.9.23
     mdl.anom <- brick(f)  
-   # if(nlayers(mdl.anom)==1) mdl.anom <- mdl.anom[[1]]
+    if(nlayers(mdl.anom)==1) mdl.anom <- mdl.anom[[1]]
     
     #Choose whether we use full fields or anomalies
     if(this.stat@use.full.field) {      #Calculate the full field by adding in the appropriate climatology
@@ -233,12 +183,8 @@ for(j in seq(nrow(sp.stat.sel))) {
     #Realisations are only an issue when using them explicitly - otherwise we are
     #working from ensemble means, realisation means or observations => realization = NA
     #2019.11.01 Not sure we actually need the labels at all
-    if(this.cfg$use.realmeans) {
-      res$realization <- NA
-    } else {
-      res$realization <- 1:nlayers(masked.dat)
-    }
-    
+    res$realization <- 1:nlayers(masked.dat)
+
     #Add in the metadata and store the results
     #Doing the bind diretly like this is ok when we are dealing with
     #rasterLayer fragments, but we will need to be caseful when dealing with 
@@ -252,26 +198,20 @@ for(j in seq(nrow(sp.stat.sel))) {
   print(pb$stop())
   log_msg("\n")
   
-  #Combine results with metadata
-  
-  
   #Tidy up results a bit more
-  res.l[[j]] <- 
+  res.out <- 
     bind_rows(file.res.l) %>% 
     as_tibble() %>%
     add_column(sp.subdomain=this.sp@name,
                stat.name=this.stat@name,
                .before=1) %>%
-    dplyr::select(-which.clim,-chunk.idx)
-  
-}
+    dplyr::select(-which.clim) %>%
+    unnest(res)
 
-#Store results
-res.out <- 
-  bind_rows(res.l) %>%
-  unnest(res) 
+  #Store results
+  saveRDS(res.out,file=file.path(stat.dir,this.cfg$res.fname))
+} #/end loop over configs
 
-saveRDS(res.out,file=file.path(stat.dir,sprintf("Stats_chunk_%04i.rds",this.cfg$cfg.id)))
 
 
 #'========================================================================

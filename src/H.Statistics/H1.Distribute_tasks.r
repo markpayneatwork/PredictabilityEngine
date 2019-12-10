@@ -57,12 +57,11 @@ src.tb <-
 # For simplicity, lets call this a statistical atom. We define the partitioning
 # across these atoms as the basic, indivisible unit.
 
-#The statistics, in principle, determine the type of data that should be used
-# as an input (i.e. realmeans, realizations etc) and thereby the metadata that
-# we want to collate. They  can also inform the spatial domain that we are interested in
-#as well - particularly for statistics that work with  fields, instead of singular
-#values, we want to process the entire global domain, rather than just a single
-#local spatial domain. Hence, we need to select the spatial statistics accordingly.
+# The statistics can inform the spatial domain that we need to apply -
+# particularly for statistics that work with  fields, instead of singular
+# values, we want to process the entire global domain, rather than just a single
+# local spatial domain. Hence, we need to ensure that there is a match between
+# these two aspects. We therefore extract the metadata for the stats
 stats.tb <- tibble(stat.name=map_chr(pcfg@statistics ,slot,name="name"),
                    stat.use.globally=map_lgl(pcfg@statistics,slot,name="use.globally"),
                    stat.obj=pcfg@statistics,
@@ -76,7 +75,12 @@ sp.tb <- tibble(sp.obj=c(global.ROI(pcfg),pcfg@spatial.domains),
                 sp.is.global=sp.name==PE.cfg$misc$global.sp.name,
                 sp.id=seq(sp.obj))
 
-#Merge everything into one large overview table of what needs to be done
+# Merge everything into one large overview table of what needs to be done
+# We then restrict the full set of cominbations, by ensuring that there is
+# agreement between the stats to be calculated and the spatial subdomain
+# Also need agreement between the metadata being loaded in this configuration
+# and the distinction between realisations/realmeans
+
 todo.tbl <- 
   expand.grid(src.id=src.tb$src.id,
               sp.id=sp.tb$sp.id,
@@ -91,24 +95,38 @@ todo.tbl <-
   filter(!(src.name==PE.cfg$files$ensmean.name & !stat.uses.realmeans)) %>%
   #  - field statistics using local domains
   filter(sp.is.global==stat.use.globally) %>%
+  #Select metadata source - this is determined by the configurationof the stat
+  mutate(metadat.fname=ifelse(stat.uses.realmeans,PE.cfg$files$realmean.meta,PE.cfg$files$anom.meta),
+         metadat.path=file.path(pcfg@scratch.dir,src.type,src.name,metadat.fname)) %>%
   #Create output file name (one file per atom)
-  mutate(stat.fname=sprintf("%s_%s_%s_%s.rds",src.type,src.name,sp.name,stat.name))
+  mutate(res.fname=sprintf("%s_%s_%s_%s.rds",src.type,src.name,sp.name,stat.name)) %>%
+  #Simplify
+  select(src.id,sp.id,stat.id,src.type,src.name,stat.name,sp.name,metadat.path,res.fname)
 
 #Now use nesting trick to keep the total number of jobs under 1024, which is
 #the maximum number of items that a job array can handle in LSB
 max.jobs <- 1024
-if(nrow(todo.tbl)>max.jobs) {
-  #Nest first the stats
-  do.this <- nest(todo.tbl,-src.id,-sp.id,.key="nested")
-  if(nrow(do.this)> max.jobs) {
-    #Still too big, so nest the stats and sp
-    do.this <- nest(todo.tbl,-src.id,.key="nested")
-  }
+#Nest in all different permutations, then choose the largest version under max.jobs
+#TODO: An alternative approach here could be based on the processing size. But I'm
+#not sure that it would help
+nests.l <- list(nest(todo.tbl,-src.id),
+                nest(todo.tbl,-sp.id),
+                nest(todo.tbl,-stat.id),
+                nest(todo.tbl,-src.id,-sp.id),
+                nest(todo.tbl,-src.id,-stat.id),
+                nest(todo.tbl,-stat.id,-sp.id),
+                nest(todo.tbl,-src.id,-sp.id,-stat.id))
+nest.sizes <- 
+  purrr::map_dbl(nests.l,nrow) %>%
+  ifelse(.>max.jobs,NA,.)
+
+if(all(is.na(nest.sizes))) {
+  stop("No solution to nesting problem.")
 } else {
-  do.this <- todo.tbl
+  do.this <- nests.l[[which.max(nest.sizes)]]
+  
 }
 
-if(nrow(do.this)>max.jobs) stop("Unable to nest todo list sufficiently.")
 do.this$cfg.id <- seq(nrow(do.this))
 
 #'========================================================================
