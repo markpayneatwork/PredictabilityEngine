@@ -57,6 +57,20 @@ setMethod("[", signature(x="PElst",i="numeric"),
             x@.Data <- x@.Data[i]
             return(x)})
 
+#' @export
+setMethod("[[", signature(x="PElst",i="character"),
+          function(x, i){
+            lst <- x@.Data
+            names(lst) <- purrr::map_chr(x@.Data,slot,"name")
+            lst <- lst[[i]]
+            names(lst) <- NULL
+            return(lst)})
+
+#' @export
+setMethod("[[", signature(x="PElst",i="numeric"),
+          function(x, i){
+            return(x@.Data[[i]])})
+
 
 setGeneric("PElst",function(x,...) standardGeneric("PElst"))
 
