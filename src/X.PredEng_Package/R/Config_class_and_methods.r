@@ -10,7 +10,6 @@
 #' @slot spatial.domains List of spatial.config objects defining the spatial domains over which 
 #' to operate
 #' @slot statistics PredEng.list of statistics to apply over each spatial area
-#' @slot stat.jobs Integer. Number of job array elements to use in processing statistics
 #' @slot extraction PredEng.list definining temporal and spatial extraction characteristics
 #' @slot MOI The months of interest (a vector of integers between 1 and 12 inclusive)
 #' @slot vert.range The vertical range, in m, over which to average. NULL indicates no vertical averaging
@@ -51,7 +50,6 @@ PredEng.config <-
                       persistence.leads="numeric",
                       spatial.domains="list",
                       statistics="list",
-                      stat.jobs="numeric",
                       extraction="list",
                       global.ROI="Extent",
                       global.res="numeric",
@@ -66,8 +64,7 @@ PredEng.config <-
            prototype = list(global.ROI=extent(as.numeric(rep(NA,4))),
                             persistence.leads=1:120,  #1-10 years
                             recalculate=TRUE,
-                            retain.realizations=TRUE,
-                            stat.jobs=50),
+                            retain.realizations=TRUE),
            validity = function(object) {
              err.msg <- NULL
              if(length(object@MOI)!=1 & object@average.months) {

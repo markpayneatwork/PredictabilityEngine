@@ -42,8 +42,6 @@ to operate}
 
 \item{\code{statistics}}{PredEng.list of statistics to apply over each spatial area}
 
-\item{\code{stat.jobs}}{Integer. Number of job array elements to use in processing statistics}
-
 \item{\code{extraction}}{PredEng.list definining temporal and spatial extraction characteristics}
 
 \item{\code{MOI}}{The months of interest (a vector of integers between 1 and 12 inclusive)}
