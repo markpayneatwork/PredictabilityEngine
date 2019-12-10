@@ -82,7 +82,7 @@ work.dir <- tempdir()
 misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
 mon.clim.dir <- define_dir(base.dir,"A.monthly_climatologies")
 mon.anom.dir <- define_dir(base.dir,"B.monthly_anom")
-analysis.grid.fname <- file.path(base.dir,PE.cfg$files$analysis.grid)
+analysis.grid.fname <- file.path(pcfg@scratch.dir,PE.cfg$files$analysis.grid)
 
 #/*======================================================================*/
 #'## Extract HadISST data
