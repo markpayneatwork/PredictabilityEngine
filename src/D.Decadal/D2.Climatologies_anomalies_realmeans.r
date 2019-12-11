@@ -77,7 +77,7 @@ lead.clim.dir <- define_dir(base.dir,"5.lead.clims")
 anom.dir <- define_dir(base.dir,"A.anom")
 realmean.dir <- define_dir(base.dir,"B.realmean")
 misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
-analysis.grid.fname <- file.path(base.dir,PE.cfg$files$analysis.grid)
+analysis.grid.fname <- file.path(pcfg@scratch.dir,PE.cfg$files$analysis.grid)
 
 #'========================================================================
 # Setup ####

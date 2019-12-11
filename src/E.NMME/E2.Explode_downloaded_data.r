@@ -83,7 +83,7 @@ data.dir <- file.path(PE.cfg$dirs$datasrc,"NMME",this.src@name)
 fragstack.dir <- define_dir(base.dir,"1.fragstacks")
 misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
 
-analysis.grid.fname <- file.path(base.dir,PE.cfg$files$analysis.grid)
+analysis.grid.fname <- file.path(pcfg@scratch.dir,PE.cfg$files$analysis.grid)
 
 #Display configuration
 config.summary(pcfg,cfg.no,this.src,this.sp)

@@ -32,12 +32,12 @@ validObject(pcfg)
 #Write output files 
 log_msg("Writing output files...\n")
 
-base.dir <- define_dir(pcfg@scratch.dir)
+define_dir(pcfg@scratch.dir)
 
 log_msg("Writing Global Outputs...\n")
 #Write CDO grid descriptors
 this.ROI <- extend(pcfg@global.ROI,PE.cfg$misc$ROI.extraction.buffer)
-analysis.grid.fname <- file.path(base.dir,PE.cfg$files$analysis.grid)
+analysis.grid.fname <- file.path(pcfg@scratch.dir,PE.cfg$files$analysis.grid)
 griddes.txt <- griddes(this.ROI,res=pcfg@global.res)
 writeLines(griddes.txt,analysis.grid.fname)
 

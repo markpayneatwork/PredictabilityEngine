@@ -78,6 +78,7 @@ extract.dir <- define_dir(base.dir,"1.extracted")
 mon.clim.dir <- define_dir(base.dir,"A.monthly_climatologies")
 mon.anom.dir <- define_dir(base.dir,"B.monthly_anom")
 misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
+analysis.grid.fname <- file.path(pcfg@scratch.dir,PE.cfg$files$analysis.grid)
 
 tmp.dir <- tempdir()
 # misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
@@ -136,7 +137,7 @@ for(j in seq(nrow(meta.db))) {
                        this.meta$vertmean.fname)
     
     #Do the spatial remapping and extraction
-    remap.cmd <- cdo(csl("remapbil", file.path(base.dir,PE.cfg$files$analysis.grid)),
+    remap.cmd <- cdo(csl("remapbil", analysis.grid.fname),
                         this.meta$vertmean.fname, 
                         this.meta$extract.fname)
   #Tidy up

@@ -75,7 +75,7 @@ fragstack.dir <- define_dir(base.dir,"1.fragstacks")
 lead.clim.dir <- define_dir(base.dir,"2.lead.clims")
 anom.dir <- define_dir(base.dir,"A.anoms")
 realmean.dir <- define_dir(base.dir,"B.realmean")
-analysis.grid.fname <- file.path(base.dir,PE.cfg$files$analysis.grid)
+analysis.grid.fname <- file.path(pcfg@scratch.dir,PE.cfg$files$analysis.grid)
 remapping.wts.fname <- file.path(base.dir,PE.cfg$files$remapping.wts)
 
 config.summary(pcfg,cfg.no,this.src,this.sp)
