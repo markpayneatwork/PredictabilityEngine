@@ -61,7 +61,7 @@ default: help status
 #-------------------------------------
 #Types
 
-$(filter-out Stats PPStats, $(TYPES)):
+$(filter-out PPStats, $(TYPES)):
 	make cluster TYPE=$@
 
 cluster:  todo $(OKs)
@@ -70,10 +70,6 @@ cluster:  todo $(OKs)
 	
 $(OUTDIR)/%.ok: 
 	@echo $* >> $(TODO)
-
-Stats:	
-	@/appl/R/bin/Rscript-3.5.2-sl73 src/H.Statistics/H0.Collate_metadata.r
-	make cluster TYPE=$@
 
 PPStats:
 	@touch $(CFG_DIR)/$@.cfg
@@ -94,7 +90,7 @@ configuration.name:
 	@echo " configuration"
 
 %.status: $(CFG_DIR)/%.cfg
-	@echo `printf "%-50s" "$*"`  : `ls $(CFG_DIR)/$*/ | wc -l` out of `grep -c "^[0-9]\+," $<` jobs
+	@echo `printf "%-50s" "$*"`  : `ls $(CFG_DIR)/$*/ | wc -l` out of `grep -c "^[0-9]\+" $<` jobs
 
 setup: FORCE
 	-mkdir $(TYPE_DIRS)
@@ -139,6 +135,9 @@ vars:
 	@echo $(TYPES)
 	@echo $(addsuffix .status,$(TYPES))
 	@echo WAIT: $(WAIT_CMD)
+	@echo JOB LIST: $(JOB_LIST)
+	@echo TODO: $(TODO)
+	@echo OKs: $(OKs)
 
 #Targets
 help:

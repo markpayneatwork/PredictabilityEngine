@@ -1,1 +1,1 @@
-Rscript ./src/H.Statistics/H1.Calculate_statistics.r
+Rscript ./src/H.Statistics/H2.Calculate_statistics.r
