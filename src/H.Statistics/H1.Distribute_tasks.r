@@ -103,9 +103,11 @@ todo.tbl <-
   #Simplify
   select(src.id,sp.id,stat.id,src.type,src.name,stat.name,sp.name,metadat.path,res.fname)
 
-#Now use nesting trick to keep the total number of jobs under 1024, which is
-#the maximum number of items that a job array can handle in LSB
-max.jobs <- 1024
+#Now use nesting trick to keep the total number of jobs at a suitable level.
+#LSB can accept up 1024 jobs, but the specification should be maximum of 255 characters - 
+#this corresponds to a string 1,2,3,4,5...,88 i.e. Maximum of 88 jobs. We could do
+#something about this, but 88 is anyway not so bad.
+max.jobs <- 88
 #Nest in all different permutations, then choose the largest version under max.jobs
 #TODO: An alternative approach here could be based on the processing size. But I'm
 #not sure that it would help
