@@ -59,11 +59,10 @@ pcfg@global.res  <- 0.5
 pcfg@vert.range <- c(250,600)
 
 #Polygons
-sp.objs <- list()
+sp.objs <- PElst()
 sp.objs$spawing.area <- spatial.domain("ROI",extent(-20,-5,50,60))
 
 #Correct names and add to object
-names(sp.objs) <- sapply(sp.objs,slot,"name")
 pcfg@spatial.domains <- sp.objs
 
 #'========================================================================
@@ -82,8 +81,9 @@ pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="so")
 # Statistics ####
 #'========================================================================
 #Configure stats
-stat.l <- list()
-stat.l[[1]]  <- spatial.mean(name="Mean Salinity",
+stat.l <- PElst()
+stat.l[[1]]  <- spatial.mean(name="Mean-salinity",
+                             desc="Mean salinity",
                              use.full.field=TRUE)
 
 #Setup Miesner & Payne habitat model
@@ -128,14 +128,16 @@ GAM.sdm.fn <- function(dat,resources) {
   PA <- brick(res.l)
   return(PA)
 }
-stat.l[[2]] <- habitat(name="SDM_realmean",
+stat.l[[2]] <- habitat(name="SDMrealmean",
+                       desc="SDM based on realisation means",
                        fn=GAM.sdm.fn,
                        resources=GAM.sdm.resources,
                        skill.metrics = "correlation",
                        use.full.field = TRUE,
                        use.realmeans=TRUE)
 
-stat.l[[3]] <- habitat(name="SDM_realisations",
+stat.l[[3]] <- habitat(name="SDMreals",
+                       desc="SDM based on individual realisations",
                        fn=GAM.sdm.fn,
                        resources=GAM.sdm.resources,
                        skill.metrics = "correlation",
@@ -144,7 +146,6 @@ stat.l[[3]] <- habitat(name="SDM_realisations",
 
 
 #Merge it all in
-names(stat.l) <- sapply(stat.l,slot,"name")
 pcfg@statistics <- stat.l
 
 

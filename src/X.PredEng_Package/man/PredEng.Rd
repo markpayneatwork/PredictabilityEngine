@@ -3,7 +3,6 @@
 \docType{package}
 \name{PredEng}
 \alias{PredEng}
-\alias{PredEng-package}
 \title{PredEng: A package to support the Predictability Engine}
 \description{
 Tools, classes and methods to support the Predictability Engine

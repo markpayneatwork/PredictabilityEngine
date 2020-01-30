@@ -27,8 +27,6 @@ this is set to "Stats", work is partitioned over all relevant model data slots}
 \item{fname}{Filename (incluiding path) to read / write job configuration to/from}
 
 \item{cfg.idx}{Configuration index, indicating which job configration to extract}
-
-\item{cfg.idx}{Configuration index, indicating which job configration to extract}
 }
 \description{
 Manage job distribution

@@ -11,16 +11,22 @@ setClass("PElst",
            msg <- NULL
            #Duplicated names check
            if(any(duplicated(purrr::map(object@.Data,slot,"name")))) {
-             msg <- c(msg,"Names of objects in  must be unique.")} 
+             msg <- c(msg,"Names of objects must be unique.")} 
            #All elements of the same class
-           if(length(unique(purrr::map(object, is))) > 1)
-           {msg <- c(msg,"PElst elements must be of the same class")}
+           lst.classes <- purrr::map(object, is)
+           unique.classes <- unique(unlist(lst.classes))
+           all.in.common.class <- 
+             map_lgl(unique.classes,function(cls) {
+               all(map_lgl(object,is,cls))
+             })
+           if(!any(all.in.common.class) & length(object)!=0){
+             msg <- c(msg,"PElst elements must be of the same class")}
            # ALL elements in the list are validObjects themselves
            if(!all(purrr::map_lgl(object, validObject))) {
              {msg <- c(msg,"Components must be valid objects themselves (validObject == TRUE)")}
            }
            # Return
-           if(length(msg)==0) return(TRUE) else msg
+           if(length(msg)==0 ) return(TRUE) else return(msg)
          }
 ) # }}}
 
