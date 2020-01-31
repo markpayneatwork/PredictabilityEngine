@@ -58,7 +58,7 @@ log_msg("Creating pseudo metadata for %s...\n",this.sp@name)
 base.dir <- define_dir(pcfg@scratch.dir,"Persistence",pcfg@Observations@name)
 
 #Load the monthly anomaly data
-mon.anom.meta <- readRDS(file.path(base.dir,"Observations",pcfg@Observations@name,
+mon.anom.meta <- readRDS(file.path(pcfg@scratch.dir,"Observations",pcfg@Observations@name,
                                    PE.cfg$files$Obs.monthly.anom.metadata))
 
 #Some tweaks
