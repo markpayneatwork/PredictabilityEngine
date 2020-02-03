@@ -125,6 +125,7 @@ pred.consts <- data.frame(doy=105,sol.el=0)
 
 #Setup resource list
 GAM.sdm.resources <- list(model=readRDS("resources/BlueWhiting/BW_GAM_SDM.rds"),
+                          apply.threshold=TRUE,
                           pred.l=pred.l,
                           pred.consts=pred.consts)
 
@@ -138,27 +139,41 @@ GAM.sdm.fn <- function(dat,resources) {
     pred.dat <- brick(c(resources$pred.l,EN4.salinity=this.layer))
     p <- raster::predict(object=pred.dat,model=resources$model,fun=predict.gam,
                          const=resources$pred.consts, type="response")
-    res.l[[l]] <- p > resources$model$threshold
+    if(resources$apply.threshold) {
+      res.l[[l]] <- p > resources$model$threshold
+    } else {
+      res.l[[l]] <- p     }
   }
-  PA <- brick(res.l)
-  return(PA)
+  rtn <- brick(res.l)
+  return(rtn)
 }
-stat.l[["SDMrealmean"]] <- habitat(name="SDMrealmean",
-                       desc="SDM based on realisation means",
-                       fn=GAM.sdm.fn,
-                       resources=GAM.sdm.resources,
-                       skill.metrics = "correlation",
-                       use.full.field = TRUE,
-                       use.realmeans=TRUE)
 
-stat.l[["SDMreals"]] <- habitat(name="SDMreals",
-                       desc="SDM based on individual realisations",
+stat.l[["SDM-PA-realmean"]] <- habitat(name="SDM-PA-realmean",
+                                    desc="SDM based on realisation means predicting PA",
+                                    fn=GAM.sdm.fn,
+                                    resources=GAM.sdm.resources,
+                                    skill.metrics = "correlation",
+                                    use.full.field = TRUE,
+                                    use.realmeans=TRUE)
+
+stat.l[["SDM-PA-reals"]] <- habitat(name="SDM-PA-reals",
+                       desc="SDM based on individual realisations, PA",
                        fn=GAM.sdm.fn,
                        resources=GAM.sdm.resources,
                        skill.metrics = "correlation",
                        use.full.field = TRUE,
                        use.realmeans = FALSE)
 
+#Add a stat that returns the probability as well
+GAM.sdm.resources$apply.threshold <- FALSE
+
+stat.l[["SDM-Prob-realmean"]] <- habitat(name="SDM-prob-realmean",
+                                     desc="SDM based on realisation means predicting probability",
+                                     fn=GAM.sdm.fn,
+                                     resources=GAM.sdm.resources,
+                                     skill.metrics = "correlation",
+                                     use.full.field = TRUE,
+                                     use.realmeans=TRUE)
 
 #Merge it all in
 pcfg@statistics <- stat.l
