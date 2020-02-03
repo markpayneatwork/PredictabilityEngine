@@ -48,7 +48,7 @@ pcfg <- readRDS(PE.cfg$config.path)
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  cfg.no <- 2
+  cfg.no <- 24
   debug.mode <- TRUE
   set.cdo.defaults("--silent --no_warnings")
   set.log_msg.silent()
@@ -104,6 +104,11 @@ for(j in seq(nrow(these.cfgs))) {
   this.stat <- pcfg@statistics[[this.cfg$stat.name]]
   this.sp <- pcfg@spatial.domains[[this.cfg$sp.name]]
   this.src <- data.source(name=this.cfg$src.name,type=this.cfg$src.type) #Doesn't carry much useful info anyway
+  
+  #Catch global ROIs
+  if(is.null(this.sp)) { #Not found in spatial domains
+    this.sp <- global.ROI(pcfg)
+  }
 
   #Load metadata
   #Remember that the metadata is preselected at the workload partitioning stage
