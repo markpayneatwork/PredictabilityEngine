@@ -8,7 +8,7 @@
 #
 # Created Fri Jun  1 15:53:49 2018
 #
-# Collates statistics generated previously into a single metric. Note 
+# Collates statistics generated previously into a single file. Note 
 # that the collation takes place over two dimensions - firstly over the data
 # sources (e.g. NMME, Decadal, Observations) and then this needs to be 
 # repeated for for each spatial area.
@@ -30,50 +30,18 @@ cat(sprintf("\n%s\n","H2. Collate statistics"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Do house cleaning
-rm(list = ls(all.names=TRUE));  graphics.off();
-start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
+start.time <- proc.time()[3];
 
 #Helper functions, externals and libraries
 library(PredEng)
-library(tibble)
-library(dplyr)
-library(reshape2)
-library(lubridate)
+library(tidyverse)
 #library(udunits2)
 pcfg <- readRDS(PE.cfg$config.path)
 
 #'========================================================================
 # Configure ####
 #'========================================================================
-#Take input arguments, if any
-if(interactive()) {
-   #partition.collation <- TRUE
-  # cfg.no <- 2
-} else {
-  # #Taking inputs from the system environment
-  # partition.collation <- TRUE
-  # cfg.no <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
-  # if(cfg.no=="") stop("Cannot find LSB_JOBINDEX")
-}
-
-#Retrieve configurations
-#However, in some cases we will want to do the collation all in one step.
-#In other cases, we will want to partition it up into smaller bits
-#We make the distinction based on whether the script is being run
-#interactively or from a script
-# if(partition.collation){
-#   cfg.fname <- file.path(PE.cfg$dirs$job.cfg,"SumStat_Collate.cfg")
-#   this.cfgs <- get.cfgs(cfg.fname)
-#   this.sp <- configure.sp(cfg.fname,cfg.no,pcfg)
-#   sp.dirs <- this.sp@name
-#   config.summary(this.sp)
-# } else 
-  
-if(pcfg@use.global.ROI) {
-  sp.dirs <- ""
-} else {
-  sp.dirs <- names(pcfg@spatial.subdomains)
-}
+stat.cfg.fname <- file.path(pcfg@scratch.dir,PE.cfg$files$stats.configuration)
 
 #Directory setup
 base.dir <- pcfg@scratch.dir
@@ -83,26 +51,39 @@ out.dir <- define_dir(base.dir,PE.cfg$dirs$collated.stats)
 # Select input data ####
 #'========================================================================
 log_msg("Loading input data..\n")
-#Loop over subdomains them individually and import
+
+#Retrieve configurations
+stats.cfg <- 
+  readRDS(stat.cfg.fname) %>%
+  unnest(data) %>%
+  #Retain results files that exist
+  mutate(file.exists=file.exists(file.path(pcfg@scratch.dir,"Statistics",res.fname))) %>%
+  filter(file.exists)
+
+#Iterate over files
 stats.l <- list()
-for(sp.d in sp.dirs){
-  stats.fnames <- dir(file.path(base.dir,sp.d,PE.cfg$dirs$statistics),full.names = TRUE)
-  for(f in stats.fnames){
-    #Drop the field statistics though, to avoid things getting out of control size-wise
-    stats.l[[f]]   <- readRDS(f) %>%
-                      select(-field)
-  }
-  
+pb <- progress_estimated(nrow(stats.cfg))
+for(f in stats.cfg$res.fname){
+  #Load the data, but drop the field statistics, 
+  #to avoid things getting out of control size-wise
+  stat.fname <- file.path(pcfg@scratch.dir,"Statistics",f)
+  stats.l[[f]]   <- 
+    readRDS(stat.fname) %>%
+    select(-field)
+  pb$tick()$print()
 }
+Sys.sleep(0.1)
+pb$stop()
 
 #Merge into one big object and add meta information
-all.scalars <- bind_rows(stats.l) %>%
-               mutate(ym=sprintf("%i-%02i",year(date),month(date))) 
+all.scalars <- 
+  bind_rows(stats.l) %>%
+  mutate(ym=sprintf("%i-%02i",year(date),month(date))) 
 
 #'========================================================================
 # Persistence forecasts ####
 #'========================================================================
-log_msg("Setting up persistence forecasts...\n")
+log_msg("\nSetting up persistence forecasts...\n")
 #Extract persistence and observation data
 obs.stats <- subset(all.scalars,src.type=="Observations")
 persis.stats <- subset(all.scalars,src.type=="Persistence") %>%
@@ -115,7 +96,7 @@ forecast.dates <- filter(tibble(date=unique(obs.stats$date)),
 
 persis.forecast.grid <- 
   expand.grid(date=forecast.dates$date,
-              sp.subdomain=names(pcfg@spatial.subdomains),
+              sp.subdomain=names(pcfg@spatial.domains),
               lead=pcfg@persistence.leads) %>%
   as_tibble() %>%
   mutate(sp.subdomain=as.character(sp.subdomain),
@@ -134,57 +115,6 @@ persis.forecast.stats <-
 out.stats <- 
   filter(all.scalars,src.type!="Persistence") %>%
   bind_rows(persis.forecast.stats)
-
-#Calculate lead time using udunits
-# ud.from <- "days since 1970-01-01"
-# ud.to <- "months since 1900-01-01"
-# all.ss$lead.raw <- as.numeric(ud.convert(all.ss$date,ud.from,ud.to))-
-#                     as.numeric(ud.convert(all.ss$start.date,ud.from,ud.to))
-
-# #Calculate lead time manually
-# date.to.months <- function(x) {
-#   #Months since 1 Jan 1900
-#   (year(x)-1900)*12 + (month(x)-1) + (day(x)-1)/days_in_month(x)
-# }
-# out.stats$lead <- floor(date.to.months(out.stats$date)- date.to.months(out.stats$start.date)) 
-
-#' #'========================================================================
-#' # Split and Merge ####
-#' #'========================================================================
-#' log_msg("Split and merge...\n")
-#' 
-#' #Drop years that are not to be included in the evaluation of skill metrics
-#' #and drop CMIP5 as well (not interested in the skill)
-#' sel.res <-  all.ss %>% 
-#'             filter(year(date) %in% pcfg@comp.years,
-#'                    !grepl("CMIP5",type)) 
-#' 
-#' #Extract out the observational data
-#' obs.dat <- obs.ss %>% 
-#'   filter(year(date) %in% pcfg@comp.years) %>%
-#'   select(sp.subdomain,ym,sumstat.name,value) 
-#' 
-#' 
-#' #And merge it back into the comparison dataframe. This way we have both the
-#' #modelled and the observed results together in the same dataframe. We note
-#' #that we do the merging by year - this should generally be ok for most of the
-#' #situations where we envisage using PredEnd i.e. one data point per year - but
-#' #we need to be aware that this is not exactly the case 
-#' comp.dat <- left_join(sel.res,obs.dat,
-#'                       by=c("ym","sumstat.name","sp.subdomain"),
-#'                       suffix=c(".mdl",".obs"))
-
-#'========================================================================
-# Calculate the metrics ####
-#'========================================================================
-# log_msg("Metric calculation...\n")
-# #Now calculate the metrics
-# RMSE <- function(x,y) { sqrt(mean((x-y)^2,na.rm=TRUE))}
-# skill.m <- comp.dat %>%
-#            group_by(name,type,sumstat.name,lead,sp.subdomain) %>%
-#            summarize(cor=cor(value.mdl,value.obs,use="pairwise.complete"),
-#                      RMSE=RMSE(value.mdl,value.obs))
-
 
 #'========================================================================
 # Complete ####
