@@ -192,7 +192,7 @@ for(this.sp in names(sp.skill.l)) {
                             name=PE.cfg$misc$global.sp.name)
   } else {
     #Use the normal object
-    sp.obj <- pcfg@spatial.subdomains[[this.sp]]
+    sp.obj <- pcfg@spatial.domains[[this.sp]]
   }
   xtent <- extend(extent(sp.obj),10)
   g <- ggplot()+

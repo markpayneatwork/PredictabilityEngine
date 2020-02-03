@@ -26,7 +26,7 @@
 #'========================================================================
 # Initialise system ####
 #'========================================================================
-cat(sprintf("\n%s\n","H2. Collate statistics"))
+cat(sprintf("\n%s\n","Collate salar statistics"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Do house cleaning

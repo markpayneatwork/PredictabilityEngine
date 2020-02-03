@@ -27,13 +27,9 @@ cat(sprintf("\n%s\n","Calculate scalar skill metrics"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Do house cleaning
-rm(list = ls(all.names=TRUE));  graphics.off();
-start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
+start.time <- proc.time()[3]; 
 
 #Helper functions, externals and libraries
-log.msg <- function(fmt,...) {cat(sprintf(fmt,...));
-  flush.console();return(invisible(NULL))}
-
 library(tidyverse)
 library(PredEng)
 pcfg <- readRDS(PE.cfg$config.path)
@@ -61,7 +57,7 @@ all.scalars <- readRDS(file.path(base.dir,PE.cfg$files$scalar.stats))
 #'========================================================================
 # Split and Merge Observations ####
 #'========================================================================
-log.msg("Split and merge...\n")
+log_msg("Split and merge...\n")
 
 #Extract out the observational data
 obs.dat <- 
@@ -105,7 +101,7 @@ comp.dat <-
 #Looking to calculate a set of metrics here. In particular, we want to have
 #the mean skill, but also the range across initialisation dates as well
 
-log.msg("Metrics for scalar statistics...\n")
+log_msg("Metrics for scalar statistics...\n")
 
 #Skill functions
 RMSE <- function(x,y) { sqrt(mean((x-y)^2,na.rm=TRUE))}
@@ -186,7 +182,7 @@ saveRDS(skill.mets,file=file.path(base.dir,PE.cfg$files$scalar.skill.metrics))
 #'========================================================================
 #Turn off the lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
-log.msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
+log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
 # .............
 # This work by Mark R Payne is licensed under a  Creative Commons

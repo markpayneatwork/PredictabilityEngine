@@ -23,12 +23,11 @@
 #'========================================================================
 # Initialise system ####
 #'========================================================================
-cat(sprintf("\n%s\n","H4.Visualise_summary_stats.r"))
+cat(sprintf("\n%s\n","Visualise_summary_stats.r"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Do house cleaning
-rm(list = ls(all.names=TRUE));  graphics.off();
-start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
+start.time <- proc.time()[3]; 
 
 #Helper functions, externals and libraries
 library(tidyverse)
@@ -39,7 +38,7 @@ library(PredEng)
 # Configure ####
 #'========================================================================
 pcfg <- readRDS(PE.cfg$config.path)
-Rmd.src <- "src/H.Statistics/H4.Visualise_stats_and_skill_metrics.Rmd"
+Rmd.src <- "src/H.Statistics/H5.Visualise_stats_and_skill_metrics.Rmd"
 
 #'========================================================================
 # Setup ####
