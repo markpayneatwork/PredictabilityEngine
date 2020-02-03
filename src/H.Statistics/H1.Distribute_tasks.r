@@ -146,6 +146,8 @@ if(!dir.exists(stat.cfg.dir)) dir.create(stat.cfg.dir)
 stat.dir <- define_dir(pcfg@scratch.dir,PE.cfg$dirs$statistics)
 unlink(dir(stat.dir,full.names=TRUE))
 saveRDS(do.this,file=file.path(pcfg@scratch.dir,PE.cfg$files$stats.configuration))
+#Remove todos as well
+unlink(dir(file.path(PE.cfg$dirs$job.cfg,"Stats"),full.names=TRUE))
 
 #'========================================================================
 # Complete ####
