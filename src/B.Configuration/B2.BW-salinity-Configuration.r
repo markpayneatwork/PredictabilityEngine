@@ -82,9 +82,24 @@ pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="so")
 #'========================================================================
 #Configure stats
 stat.l <- PElst()
-stat.l[[1]]  <- spatial.mean(name="Mean-salinity",
+
+#Average salinity
+stat.l[["MeanSal"]]  <- spatial.mean(name="Mean-salinity",
                              desc="Mean salinity",
                              use.full.field=TRUE)
+
+#Full salinity field and anomaly
+stat.l[["SalAnomField"]] <- pass.through(name="SalAnomaly",
+                                         desc="Salinity anomaly",
+                                         use.globally=TRUE,
+                                         use.full.field = FALSE,
+                                         use.realmeans=TRUE)
+
+stat.l[["SalField"]] <- pass.through(name="SalField",
+                                     desc="Salinity full field values",
+                                     use.globally=TRUE,
+                                     use.full.field = TRUE,
+                                     use.realmeans=TRUE)
 
 #Setup Miesner & Payne habitat model
 require(mgcv)
@@ -128,7 +143,7 @@ GAM.sdm.fn <- function(dat,resources) {
   PA <- brick(res.l)
   return(PA)
 }
-stat.l[[2]] <- habitat(name="SDMrealmean",
+stat.l[["SDMrealmean"]] <- habitat(name="SDMrealmean",
                        desc="SDM based on realisation means",
                        fn=GAM.sdm.fn,
                        resources=GAM.sdm.resources,
@@ -136,7 +151,7 @@ stat.l[[2]] <- habitat(name="SDMrealmean",
                        use.full.field = TRUE,
                        use.realmeans=TRUE)
 
-stat.l[[3]] <- habitat(name="SDMreals",
+stat.l[["SDMreals"]] <- habitat(name="SDMreals",
                        desc="SDM based on individual realisations",
                        fn=GAM.sdm.fn,
                        resources=GAM.sdm.resources,
