@@ -52,7 +52,7 @@ stats.meta <- slotNames("stat") %>%
   bind_rows()
 
 #Import scalar results
-all.scalars <- readRDS(file.path(base.dir,PE.cfg$files$scalar.stats))
+all.scalars <- readRDS(file.path(base.dir,PE.cfg$dirs$results,PE.cfg$files$scalar.stats))
 
 #'========================================================================
 # Split and Merge Observations ####
@@ -143,7 +143,7 @@ skill.range <-
 skill.mets <- 
   bind_rows(skill.range,skill.starts,skill.mean) %>%
   ungroup()
-saveRDS(skill.mets,file=file.path(base.dir,PE.cfg$files$scalar.skill.metrics))
+saveRDS(skill.mets,file=file.path(base.dir,PE.cfg$dirs$results,PE.cfg$files$scalar.skill.metrics))
 
 #' #'========================================================================
 #' # Calculate the metrics for field statistics ####

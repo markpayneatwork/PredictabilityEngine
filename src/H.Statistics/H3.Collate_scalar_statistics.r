@@ -45,7 +45,7 @@ stat.cfg.fname <- file.path(pcfg@scratch.dir,PE.cfg$files$stats.configuration)
 
 #Directory setup
 base.dir <- pcfg@scratch.dir
-out.dir <- define_dir(base.dir,PE.cfg$dirs$collated.stats)
+out.dir <- define_dir(base.dir,PE.cfg$dirs$results)
 
 #'========================================================================
 # Select input data ####
@@ -120,7 +120,7 @@ out.stats <-
 # Complete ####
 #'========================================================================
 #Save results
-saveRDS(out.stats, file=file.path(base.dir,PE.cfg$files$scalar.stats))
+saveRDS(out.stats, file=file.path(base.dir,PE.cfg$dirs$results,PE.cfg$files$scalar.stats))
 
 #Turn off the lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}

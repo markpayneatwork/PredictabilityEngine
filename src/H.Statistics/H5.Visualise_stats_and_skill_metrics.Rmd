@@ -13,6 +13,7 @@ params:
 ---
 title: `r params$set_title`
 ---
+
 ```{r setup, include="FALSE"}
 #'========================================================================
 # Visualise skill metrics
@@ -91,8 +92,8 @@ show(pcfg)
 #'========================================================================
 #Import data
 base.dir <- pcfg@scratch.dir
-skill.mets.all <- readRDS(file.path(base.dir,PE.cfg$files$scalar.skill.metrics))
-stat.dat <- readRDS(file.path(base.dir,PE.cfg$files$scalar.stats))
+skill.mets.all <- readRDS(file.path(base.dir,PE.cfg$dirs$results,PE.cfg$files$scalar.skill.metrics))
+stat.dat <- readRDS(file.path(base.dir,PE.cfg$dirs$results,PE.cfg$files$scalar.stats))
 
 #Rescale time axis
 rescale.fn <- function(m) {  #Converts a leadtime in months into a rescale value
