@@ -66,7 +66,8 @@ if(interactive()) {
 # Setup ####
 #'========================================================================
 #Retrieve configurations
-stats.cfg <- readRDS(file.path(PE.cfg$dirs$job.cfg,"Stats.rds"))
+stats.cfg <- readRDS(file.path(pcfg@scratch.dir,PE.cfg$files$stats.configuration))
+
 these.cfgs <- 
   filter(stats.cfg,cfg.id==cfg.no) %>%
   unnest(data)

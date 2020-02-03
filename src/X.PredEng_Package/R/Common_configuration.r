@@ -17,6 +17,7 @@ PE.cfg$dirs <- list(Misc.meta="Z.Misc.meta",
 #File names
 PE.cfg$files <- list(Obs.monthly.anom.metadata=file.path(PE.cfg$dir$Misc.meta,"Monthly_anom_metadata.rds"),
                      Obs.climatology.metadata=file.path(PE.cfg$dir$Misc.meta,"Climatology_metadata.rds"),
+                     stats.configuration=file.path(PE.cfg$dirs$statistics,"Stats_configuration.rds"),
                      src.meta="Src_metadata.rds",
                      fragment.meta=file.path(PE.cfg$dir$Misc.meta,"Fragment_metadata.rds"),
                      fragstack.meta=file.path(PE.cfg$dir$Misc.meta,"Fragstack_metadata.rds"),

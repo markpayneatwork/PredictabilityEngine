@@ -111,13 +111,13 @@ max.jobs <- 88
 #Nest in all different permutations, then choose the largest version under max.jobs
 #TODO: An alternative approach here could be based on the processing size. But I'm
 #not sure that it would help
-nests.l <- list(nest(todo.tbl,-src.id),
-                nest(todo.tbl,-sp.id),
-                nest(todo.tbl,-stat.id),
-                nest(todo.tbl,-src.id,-sp.id),
-                nest(todo.tbl,-src.id,-stat.id),
-                nest(todo.tbl,-stat.id,-sp.id),
-                nest(todo.tbl,-src.id,-sp.id,-stat.id))
+nests.l <- list(nest(todo.tbl,data=-src.id),
+                nest(todo.tbl,data=-sp.id),
+                nest(todo.tbl,data=-stat.id),
+                nest(todo.tbl,data=c(-src.id,-sp.id)),
+                nest(todo.tbl,data=c(-src.id,-stat.id)),
+                nest(todo.tbl,data=c(-stat.id,-sp.id)),
+                nest(todo.tbl,data=c(-src.id,-sp.id,-stat.id)))
 nest.sizes <- 
   purrr::map_dbl(nests.l,nrow) %>%
   ifelse(.>max.jobs,NA,.)
@@ -138,7 +138,6 @@ do.this$cfg.id <- seq(nrow(do.this))
 do.this %>%
   select(cfg.id) %>%
   write_csv(path = file.path(PE.cfg$dirs$job.cfg,"Stats.cfg"))
-saveRDS(do.this,file.path(PE.cfg$dirs$job.cfg,"Stats.rds"))
 stat.cfg.dir <-file.path(PE.cfg$dirs$job.cfg,"Stats") 
 if(!dir.exists(stat.cfg.dir)) dir.create(stat.cfg.dir)
 
@@ -146,6 +145,7 @@ if(!dir.exists(stat.cfg.dir)) dir.create(stat.cfg.dir)
 #Directory setup
 stat.dir <- define_dir(pcfg@scratch.dir,PE.cfg$dirs$statistics)
 unlink(dir(stat.dir,full.names=TRUE))
+saveRDS(do.this,file=file.path(pcfg@scratch.dir,PE.cfg$files$stats.configuration))
 
 #'========================================================================
 # Complete ####
