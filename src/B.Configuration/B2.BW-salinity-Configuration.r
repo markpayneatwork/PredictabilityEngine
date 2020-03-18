@@ -72,10 +72,10 @@ pcfg@spatial.domains <- sp.objs
 pcfg@Observations <- Sal.obs$EN4
 
 #Decadal salinity models
-pcfg@Decadal <- Sal.Decadal
+#pcfg@Decadal <- Sal.Decadal
 
 #CMIP5 salinity
-pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="so")
+#pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="so")
 
 #'========================================================================
 # Statistics ####
