@@ -172,7 +172,6 @@ stat.l[["SDM_range"]] <- habitat(name="SDMrange",
 #Just focus on 15th April (DOY=105) => Spawning in mid March
 GAM.sdm.resources$pred.consts <- data.frame(doy=105,
                                             sol.el=0)
-
 stat.l[["SDM15apr"]] <- habitat(name="SDM15Apr",
                                desc="Habitat is suitable on 15 Apr",
                                fn=GAM.sdm.fn,
@@ -180,6 +179,16 @@ stat.l[["SDM15apr"]] <- habitat(name="SDM15Apr",
                                skill.metrics = "correlation",
                                use.full.field = TRUE,
                                use.realmeans=TRUE)
+
+
+GAM.sdm.resources$apply.threshold <- FALSE
+stat.l[["SDM15apr_nothreshold"]] <- habitat(name="SDM15AprNoThresh",
+                                desc="Habitat is suitable on 15 Apr, without a threshold being applied",
+                                fn=GAM.sdm.fn,
+                                resources=GAM.sdm.resources,
+                                skill.metrics = "correlation",
+                                use.full.field = TRUE,
+                                use.realmeans=TRUE)
 
 # stat.l[["SDM-PA-reals"]] <- habitat(name="SDM-PA-reals",
 #                        desc="SDM based on individual realisations, PA",
