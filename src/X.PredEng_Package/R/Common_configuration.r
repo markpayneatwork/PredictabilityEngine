@@ -34,7 +34,6 @@ PE.cfg$files <- list(Obs.monthly.anom.metadata=file.path(PE.cfg$dir$Misc.meta,"M
 #Misc
 PE.cfg$misc <- list(global.sp.name = "Global",
                     VOI.name= "Variable_of_interest",
-                    ROI.extraction.buffer=2,  #Degrees
                     NMME.epoch.start = as.Date("1960-01-01"))
                     
 

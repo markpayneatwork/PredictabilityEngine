@@ -36,9 +36,8 @@ define_dir(pcfg@scratch.dir)
 
 log_msg("Writing Global Outputs...\n")
 #Write CDO grid descriptors
-this.ROI <- extend(pcfg@global.ROI,PE.cfg$misc$ROI.extraction.buffer)
 analysis.grid.fname <- file.path(pcfg@scratch.dir,PE.cfg$files$analysis.grid)
-griddes.txt <- griddes(this.ROI,res=pcfg@global.res)
+griddes.txt <- griddes(pcfg@global.ROI,res=pcfg@global.res)
 writeLines(griddes.txt,analysis.grid.fname)
 
 #Write regridded landmask
