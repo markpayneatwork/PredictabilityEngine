@@ -1,5 +1,5 @@
 #/*##########################################################################*/
-#' Blue whiting salinity Configuration
+#' Blue whiting Configuration
 #' ==========================================================================
 #'
 #' by Mark R Payne  
@@ -8,7 +8,7 @@
 #'
 #' TSun Sep  4 23:22:56 2016
 #'
-#' Configures a blue whiting salinity object
+#' Configures a blue whiting  object
 #
 #  This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 #  You are largely free to do what you like with it, so long as you "attribute" 
@@ -24,7 +24,7 @@
 # ========================================================================
 # Initialise system
 # ========================================================================
-cat(sprintf("\n%s\n","Blue whiting salinity Configuration"))
+cat(sprintf("\n%s\n","Blue Whiting Configuration"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Do house cleaning
@@ -39,7 +39,7 @@ source("src/B.Configuration/B0.Define_common_data_srcs.r")
 # Generic Configuration
 # ========================================================================
 #Global project configuration
-pcfg <- PredEng.config(project.name= "BW-Salinity",
+pcfg <- PredEng.config(project.name= "Blue_whiting",
                        MOI=3,  #March - ideally should be Feb-March-april average (??)
                        average.months=FALSE,
                        clim.years=1982:2005,  
@@ -107,7 +107,7 @@ require(mgcv)
 #Note that we need to account for the extraction buffer here, to get a 
 #perfect match with the rest of the data
 log10bath <- raster("resources/BlueWhiting/ETOPO1_Bed_c_gmt4.grd") %>%
-              crop(extend(pcfg@global.ROI,PE.cfg$misc$ROI.extraction.buffer)) %>%
+              crop(extent(pcfg@global.ROI)) %>%
               raster::aggregate(fact=pcfg@global.res/res(.),fun=mean)
 log10bath <- log10(-log10bath)
 
