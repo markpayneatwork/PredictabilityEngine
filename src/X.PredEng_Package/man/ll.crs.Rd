@@ -5,7 +5,9 @@
 \alias{ll.crs}
 \title{Predictability Engine Common Elements
 ==========================================================================}
-\format{An object of class \code{CRS} of length 1.}
+\format{
+An object of class \code{CRS} of length 1.
+}
 \usage{
 ll.crs
 }

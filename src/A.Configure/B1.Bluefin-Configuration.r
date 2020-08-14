@@ -34,7 +34,7 @@ rm(list = ls(all.names=TRUE));  graphics.off();
 #Source the common elements
 library(PredEng)
 library(tibble)
-source("src/B.Configuration/B0.Define_common_data_srcs.r")
+load(getOption("PE.path.datasrcs"))
 
 #'========================================================================
 # Project Configuration ####
@@ -122,13 +122,10 @@ stat.l[[2]] <- new("threshold",
 pcfg@statistics <- stat.l
 
 #'========================================================================
-# Output ####
+# Finish
 #'========================================================================
-source("src/B.Configuration/B99.Configuration_wrapup.r")
+set.configuration(pcfg)
 
-#'========================================================================
-# Done
-#'========================================================================
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
 log_msg("\nConfiguration complete.\n")

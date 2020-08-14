@@ -4,7 +4,8 @@
 \name{PE.cfg}
 \alias{PE.cfg}
 \title{Default configuration options for PredEng package}
-\format{A data frame with 53940 rows and 10 variables:
+\format{
+A data frame with 53940 rows and 10 variables:
 \describe{
   \item{VOI.name}{Variable of Interest, default name for creating a variable}
   \item{ROI.extraction.buffer}{Size of buffer around the region of interest to be extracted}
@@ -12,7 +13,8 @@
   \item{NMME.epoch.start}{Start of the epoch for NMME date format}
   \item{dirs}{List of working directory names}
   \item{files}{List of filenames}
-}}
+}
+}
 \usage{
 PE.cfg
 }

@@ -22,9 +22,23 @@
 #/*##########################################################################*/
 
 #'========================================================================
+# Initialise system
+#'========================================================================
+cat(sprintf("\n%s\n","Common Data Sources Configuration"))
+cat(sprintf("Analysis performed %s\n\n",base::date()))
+
+#Do house cleaning
+rm(list = ls(all.names=TRUE));  graphics.off();
+
+#Source the common elements
+library(PredEng)
+library(tibble)
+library(here)
+
+#'========================================================================
 # Helper functions ####
 #'========================================================================
-decadal.dir <- file.path(PE.cfg$dirs$datasrc,"Decadal")
+decadal.dir <- here(getOption("PE.dir.datasrc"),"Decadal")
 
 # ========================================================================
 # Setup SST.Decadal models
@@ -359,3 +373,37 @@ make.CMIP5.srcs <- function(meta,var) {
   })
   return(PElst(rtn))
 }
+
+#'========================================================================
+# Done
+#'========================================================================
+# Save data sources
+save(SST_obs,
+     SST.Decadal.production,
+     NMME.sst.l,
+     make.CMIP5.srcs,
+     CMIP5.db,
+     file=getOption("PE.path.datasrcs"))
+
+#Turn off thte lights
+if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
+log_msg("\nConfiguration complete.\n")
+
+#' -----------
+#' <small>*This work by Mark R Payne is licensed under a  Creative Commons
+#' Attribution-NonCommercial-ShareAlike 3.0 Unported License.
+#' For details, see http://creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US
+#' Basically, this means that you are free to "share" and "remix" for
+#' non-commerical purposes as you see fit, so long as you "attribute" me for my
+#' contribution. Derivatives can be distributed under the same or
+#' similar license.*</small>
+#'
+#' <small>*This work comes with ABSOLUTELY NO WARRANTY or support.*</small>
+#'
+#' <small>*This work should also be considered as BEER-WARE. For details, see
+#' http://en.wikipedia.org/wiki/Beerware*</small>
+#'
+#' -----------
+#
+# Fin
+

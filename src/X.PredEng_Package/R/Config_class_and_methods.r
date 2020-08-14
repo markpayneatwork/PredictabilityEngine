@@ -199,6 +199,71 @@ setMethod("verticalLayers",signature = c("PredEng.config","data.source"),functio
   return(min(layer.idxs):(max(layer.idxs)-1))})
 
 
+#' Set the configuration
+#'
+#' @param pcfg 
+#'
+#' @return
+#' @export
+set.configuration <- function(pcfg) {
+  #Check object is initially valid
+  validObject(pcfg)
+
+  #Set output directory
+  define_dir(pcfg@scratch.dir)
+
+  #Write CDO grid descriptors
+  griddes.txt <- griddes(pcfg@global.ROI,res=pcfg@global.res)
+  writeLines(griddes.txt,PE.fname(pcfg,"analysis.grid"))
+
+  #Write regridded landmask
+  landmask.cmd <- cdo("--silent -f nc",
+                      csl(" remapnn", PE.fname(pcfg,"analysis.grid")),
+                      pcfg@landmask,
+                      PE.fname(pcfg,"landmask"))
+  #Output
+  cfg.fname <- PE.fname(pcfg,"config")
+  cfg.linked <- getOption("PE.path.config")
+  saveRDS(pcfg,file=cfg.fname)
+  cat(pcfg@project.name,file=file.path(getOption("PE.dir.objects"),"configuration.name"))
+  if(file.exists(cfg.linked)) {
+    file.remove(cfg.linked)
+  }
+  file.symlink(file.path(getwd(),cfg.fname),getOption("PE.dir.objects"))
+
+  # # HPC  Configuration ####
+  # #Setup soft linking
+  # project.cfg <- define_dir(pcfg@scratch.dir,basename(PE.cfg$dirs$job.cfg))
+  # unlink(PE.cfg$dirs$job.cfg)
+  # file.symlink(file.path(getwd(),project.cfg),PE.cfg$dirs$job.cfg)
+  #
+  # #Need a TODO directory as well
+  # TODO.dir <- define_dir(PE.cfg$dirs$job.cfg,"TODO")
+  #
+  # #Write configurations
+  # list(NMME=c("Sources","Ensmean"),
+  #      Decadal=c("Chunks","Sources","Ensmean"),
+  #      CMIP5=c("Sources"),
+  #      Observations=NA) %>%
+  #   enframe("src.slot","data.partition.type") %>%
+  #   unnest() %>%
+  #   pwalk(partition.workload,obj=pcfg)
+
+  # cfgs <- partition.workload(pcfg,"NMME","Sources")
+  # cfgs <- partition.workload(pcfg,"NMME","Ensmean")
+  # cfgs <- partition.workload(pcfg,"Decadal","Chunks")
+  # cfgs <- partition.workload(pcfg,"Decadal","Sources")
+  # cfgs <- partition.workload(pcfg,"Decadal","Ensmean")
+  # cfgs <- partition.workload(pcfg,"CMIP5","Sources")
+  # cfgs <- partition.workload(pcfg,"CMIP5","Ensmean")
+  # cfgs <- partition.workload(pcfg,"Observations")
+
+  #Final check
+  validObject(pcfg,complete=TRUE)
+
+  return(pcfg)
+}
+
 
 
 
