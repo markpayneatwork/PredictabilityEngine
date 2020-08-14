@@ -211,15 +211,15 @@ set.configuration <- function(pcfg) {
 
   #Write CDO grid descriptors
   griddes.txt <- griddes(pcfg@global.ROI,res=pcfg@global.res)
-  writeLines(griddes.txt,PE.scratch.file(pcfg,"analysis.grid"))
+  writeLines(griddes.txt,PE.scratch.path(pcfg,"analysis.grid"))
 
   #Write regridded landmask
   landmask.cmd <- cdo("--silent -f nc",
-                      csl(" remapnn", PE.scratch.file(pcfg,"analysis.grid")),
+                      csl(" remapnn", PE.scratch.path(pcfg,"analysis.grid")),
                       pcfg@landmask,
-                      PE.scratch.file(pcfg,"landmask"))
+                      PE.scratch.path(pcfg,"landmask"))
   #Output
-  cfg.fname <- PE.scratch.file(pcfg,"config")
+  cfg.fname <- PE.scratch.path(pcfg,"config")
   cfg.linked <- PE.cfg$path$config
   saveRDS(pcfg,file=cfg.fname)
   cat(pcfg@project.name,file=file.path(PE.cfg$dir$objects,"configuration.name"))

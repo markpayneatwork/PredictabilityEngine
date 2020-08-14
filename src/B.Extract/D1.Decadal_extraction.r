@@ -63,8 +63,8 @@ set.nco.defaults("--overwrite")
 #Retrieve configurations
 this.datasrc <- pcfg@Decadal[[cfg.id]]
 
-#Directory setup
-analysis.grid.fname <- PE.scratch.file(pcfg,"analysis.grid")
+#Setup
+analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
 extract.dir <- define_dir(pcfg@scratch.dir,"B.Extract")
 frag.dat.fname <- file.path(extract.dir,sprintf("%s_%s.rds",this.datasrc@type,this.datasrc@name))
 

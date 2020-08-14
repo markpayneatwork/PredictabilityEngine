@@ -4,8 +4,8 @@
 PE.cfg <- list()
 
 #Directories
-PE.cfg$dir <- list(objects=file.path("objects"),
-                    datasrc= file.path("data_srcs"))
+PE.cfg$dir <- list(objects="objects",
+                    datasrc= "data_srcs")
 
 #Configuration
 PE.cfg$path$config   <- file.path(PE.cfg$dir$objects,"configuration.rds")
@@ -53,11 +53,12 @@ usethis::use_data(PE.cfg,overwrite = TRUE)
 #' @param type Type of filename  to retrieve
 #'
 #' @return The path to the particular file
-#' @name filesAndDirectories
 #' @export
 #'
-PE.scratch.file <- function(pcfg,type) {
-  rtn <- file.path(pcfg@scratch.dir,PE.cfg$file[[type]])
+PE.scratch.path <- function(pcfg,type) {
+  scratch.types <- c(list(extract="B.Extract"),
+                     PE.cfg$file)
+  rtn <- file.path(pcfg@scratch.dir,scratch.types[[type]])
   return(rtn)
 }
 

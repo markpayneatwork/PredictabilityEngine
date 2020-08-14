@@ -35,13 +35,11 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 library(PredEng)
 library(lubridate)
 library(raster)
-library(tibble)
-library(dplyr)
 
 #'========================================================================
 # Configuration ####
 #'========================================================================
-pcfg <- readRDS(PE.cfg$config.path)
+pcfg <- readRDS(PE.cfg$path$config)
 
 #Take input arguments, if any
 if(interactive()) {
@@ -60,13 +58,8 @@ if(interactive()) {
   set.log_msg.silent(FALSE)
 }
 
-#Retrieve configurations
-this.sp <- global.ROI(pcfg) 
-this.src <- pcfg@Observations
-config.summary(pcfg,this.sp,this.src)
-
 #Data source
-HadISST.dat <- unlist(pcfg@Observations@sources)
+this.datasrc <- pcfg@Observations
 
 #'========================================================================
 # Setup ####
@@ -74,15 +67,15 @@ HadISST.dat <- unlist(pcfg@Observations@sources)
 # is where you would start, by setting this.sp to the appropriate area
 # for a list of possibilities
 #'========================================================================
-log_msg("\nProcessing %s...\n",this.sp@name)
 
 #Working directories
-base.dir <- define_dir(pcfg@scratch.dir,"Observations","HadISST")
-work.dir <- tempdir()
-misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
-mon.clim.dir <- define_dir(base.dir,"A.monthly_climatologies")
-mon.anom.dir <- define_dir(base.dir,"B.monthly_anom")
-analysis.grid.fname <- file.path(pcfg@scratch.dir,PE.cfg$files$analysis.grid)
+# base.dir <- define_dir(pcfg@scratch.dir,"Observations","HadISST")
+# misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
+# mon.clim.dir <- define_dir(base.dir,"A.monthly_climatologies")
+# mon.anom.dir <- define_dir(base.dir,"B.monthly_anom")
+analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
+extract.dir <- define_dir(pcfg@scratch.dir,"B.Extract")
+frag.dat.fname <- file.path(extract.dir,sprintf("%s_%s.rds",this.datasrc@type,this.datasrc@name))
 
 #/*======================================================================*/
 #'## Extract HadISST data
@@ -101,167 +94,107 @@ analysis.grid.fname <- file.path(pcfg@scratch.dir,PE.cfg$files$analysis.grid)
 
 #Remap onto the analysis grid
 log_msg("Remapping...")
-in.fname <- HadISST.dat
-remap.fname <- file.path(work.dir,gsub(".nc$","_remapped.nc",basename(in.fname)))
+regrid.fname <- tempfile(fileext=".nc")
 remap.cmd <- cdo("-f nc", csl("remapbil", analysis.grid.fname),
-                  in.fname,remap.fname)
-
-#/*======================================================================*/
-#  Anomalies, clims, fragments
-#/*======================================================================*/
-#Calculate climatology 
-log_msg("Climatology....")
-mon.clim.fname <- gsub(".nc$","_climatology.nc",remap.fname)
-clim.cmd <- cdo("ymonmean",
-                           csl("-selyear",pcfg@clim.years),
-                           remap.fname,mon.clim.fname)
-
-#Calculate anomalies
-log_msg("Anomalies...")
-mon.anom.fname <- gsub(".nc$","_anom.nc",remap.fname)
-anom.cmd <- cdo("sub",remap.fname,mon.clim.fname,mon.anom.fname)
+                  this.datasrc@sources,regrid.fname)
 
 #'========================================================================
 # Average over MOIs (if relevant) ####
 #'========================================================================
 #Average over time - only necessary when considering multiple target months
+#We don't need to do monthly selection, as we need the other months for
+#persistence forecasts etc
 if(pcfg@average.months) {
+  stop("#Not run.")
   log_msg("Monthly averaging...")
   
-  #Setup MOI directories
-  MOIave.clim.dir <- define_dir(base.dir,"C.MOIave_climatology")
-  MOIave.anom.dir <- define_dir(base.dir,"D.MOIave_anoms")
-  
-  #Create a function to do this (as we need to reuse the code for
-  #both the climatology and the anomalies)
-  MOI.average <- function(in.src) {
     #monthly extraction
-    out.fname <- gsub(".nc$","_selmon.nc",in.src)
+    tmp.out <- sprintf("%s_selmon.nc",tmp.in)
     selmon.cmd <- cdo(csl("selmon",pcfg@MOI),
                                  in.src,out.fname)
     
-    #Calculate means of the anomalies
+    #Calculate means 
     in.fname <- out.fname
     out.fname <- gsub(".nc$","_yearmean",in.fname)
     yearmean.cmd <- cdo( "yearmean", in.fname,out.fname)
-    
-    return(out.fname)
-  }
-  
-  #Now do averaging
-  MOIave.anom <- MOI.average(remap.fname)
-  MOIave.yearmean <- MOI.average(mon.clim.fname)
-  
-  #Now need to do the complete mean on MOIave.clim and move it 
-  #to the appropriate directory
-  MOIave.clim <- file.path(MOIave.clim.dir,"MOIave_climatology.nc")
-  clim.cmd <- ncwa("-a time", 
-                              MOIave.yearmean,
-                              MOIave.clim)
-  
+
 }
 
 #'========================================================================
-# Explode into fragments ####
+# Import into fragments ####
 #'========================================================================
 log_msg("Fragmenting...")
 
-#Explode the climatologies fragment into year/months
-mon.clim.frag.prefix <- file.path(mon.clim.dir,sprintf("%s_climatology_",this.src@name))
-frag.cmd <- cdo("splitmon",mon.clim.fname,mon.clim.frag.prefix)
+#Import data into raster-land
+dat.b <- readAll(brick(regrid.fname))
+dat.r <- map(1:nlayers(dat.b),~dat.b[[.x]])
 
-#Explode the anomalies fragment into year/months
-mon.anom.frag.prefix <- file.path(mon.anom.dir,sprintf("%s_",this.src@name))
-frag.cmd <- cdo("splityearmon",mon.anom.fname,mon.anom.frag.prefix)
-
-if(pcfg@average.months) {
-  #Explode the MOIanomalies fragment into individual files, one per year
-  MOIave.anom.frag.prefix <- file.path(MOIave.anom.dir,sprintf("%s_",this.src@name))
-  MOI.frag.cmd <- cdo("splityear",
-                                 MOIave.anom,
-                                 MOIave.anom.frag.prefix)
-  
-}
-
-#/*======================================================================*/
-#  Create (pseudo) metadata 
-#/*======================================================================*/
-log_msg("Creating pseudo metadata...\n")
-
-#Use a generic function to do the hardwork
-generate.metadata <- function(src.dir) {
-  #Get fnames
-  src.fnames <- dir(src.dir,pattern=".nc",full.names = TRUE)
-  
-  #Extract dates
-  meta.dat.l <- list()
-  for(f in src.fnames) {
-    r <- raster(f)
-    meta.dat.l[[f]] <- tibble(date=getZ(r))
-  }
-  
-  #Build metadata
-  src.meta <- bind_rows(meta.dat.l) %>%
-    add_column(src.name=this.src@name,
-               src.type=this.src@type,
-               .before=1) %>%
-    mutate(start.date=NA,
-#           n.realizations=1,
-           fname=src.fnames) 
-  return(src.meta)
-}
-
-#Now, lets think for a minute. The downstream functions require two 
-#files - Anomaly_metadata.RData and Realmean_metadata.RData. The choice
-#of whether these relate to individual months or to an MOIaverage should
-#be made here, not downstream, so we therefore need to set these up according
-#to the project configuration. At the same time, we also want to store all
-#metadata, so that it can be picked up later by the persistence forcast code
-#So....
-#First generate all monthly metadata anomalies - we need this for the persistence
-#forecast anyway
-mon.anom.meta <- generate.metadata(mon.anom.dir)
-saveRDS(mon.anom.meta,file=file.path(base.dir,PE.cfg$files$Obs.monthly.anom.metadata))
-
-#Now, setup rest of metadata accordingly
-if(pcfg@average.months) {
-  #Get metadata
-  anom.meta <- generate.metadata(MOIave.anom.dir)
-} else {
-  #We are only interested in files that are in the
-  #months of interest, so we need to filter
-  anom.meta <- subset(mon.anom.meta,month(date) %in% pcfg@MOI)
-}
-
-#Save results and create a second copy as realmean metadata
-saveRDS(anom.meta,file=file.path(base.dir,PE.cfg$files$anom.meta))
-realmean.meta <- anom.meta  #Needs a rename
-saveRDS(realmean.meta,file=file.path(base.dir,PE.cfg$files$realmean.meta))
-
-#And now for the climatologies
-if(pcfg@average.months) {
-  #Only a single clim file - generate by hand
-  clim.meta <- tibble(src.name=this.src@name,
-                      src.type="Climatology",
-                      date=as.Date(ISOdate(9999,pcfg@MOI,15)),
+#Create metadata
+frag.dat <- tibble(src.name=this.datasrc@name,
+                      src.type=this.datasrc@type,
+                      realization=NA,
                       start.date=NA,
-#                      n.realizations=1,
-                      fname=MOIave.clim)
-  
-} else {
-  #Generate a climatology 
-  clim.meta <- generate.metadata(mon.clim.dir)
-  clim.meta$src.type <- "Climatology"
-  
-  #Restrict to months in the MOI
-  clim.meta <- subset(clim.meta,month(date) %in% pcfg@MOI)
-}
-saveRDS(clim.meta,file=file.path(base.dir,PE.cfg$files$Obs.climatology.metadata))
+                      date=getZ(dat.b),
+                      data=dat.r)
 
 #Remove the temporary files to tidy up
-tmp.fnames <- dir(work.dir,pattern=work.dir,full.names = TRUE)
-del.err <- unlink(tmp.fnames)
+del.err <- unlink(regrid.fname)
 if(del.err!=0) stop("Error deleting temp files")
+
+#Save
+saveRDS(frag.dat,file=frag.dat.fname)
+
+# #Now, lets think for a minute. The downstream functions require two 
+# #files - Anomaly_metadata.RData and Realmean_metadata.RData. The choice
+# #of whether these relate to individual months or to an MOIaverage should
+# #be made here, not downstream, so we therefore need to set these up according
+# #to the project configuration. At the same time, we also want to store all
+# #metadata, so that it can be picked up later by the persistence forcast code
+# #So....
+# #First generate all monthly metadata anomalies - we need this for the persistence
+# #forecast anyway
+# mon.anom.meta <- generate.metadata(mon.anom.dir)
+# saveRDS(mon.anom.meta,file=file.path(base.dir,PE.cfg$files$Obs.monthly.anom.metadata))
+# 
+# #Now, setup rest of metadata accordingly
+# if(pcfg@average.months) {
+#   #Get metadata
+#   anom.meta <- generate.metadata(MOIave.anom.dir)
+# } else {
+#   #We are only interested in files that are in the
+#   #months of interest, so we need to filter
+#   anom.meta <- subset(mon.anom.meta,month(date) %in% pcfg@MOI)
+# }
+# 
+# #Save results and create a second copy as realmean metadata
+# saveRDS(anom.meta,file=file.path(base.dir,PE.cfg$files$anom.meta))
+# realmean.meta <- anom.meta  #Needs a rename
+# saveRDS(realmean.meta,file=file.path(base.dir,PE.cfg$files$realmean.meta))
+# 
+# #And now for the climatologies
+# if(pcfg@average.months) {
+#   #Only a single clim file - generate by hand
+#   clim.meta <- tibble(src.name=this.src@name,
+#                       src.type="Climatology",
+#                       date=as.Date(ISOdate(9999,pcfg@MOI,15)),
+#                       start.date=NA,
+# #                      n.realizations=1,
+#                       fname=MOIave.clim)
+#   
+# } else {
+#   #Generate a climatology 
+#   clim.meta <- generate.metadata(mon.clim.dir)
+#   clim.meta$src.type <- "Climatology"
+#   
+#   #Restrict to months in the MOI
+#   clim.meta <- subset(clim.meta,month(date) %in% pcfg@MOI)
+# }
+# saveRDS(clim.meta,file=file.path(base.dir,PE.cfg$files$Obs.climatology.metadata))
+# 
+# #Remove the temporary files to tidy up
+# tmp.fnames <- dir(work.dir,pattern=work.dir,full.names = TRUE)
+# del.err <- unlink(tmp.fnames)
+# if(del.err!=0) stop("Error deleting temp files")
 
 # #/*======================================================================*/
 #  Complete
