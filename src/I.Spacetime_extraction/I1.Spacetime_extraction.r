@@ -49,24 +49,23 @@ if(interactive()) {
   set.log_msg.silent()
 } else {
   #Taking inputs from the system environment
-  src.no <- as.numeric(Sys.getenv("PBS_ARRAYID"))
-  if(src.no=="") stop("Cannot find PBS_ARRAYID")
+  src.no <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
+  if(src.no=="") stop("Cannot find LSB_JOBINDEX")
   #Do everything
   set.debug.level(0)  #0 complete fresh run
 }
 
 #Directory setup
 base.dir <- pcfg@scratch.dir
-obs.dir <- define_dir(file.path(base.dir,pcfg@observations@type,
-                                pcfg@observations@name))
+obs.dir <- define_dir(file.path(base.dir,pcfg@Observations@type,
+                                pcfg@Observations@name))
 res.dir <- define_dir(base.dir,"pointwise")
 
 #'========================================================================
 # Setup ####
 #'========================================================================
 #Supported models
-dat.srcs <- c(pcfg@decadal.hindcasts,pcfg@decadal.uninit,
-              pcfg@NMME.models,pcfg@observations)
+dat.srcs <- c(pcfg@Decadal,pcfg@NMME,pcfg@Observations)
 src <- dat.srcs[[src.no]]
 log_msg("Processing (%s) %s, number %i of %i available data sources\n\n",
         src@type,src@name,src.no,length(dat.srcs))

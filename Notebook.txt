@@ -1,8 +1,35 @@
 ==========================================
-Seasonal and Decadel Predictability Engine
+Seasonal and Decadal Predictability Engine
 ==========================================
 TODO:
 * Create spatial field tools, including probabilities
+* Check that time bounds etc ar handled properly in all Decadal sources, and that we aren't repeating the problem that we discovered in DPLE
+* Consider making the ensemble mean across realisations, rather than models... e.g. via a switch. Should be easy to implement in D2
+
+Next Actions
+* Rerun NMME Ensmean
+* Rerun Bluefin statistics
+* Cross check that there is agreement between the datasets used and the metrics in the final statistics
+* Check the start dates and target dates for all datasets are at the first of the month. We need to make sure
+that we have a consistent definition of leadtime - there should be no half-month leads, because lead is defined from the start.date to the first day of the forecast period.
+
+2020.02.03
+Working on 20191206 branch, removing spatial subsetting.
+
+2019.10.25
+Fixed errors with the handlign of fragstacks. Looks like we can go all the way through to end of H1 now.
+
+2019.10.21
+Think I have Stats working again - hit a problem with the number of jobs that LSF can handle (max 1024) which means that we need to take care of the chunking and subsetting in a much more active way, to ensure that we stay in underneath this limit.
+
+2019.08.01
+Back into it. Seem to have made good process on the NMME - it looks like it's working now. Moving on the CMIP5, which is a bit trickier, and needs some larger scale revisions. Still, am optimistic
+* Check whether NMME worked
+* Do production run for BW salinity
+* Build metadata for CMIP5 fragments
+
+2019.06.13
+Last few days have seen a branch 20190611 to create a new approach to parallelisation - large data sets, such as the CESM-DPLE can now be handled in chunks, rather than being dependent on a single processor - this is critical for working with this dataset, and can hopefully be applied to other approaches as well e.g. CMIP5, CMIP6 etc. Such a complex set of changes was necessary - simply dividing the files up didn't really work when it came to calculating the climatologies, which need to be calculated across all files. Hence, the need to chunk the data processing. Seems to be working now, and we are ready to merge back into the trunk. Will give it a test run over the Bluefin though, just to be sure - first without CESM, then with CESM, then with a chunked version of it
 
 2019.05.28
 Implemented DPLE support. This required some thinking about the way that we deal with data sources, and the like. However, it was possible to fit into the CDO approach in the end, which is very relieving.
