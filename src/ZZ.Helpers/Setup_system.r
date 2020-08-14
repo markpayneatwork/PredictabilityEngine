@@ -36,10 +36,11 @@ log_msg <- function(fmt,...) {cat(sprintf(fmt,...));
   flush.console();return(invisible(NULL))}
 
 library(devtools)
+library(here)
 
 install_github("markpayneatwork/ClimateOperators")
 install_git("git@gitlab.gbar.dtu.dk:PayneLab/ClimateTools.git",git="external")
-install.packages("src/X.PredEng_Package", repos = NULL, type="source")
+install.packages(here("src/X.PredEng_Package"), repos = NULL, type="source")
 
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
