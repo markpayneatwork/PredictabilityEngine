@@ -1,7 +1,6 @@
 #' PredEng Project configuration class
 #'
 #' @slot project.name Name of the configuration
-#' @slot recalculate Should all existing files be recalculated? Or only missing files?
 #' @slot Observations A data.source object defining the observational dataset to include. 
 #' @slot Decadal A list of GCM objects defining the decadal forecast systems to be analysed
 #' @slot NMME A list of GCM objects defining the NMME models to be analysed
@@ -43,7 +42,6 @@
 PredEng.config <- 
   setClass("PredEng.config",
            slots=list(project.name="character",
-                      recalculate="logical",
                       Observations="data.source",
                       Decadal="PElst",
                       NMME="PElst",
@@ -64,7 +62,6 @@ PredEng.config <-
                       average.months="logical"),
            prototype = list(global.ROI=extent(as.numeric(rep(NA,4))),
                             persistence.leads=1:120,  #1-10 years
-                            recalculate=TRUE,
                             retain.realizations=TRUE),
            validity = function(object) {
              err.msg <- NULL
@@ -214,32 +211,32 @@ set.configuration <- function(pcfg) {
 
   #Write CDO grid descriptors
   griddes.txt <- griddes(pcfg@global.ROI,res=pcfg@global.res)
-  writeLines(griddes.txt,PE.fname(pcfg,"analysis.grid"))
+  writeLines(griddes.txt,PE.scratch.file(pcfg,"analysis.grid"))
 
   #Write regridded landmask
   landmask.cmd <- cdo("--silent -f nc",
-                      csl(" remapnn", PE.fname(pcfg,"analysis.grid")),
+                      csl(" remapnn", PE.scratch.file(pcfg,"analysis.grid")),
                       pcfg@landmask,
-                      PE.fname(pcfg,"landmask"))
+                      PE.scratch.file(pcfg,"landmask"))
   #Output
-  cfg.fname <- PE.fname(pcfg,"config")
-  cfg.linked <- getOption("PE.path.config")
+  cfg.fname <- PE.scratch.file(pcfg,"config")
+  cfg.linked <- PE.cfg$path$config
   saveRDS(pcfg,file=cfg.fname)
-  cat(pcfg@project.name,file=file.path(getOption("PE.dir.objects"),"configuration.name"))
+  cat(pcfg@project.name,file=file.path(PE.cfg$dir$objects,"configuration.name"))
   if(file.exists(cfg.linked)) {
     file.remove(cfg.linked)
   }
-  file.symlink(file.path(getwd(),cfg.fname),getOption("PE.dir.objects"))
+  file.symlink(file.path(getwd(),cfg.fname),PE.cfg$dir$objects)
 
-  # # HPC  Configuration ####
+  # HPC  Configuration ####
   # #Setup soft linking
   # project.cfg <- define_dir(pcfg@scratch.dir,basename(PE.cfg$dirs$job.cfg))
   # unlink(PE.cfg$dirs$job.cfg)
   # file.symlink(file.path(getwd(),project.cfg),PE.cfg$dirs$job.cfg)
-  #
+  # 
   # #Need a TODO directory as well
   # TODO.dir <- define_dir(PE.cfg$dirs$job.cfg,"TODO")
-  #
+  # 
   # #Write configurations
   # list(NMME=c("Sources","Ensmean"),
   #      Decadal=c("Chunks","Sources","Ensmean"),

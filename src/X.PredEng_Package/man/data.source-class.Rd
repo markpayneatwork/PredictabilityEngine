@@ -16,13 +16,8 @@ Metadata class for describing data from a single model
 \item{\code{type}}{Type of data source that this object corresponds to - valid 
 options are "Decadal", "NMME", "CMIP","Obs", and eventually "C3S"}
 
-\item{\code{n.chunks}}{Numeric. (Max) number of chunks allocated to processing this data source.}
-
-\item{\code{chunk.id}}{Chunk identifier (optional)}
-
-\item{\code{sources}}{A list of directories or URLs containing the raw information. Each item in the list
-corresponds to a processing chunk. The number of chunks here might be less than n.chunks, but
-should not exceed it}
+\item{\code{sources}}{A vector of directories or URLs containing the raw information. Each item in the list
+corresponds to a processing chunk.}
 
 \item{\code{var}}{Variable name from which to extract data}
 

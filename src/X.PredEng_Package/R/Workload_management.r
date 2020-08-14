@@ -153,3 +153,18 @@ get.cfgs <- function(fname){
   return(cfgs)
 }
 
+
+#' PredEng Progress bar
+#' 
+#' Creates a standardised progress bar across all of the Predictability Engine
+#'
+#' @param n Number of iterations
+#'
+#' @return A progress bar object
+#' @export
+PE.progress <- function(n) {
+  pb <- progress_bar$new(total=n,
+                   show=0,clear=FALSE,
+                   format = "[:bar] :percent eta: :eta, :elapsedfull")
+  return(pb)
+}

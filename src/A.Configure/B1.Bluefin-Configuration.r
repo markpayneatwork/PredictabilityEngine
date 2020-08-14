@@ -34,7 +34,7 @@ rm(list = ls(all.names=TRUE));  graphics.off();
 #Source the common elements
 library(PredEng)
 library(tibble)
-load(getOption("PE.path.datasrcs"))
+load(PE.cfg$path$datasrcs)
 
 #'========================================================================
 # Project Configuration ####

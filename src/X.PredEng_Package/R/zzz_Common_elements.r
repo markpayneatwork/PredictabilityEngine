@@ -30,10 +30,6 @@
 # ========================================================================
 # Some constants
 # ========================================================================
-#' Default CRS
-#' @export
-ll.crs <- CRS("+proj=longlat +ellps=WGS84")
-
 #' Display configuration status
 #'
 #' @param ... Relevant paramters to be displayed

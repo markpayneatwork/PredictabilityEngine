@@ -2,7 +2,8 @@
 % Please edit documentation in R/zzz_Common_elements.r
 \name{config.summary}
 \alias{config.summary}
-\title{Display configuration status}
+\title{Predictability Engine Common Elements
+==========================================================================}
 \usage{
 config.summary(...)
 }
@@ -10,5 +11,14 @@ config.summary(...)
 \item{...}{Relevant paramters to be displayed}
 }
 \description{
+by Mark R Payne
+DTU-Aqua, Charlottenlund, Denmark
+http://www.staff.dtu.dk/mpay
+}
+\details{
+Fri May 20 09:55:40 2016
+
+Defines a set of common-baseline elements for use across all pieces of code
+in this codebase
 Display configuration status
 }

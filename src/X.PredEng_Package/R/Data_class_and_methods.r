@@ -6,11 +6,8 @@
 #' @slot name Identifier of data source 
 #' @slot type Type of data source that this object corresponds to - valid 
 #' options are "Decadal", "NMME", "CMIP","Obs", and eventually "C3S" 
-#' @slot n.chunks Numeric. (Max) number of chunks allocated to processing this data source. 
-#' @slot chunk.id Chunk identifier (optional)
-#' @slot sources A list of directories or URLs containing the raw information. Each item in the list
-#' corresponds to a processing chunk. The number of chunks here might be less than n.chunks, but
-#' should not exceed it
+#' @slot sources A vector of directories or URLs containing the raw information. Each item in the list
+#' corresponds to a processing chunk. 
 #' @slot var Variable name from which to extract data
 #' @slot realizations Character string, naming the realization(s) to use. NA indicates all.
 #' @slot use.timebounds Indicates whether to use timebounds instead of "time" variable, when selecting
@@ -31,9 +28,7 @@ data.source <-
   setClass("data.source",
            slots=list(name="character",
                       type="character",
-                      n.chunks="numeric",
-                      chunk.id="character",
-                      sources="list",
+                      sources="character",
                       var="character",
                       time.var="character",
                       realizations="character",
@@ -44,8 +39,6 @@ data.source <-
                       date.fn="function"),
            prototype=list(use.timebounds=as.numeric(NA),
                           time.var="time",
-                          n.chunks=1,
-                          chunk.id="",
                           layermids.fn=function(x) {stop("z2idx.fn not specified")},
                           realizations=as.character(NA),
                           date.fn=function(x) {stop("Date.fn not specified")},
@@ -59,12 +52,6 @@ data.source <-
                err.msg <- c(err.msg,"Object name must not contain full stops.")}
              if(grepl("_",object@name)) {
                err.msg <- c(err.msg,"Object name must not contain underscores.")}
-             #Check names on sources
-             src.names <- names(object@sources)
-             if(length(unique(src.names))!=length(object@sources) & length(src.names)>1)
-               if(length(slot(object,n))==0) {
-                 err.msg <- c(err.msg,"List of sources must be named with unique names")
-               }
              #Check use.timebounds is value
              if(!(is.na(object@use.timebounds) | (object@use.timebounds %in% 1:3))) {
                err.msg <- c(err.msg,"Use.timebounds must be either NA, or 1,2 or 3")
@@ -107,28 +94,6 @@ setMethod("show","data.source", function(object) {
   for(i in slotNames(object)) {show.slot(object,i)}
 
 })
-
-
-#' Chunk data source
-#' 
-#' Splits an existing data source object into equally sized chunks
-#'
-#' @param obj Data source object
-#' @param n Number of chunks into which to split the object
-#'
-#' @return A data source object configured for use as chunks
-#' @export
-#'
-chunk.data.source <- function(obj,n=1) {
-  obj@n.chunks <- n
-  src.fnames <- unlist(obj@sources)
-  if(length(src.fnames!=0)) {
-    obj@sources <- split(src.fnames,rep(1:n,length.out=length(src.fnames)))
-    names(obj@sources) <- sprintf("Chunk_%03i",seq(length(obj@sources)))
-  }
-  return(obj)
-}
-
 
 
 #' Timebounds to Time var

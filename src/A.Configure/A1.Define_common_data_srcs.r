@@ -38,7 +38,7 @@ library(here)
 #'========================================================================
 # Helper functions ####
 #'========================================================================
-decadal.dir <- here(getOption("PE.dir.datasrc"),"Decadal")
+decadal.dir <- here(PE.cfg$dir$datasrc,"Decadal")
 
 # ========================================================================
 # Setup SST.Decadal models
@@ -80,14 +80,13 @@ SST.Decadal$"MPI-LR" <-
   data.source(name="MPI-ESM-LR",
               type="Decadal",
               var="thetao",
-              sources=list(MPI.LR.SST.srcs),
+              sources=MPI.LR.SST.srcs,
               realization.fn=CMIP5_realisation,
               start.date=function(f){
                 init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
                 init.date <- ymd(paste(init.str,"01",sep=""))
                 return(init.date)},
-              date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) %>%
-  chunk.data.source(n=16)  #Around 15 min runtime for Bluefin
+              date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
 
 #MPI - NCEP requires all three to be specified
 # SST.Decadal$"MPI-NCEP" <- data.source(name="MPI-NCEP-forced",
@@ -126,8 +125,8 @@ CESM.DPLE.src <-
   data.source(name="CESM-DPLE",
               var="SST",
               type="Decadal",
-              sources=list(dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SST"),
-                               pattern="\\.nc$",full.names = TRUE)),
+              sources=dir(file.path(PE.cfg$dir$datasrc,"Decadal","CESM-DPLE","SST"),
+                          pattern="\\.nc$",full.names = TRUE),
               use.timebounds=3,
               realization.fn=function(f) {
                 val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,3]
@@ -136,8 +135,7 @@ CESM.DPLE.src <-
                 val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,2]
                 init.date <- ymd(sprintf("%s-01",val))
                 return(ceiling_date(init.date,"year"))},  #Round November start up to 1 Jan
-              date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) %>%
-  chunk.data.source(n=22)  #~15 min runtime for Bluefin
+              date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
 
 SST.Decadal$CESM.DPLE <- CESM.DPLE.src
 
@@ -145,8 +143,8 @@ SST.Decadal$CESM.DPLE <- CESM.DPLE.src
 #Note that there are two initialisations here, stored in the same directory - i1 and i2.
 #We treat them as different data sources for the purpose of this analysis
 NorCPM.fnames <- 
-  tibble(path=dir(file.path(PE.cfg$dirs$datasrc,"Decadal","NorCPM"),
-		  pattern="*.nc$",recursive = TRUE,full.names = TRUE),
+  tibble(path=dir(file.path(PE.cfg$dir$datasrc,"Decadal","NorCPM"),
+                  pattern="*.nc$",recursive = TRUE,full.names = TRUE),
          fname=basename(path)) %>%
   separate(fname,into=c("field","table","model","experiment","variant","grid","time"),sep="_") %>%
   separate(variant,into=c("start","realization"),sep="-") %>%
@@ -156,25 +154,23 @@ NorCPM.SST.src.i1 <-
   data.source(name="NorCPM-i1",
               var="tos",
               type="Decadal",
-              sources=list(filter(NorCPM.fnames,
+              sources=filter(NorCPM.fnames,
                              field=="tos",
-                             initialization=="i1")$path),
+                             initialization=="i1")$path,
               realization.fn = function(f) {
-                gsub("^.*_s[[:digit:]]{4}-r([[:digit:]]+)i.*$","\\1",basename(f))},
+                gsub("^.*_s[[:digit:]]{4}-(r.*?)_.*$","\\1",basename(f))},
               start.date=function(f){
                 init.date <- ymd(gsub("^([[:digit:]]{6})-.*$","\\101",underscore_field(basename(f),7)))
                 return(ceiling_date(init.date,"year"))}, #Round October start up to 1 Jan
-              date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) %>%
-  chunk.data.source(n=10) 
+              date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
 
 NorCPM.SST.src.i2 <- 
   new("data.source",
       NorCPM.SST.src.i1,
       name="NorCPM-i2",
-      sources=list(filter(NorCPM.fnames,
+      sources=filter(NorCPM.fnames,
                           field=="tos",
-                          initialization=="i2")$path)) %>%
-  chunk.data.source(n=10) 
+                          initialization=="i2")$path)
 
 SST.Decadal <- c(SST.Decadal,NorCPM.SST.src.i1,NorCPM.SST.src.i2)
 
@@ -201,7 +197,7 @@ Sal.Decadal$"MPI-LR" <-
   data.source(name="MPI-ESM-LR",
               type="Decadal",
               var="so",
-              sources=list(MPI.LR.so.srcs),
+              sources=MPI.LR.so.srcs,
               realization.fn=CMIP5_realisation,
               layermids.fn = function(f) {
                 ncid <- nc_open(f)
@@ -212,23 +208,21 @@ Sal.Decadal$"MPI-LR" <-
                 init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
                 init.date <- ymd(paste(init.str,"01",sep=""))
                 return(init.date)},
-              date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) %>%
-  chunk.data.source(n=10)
+              date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
 
 #CESM-DPLE
 CESM.DPLE.SALT <- 
   data.source(CESM.DPLE.src,
               var="SALT",
-              sources=list(dir(file.path(PE.cfg$dirs$datasrc,"Decadal","CESM-DPLE","SALT"),
-                               pattern="\\.nc$",full.names = TRUE)),
+              sources=dir(file.path(PE.cfg$dir$datasrc,"Decadal","CESM-DPLE","SALT"),
+                               pattern="\\.nc$",full.names = TRUE),
               layermids.fn = function(f) {
                 #z.idx are the indices, v is the vertical coordinate in metres
                 ncid <- nc_open(f)
                 layer.mids <- ncid$dim$z_t$vals/100 #[m]
                 nc_close(ncid)
                 return(layer.mids)},
-              date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) %>%
-  chunk.data.source(n=40)
+              date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
 
 Sal.Decadal$CESM.DPLE.SALT <- CESM.DPLE.SALT
 
@@ -242,21 +236,19 @@ NorCPM.sal.src.i1 <-
         layer.mids <- ncid$dim$lev$vals #[m]
         nc_close(ncid)
         return(layer.mids)},
-      sources=list(filter(NorCPM.fnames,
+      sources=filter(NorCPM.fnames,
                           field=="so",
                           grid=="gr",
-                          initialization=="i1")$path)) %>%
-  chunk.data.source(n=10) 
+                          initialization=="i1")$path)
 
 NorCPM.sal.src.i2 <- 
   new("data.source",
       NorCPM.sal.src.i1,
       name="NorCPM-i2",
-      sources=list(filter(NorCPM.fnames,
+      sources=filter(NorCPM.fnames,
                           field=="so",
                           grid=="gr",
-                          initialization=="i2")$path)) %>%
-  chunk.data.source(n=10) 
+                          initialization=="i2")$path)
 
 Sal.Decadal <- c(Sal.Decadal,NorCPM.sal.src.i1,NorCPM.sal.src.i2)
 
@@ -290,19 +282,19 @@ SST_obs <- PElst()
 SST_obs$HadISST <- data.source(name="HadISST",
                                type="Observations",
                                var="sst",
-                               sources=list("data_srcs/Observations/HadISST/HadISST_sst.nc"))
+                               sources="data_srcs/Observations/HadISST/HadISST_sst.nc")
 SST_obs$EN4  <- data.source(name="EN4",
                             type="Observations",
                             var="temperature",
-                            sources=list(dir("data_srcs/Observations/EN4/",
-                                             pattern="\\.zip$",full.names = TRUE,recursive=TRUE)))
+                            sources=dir("data_srcs/Observations/EN4/",
+                                             pattern="\\.zip$",full.names = TRUE,recursive=TRUE))
 
 Sal.obs <- PElst()
 Sal.obs$EN4  <- data.source(name="EN4",
                             type="Observations",
                             var="salinity",
-                            sources=list(dir("data_srcs/Observations/EN4/",
-                                             pattern="\\.nc$",full.names = TRUE,recursive=TRUE)),
+                            sources=dir("data_srcs/Observations/EN4/",
+                                             pattern="\\.nc$",full.names = TRUE,recursive=TRUE),
                             layermids.fn = function(f) {
                               #z.idx are the indices, v is the vertical coordinate in metres
                               ncid <- nc_open(f)
@@ -316,7 +308,7 @@ Sal.obs$EN4  <- data.source(name="EN4",
 # ========================================================================
 library(readr)
 NMME.cfg <- 
-  read_csv2(file.path(PE.cfg$dirs$datasrc,"NMME","NMME_SST_urls.csv"),
+  read_csv2(file.path(PE.cfg$dir$datasrc,"NMME","NMME_SST_urls.csv"),
                       col_types = cols()) %>%
   filter(active)
 NMME.mdls <- split(NMME.cfg,NMME.cfg$Model)
@@ -328,7 +320,7 @@ for(mdl.name in names(NMME.mdls)){
   obj <- data.source(name=mdl.name,#sprintf("NMME-%s",mdl.name),
                      type="NMME",
                      var="sst",
-                     sources=list(mdl.src))  
+                     sources=mdl.src)  
   NMME.sst.l[[mdl.name]] <- obj
 }
 
@@ -369,7 +361,7 @@ make.CMIP5.srcs <- function(meta,var) {
                 type="CMIP5",
                 layermids.fn = layermids.fn,
                 var=var,
-                sources=list(f$fname))  
+                sources=f$fname)
   })
   return(PElst(rtn))
 }
@@ -383,7 +375,7 @@ save(SST_obs,
      NMME.sst.l,
      make.CMIP5.srcs,
      CMIP5.db,
-     file=getOption("PE.path.datasrcs"))
+     file=PE.cfg$path$datasrcs)
 
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}

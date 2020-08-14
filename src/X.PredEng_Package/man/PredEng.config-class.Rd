@@ -25,8 +25,6 @@ Different extraction modes can be combined in the same list.
 \describe{
 \item{\code{project.name}}{Name of the configuration}
 
-\item{\code{recalculate}}{Should all existing files be recalculated? Or only missing files?}
-
 \item{\code{Observations}}{A data.source object defining the observational dataset to include.}
 
 \item{\code{Decadal}}{A list of GCM objects defining the decadal forecast systems to be analysed}
