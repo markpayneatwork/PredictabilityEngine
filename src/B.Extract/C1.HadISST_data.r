@@ -69,7 +69,7 @@ analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
 #'========================================================================
 #Setup database
 this.db <- PE.db.connection(pcfg)
-PE.db.clear.datasource(this.db,this.datasrc)
+PE.db.delete.extractions(this.db,this.datasrc)
 
 #/*======================================================================*/
 #'## Extract HadISST data
@@ -121,6 +121,9 @@ log_msg("Fragmenting...")
 
 #Import data into raster-land
 dat.b <- readAll(brick(regrid.fname))
+
+#Convert missing values to NAs
+dat.b[dat.b < -100] <- NA
 
 #Create metadata
 frag.dat <- tibble(srcName=this.datasrc@name,

@@ -18,7 +18,9 @@ PE.cfg$file <- list(analysis.grid="analysis.grid",
                     fragment.data="frag_data.rds")
 
 #Results database tables
-PE.cfg$db <- list(extract="extraction")
+PE.cfg$db <- list(extract="extraction",
+                  climatology="climatology",
+                  calibration="calibration")
 
 # PE.cfg$PE.dirs <- list(Misc.meta="Z.Misc.meta",
 #                     statistics="Statistics",

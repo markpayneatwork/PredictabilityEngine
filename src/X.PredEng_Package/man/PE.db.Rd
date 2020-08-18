@@ -4,7 +4,8 @@
 \alias{PE.db}
 \alias{PE.db.connection}
 \alias{PE.db.setup}
-\alias{PE.db.clear.datasource}
+\alias{PE.db.delete.rows}
+\alias{PE.db.delete.extractions}
 \alias{PE.db.calc.realMeans}
 \alias{PE.db.appendTable}
 \alias{PE.db.unserialize}
@@ -14,7 +15,9 @@ PE.db.connection(pcfg)
 
 PE.db.setup(pcfg)
 
-PE.db.clear.datasource(this.db, this.datasrc)
+PE.db.delete.rows(this.db, this.tbl, primaryKey, IDs)
+
+PE.db.delete.extractions(this.db, this.datasource)
 
 PE.db.calc.realMeans(this.db, this.datasrc)
 

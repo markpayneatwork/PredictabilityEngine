@@ -15,9 +15,11 @@ PE.db.connection <- function(pcfg) {
 #' @export
 #' @rdname PE.db
 PE.db.setup <- function(pcfg) {
+  #Setup connection
   this.db <- PE.db.connection(pcfg)
+  #Setup Extraction table
   if(!PE.cfg$db$extract %in% dbListTables(this.db)) {
-    extract.cols <-  
+    tbl.cols <-  
       c("fragId INTEGER NOT NULL PRIMARY KEY",
         "srcName",
         "srcType",
@@ -29,43 +31,79 @@ PE.db.setup <- function(pcfg) {
     tbl.cmd <- 
       sprintf("CREATE TABLE %s(%s)", 
                 PE.cfg$db$extract,
-                paste(extract.cols, collapse = ", "))
+                paste(tbl.cols, collapse = ", "))
     dbExecute(this.db, tbl.cmd)
   }
+  #Setup climatology table
+  if(!PE.cfg$db$climatology %in% dbListTables(this.db)) {
+    tbl.cols <-  
+      c("climId INTEGER NOT NULL PRIMARY KEY",
+        "srcName",
+        "srcType",
+        "leadIdx",
+        "month",
+        "data",
+        "nYears")  #Number of years in the climatology
+    tbl.cmd <- 
+      sprintf("CREATE TABLE %s(%s)", 
+              PE.cfg$db$climatology,
+              paste(tbl.cols, collapse = ", "))
+    dbExecute(this.db, tbl.cmd)
+  }
+  #Setup calibration table
+  if(!PE.cfg$db$calibration %in% dbListTables(this.db)) {
+    tbl.cols <-  
+      c("calFragId INTEGER NOT NULL PRIMARY KEY",
+        "srcName",
+        "srcType",
+        "calibrationMethod",
+        "realization",
+        "startDate",
+        "date",
+        "leadIdx",
+        "data")  #Number of years in the climatology
+    tbl.cmd <- 
+      sprintf("CREATE TABLE %s(%s)", 
+              PE.cfg$db$calibration,
+              paste(tbl.cols, collapse = ", "))
+    dbExecute(this.db, tbl.cmd)
+  }
+  
   dbDisconnect(this.db)
 }
 
 #' @export
 #' @rdname PE.db
-PE.db.clear.datasource <- function(this.db,this.datasrc) {
+PE.db.delete.rows <- function(this.db,this.tbl,primaryKey,IDs) {
+  #Delete rows
+  SQL.cmd <- sprintf("DELETE FROM %s WHERE %s IN (%s)",
+                     this.tbl,
+                     primaryKey,
+                     paste(IDs,collapse=" , "))
+  n <- dbExecute(this.db,SQL.cmd)
+  log_msg("Deleted %i rows from %s table...\n",n,this.tbl)
+  
+}
+
+#' @export
+#' @rdname PE.db
+PE.db.delete.extractions <- function(this.db,this.datasource) {
   this.tbl <- tbl(this.db, PE.cfg$db$extract)
-  #Get row IDs where we
+  #Get row IDs where we want to delete
   row.ids <- 
     this.tbl %>%
     filter(srcName == !!this.datasrc@name,
            srcType == !!this.datasrc@type) %>%
     select(fragId) %>%
     collect()
-    
+
   #Delete rows
-  SQL.cmd <- sprintf("DELETE FROM %s WHERE fragID IN (%s)",
-                     PE.cfg$db$extract,
-                     paste(row.ids$fragId,collapse=" , "))
-  n <- dbExecute(this.db,SQL.cmd)
-  log_msg("Deleted %i rows from results database...\n",n)
-  
+  PE.db.delete.rows(this.db,PE.cfg$db$extract,"fragId",row.ids$fragId)
 }
 
 #' @export
 #' @rdname PE.db
 PE.db.calc.realMeans <- function(this.db,this.datasrc) {
-  #Internal averaging function
-  calc.realMean <- function(frags) {
-    fragstack <- raster::brick(frags)
-    realmean <- raster::mean(fragstack) #Dispatching can be a bit strange here sometimes
-    return(list(realmean))
-  }
-  
   #Extract data and perform averaging
   frag.dat <- 
     tbl(this.db,PE.cfg$db$extract) %>%
@@ -77,7 +115,7 @@ PE.db.calc.realMeans <- function(this.db,this.datasrc) {
   realMeans <- 
     frag.dat %>%
     group_by(srcName,srcType,startDate,date,leadIdx,.drop=TRUE) %>%
-    summarise(data=calc.realMean(data),
+    summarise(data=raster.list.mean(data),
               duplicate.realizations=any(duplicated(realization))) %>% #Check for duplicated realization codes
     ungroup()
   if(any(realMeans$duplicate.realizations)) stop("Duplicate realizations detected in database. Rebuild.")
@@ -110,3 +148,16 @@ PE.db.unserialize <- function(this.dat) {
 }
 
 
+#' Raster List functions
+#' 
+#' Helper functions to work with lists of rasters
+#'
+#' @param l List of raster layers
+#'
+#' @return
+#' @export
+raster.list.mean <- function(l) {
+  l.stack <- raster::brick(l)
+  l.mean <- raster::mean(l.stack) #Dispatching can be a bit strange here sometimes
+  return(list(l.mean))
+}

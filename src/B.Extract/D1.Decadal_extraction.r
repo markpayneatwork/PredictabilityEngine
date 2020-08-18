@@ -71,7 +71,7 @@ analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
 #'========================================================================
 #Setup database
 this.db <- PE.db.connection(pcfg)
-PE.db.clear.datasource(this.db,this.datasrc)
+PE.db.delete.extractions(this.db,this.datasrc)
 
 #Get list of files
 src.meta <- tibble(fname=this.datasrc@sources,
