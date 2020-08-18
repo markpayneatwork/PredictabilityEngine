@@ -65,17 +65,20 @@ this.datasrc <- pcfg@Decadal[[cfg.id]]
 
 #Setup
 analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
-extract.dir <- define_dir(pcfg@scratch.dir,"B.Extract")
-frag.dat.fname <- file.path(extract.dir,sprintf("%s_%s.rds",this.datasrc@type,this.datasrc@name))
 
 #'========================================================================
 # Setup ####
 #'========================================================================
+#Setup database
+this.db <- PE.db.connection(pcfg)
+PE.db.clear.datasource(this.db,this.datasrc)
+
 #Get list of files
 src.meta <- tibble(fname=this.datasrc@sources,
                    exists=file.exists(fname))
 if(nrow(src.meta)==0 ) stop("No source files provided")
 if(any(!src.meta$exists)) stop("Cannot find all source files")
+
 
 #'========================================================================
 # Extract Fragments from Source Files ####
@@ -85,7 +88,6 @@ if(any(!src.meta$exists)) stop("Cannot find all source files")
 #the fragments being produced from a given file. Hence, required that
 #the source extraction and fragment metadata are run in one large chunk
 #all the way to completion.
-frag.meta.l <- list()
 
 #Loop over Source Files
 log_msg("Extracting fragments from source files...\n")
@@ -102,7 +104,7 @@ for(i in seq(nrow(src.meta))) {
   if(!length(pcfg@vert.range)==0) {
     tmp.in <- f
     tmp.out <- sprintf("%s_sellevel",tmp.stem)
-    vert.idxs <- verticalLayers(pcfg,this.chunk,tmp.in)
+    vert.idxs <- verticalLayers(pcfg,this.datasrc,tmp.in)
     sellev.cmd <- cdo(csl("sellevidx",vert.idxs),
                       tmp.in,tmp.out)
   } else {
@@ -153,16 +155,23 @@ for(i in seq(nrow(src.meta))) {
   
   #Import data into raster-land
   dat.b <- readAll(brick(regrid.fname))
-  dat.r <- map(1:nlayers(dat.b),~dat.b[[.x]])
-  
+
   #Create metadata
-  frag.meta.l[[i]] <- tibble(src.name=this.datasrc@name,
-                             src.type=this.datasrc@type,
-                             realization=this.datasrc@realization.fn(f),
-                             start.date=this.datasrc@start.date(f),
-                             date=this.datasrc@date.fn(regrid.fname),
-                             data=dat.r)
+  frag.data <- tibble(srcName=this.datasrc@name,
+                      srcType=this.datasrc@type,
+                      realization=this.datasrc@realization.fn(f),
+                      startDate=this.datasrc@start.date(f),
+                      date=this.datasrc@date.fn(regrid.fname),
+                      leadIdx=1:nlayers(dat.b),
+                      data=as.list(dat.b))
+  db.data <- 
+    frag.data %>%
+    mutate(startDate=as.character(startDate),
+           date=as.character(date),
+           data=map(data,serialize,NULL))
   
+  dbWriteTable(this.db, PE.cfg$db$extract, db.data, append = TRUE)
+
   #Remove the temporary files to tidy up
   tmp.fnames <- dir(dirname(tmp.stem),pattern=basename(tmp.stem),full.names = TRUE)
   del.err <- unlink(tmp.fnames)
@@ -173,10 +182,8 @@ for(i in seq(nrow(src.meta))) {
   
 }
 log_msg("\n")
-
-#Collate and save
-frag.meta <- bind_rows(frag.meta.l)
-saveRDS(frag.meta,file=frag.dat.fname)
+#Finished with output
+dbDisconnect(this.db)
 
 #'========================================================================
 # Complete 

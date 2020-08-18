@@ -227,7 +227,10 @@ set.configuration <- function(pcfg) {
     file.remove(cfg.linked)
   }
   file.symlink(file.path(getwd(),cfg.fname),PE.cfg$dir$objects)
-
+  
+  #Setup SQLite database to store results
+  PE.db.setup(pcfg)
+  
   # HPC  Configuration ####
   # #Setup soft linking
   # project.cfg <- define_dir(pcfg@scratch.dir,basename(PE.cfg$dirs$job.cfg))

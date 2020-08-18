@@ -17,7 +17,8 @@ PE.cfg$file <- list(analysis.grid="analysis.grid",
                     config=basename(PE.cfg$path$config),
                     fragment.data="frag_data.rds")
 
-
+#Results database tables
+PE.cfg$db <- list(extract="extraction")
 
 # PE.cfg$PE.dirs <- list(Misc.meta="Z.Misc.meta",
 #                     statistics="Statistics",
@@ -53,10 +54,11 @@ usethis::use_data(PE.cfg,overwrite = TRUE)
 #' @param type Type of filename  to retrieve
 #'
 #' @return The path to the particular file
+#' @name filenames
 #' @export
 #'
 PE.scratch.path <- function(pcfg,type) {
-  scratch.types <- c(list(extract="B.Extract"),
+  scratch.types <- c(#list(extract="B.Extract"),
                      PE.cfg$file)
   rtn <- file.path(pcfg@scratch.dir,scratch.types[[type]])
   return(rtn)

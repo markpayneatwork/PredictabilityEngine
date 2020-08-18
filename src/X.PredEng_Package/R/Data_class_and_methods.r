@@ -19,7 +19,7 @@
 #' be different to the initialisation dates (when the model is actually initialised). A decadal model 
 #' might be initialised on 1 Nov but we are primarily interested in it's post-January output, and so call 
 #' this an effective start date of 1 Jan. Things are much clearer for seasonal forecast systems, that 
-#' are initialised monthly.
+#' are initialised monthly. May be deprecated at some point
 #' @slot date.fn A function to extract the time stamps for each time step
 #'
 #' @export data.source
@@ -35,7 +35,7 @@ data.source <-
                       use.timebounds="numeric",
                       realization.fn="function",
                       layermids.fn="function",
-                      start.date="function",  
+                      start.date="function", 
                       date.fn="function"),
            prototype=list(use.timebounds=as.numeric(NA),
                           time.var="time",

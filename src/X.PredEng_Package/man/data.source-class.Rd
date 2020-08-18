@@ -35,7 +35,7 @@ by time. Valid values are NA (don't use timebounds, use the time variable), 1 (u
 be different to the initialisation dates (when the model is actually initialised). A decadal model 
 might be initialised on 1 Nov but we are primarily interested in it's post-January output, and so call 
 this an effective start date of 1 Jan. Things are much clearer for seasonal forecast systems, that 
-are initialised monthly.}
+are initialised monthly. May be deprecated at some point}
 
 \item{\code{date.fn}}{A function to extract the time stamps for each time step}
 }}
