@@ -5,6 +5,9 @@
 \alias{PE.db.connection}
 \alias{PE.db.setup}
 \alias{PE.db.clear.datasource}
+\alias{PE.db.calc.realMeans}
+\alias{PE.db.appendTable}
+\alias{PE.db.unserialize}
 \title{Setup results database}
 \usage{
 PE.db.connection(pcfg)
@@ -12,6 +15,12 @@ PE.db.connection(pcfg)
 PE.db.setup(pcfg)
 
 PE.db.clear.datasource(this.db, this.datasrc)
+
+PE.db.calc.realMeans(this.db, this.datasrc)
+
+PE.db.appendTable(this.dat, this.db, this.tbl)
+
+PE.db.unserialize(this.dat)
 }
 \arguments{
 \item{pcfg}{}
@@ -21,4 +30,9 @@ PE.db.clear.datasource(this.db, this.datasrc)
 }
 \description{
 Setup results database
+}
+\details{
+PE.db.appendTable serialises the data column and writes the data to the specified table
+
+PE.db.unserialize  unserialises the data column
 }

@@ -79,7 +79,6 @@ src.meta <- tibble(fname=this.datasrc@sources,
 if(nrow(src.meta)==0 ) stop("No source files provided")
 if(any(!src.meta$exists)) stop("Cannot find all source files")
 
-
 #'========================================================================
 # Extract Fragments from Source Files ####
 #'========================================================================
@@ -164,13 +163,12 @@ for(i in seq(nrow(src.meta))) {
                       date=this.datasrc@date.fn(regrid.fname),
                       leadIdx=1:nlayers(dat.b),
                       data=as.list(dat.b))
-  db.data <- 
-    frag.data %>%
-    mutate(startDate=as.character(startDate),
-           date=as.character(date),
-           data=map(data,serialize,NULL))
   
-  dbWriteTable(this.db, PE.cfg$db$extract, db.data, append = TRUE)
+  #Write to database
+  frag.data %>%
+    mutate(startDate=as.character(startDate),
+           date=as.character(date)) %>%
+    PE.db.appendTable(this.db,PE.cfg$db$extract)
 
   #Remove the temporary files to tidy up
   tmp.fnames <- dir(dirname(tmp.stem),pattern=basename(tmp.stem),full.names = TRUE)
@@ -182,6 +180,11 @@ for(i in seq(nrow(src.meta))) {
   
 }
 log_msg("\n")
+
+#Calculate realization means
+log_msg("Calculating realization means...\n")
+PE.db.calc.realMeans(this.db,this.datasrc)
+
 #Finished with output
 dbDisconnect(this.db)
 
