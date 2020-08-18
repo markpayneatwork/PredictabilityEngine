@@ -61,21 +61,15 @@ if(interactive()) {
 #Data source
 this.datasrc <- pcfg@Observations
 
+#Working directories
+analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
+
 #'========================================================================
 # Setup ####
-# If we are considering looping over spatial areas in the one script, this
-# is where you would start, by setting this.sp to the appropriate area
-# for a list of possibilities
 #'========================================================================
-
-#Working directories
-# base.dir <- define_dir(pcfg@scratch.dir,"Observations","HadISST")
-# misc.meta.dir <- define_dir(base.dir,PE.cfg$dirs$Misc.meta)
-# mon.clim.dir <- define_dir(base.dir,"A.monthly_climatologies")
-# mon.anom.dir <- define_dir(base.dir,"B.monthly_anom")
-analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
-extract.dir <- define_dir(pcfg@scratch.dir,"B.Extract")
-frag.dat.fname <- file.path(extract.dir,sprintf("%s_%s.rds",this.datasrc@type,this.datasrc@name))
+#Setup database
+this.db <- PE.db.connection(pcfg)
+PE.db.clear.datasource(this.db,this.datasrc)
 
 #/*======================================================================*/
 #'## Extract HadISST data
@@ -127,22 +121,27 @@ log_msg("Fragmenting...")
 
 #Import data into raster-land
 dat.b <- readAll(brick(regrid.fname))
-dat.r <- map(1:nlayers(dat.b),~dat.b[[.x]])
 
 #Create metadata
-frag.dat <- tibble(src.name=this.datasrc@name,
-                      src.type=this.datasrc@type,
+frag.dat <- tibble(srcName=this.datasrc@name,
+                      srcType=this.datasrc@type,
                       realization=NA,
-                      start.date=NA,
+                      startDate=NA,
                       date=getZ(dat.b),
-                      data=dat.r)
+                      leadIdx=NA,
+                      data=as.list(dat.b))
+
+#Write to database
+frag.dat %>%
+  mutate(date=as.character(date)) %>%
+  PE.db.appendTable(this.db,PE.cfg$db$extract)
 
 #Remove the temporary files to tidy up
 del.err <- unlink(regrid.fname)
 if(del.err!=0) stop("Error deleting temp files")
 
-#Save
-saveRDS(frag.dat,file=frag.dat.fname)
+#Finished with output
+dbDisconnect(this.db)
 
 # #Now, lets think for a minute. The downstream functions require two 
 # #files - Anomaly_metadata.RData and Realmean_metadata.RData. The choice
