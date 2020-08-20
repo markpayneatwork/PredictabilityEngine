@@ -67,21 +67,24 @@ pcfg@global.ROI <- extent(-70,30,50,80)
 pcfg@global.res  <- 0.5
 
 #Polygons
-sp.objs <- PElst()
-sp.objs$irminger.sea <- spatial.domain("IrmingerSea",
-                                     as.SpatialPolygons.matrix(rbind(c(-45,58),c(-45,66),
-                                                   c(-20,66),c(-32,58))))
-sp.objs$iceland.basin <- spatial.domain("IcelandBasin",
-                                      as.SpatialPolygons.matrix(rbind(c(-20,66),c(-32,58),
-                                                    c(-15,58),c(-15,66))))
-sp.objs$no.coast <- spatial.domain("NorwegianCoast",
-                                        as.SpatialPolygons.matrix(rbind(c(-5,62),c(10,62),
-                                                                                c(20,70),c(20,73),
-                                                                                c(12,73))))
-sp.objs$s.iceland <- spatial.domain("SouthOfIceland",extent(-50,-10,54,70))
+sp.objs <- list()
+sp.objs$"IrmingerSea" <-
+  st_polygon(list(rbind(c(-45,58), c(-45,66), c(-20,66),
+                        c(-32,58),c(-45,58))))
+
+sp.objs$"IcelandBasin" <- 
+  st_polygon(list(rbind(c(-20,66),c(-32,58),c(-15,58),
+                        c(-15,66),c(-20,66))))
+
+sp.objs$"NorwegianCoast" <-
+    st_polygon(list(rbind(c(-5,62),c(10,62),c(20,70),
+                          c(20,73),c(12,73),c(-5,62))))
+
+sp.objs$"SouthOfIceland" <- sfpolygon.from.extent(extent(-50,-10,54,70))
 
 #Add to object
-pcfg@spatial.domains <- sp.objs
+pcfg@spatial.polygons <- 
+  a<-sp.objs %>% enframe(value="geometry") %>% st_sf()
 
 
 #'========================================================================
@@ -105,18 +108,12 @@ extr$spatial.forecasts <- as.Date("2019-08-15")
 #'========================================================================
 #Configure stats
 stat.l <- PElst()
-stat.l[[1]] <- threshold(name="threshold-realmeans",
-                         desc="11 degree threshold - realmeans",
+stat.l[[1]] <- threshold(name="threshold",
+                         desc="11 degree threshold",
                          threshold=11,
                          above=TRUE,
-                         use.full.field = TRUE,
-                         use.realmeans=TRUE)
-
-stat.l[[2]] <- new("threshold",
-                   stat.l[[1]],
-                   name="threshold-reals",
-                   desc="11 degree threshold - realisations",
-                   use.realmeans=FALSE)
+                         calibration = c("Mean adjusted"),
+                         realizations=c(1,2,3))
 
 #Merge it all in
 pcfg@statistics <- stat.l

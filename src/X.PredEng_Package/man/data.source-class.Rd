@@ -38,5 +38,7 @@ this an effective start date of 1 Jan. Things are much clearer for seasonal fore
 are initialised monthly. May be deprecated at some point}
 
 \item{\code{date.fn}}{A function to extract the time stamps for each time step}
+
+\item{\code{crs}}{Specify the CRS. If empty, then take the CRS from the input file (where raster can get it)}
 }}
 

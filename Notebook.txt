@@ -1,15 +1,9 @@
 ==========================================
 Seasonal and Decadal Predictability Engine
 ==========================================
-TODO:
-* Create spatial field tools, including probabilities
-* Check that time bounds etc ar handled properly in all Decadal sources, and that we aren't repeating the problem that we discovered in DPLE
-* Consider making the ensemble mean across realisations, rather than models... e.g. via a switch. Should be easy to implement in D2
+Notes in Trello
 
-Next Actions
-* A1. Mean adjustment, calculate climatologies from both parts, and calibrate. Save calibrated outputs ready for next step
-* Implementation as a database?
-* Then work on statistics
+2020.08.18
 
 2020.08.14
 Restared development by doing a complete rewrite on a new branch. Aim is to allow PredEng to incorporate alternative forms of forecast validation, and to minimise the number of intermediate files. This seems to be working ok so far.

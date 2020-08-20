@@ -69,7 +69,7 @@ analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
 #'========================================================================
 #Setup database
 this.db <- PE.db.connection(pcfg)
-PE.db.delete.extractions(this.db,this.datasrc)
+PE.db.delete.by.datasource(this.db,PE.cfg$db$extract,this.datasrc)
 
 #/*======================================================================*/
 #'## Extract HadISST data

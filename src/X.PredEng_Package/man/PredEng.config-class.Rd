@@ -35,8 +35,7 @@ Different extraction modes can be combined in the same list.
 
 \item{\code{persistence.leads}}{A vector (in months) of lead times at which to generate persistence forcasts}
 
-\item{\code{spatial.domains}}{List of spatial.config objects defining the spatial domains over which 
-to operate}
+\item{\code{spatial.polygons}}{A sf data.frame defining the spatial domains over which  to operate}
 
 \item{\code{statistics}}{PredEng.list of statistics to apply over each spatial area}
 

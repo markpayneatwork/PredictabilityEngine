@@ -7,7 +7,8 @@
 PE.progress(n)
 }
 \arguments{
-\item{n}{Number of iterations}
+\item{n}{Number of iterations. If a vector of length greater than 1, then the
+number of iterations is set to the length of the vector instead}
 }
 \value{
 A progress bar object

@@ -14,10 +14,11 @@ Depends:
     tidyverse,
     lubridate,
     stringr,
-    sp,
+    sf,
     ncdf4,
     progress,
     R (>= 2.10),
+    assertthat,
     DBI,
     RSQLite
 RoxygenNote: 7.1.0

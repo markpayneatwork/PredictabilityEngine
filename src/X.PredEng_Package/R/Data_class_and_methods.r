@@ -21,6 +21,7 @@
 #' this an effective start date of 1 Jan. Things are much clearer for seasonal forecast systems, that 
 #' are initialised monthly. May be deprecated at some point
 #' @slot date.fn A function to extract the time stamps for each time step
+#' @slot crs Specify the CRS. If empty, then take the CRS from the input file (where raster can get it)
 #'
 #' @export data.source
 #' @exportClass data.source
@@ -36,27 +37,25 @@ data.source <-
                       realization.fn="function",
                       layermids.fn="function",
                       start.date="function", 
-                      date.fn="function"),
+                      date.fn="function",
+                      crs="CRS"),
            prototype=list(use.timebounds=as.numeric(NA),
                           time.var="time",
                           layermids.fn=function(x) {stop("z2idx.fn not specified")},
                           realizations=as.character(NA),
                           date.fn=function(x) {stop("Date.fn not specified")},
                           realization.fn=function(x) {stop("Realization function not specified")},
-                          start.date=function(x) { stop("Start.date function not specified")}),
+                          start.date=function(x) { stop("Start.date function not specified")},
+                          crs=CRS()),
            validity = function(object) {
-             err.msg <- NULL
-             if(grepl(" ",object@name)) {
-               err.msg <- c(err.msg,"Object name must not contain spaces.")}
-             if(grepl("\\.",object@name)) {
-               err.msg <- c(err.msg,"Object name must not contain full stops.")}
-             if(grepl("_",object@name)) {
-               err.msg <- c(err.msg,"Object name must not contain underscores.")}
-             #Check use.timebounds is value
-             if(!(is.na(object@use.timebounds) | (object@use.timebounds %in% 1:3))) {
-               err.msg <- c(err.msg,"Use.timebounds must be either NA, or 1,2 or 3")
-             }
-             if(length(err.msg)==0) return(TRUE) else err.msg
+             err.msg <- 
+               list(validate_that(!grepl(" ",object@name),msg="Object name must not contain spaces"),
+                    validate_that(!grepl("\\.",object@name),msg="Object name must not contain full stops"),
+                    validate_that(!grepl("_",object@name),msg="Object name must not contain underscores"),
+                    validate_that(is.na(object@use.timebounds) | object@use.timebounds %in% 1:3,
+                                  msg="Use.timebounds must be either NA, or 1,2 or 3"))
+             err.idxs <- map_lgl(err.msg,is.character)
+             if(sum(err.idxs)==0) return(TRUE) else unlist(err.msg[err.idxs])
            })
 
 
@@ -67,7 +66,7 @@ setMethod("show","data.source", function(object) {
   cat(paste(rep("-",nchar(hdr.str)),collapse="",sep=""),"\n")
   show.slot <- function(ob,slt) {
     obj <- slot(ob,slt)
-    if(class(obj) %in% c("logical","formula","character","numeric","Extent","integer","list")) {
+    if(class(obj) %in% c("logical","formula","character","numeric","Extent","integer","list","CRS")) {
       cat(sprintf("%-20s : ",slt))
     } else {return(NULL)}
     if(is(obj,"formula")) {

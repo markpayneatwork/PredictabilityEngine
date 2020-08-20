@@ -6,8 +6,7 @@
 #' @slot NMME A list of GCM objects defining the NMME models to be analysed
 #' @slot CMIP5 A list of data source objects to configure extraction from the CMIP5 ensemble. 
 #' @slot persistence.leads A vector (in months) of lead times at which to generate persistence forcasts
-#' @slot spatial.domains List of spatial.config objects defining the spatial domains over which 
-#' to operate
+#' @slot spatial.polygons A sf data.frame defining the spatial domains over which  to operate
 #' @slot statistics PredEng.list of statistics to apply over each spatial area
 #' @slot extraction PredEng.list definining temporal and spatial extraction characteristics
 #' @slot MOI The months of interest (a vector of integers between 1 and 12 inclusive)
@@ -47,7 +46,7 @@ PredEng.config <-
                       NMME="PElst",
                       CMIP5="PElst",
                       persistence.leads="numeric",
-                      spatial.domains="PElst",
+                      spatial.polygons="sf",
                       statistics="PElst",
                       #extraction="list",
                       global.ROI="Extent",
@@ -62,7 +61,8 @@ PredEng.config <-
                       average.months="logical"),
            prototype = list(global.ROI=extent(as.numeric(rep(NA,4))),
                             persistence.leads=1:120,  #1-10 years
-                            retain.realizations=TRUE),
+                            retain.realizations=TRUE,
+                            spatial.polygons=st_sf(st_sfc(st_point(c(0,0))))),
            validity = function(object) {
              err.msg <- NULL
              if(length(object@MOI)!=1 & object@average.months) {
@@ -79,44 +79,17 @@ PredEng.config <-
            })
 
 
-#'========================================================================
-# Misc ####
-#'========================================================================
 
-#' #' Merge the regions of interest stored in the config object into one
-#' #' 
-#' #' 
-#' setMethod("merge",signature(x="project.config",y="missing"),
-#'           function(x,y,..){
-#'             #Merge Regions of interest
-#'             poly.ROIs <- lapply(x@indicators,slot,"poly.ROI")
-#'             ext.ROIs <- lapply(poly.ROIs,extent)
-#'             if(length(ext.ROIs)>1) {
-#'               ROI <- do.call(raster::merge,unname(ext.ROIs))
-#'             } else {
-#'               ROI <- ext.ROIs[[1]]
-#'             }
-#'             return(ROI)
-#'           })
-
-#' #' Visualise project region of interest
-#' #' @export
-#' setMethod("plot",signature(x="project.config",y="missing"),
-#'           function(x,y,...) {
-#'             require(maps)
-#'             #Try to plot a map as background first
-#'             err <- try(map("world",xlim=x@ROI[1:2],ylim=x@ROI[3:4],
-#'                            fill=TRUE,col="black"),silent=TRUE)
-#'             if(is(err,"try-error")) {
-#'               plot(x@ROI,lwd=2,col="grey",...)
-#'             } else {
-#'               plot(x@ROI,lwd=2,col="grey",add=TRUE,...)
-#'             }
-#'             #Add individual areas
-#'             for(i in seq(x@indicators)) {
-#'               plot(x@indicators[[i]]@poly.ROI,border=i,add=TRUE)
-#'             }
-#'           })
+#' Visualise project region of interest
+#' @export
+setMethod("plot",signature(x="PredEng.config",y="missing"),
+          function(x,y,...) {
+            x@spatial.polygons %>%
+            ggplot()+
+              annotation_map(map_data("world"),fill="black",col="black")+
+              geom_sf(aes(col=name,fill=name),alpha=0.25)+
+              theme_bw()
+          })
 
 
 #' @export
@@ -126,9 +99,9 @@ setMethod("show","PredEng.config", function(object) {
   cat(paste(rep("-",nchar(hdr.str)),collapse="",sep=""),"\n")
   show.slot <- function(ob,slt) {
     obj <- slot(ob,slt)
-    if(class(obj) %in% c("logical","formula","character",
+    if(any(class(obj) %in% c("logical","formula","character",
                          "numeric","Extent","integer","list",
-                         "PElst","data.source")) {
+                         "data.frame","PElst","data.source"))) {
       cat(sprintf("%-20s : ",slt))
     } else {return(NULL)}
     if(is(obj,"formula")) {
@@ -143,6 +116,8 @@ setMethod("show","PredEng.config", function(object) {
       cat(paste(range(obj),collapse="-"),"\n")
     } else if(is(obj,"numeric") & length(obj) <12){
       cat(paste(range(obj),collapse="-"),"\n")
+    } else if(is(obj,"data.frame")) {
+      cat(sprintf("%s items \n",nrow(obj)))
     } else if(is(obj,"list")){
         #Get list names
         l.list <- length(obj)

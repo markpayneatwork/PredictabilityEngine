@@ -136,15 +136,6 @@ configure.chunk <- function(fname,cfg.idx,obj){
 }
 
 
-#' Create a global ROI
-#'
-#' @param obj 
-#'
-#' @export
-#'
-global.ROI <- function(obj) {
-  spatial.domain(obj@global.ROI,name=PE.cfg$misc$global.sp.name,desc="global.ROI")
-}
 
 #' @export
 #' @rdname job_management
@@ -158,11 +149,13 @@ get.cfgs <- function(fname){
 #' 
 #' Creates a standardised progress bar across all of the Predictability Engine
 #'
-#' @param n Number of iterations
+#' @param n Number of iterations. If a vector of length greater than 1, then the
+#' number of iterations is set to the length of the vector instead
 #'
 #' @return A progress bar object
 #' @export
 PE.progress <- function(n) {
+  if(length(n)>1) n <- length(n)
   pb <- progress_bar$new(total=n,
                    show=0,clear=FALSE,
                    format = "[:bar] :elapsedfull (:percent), :eta remaining")

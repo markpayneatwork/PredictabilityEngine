@@ -1,6 +1,3 @@
-#/*======================================================================*/
-#  Define common directories etc
-#/*======================================================================*/
 PE.cfg <- list()
 
 #Directories
@@ -20,7 +17,11 @@ PE.cfg$file <- list(analysis.grid="analysis.grid",
 #Results database tables
 PE.cfg$db <- list(extract="extraction",
                   climatology="climatology",
-                  calibration="calibration")
+                  calibration="calibration",
+                  stats="statistics")
+
+#Validity
+PE.cfg$validity <- list(calibrationMethods=c("anomaly","Mean adjusted"))
 
 # PE.cfg$PE.dirs <- list(Misc.meta="Z.Misc.meta",
 #                     statistics="Statistics",

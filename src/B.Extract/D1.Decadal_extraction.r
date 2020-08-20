@@ -71,7 +71,7 @@ analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
 #'========================================================================
 #Setup database
 this.db <- PE.db.connection(pcfg)
-PE.db.delete.extractions(this.db,this.datasrc)
+PE.db.delete.by.datasource(this.db,PE.cfg$db$extract,this.datasrc)
 
 #Get list of files
 src.meta <- tibble(fname=this.datasrc@sources,
@@ -154,6 +154,15 @@ for(i in seq(nrow(src.meta))) {
   
   #Import data into raster-land
   dat.b <- readAll(brick(regrid.fname))
+  
+  #Check/set CRS status
+  if(is.na(dat.b@crs)) {
+    #Assert that datasrc has a good alternative 
+    assert_that(!is.na(this.datasrc@crs),
+                msg=sprintf("CRS not specificied but needed by '%s'",this.datasrc@name))
+    #And use it
+    dat.b@crs <- this.datasrc@crs
+  }
 
   #Create metadata
   frag.data <- tibble(srcName=this.datasrc@name,

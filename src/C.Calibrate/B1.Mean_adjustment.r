@@ -60,10 +60,10 @@ clim.tbl <- tbl(this.db,PE.cfg$db$climatology)
 #Clear all previous analyses
 tbl(this.db,PE.cfg$db$calibration) %>%
   filter(calibrationMethod %in% c("anomaly","Mean adjusted")) %>%
-  select(calFragId) %>%
+  select(pKey) %>%
   collect() %>%
-  pull(calFragId) %>%
-  PE.db.delete.rows(this.db=this.db,this.tbl=PE.cfg$db$calibration,primaryKey="calFragID")
+  pull(pKey) %>%
+  PE.db.delete.by.pKey(db.con=this.db,tbl.name=PE.cfg$db$calibration)
 
 #Import observational climatology data
 obs.clim.dat <-

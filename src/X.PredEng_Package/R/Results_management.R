@@ -20,9 +20,9 @@ PE.db.setup <- function(pcfg) {
   #Setup Extraction table
   if(!PE.cfg$db$extract %in% dbListTables(this.db)) {
     tbl.cols <-  
-      c("fragId INTEGER NOT NULL PRIMARY KEY",
-        "srcName",
+      c("pKey INTEGER NOT NULL PRIMARY KEY",
         "srcType",
+        "srcName",
         "realization",
         "startDate",
         "date",
@@ -37,9 +37,9 @@ PE.db.setup <- function(pcfg) {
   #Setup climatology table
   if(!PE.cfg$db$climatology %in% dbListTables(this.db)) {
     tbl.cols <-  
-      c("climId INTEGER NOT NULL PRIMARY KEY",
-        "srcName",
+      c("pKey INTEGER NOT NULL PRIMARY KEY",
         "srcType",
+        "srcName",
         "leadIdx",
         "month",
         "data",
@@ -53,18 +53,39 @@ PE.db.setup <- function(pcfg) {
   #Setup calibration table
   if(!PE.cfg$db$calibration %in% dbListTables(this.db)) {
     tbl.cols <-  
-      c("calFragId INTEGER NOT NULL PRIMARY KEY",
-        "srcName",
+      c("pKey INTEGER NOT NULL PRIMARY KEY",
         "srcType",
+        "srcName",
         "calibrationMethod",
         "realization",
         "startDate",
         "date",
         "leadIdx",
-        "data")  #Number of years in the climatology
+        "data")  
     tbl.cmd <- 
       sprintf("CREATE TABLE %s(%s)", 
               PE.cfg$db$calibration,
+              paste(tbl.cols, collapse = ", "))
+    dbExecute(this.db, tbl.cmd)
+  }
+  #Setup statistics table
+  if(!PE.cfg$db$stats %in% dbListTables(this.db)) {
+    tbl.cols <-  
+      c("pKey INTEGER NOT NULL PRIMARY KEY",
+        "srcType",
+        "srcName",
+        "calibrationMethod",
+        "realization",
+        "startDate",
+        "date",
+        "leadIdx",
+        "sdName",
+        "statName",
+        "field",
+        "value")  
+    tbl.cmd <- 
+      sprintf("CREATE TABLE %s(%s)", 
+              PE.cfg$db$stats,
               paste(tbl.cols, collapse = ", "))
     dbExecute(this.db, tbl.cmd)
   }
@@ -74,31 +95,30 @@ PE.db.setup <- function(pcfg) {
 
 #' @export
 #' @rdname PE.db
-PE.db.delete.rows <- function(this.db,this.tbl,primaryKey,IDs) {
+PE.db.delete.by.pKey <- function(db.con,tbl.name,pKeys) {
   #Delete rows
-  SQL.cmd <- sprintf("DELETE FROM %s WHERE %s IN (%s)",
-                     this.tbl,
-                     primaryKey,
-                     paste(IDs,collapse=" , "))
-  n <- dbExecute(this.db,SQL.cmd)
-  log_msg("Deleted %i rows from %s table...\n",n,this.tbl)
+  SQL.cmd <- sprintf("DELETE FROM %s WHERE pKey IN (%s)",
+                     tbl.name,
+                     paste(pKeys,collapse=" , "))
+  n <- dbExecute(db.con,SQL.cmd)
+  log_msg("Deleted %i rows from %s table...\n",n,tbl.name)
   
 }
 
 #' @export
 #' @rdname PE.db
-PE.db.delete.extractions <- function(this.db,this.datasource) {
-  this.tbl <- tbl(this.db, PE.cfg$db$extract)
+PE.db.delete.by.datasource <- function(db.con,tbl.name=PE.cfg$db$extract,datasrc) {
+  this.tbl <- tbl(db.con, tbl.name)
   #Get row IDs where we want to delete
   row.ids <- 
     this.tbl %>%
-    filter(srcName == !!this.datasrc@name,
-           srcType == !!this.datasrc@type) %>%
-    select(fragId) %>%
+    filter(srcName == !!datasrc@name,
+           srcType == !!datasrc@type) %>%
+    select(pKey) %>%
     collect()
 
   #Delete rows
-  PE.db.delete.rows(this.db,PE.cfg$db$extract,"fragId",row.ids$fragId)
+  PE.db.delete.by.pKey(db.con,tbl.name,row.ids$pKey)
 }
 
 #' @export
@@ -133,10 +153,10 @@ PE.db.calc.realMeans <- function(this.db,this.datasrc) {
 #' @details PE.db.appendTable serialises the data column and writes the data to the specified table
 #' @export
 #' @rdname PE.db
-PE.db.appendTable <- function(this.dat,this.db,this.tbl) {
-    this.dat %>%
-    mutate(data=map(data,serialize,NULL)) %>%
-    dbWriteTable(conn=this.db, name=this.tbl, append = TRUE)
+PE.db.appendTable <- function(dat,db.con,tbl.name) {
+    dat %>%
+    mutate(across(where(is.list),function(cl) map(cl,serialize,NULL))) %>%
+    dbWriteTable(conn=db.con, name=tbl.name, append = TRUE)
 }
 
 #' @details PE.db.unserialize  unserialises the data column
@@ -144,7 +164,7 @@ PE.db.appendTable <- function(this.dat,this.db,this.tbl) {
 #' @rdname PE.db
 PE.db.unserialize <- function(this.dat) {
     mutate(this.dat,
-           data=map(data,unserialize))
+           across(where(~is(.x,"blob")),function(cl) map(cl,unserialize)))
 }
 
 

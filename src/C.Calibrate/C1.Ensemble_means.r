@@ -1,16 +1,14 @@
 #'========================================================================
-# A1.Climatological statistics
+# C1.Ensemble_means
 #'========================================================================
 #
 # by Mark R Payne
 # DTU-Aqua, Kgs. Lyngby, Denmark
 # http://www.staff.dtu.dk/mpay
 #
-# Created Fri Aug 14 16:37:26 2020
+# Created Thu Aug 20 08:54:49 2020
 #
-# Calculates climatological statistics (mainly the mean, but also potentially
-# variance etc) over the extracted database. These statistics are used as the
-# basic for subsequent recalibration approaches.
+# Calculate the ensemble means of the calibrated fragments
 #
 # This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 # You are largely free to do what you like with it, so long as you "attribute"
@@ -25,7 +23,7 @@
 #'========================================================================
 # Initialise system ####
 #'========================================================================
-cat(sprintf("\n%s\n","A1.Climatological statistics"))
+cat(sprintf("\n%s\n","C1.Ensemble_means"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 start.time <- proc.time()[3];
 
@@ -33,7 +31,6 @@ start.time <- proc.time()[3];
 log.msg <- function(fmt,...) {cat(sprintf(fmt,...));
   flush.console();return(invisible(NULL))}
 
-#Helper functions, externals and libraries
 library(PredEng)
 library(ncdf4)
 library(lubridate)
@@ -45,7 +42,6 @@ pcfg <- readRDS(PE.cfg$path$config)
 #Take input arguments, if any
 if(interactive()) {
   set.log_msg.silent()
-  pcfg@clim.years <- 1960:2005  #Just for debugging
 } else {
   #Do everything and tell us all about it
   set.log_msg.silent(FALSE)
@@ -54,46 +50,50 @@ if(interactive()) {
 #'========================================================================
 # Setup ####
 #'========================================================================
+log_msg("Import data..\n")
 #Setup databases
 this.db <- PE.db.connection(pcfg)
-frag.tbl <- tbl(this.db,PE.cfg$db$extract)
+calib.tbl <- tbl(this.db,PE.cfg$db$calibration)
 
-#Reset the resutls table by deleting and reestablishing it
-dbRemoveTable(this.db,PE.cfg$db$climatology)
-PE.db.setup(pcfg)
-
-#'========================================================================
-# Calculate climatologies ####
-#'========================================================================
-#Get list of frags that are in the climatological years
-# Note that we do this across the realisation means. This is deliberate, as 
-# it means that we can handle situations where the number of realizations
-# changes over time e.g. as in NMME.
-clim.frag.dat <-
-  frag.tbl %>%
-  filter(realization == "realmean" | srcType =="Observations") %>%
+#Clear all previous ensemble means
+calib.tbl %>%
+  filter(srcType=="ensmean") %>%
+  select(pKey) %>%
   collect() %>%
-  mutate(date=ymd(date),
-         year=year(date),
-         month=month(date))%>%
-  filter(year %in% pcfg@clim.years) %>%
+  pull() %>%
+  PE.db.delete.by.pKey(db.con=this.db,tbl.name=PE.cfg$db$calibration)
+
+#Get list of realisation means
+realmeans <-
+  calib.tbl %>%
+  filter(realization=="realmean") %>%
+  collect() %>%
   PE.db.unserialize()
 
-#Prepare to loop!
-clim.frag.dat <-
-  group_by(clim.frag.dat,srcName,srcType,leadIdx,month,.drop=TRUE)
+#Assertion: all months are rounded down to the first of the month, and therefore
+#the date field is always 01. 
+assert.day <- 
+  realmeans %>%
+  mutate(date=ymd(date),
+         day=day(date)) 
+assert_that(all(assert.day$day==1),msg="Day = 1 condition violated")
 
-#Calculate climatologies in a summarisation loop
-clim.dat <-
-  clim.frag.dat %>%
+#'========================================================================
+# Process ####
+#'========================================================================
+#Throw it all at dplyr
+ensmeans <- 
+  realmeans %>%
+  group_by(srcType,calibrationMethod,startDate,date,leadIdx,.drop=TRUE) %>%
   summarise(data=raster.list.mean(data),
-            nYears=n())
+            n=n()) %>% #Check for duplicated realization codes
+  ungroup() %>%
+  add_column(srcName="ensmean",.after=1)
 
 #Write results
-PE.db.appendTable(clim.dat,this.db,PE.cfg$db$climatology)
-
-#Finished with output
-dbDisconnect(this.db)
+ensmeans %>%
+  select(-n) %>%
+  PE.db.appendTable(db.con = this.db,tbl.name = PE.cfg$db$calibration)
 
 #'========================================================================
 # Complete ####
