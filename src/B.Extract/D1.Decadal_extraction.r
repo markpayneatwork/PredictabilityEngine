@@ -27,10 +27,7 @@
 #'========================================================================
 cat(sprintf("\n%s\n","Extract Decadal hindcast data"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
-
-#Configure markdown style, do house cleaning
-rm(list = ls(all.names=TRUE));  graphics.off();
-start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
+start.time <- proc.time()[3];
 
 #Helper functions, externals and libraries
 library(PredEng)
@@ -42,26 +39,37 @@ pcfg <- readRDS(PE.cfg$path$config)
 # Configuration ####
 #'========================================================================
 #Take input arguments, if any
-if(interactive()) {
+if(exists("do.this")) {
+  cfg.id <- do.this
+  rm(do.this)
+  set.cdo.defaults("--silent --no_warnings -O")
+  set.log_msg.silent()
+} else if(interactive()) {
   cfg.id <- 3
   set.cdo.defaults("--silent --no_warnings -O")
-  #set.cdo.defaults("-O")
   set.log_msg.silent()
-  set.nco.defaults("--ovewrite")
 } else {
-  #Taking inputs from the system environment
+  #Setup from the environment
   cfg.id <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
-  if(cfg.id=="") stop("Cannot find LSB_JOBINDEX")
-  #Do everything and tell us all about it
   set.cdo.defaults()
   set.log_msg.silent(FALSE)
+  #Or try the command line
+  if(is.na(cfg.id)) {
+    cmd.args <- commandArgs(TRUE)
+    if(length(cmd.args)!=1) stop("Cannot get command args")
+    cfg.id <- as.numeric(cmd.args)
+    set.cdo.defaults("--silent --no_warnings -O")
+    set.log_msg.silent()
+  }
 }
+
 
 #Other configurations
 set.nco.defaults("--overwrite")
 
 #Retrieve configurations
 this.datasrc <- pcfg@Decadal[[cfg.id]]
+log_msg("Running with cfg.id %i (%s/%s)...\n\n",cfg.id,this.datasrc@name,this.datasrc@type)
 
 #Setup
 analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
@@ -91,7 +99,7 @@ if(any(!src.meta$exists)) stop("Cannot find all source files")
 #Loop over Source Files
 log_msg("Extracting fragments from source files...\n")
 pb <- PE.progress(nrow(src.meta))
-pb$tick(0)
+dmp <- pb$tick(0)
 for(i in seq(nrow(src.meta))) {
   #Extract file
   f <- src.meta$fname[i]
