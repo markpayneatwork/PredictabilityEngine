@@ -55,7 +55,7 @@ data.source <-
                     validate_that(is.na(object@use.timebounds) | object@use.timebounds %in% 1:3,
                                   msg="Use.timebounds must be either NA, or 1,2 or 3"))
              err.idxs <- map_lgl(err.msg,is.character)
-             if(sum(err.idxs)==0) return(TRUE) else unlist(err.msg[err.idxs])
+             if(all(!err.idxs)) return(TRUE) else unlist(err.msg[err.idxs])
            })
 
 

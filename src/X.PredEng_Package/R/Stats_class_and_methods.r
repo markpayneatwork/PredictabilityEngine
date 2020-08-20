@@ -31,29 +31,19 @@ stat <-
                             calibration="Mean adjusted",
                             use.spatial.polygons=TRUE),
            validity = function(object) {
-             err.msg <- NULL
-             if(grepl(" ",object@name)) {
-               err.msg <- c(err.msg,"Object name must not contain spaces.")}
-             if(grepl("\\.",object@name)) {
-               err.msg <- c(err.msg,"Object name must not contain full stops.")}
-             if(grepl("_",object@name)) {
-               err.msg <- c(err.msg,"Object name must not contain underscores.")}
-             if(nchar(object@name)>20) {
-               err.msg <- 
-                 c(err.msg,
-                   sprintf("Object name must not exceed 20 characters. Currently %s characters.",
-                           nchar(object@name)))}
-             if(is_empty(object@desc)) {
-                err.msg <- c(err.msg,".description slot must not be empty.")}              
-             if(is_empty(object@name)) {
-               err.msg <- c(err.msg,".@name slot must not be empty.")}  
-             if(!all(object@calibration %in% PE.cfg$validity$calibrationMethod)) {
-               err.msg <- c(err.msg,"Unsupported calibration method selected.")
-             }
-             if(!all(object@realizations %in% c(1,2,3))) {
-               err.msg <- c(err.msg,"Valid choices for realization are 1, 2, and 3")
-             }
-             if(length(err.msg)==0) return(TRUE) else err.msg
+             err.msg <- list(
+               validate_that(!grepl(" ",object@name),msg="Object name must not contain spaces"),
+               validate_that(!grepl("\\.",object@name),msg="Object name must not contain full stops"),
+               validate_that(!grepl("_",object@name),msg="Object name must not contain underscores"),
+               validate_that(nchar(object@name)<20,msg="Object name must not exceed 20 characters"),
+               validate_that(!is_empty(object@desc),msg=".description slot must not be empty"),
+               validate_that(!is_empty(object@name),msg=".@name slot must not be empty"),
+               validate_that(all(object@calibration %in% PE.cfg$validity$calibrationMethod),
+                             msg="Unsupported calibration method selected"),
+               validate_that(all(object@realizations %in% c(1,2,3)),
+                             msg="Valid choices for realization are 1, 2, and 3"))
+             err.idxs <- map_lgl(err.msg,is.character)
+             if(all(!err.idxs)) return(TRUE) else unlist(err.msg[err.idxs])
            })
 
 #' Evaluate an stat
@@ -109,12 +99,11 @@ threshold <-
                           above=TRUE),
            contains="stat",
            validity = function(object) {
-             err.msg <- NULL
-             if(!length(object@threshold) %in% c(1,2)) {
-               err.msg <- c(err.msg,
-                            sprintf("Length of 'threshold' slot should be 1 or 2 but is %i.",length(object@threshold)))
-             }
-             if(length(err.msg)==0) return(TRUE) else err.msg
+             err.msg <- list(
+               validate_that(length(object@threshold) %in% c(1,2),
+                             msg="Length of 'threshold' slot should be 1 or 2"))
+             err.idxs <- map_lgl(err.msg,is.character)
+             if(all(!err.idxs)) return(TRUE) else unlist(err.msg[err.idxs])
            })
 
 #' @export
@@ -279,12 +268,11 @@ habitat <-
            prototype=list(name="habitat"),
            contains="stat",
            validity = function(object) {
-             err.msg <- NULL
-             if(!identical(names(formals(object@fn)),c("dat","resources"))) {
-               err.msg <- c(err.msg,
-                            'Function in fn slot must have exactly two arguments: "dat" and "resources"')
-             }
-             if(length(err.msg)==0) return(TRUE) else err.msg
+             err.msg <- list(
+               validate_that(identical(names(formals(object@fn)),c("dat","resources")),
+                             msg='Function in fn slot must have exactly two arguments: "dat" and "resources"'))
+             err.idxs <- map_lgl(err.msg,is.character)
+             if(all(!err.idxs)) return(TRUE) else unlist(err.msg[err.idxs])
            })
 
 setMethod("eval.stat",signature(st="habitat",dat="Raster"),

@@ -64,18 +64,11 @@ PredEng.config <-
                             retain.realizations=TRUE,
                             spatial.polygons=st_sf(st_sfc(st_point(c(0,0))))),
            validity = function(object) {
-             err.msg <- NULL
-             if(length(object@MOI)!=1 & object@average.months) {
-               err.msg <- c(err.msg,
-                            "Unsupported funcionality. Dates are currently not handled correctly when averaging over months")
-             }
-             # TODO:
-             #ALL elements in the object are also valid
-             # if(!all(purrr::map_lgl(object, validObject))) {
-             #   {msg <- c(msg,"Components must be valid objects themselves (validObject == TRUE)")}
-             # }
-             
-             if(length(err.msg)==0) return(TRUE) else err.msg
+             err.msg <- list(
+               validate_that(!(length(object@MOI)!=1 & object@average.months),
+                             msg="Dates are currently not handled correctly when averaging over multiple months"))
+             err.idxs <- map_lgl(err.msg,is.character)
+             if(all(!err.idxs)) return(TRUE) else unlist(err.msg[err.idxs])
            })
 
 
