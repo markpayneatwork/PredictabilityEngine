@@ -79,7 +79,7 @@ MPI.LR.SST.srcs <- dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","thetao"),
                  subset(!grepl("thetao_Omon_MPI-ESM-LR_decs4e1964_r3i1p1_196501-197412.nc",.))
 
 SST.Decadal$"MPI-LR" <-  
-  data.source(name="MPI-ESM-LR",
+  data.source(name="MPI.ESM.LR",
               type="Decadal",
               var="thetao",
               sources=MPI.LR.SST.srcs,
@@ -124,7 +124,7 @@ SST.Decadal$"MPI-LR" <-
 
 #Add in the CESM DPLE
 CESM.DPLE.src <-   
-  data.source(name="CESM-DPLE",
+  data.source(name="CESM.DPLE",
               var="SST",
               type="Decadal",
               sources=dir(file.path(PE.cfg$dir$datasrc,"Decadal","CESM-DPLE","SST"),
@@ -153,7 +153,7 @@ NorCPM.fnames <-
   extract(realization,c("realization","initialization","other"),"^(r[[:digit:]]+)(i[[:digit:]]+)(.+)$")
 
 NorCPM.SST.src.i1 <- 
-  data.source(name="NorCPM-i1",
+  data.source(name="NorCPM.i1",
               var="tos",
               type="Decadal",
               crs=default.crs, #raster can't seem to pick it up
@@ -170,7 +170,7 @@ NorCPM.SST.src.i1 <-
 NorCPM.SST.src.i2 <- 
   new("data.source",
       NorCPM.SST.src.i1,
-      name="NorCPM-i2",
+      name="NorCPM.i2",
       sources=filter(NorCPM.fnames,
                           field=="tos",
                           initialization=="i2")$path)
@@ -178,7 +178,7 @@ NorCPM.SST.src.i2 <-
 SST.Decadal <- c(SST.Decadal,NorCPM.SST.src.i1,NorCPM.SST.src.i2)
 
 #Set list names and ids
-SST.Decadal.production <- SST.Decadal[c("CESM-DPLE","MPI-ESM-LR","NorCPM-i1","NorCPM-i2")]
+SST.Decadal.production <- SST.Decadal[c("CESM.DPLE","MPI.ESM.LR","NorCPM.i1","NorCPM.i2")]
 
 #'========================================================================
 # Salinity data sources ####
@@ -197,7 +197,7 @@ MPI.LR.so.srcs <- dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","so_10member"
                    pattern="\\.nc$",full.names = TRUE) 
 
 Sal.Decadal$"MPI-LR" <-  
-  data.source(name="MPI-ESM-LR",
+  data.source(name="MPI.ESM.LR",
               type="Decadal",
               var="so",
               sources=MPI.LR.so.srcs,
@@ -233,7 +233,7 @@ NorCPM.sal.src.i1 <-
   new("data.source",
       var="so",
       NorCPM.SST.src.i1,
-      name="NorCPM-i1",
+      name="NorCPM.i1",
       layermids.fn = function(f) {
         ncid <- nc_open(f)
         layer.mids <- ncid$dim$lev$vals #[m]
@@ -247,7 +247,7 @@ NorCPM.sal.src.i1 <-
 NorCPM.sal.src.i2 <- 
   new("data.source",
       NorCPM.sal.src.i1,
-      name="NorCPM-i2",
+      name="NorCPM.i2",
       sources=filter(NorCPM.fnames,
                           field=="so",
                           grid=="gr",

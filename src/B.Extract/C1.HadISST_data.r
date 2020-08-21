@@ -26,15 +26,12 @@
 #/*======================================================================*/
 cat(sprintf("\n%s\n","Extract HadISST data"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
-
-#Configure markdown style, do house cleaning
-rm(list = ls(all.names=TRUE));  graphics.off();
-start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
+start.time <- proc.time()[3];
 
 #Helper functions, externals and libraries
-library(PredEng)
-library(lubridate)
-library(raster)
+suppressPackageStartupMessages({
+  library(PredEng)
+})
 
 #'========================================================================
 # Configuration ####
@@ -42,21 +39,9 @@ library(raster)
 pcfg <- readRDS(PE.cfg$path$config)
 
 #Take input arguments, if any
-if(interactive()) {
-  cfg.no <- 1
-  set.cdo.defaults("--silent --no_warnings -O")
-  set.log_msg.silent()
-  set.nco.defaults("--overwrite")
-
-} else {
-  #Taking inputs from the system environment
-  cfg.no <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
-  if(cfg.no=="") stop("Cannot find LSB_JOBINDEX")
-
-  #Do everything and tell us all about it
-  set.cdo.defaults()
-  set.log_msg.silent(FALSE)
-}
+set.cdo.defaults("--silent --no_warnings -O")
+set.log_msg.silent()
+set.nco.defaults("--overwrite")
 
 #Data source
 this.datasrc <- pcfg@Observations

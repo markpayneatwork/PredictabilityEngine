@@ -20,7 +20,7 @@ setClass("PElst",
              #Duplicated names check
              validate_that(all(!duplicated(purrr::map(object@.Data,slot,"name"))),
                            msg="Names of objects must be unique."),
-             validate_that(any(exists.common.class) & length(object)!=0,
+             validate_that(any(exists.common.class) | length(object)==0,
                            msg="PElst elements must be of the same class"),
              # ALL elements in the list are validObjects themselves
              validate_that(all(purrr::map_lgl(object, validObject)),

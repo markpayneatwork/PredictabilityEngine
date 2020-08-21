@@ -50,7 +50,7 @@ data.source <-
            validity = function(object) {
              err.msg <- 
                list(validate_that(!grepl(" ",object@name),msg="Object name must not contain spaces"),
-                    validate_that(!grepl("\\.",object@name),msg="Object name must not contain full stops"),
+                    validate_that(!grepl("-",object@name),msg="Object name must not contain hyphens"),
                     validate_that(!grepl("_",object@name),msg="Object name must not contain underscores"),
                     validate_that(is.na(object@use.timebounds) | object@use.timebounds %in% 1:3,
                                   msg="Use.timebounds must be either NA, or 1,2 or 3"))

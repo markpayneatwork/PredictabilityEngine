@@ -1,17 +1,17 @@
 Model;active;type;URL
-GFDL-CM2p1;TRUE;all;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.GFDL-CM2p1-aer04/.MONTHLY/.sst/dods 
-GFDL-CM2p5-FLOR;TRUE;all;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.GFDL-CM2p5-FLOR-B01/.MONTHLY/.sst/dods 
-NCAR-CCSM4;TRUE;all;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.COLA-RSMAS-CCSM4/.MONTHLY/.sst/dods 
-NCEP-CFSv2;TRUE;hindcast;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.NCEP-CFSv2/.HINDCAST/.MONTHLY/.sst/dods
-NCEP-CFSv2;TRUE;forecast;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.NCEP-CFSv2/.FORECAST/.EARLY_MONTH_SAMPLES/.MONTHLY/.sst/dods
+GFDL.CM2p1;TRUE;all;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.GFDL-CM2p1-aer04/.MONTHLY/.sst/dods 
+GFDL.CM2p5.FLOR;TRUE;all;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.GFDL-CM2p5-FLOR-B01/.MONTHLY/.sst/dods 
+NCAR.CCSM4;TRUE;all;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.COLA-RSMAS-CCSM4/.MONTHLY/.sst/dods 
+NCEP.CFSv2;TRUE;hindcast;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.NCEP-CFSv2/.HINDCAST/.MONTHLY/.sst/dods
+NCEP.CFSv2;TRUE;forecast;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.NCEP-CFSv2/.FORECAST/.EARLY_MONTH_SAMPLES/.MONTHLY/.sst/dods
 CANCM4i;TRUE;hindcast;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.CanCM4i/.HINDCAST/.MONTHLY/.sst/dods 
 CANCM4i;TRUE;forecast;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.CanCM4i/.FORECAST/.MONTHLY/.sst/dods 
-GEM-NEMO;TRUE;hindcast;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.GEM-NEMO/.HINDCAST/.MONTHLY/.sst/dods 
-GEM-NEMO;TRUE;forecast;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.GEM-NEMO/.FORECAST/.MONTHLY/.sst/dods 
-NASA-GEOSS2S;TRUE;hindcast; http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.NASA-GEOSS2S/.HINDCAST/.MONTHLY/.sst/dods 
-NASA-GEOSS2S;TRUE;forecast; http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.NASA-GEOSS2S/.FORECAST/.MONTHLY/.sst/dods 
-#NASA-GEOS5;FALSE;all;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.NASA-GMAO-062012/.MONTHLY/.sst/dods 
-#CMC1-CanCM3;FALSE;hindcast;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.CMC1-CanCM3/.HINDCAST/.MONTHLY/.sst/dods 
-#CMC1-CanCM3;FALSE;forecast;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.CMC1-CanCM3/.FORECAST/.MONTHLY/.sst/dods 
-#CMC2-CanCM4;FALSE;hindcast;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.CMC2-CanCM4/.HINDCAST/.MONTHLY/.sst/dods 
-#CMC2-CanCM4;FALSE;forecast;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.CMC2-CanCM4/.FORECAST/.MONTHLY/.sst/dods
+GEM.NEMO;TRUE;hindcast;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.GEM-NEMO/.HINDCAST/.MONTHLY/.sst/dods 
+GEM.NEMO;TRUE;forecast;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.GEM-NEMO/.FORECAST/.MONTHLY/.sst/dods 
+NASA.GEOSS2S;TRUE;hindcast; http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.NASA-GEOSS2S/.HINDCAST/.MONTHLY/.sst/dods 
+NASA.GEOSS2S;TRUE;forecast; http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.NASA-GEOSS2S/.FORECAST/.MONTHLY/.sst/dods 
+#NASA.GEOS5;FALSE;all;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.NASA-GMAO-062012/.MONTHLY/.sst/dods 
+#CMC1.CanCM3;FALSE;hindcast;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.CMC1-CanCM3/.HINDCAST/.MONTHLY/.sst/dods 
+#CMC1.CanCM3;FALSE;forecast;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.CMC1-CanCM3/.FORECAST/.MONTHLY/.sst/dods 
+#CMC2.CanCM4;FALSE;hindcast;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.CMC2-CanCM4/.HINDCAST/.MONTHLY/.sst/dods 
+#CMC2.CanCM4;FALSE;forecast;http://iridl.ldeo.columbia.edu/SOURCES/.Models/.NMME/.CMC2-CanCM4/.FORECAST/.MONTHLY/.sst/dods

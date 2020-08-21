@@ -1,14 +1,14 @@
 #'========================================================================
-# Automated_run
+# make
 #'========================================================================
 #
 # by Mark R Payne
 # DTU-Aqua, Kgs. Lyngby, Denmark
 # http://www.staff.dtu.dk/mpay
 #
-# Created Thu Aug 20 13:37:16 2020
+# Created Thu Aug 20 17:03:55 2020
 #
-# Performs an automated run through all key steps
+# Make functionality for PredEng using drake
 #
 # This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 # You are largely free to do what you like with it, so long as you "attribute"
@@ -23,60 +23,102 @@
 #'========================================================================
 # Initialise system ####
 #'========================================================================
-cat(sprintf("\n%s\n","Automated_run"))
+cat(sprintf("\n%s\n","make"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 start.time <- proc.time()[3];
 
 #Helper functions, externals and libraries
+log.msg <- function(fmt,...) {cat(sprintf(fmt,...));
+  flush.console();return(invisible(NULL))}
+
+library(drake)
+library(callr)
 library(PredEng)
 library(here)
-library(callr)
 pcfg <- readRDS(PE.cfg$path$config)
 
 #'========================================================================
-# Configuration ####
+# Configure ####
 #'========================================================================
-#Don't run all extractions
-decadal.idxs <- seq(pcfg@Decadal)
-decadal.idxs <- 3:4
+pcfg@Decadal <- pcfg@Decadal[3:4]
+
+#Parallelism
+options(clustermq.scheduler = "multicore")
 
 #'========================================================================
 # Setup ####
 #'========================================================================
-separator.line <- function() {
-  log_msg("\n%s\n",paste(rep("-",60),collapse=""))
+script.complete <- function() {
+  list(time = Sys.time(), tempfile = tempfile())
+  }
+
+#Setup functions
+extract.observations <- function(...) {
+  rscript(here("src/B.Extract/C1.HadISST_data.r"))
+  script.complete()
 }
 
-source.this <- function(scp) {
-  separator.line()
-  source(scp)
+extract.decadal <- function(datsrc.name) {
+  rscript(here('src/B.Extract/D1.Decadal_extraction.r'),
+          cmdargs=datsrc.name)
+  script.complete()
 }
+
+extract.models <- function(...) {
+  script.complete()
+}
+
+calibration.scripts <- function(...) {
+  calib.scripts <- dir(here("src/C.Calibrate/"),pattern=".r$",full.names = TRUE)
+  for(scp in calib.scripts) {
+    rscript(scp)
+  }
+  script.complete()
+}
+
+stat.jobs <- function(...){
+  rscript(here("src/D.Statistics/A1.Partition_stats.r"))
+  return(seq(readRDS(PE.scratch.path(pcfg,"statjoblist"))))
+}
+
+process.stat <- function(stat.id) {
+  rscript(here("src/D.Statistics/B1.Calculate_stats.r"),
+          cmdargs=stat.id)
+  script.complete()
+}
+
+
+#Make a plan
+the.plan <-  
+  drake_plan(
+    Observations=target(command=extract.observations(),
+                        trigger=trigger(change=pcfg@Observations)),
+    Decadal=target(extract.decadal(datsrc),
+                   transform = map(datsrc=!!(names(pcfg@Decadal))),
+                   trigger=trigger(change=pcfg@Decadal[[datsrc]])),
+    Extractions=target(extract.models(Observations,Decadal),
+                    transform=combine(Decadal)),
+    Calibration=calibration.scripts(Extractions),
+    Statjobs=stat.jobs(Calibration),
+    Stats=target(process.stat(Statjobs),
+                 dynamic=map(Statjobs)))
+
 
 #'========================================================================
 # And Go ####
 #'========================================================================
-#Observations extraction
-#source.this(here('src/B.Extract/C1.HadISST_data.r'))
-
-#Loop over Decadal options
-for(i in decadal.idxs) {
-#  rscript(here('src/B.Extract/D1.Decadal_extraction.r'),
- #         cmdargs=sprintf("%i",i))
-  do.this <- i
-  source.this(here('src/B.Extract/D1.Decadal_extraction.r'))
-  separator.line()
+if(interactive()) {
+  #Visualise
+  print(vis_drake_graph(the.plan,targets_only=TRUE))
+} else {
+  #Paw Patrol - så er det nu!
+  #make(the.plan, parallelism = "clustermq", jobs = 4)
+  make(the.plan)
 }
 
-#Calibration
-calib.scripts <- dir(here("src/C.Calibrate/"),pattern=".r$",full.names = TRUE)
-for(scp in calib.scripts) {
-  source.this(scp)
-}
-
-#Statistics
-stat.scripts <- dir(here("src/D.Statistics/"),pattern=".r$",full.names = TRUE)
-for(scp in stat.scripts) {
-  source.this(scp)
+#Custom cleaning function
+clean_regex <- function(regex) {
+  clean(list=grep(regex,cached(),value=TRUE))
 }
 
 #'========================================================================

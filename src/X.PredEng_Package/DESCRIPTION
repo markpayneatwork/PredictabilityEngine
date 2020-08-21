@@ -19,6 +19,7 @@ Depends:
     progress,
     R (>= 2.10),
     assertthat,
+    here,
     DBI,
     RSQLite
 RoxygenNote: 7.1.0

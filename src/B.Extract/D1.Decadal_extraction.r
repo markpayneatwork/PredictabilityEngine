@@ -30,46 +30,33 @@ cat(sprintf("Analysis performed %s\n\n",base::date()))
 start.time <- proc.time()[3];
 
 #Helper functions, externals and libraries
-library(PredEng)
-library(ncdf4)
-library(progress)
+suppressPackageStartupMessages({
+  library(PredEng)
+})
 pcfg <- readRDS(PE.cfg$path$config)
 
 #'========================================================================
 # Configuration ####
 #'========================================================================
 #Take input arguments, if any
-if(exists("do.this")) {
-  cfg.id <- do.this
-  rm(do.this)
-  set.cdo.defaults("--silent --no_warnings -O")
-  set.log_msg.silent()
-} else if(interactive()) {
-  cfg.id <- 3
+ if(interactive()) {
+  cfg.id <- "NorCPM.i1"
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
 } else {
-  #Setup from the environment
-  cfg.id <- as.numeric(Sys.getenv("LSB_JOBINDEX"))
-  set.cdo.defaults()
-  set.log_msg.silent(FALSE)
-  #Or try the command line
-  if(is.na(cfg.id)) {
-    cmd.args <- commandArgs(TRUE)
-    if(length(cmd.args)!=1) stop("Cannot get command args")
-    cfg.id <- as.numeric(cmd.args)
-    set.cdo.defaults("--silent --no_warnings -O")
-    set.log_msg.silent()
-  }
+  cmd.args <- commandArgs(TRUE)
+  if(length(cmd.args)!=1) stop("Cannot get command args")
+  cfg.id <- cmd.args
+  set.cdo.defaults("--silent --no_warnings -O")
+  set.log_msg.silent()
 }
-
 
 #Other configurations
 set.nco.defaults("--overwrite")
 
 #Retrieve configurations
 this.datasrc <- pcfg@Decadal[[cfg.id]]
-log_msg("Running with cfg.id %i (%s/%s)...\n\n",cfg.id,this.datasrc@name,this.datasrc@type)
+log_msg("Running with cfg.id %s...\n\n",cfg.id)
 
 #Setup
 analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")

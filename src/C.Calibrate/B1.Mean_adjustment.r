@@ -28,13 +28,11 @@ cat(sprintf("Analysis performed %s\n\n",base::date()))
 start.time <- proc.time()[3];
 
 #Helper functions, externals and libraries
-log.msg <- function(fmt,...) {cat(sprintf(fmt,...));
-  flush.console();return(invisible(NULL))}
-
-#Helper functions, externals and libraries
-library(PredEng)
-library(ncdf4)
-library(lubridate)
+suppressMessages({
+  library(PredEng)
+  library(ncdf4)
+  library(lubridate)
+})
 pcfg <- readRDS(PE.cfg$path$config)
 
 #'========================================================================
@@ -140,7 +138,7 @@ dbDisconnect(this.db)
 #'========================================================================
 #Turn off the lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
-log.msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
+log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
 # .............
 # This work by Mark R Payne is licensed under a  Creative Commons

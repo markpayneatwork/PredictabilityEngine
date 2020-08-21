@@ -196,6 +196,13 @@ set.configuration <- function(pcfg) {
   }
   file.symlink(file.path(getwd(),cfg.fname),PE.cfg$dir$objects)
   
+  #Setup drake directory
+  drake.link <- here(".drake")
+  if(file.exists(drake.link)) {
+    file.remove(drake.link)
+  }
+  file.symlink(define_dir(here(pcfg@scratch.dir,".drake")),drake.link)
+
   #Setup SQLite database to store results
   PE.db.setup(pcfg)
   

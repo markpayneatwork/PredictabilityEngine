@@ -158,6 +158,7 @@ PE.progress <- function(n) {
   if(length(n)>1) n <- length(n)
   pb <- progress_bar$new(total=n,
                    show=0,clear=FALSE,
+                   force=TRUE,
                    format = "[:bar] :elapsedfull (:percent), :eta remaining")
   return(pb)
 }

@@ -8,7 +8,7 @@
 #
 # Created Wed Aug 19 08:31:33 2020
 #
-# Calculates the individual statistics
+# Partitions the workload for calculating individual statistics
 #
 # This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 # You are largely free to do what you like with it, so long as you "attribute"
@@ -23,16 +23,14 @@
 #'========================================================================
 # Initialise system ####
 #'========================================================================
-cat(sprintf("\n%s\n","A1.Calculate_stats"))
+cat(sprintf("\n%s\n","A1.Partition_stats"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 start.time <- proc.time()[3];
 
 #Helper functions, externals and libraries
-log.msg <- function(fmt,...) {cat(sprintf(fmt,...));
-  flush.console();return(invisible(NULL))}
-
-#Helper functions, externals and libraries
-library(PredEng)
+suppressPackageStartupMessages({
+  library(PredEng)
+})
 pcfg <- readRDS(PE.cfg$path$config)
 
 #'========================================================================
@@ -49,20 +47,6 @@ if(interactive()) {
 #'========================================================================
 # Setup the todo list ####
 #'========================================================================
-#Setup databases
-this.db <- PE.db.connection(pcfg)
-calib.tbl <- tbl(this.db,PE.cfg$db$calibration)
-
-#Get the observational references
-frag.tbl  <- tbl(this.db,PE.cfg$db$extract)
-
-#Reset the resutls table by deleting and reestablishing it
-dbRemoveTable(this.db,PE.cfg$db$stats)
-PE.db.setup(pcfg)
-
-#Setup landmask 
-landmask <- raster(PE.scratch.path(pcfg,"landmask"))
-
 # The configuration of the statistics informs many aspects of the analysis, including
 # the spatial domain that we need to apply. We therefore extract the metadata for the stats
 stat.obj.meta <- 
@@ -110,89 +94,23 @@ todo.list <-
   #  - ensure match between needs for spatial vs global polygons
   filter(sd.is.spatial.polygon==stat.use.spatial.polygon) %>%
   #  - remove duplicate
-  #Filter
-  select(-sd.id,-statJob.id)
+  #Set ids
+  select(-sd.id,-statJob.id) %>%
+  add_column(statjob.id=1:nrow(.),.before=1)
 
-#'========================================================================
-# Calculation of statistics ####
-#'========================================================================
-for(j in seq(nrow(todo.list))) {
-  #Extract elements based on configuration
-  this.cfg <- todo.list[j,]
-  this.stat <- this.cfg$stat.obj[[1]]
-  this.sd <- this.cfg$sd.geometry[[1]]
-  log_msg("Stat: '%s', Calib: '%s', Real: %i, Sp.Dom: '%s'... (%i of %i)\n",
-          this.stat@name,this.cfg$stat.calibration,this.cfg$stat.realizations,
-          this.cfg$sd.name,j,nrow(todo.list))
-  
-  #Setup the mask for the corresponding spatial boundary
-  #based on the combination of the landmask and the spatial boundary mask
-  combined.mask <- mask(landmask,as(this.sd,"Spatial"),updatevalue=1)
-  
-  #Get list of calibration fragments to process 
-  #We choose here between Observation and model types
-  if(this.cfg$stat.realizations==0) {
-    frags.todo <- filter(frag.tbl,srcType=="Observations")
-  } else {
-    frags.todo <- 
-      switch(as.character(this.cfg$stat.realizations),
-             "1"=filter(calib.tbl,!realization %in% c("realmean","ensmean")),
-             "2"=filter(calib.tbl,realization=="realmean"),
-             "3"=filter(calib.tbl,realization=="ensmean"),
-             stop("Unknown option")) %>%
-      filter(calibrationMethod == !!this.cfg$stat.calibration) 
-  }  
-  
-  #Get list of ids to process
-  ids.todo <-
-    frags.todo %>%
-    select(pKey) %>%
-    collect() %>%
-    pull() 
+split(todo.list,todo.list$statjob.id) %>%
+  saveRDS(file=PE.scratch.path(pcfg,"statjoblist"))
 
-  #Then loop over fragments
-  pb <- PE.progress(ids.todo)
-  pb$tick(0)
-  for(i in ids.todo) {
-    
-    #Import data
-    this.dat <- 
-      frags.todo %>%
-      filter(pKey==i) %>%
-      collect() %>%
-      PE.db.unserialize() %>%
-      select(-pKey)
-    
-    #Apply the masks to data
-    masked.dat <- mask(this.dat$data[[1]],combined.mask,maskvalue=1)
-    
-    #And we're ready. Lets calculate some statistics
-    this.res <- eval.stat(st=this.stat,dat=masked.dat) 
-    
-    #Store the results
-    out.dat <-
-      this.dat %>%
-      add_column(sdName=this.cfg$sd.name,
-                 statName=this.stat@name) %>%
-      bind_cols(this.res) %>%
-      select(-data) 
-    PE.db.appendTable(out.dat,this.db,PE.cfg$db$stats)
-    
-    #Loop back
-    pb$tick()
-  }  #/end loop over calibrated fragments
-
-} #/end loop over configs
-
-
-
+#Clear all stats results
+dbRemoveTable(PE.db.connection(pcfg),PE.cfg$db$stats)
+PE.db.setup(pcfg)
 
 #'========================================================================
 # Complete ####
 #'========================================================================
 #Turn off the lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
-log.msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
+log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
 # .............
 # This work by Mark R Payne is licensed under a  Creative Commons

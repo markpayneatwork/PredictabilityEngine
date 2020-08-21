@@ -12,7 +12,8 @@ PE.cfg$path$datasrcs <- file.path(PE.cfg$dir$objects,"datasrcs.RData")
 PE.cfg$file <- list(analysis.grid="analysis.grid",
                     landmask="landmask.nc",
                     config=basename(PE.cfg$path$config),
-                    fragment.data="frag_data.rds")
+                    fragment.data="frag_data.rds",
+                    statjoblist="statjoblist.rds")
 
 #Results database tables
 PE.cfg$db <- list(extract="extraction",

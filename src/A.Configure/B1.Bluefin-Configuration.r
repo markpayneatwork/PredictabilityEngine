@@ -57,7 +57,7 @@ define_dir(pcfg@scratch.dir)
 pcfg@Decadal <- SST.Decadal.production
 
 #Select CMIP5 models
-pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="tos")
+#pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="tos")
 
 #'========================================================================
 # Spatial Configurations ####
