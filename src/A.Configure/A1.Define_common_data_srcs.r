@@ -37,8 +37,6 @@ suppressPackageStartupMessages({
 #'========================================================================
 decadal.dir <- here(PE.cfg$dir$datasrc,"Decadal")
 
-default.crs <- CRS("+proj=longlat +datum=WGS84")
-
 # ========================================================================
 # Setup SST.Decadal models
 # ========================================================================
@@ -157,7 +155,6 @@ NorCPM.SST.src.i1 <-
               var="tos",
               type="Decadal",
               fields.are.2D=TRUE,
-              crs=default.crs, #raster can't seem to pick it up
               sources=filter(NorCPM.fnames,
                              field=="tos",
                              initialization=="i1")$path,

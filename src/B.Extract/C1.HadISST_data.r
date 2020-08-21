@@ -110,6 +110,11 @@ dat.b <- readAll(brick(regrid.fname))
 #Convert missing values to NAs
 dat.b[dat.b < -100] <- NA
 
+#Set CRS status
+#As everything is interpolated onto a common grid, it should also therefore
+#have a CRS that reflects that grid
+dat.b@crs <- PE.cfg$misc$crs
+
 #Create metadata
 frag.dat <- tibble(srcName=this.datasrc@name,
                       srcType=this.datasrc@type,

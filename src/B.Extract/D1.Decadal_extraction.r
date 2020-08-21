@@ -156,14 +156,10 @@ for(i in seq(nrow(src.meta))) {
   #Import data into raster-land
   dat.b <- readAll(brick(regrid.fname))
   
-  #Check/set CRS status
-  if(is.na(dat.b@crs)) {
-    #Assert that datasrc has a good alternative 
-    assert_that(!is.na(this.datasrc@crs),
-                msg=sprintf("CRS not specificied but needed by '%s'",this.datasrc@name))
-    #And use it
-    dat.b@crs <- this.datasrc@crs
-  }
+  #Set CRS status
+  #As everything is interpolated onto a common grid, it should also therefore
+  #have a CRS reflecting that grid.
+  dat.b@crs <- PE.cfg$misc$crs
 
   #Create metadata
   frag.data <- tibble(srcName=this.datasrc@name,

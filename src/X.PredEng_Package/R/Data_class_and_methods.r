@@ -23,7 +23,6 @@
 #' this an effective start date of 1 Jan. Things are much clearer for seasonal forecast systems, that 
 #' are initialised monthly. May be deprecated at some point
 #' @slot date.fn A function to extract the time stamps for each time step
-#' @slot crs Specify the CRS. If empty, then take the CRS from the input file (where raster can get it)
 #'
 #' @export data.source
 #' @exportClass data.source
@@ -40,15 +39,13 @@ data.source <-
                       realization.fn="function",
                       level.bnds="character",
                       start.date="function", 
-                      date.fn="function",
-                      crs="CRS"),
+                      date.fn="function"),
            prototype=list(use.timebounds=as.numeric(NA),
                           time.var="time",
                           realizations=as.character(NA),
                           date.fn=function(x) {stop("Date.fn not specified")},
                           realization.fn=function(x) {stop("Realization function not specified")},
-                          start.date=function(x) { stop("Start.date function not specified")},
-                          crs=CRS()),
+                          start.date=function(x) { stop("Start.date function not specified")}),
            validity = function(object) {
              err.msg <- 
                list(validate_that(!grepl(" ",object@name),msg="Object name must not contain spaces"),
