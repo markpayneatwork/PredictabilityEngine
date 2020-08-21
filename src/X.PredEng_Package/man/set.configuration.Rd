@@ -2,7 +2,19 @@
 % Please edit documentation in R/Config_class_and_methods.r
 \name{set.configuration}
 \alias{set.configuration}
-\title{Set the configuration}
+\title{#' Get vertical layers
+#' 
+#' Extracts a list of vertical layers
+#'
+#' @param cfg A PredEng configuration object, with the vert.range slot populated
+#' @param src A data source object, containing a valid layermids.fn()
+#' @param f The name of the file from which to extract the layers
+#'
+#' @return A vector of layer integers corresponding to the vertical range. In cases where the vertical
+#' range limits fall within a layer, the layer is included if it covers more than 50%.
+#' @export
+#'
+setGeneric("verticalLayers",function(cfg,src,...) standardGeneric("verticalLayers"))}
 \usage{
 set.configuration(pcfg)
 }
@@ -13,5 +25,13 @@ set.configuration(pcfg)
 
 }
 \description{
+setMethod("verticalLayers",signature = c("PredEng.config","data.source"),function(cfg,src,f){
+  layer.mids <- src@layermids.fn(f)
+  #Which layer are the vert.range boundaries in?
+  layer.idxs <- round(approx(layer.mids,seq_along(layer.mids)+0.5,cfg@vert.range,method="linear",rule=2)$y)
+  #Now return the appropriate value - if more than 50% of a layer is in, then include it
+  return(min(layer.idxs):(max(layer.idxs)-1))})
+}
+\details{
 Set the configuration
 }

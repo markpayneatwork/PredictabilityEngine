@@ -29,7 +29,9 @@ by time. Valid values are NA (don't use timebounds, use the time variable), 1 (u
 
 \item{\code{realization.fn}}{A function to extract the realisation ID}
 
-\item{\code{layermids.fn}}{Returns the midpoints of the vertical layers for this data set.}
+\item{\code{zrng2levs.fn}}{Converts a range of vertical depths (postive downwards) to the corresponding layers. Should take
+the arguments z (a length=2 vector of depths) and f (a link to a file). Returns a list of levels that closest
+approximate the range}
 
 \item{\code{start.date}}{Function to extract the dates for the start of the forecasts. Note that we define this to
 be different to the initialisation dates (when the model is actually initialised). A decadal model 

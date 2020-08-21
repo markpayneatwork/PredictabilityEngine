@@ -14,7 +14,9 @@
 #' by time. Valid values are NA (don't use timebounds, use the time variable), 1 (use the lower bound),
 #' 2 (use the upper bound) or 3 (use the average value)
 #' @slot realization.fn A function to extract the realisation ID
-#' @slot layermids.fn Returns the midpoints of the vertical layers for this data set. 
+#' @slot zrng2levs.fn Converts a range of vertical depths (postive downwards) to the corresponding layers. Should take
+#' the arguments z (a length=2 vector of depths) and f (a link to a file). Returns a list of levels that closest
+#' approximate the range
 #' @slot start.date Function to extract the dates for the start of the forecasts. Note that we define this to
 #' be different to the initialisation dates (when the model is actually initialised). A decadal model 
 #' might be initialised on 1 Nov but we are primarily interested in it's post-January output, and so call 
@@ -31,17 +33,17 @@ data.source <-
                       type="character",
                       sources="character",
                       var="character",
+                      fields.are.2D="logical",
                       time.var="character",
                       realizations="character",
                       use.timebounds="numeric",
                       realization.fn="function",
-                      layermids.fn="function",
+                      level.bnds="character",
                       start.date="function", 
                       date.fn="function",
                       crs="CRS"),
            prototype=list(use.timebounds=as.numeric(NA),
                           time.var="time",
-                          layermids.fn=function(x) {stop("z2idx.fn not specified")},
                           realizations=as.character(NA),
                           date.fn=function(x) {stop("Date.fn not specified")},
                           realization.fn=function(x) {stop("Realization function not specified")},
@@ -119,6 +121,35 @@ timebounds.to.time <- function(this.obj,f){
   return(invisible(NULL))
 }
 
+
+#' Get vertical levels
+#'
+#' Gets vertical levels from an arbitrary file
+#'
+#' @param this.cfg 
+#' @param this.datasrc 
+#' @param f 
+#'
+#' @return
+#' @export
+get.vertical.levels <- function(this.cfg,this.datasrc,f) {
+  assert_that(length(this.cfg@vert.range)==2,msg="vert.range needs to be of length two")
+  ncid <- nc_open(f)
+  z <- this.cfg@vert.range
+  keep.layers <-  
+    ncvar_get(ncid,this.datasrc@level.bnds) %>%
+    t() %>%
+    as_tibble() %>%
+    mutate(idx=1:nrow(.),
+           zmin.rel.pos=(min(z)-V1)/(V2-V1),
+           zmin.ok=round(zmin.rel.pos)<=0,
+           zmax.rel.pos=(max(z)-V1)/(V2-V1),
+           zmax.ok=round(zmax.rel.pos)>=1) %>%
+    filter(zmin.ok & zmax.ok)
+  assert_that(nrow(keep.layers)>0,msg="Problem with zrng specification")
+  nc_close(ncid)
+  return(keep.layers$idx)
+}
 
 #' Test Data Source
 #'

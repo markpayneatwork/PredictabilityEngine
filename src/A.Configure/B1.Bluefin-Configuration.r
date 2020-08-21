@@ -28,12 +28,11 @@
 cat(sprintf("\n%s\n","Bluefin Configuration"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
-#Do house cleaning
-rm(list = ls(all.names=TRUE));  graphics.off();
-
 #Source the common elements
-library(PredEng)
-library(tibble)
+suppressPackageStartupMessages({
+  library(PredEng)
+  library(tibble)
+})
 load(PE.cfg$path$datasrcs)
 
 #'========================================================================

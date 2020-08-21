@@ -40,7 +40,7 @@ pcfg <- readRDS(PE.cfg$path$config)
 #'========================================================================
 #Take input arguments, if any
  if(interactive()) {
-  cfg.id <- "NorCPM.i1"
+  cfg.id <- "MPI.ESM.LR"
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
 } else {
@@ -93,21 +93,27 @@ for(i in seq(nrow(src.meta))) {
   log_msg("Extracting from %s...\n",basename(f),silenceable = TRUE)
   tmp.stem <- tempfile()
   
-  #Subset out the layer(s) from the field of interest
-  #log_msg("Select and remap...")
-  if(!length(pcfg@vert.range)==0) {
-    tmp.in <- f
-    tmp.out <- sprintf("%s_sellevel",tmp.stem)
-    vert.idxs <- verticalLayers(pcfg,this.datasrc,tmp.in)
-    sellev.cmd <- cdo(csl("sellevidx",vert.idxs),
-                      tmp.in,tmp.out)
-  } else {
+  #Subset out the layer(s) from the field of interest, if relevant
+  if(this.datasrc@fields.are.2D ) {
+    #Then don't need to do any select
     sym.link <- file.path(getwd(),f)
     if(file.exists(tmp.stem)) file.remove(tmp.stem)
     file.symlink(sym.link,tmp.stem)
     tmp.out <- tmp.stem
+  } else { #Field is 3D and requires selection
+    tmp.in <- f
+    tmp.out <- sprintf("%s_sellevel",tmp.stem)
+    if(length(pcfg@vert.range)==1 & all(is.na(pcfg@vert.range))) { 
+      #Then we are requesting the surface layer only
+      vert.idxs <- 1
+    } else {
+      #Need to work it out ourselves
+      vert.idxs <- get.vertical.levels(pcfg,this.datasrc,tmp.in)
+    }
+    sellev.cmd <- cdo(csl("sellevidx",vert.idxs),
+                      tmp.in,tmp.out)
   }
-  
+
   #Average over the layers
   tmp.in <- tmp.out
   tmp.out <- sprintf("%s_vertmean",tmp.in)

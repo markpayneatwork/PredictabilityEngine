@@ -10,7 +10,8 @@
 #' @slot statistics PredEng.list of statistics to apply over each spatial area
 #' @slot extraction PredEng.list definining temporal and spatial extraction characteristics
 #' @slot MOI The months of interest (a vector of integers between 1 and 12 inclusive)
-#' @slot vert.range The vertical range, in m, over which to average. NULL indicates no vertical averaging
+#' @slot vert.range The vertical range, in m, over which to average. NA indicates no vertical averaging (for 
+#' 2D fields) or to use the surface layer (for 3D fields). 
 #' @slot clim.years The years to include in the climatology and analysis of hindcast skill (vector of 
 #' integers)
 #' @slot comp.years The years over which to make comparisons between observations and models
@@ -62,11 +63,25 @@ PredEng.config <-
            prototype = list(global.ROI=extent(as.numeric(rep(NA,4))),
                             persistence.leads=1:120,  #1-10 years
                             retain.realizations=TRUE,
+                            vert.range=as.numeric(NA),  #Use surface unless specified
                             spatial.polygons=st_sf(st_sfc(st_point(c(0,0))))),
            validity = function(object) {
+             #Basics
              err.msg <- list(
                validate_that(!(length(object@MOI)!=1 & object@average.months),
-                             msg="Dates are currently not handled correctly when averaging over multiple months"))
+                             msg="Dates are currently not handled correctly when averaging over multiple months"),
+               validate_that(length(object@vert.range)==2 | all(is.na(object@vert.range)),
+                             msg="Vertical range slot must be of length 2 if not NA"))
+             #Check for consistency between presence of 2D fields and requested vertical range
+             datsrc.meta <- 
+               tibble(data.srcs=c(object@Decadal,object@NMME,object@Observations,object@CMIP5)@.Data) %>%
+               mutate(srcType=map_chr(data.srcs,slot,"type"),
+                      srcName=map_chr(data.srcs,slot,"name"),
+                      is.2D=map_lgl(data.srcs,slot,"fields.are.2D"))
+             err.msg[["vertrange.2D"]] <-
+               validate_that(all(is.na(object@vert.range)) | all(!datsrc.meta$is.2D),
+                             msg="If vertical range is specified, all data sources must be 3D")
+             
              err.idxs <- map_lgl(err.msg,is.character)
              if(all(!err.idxs)) return(TRUE) else unlist(err.msg[err.idxs])
            })
@@ -140,29 +155,27 @@ setMethod("show","PredEng.config", function(object) {
 
 })
 
-#' Get vertical layers
+#' #' Get vertical layers
+#' #' 
+#' #' Extracts a list of vertical layers
+#' #'
+#' #' @param cfg A PredEng configuration object, with the vert.range slot populated
+#' #' @param src A data source object, containing a valid layermids.fn()
+#' #' @param f The name of the file from which to extract the layers
+#' #'
+#' #' @return A vector of layer integers corresponding to the vertical range. In cases where the vertical
+#' #' range limits fall within a layer, the layer is included if it covers more than 50%.
+#' #' @export
+#' #'
+#' setGeneric("verticalLayers",function(cfg,src,...) standardGeneric("verticalLayers"))
 #' 
-#' Extracts a list of vertical layers
-#'
-#' @param cfg A PredEng configuration object, with the vert.range slot populated
-#' @param src A data source object, containing a valid layermids.fn()
-#' @param f The name of the file from which to extract the layers
-#'
-#' @return A vector of layer integers corresponding to the vertical range. In cases where the vertical
-#' range limits fall within a layer, the layer is included if it covers more than 50%.
-#' @export
-#'
-setGeneric("verticalLayers",function(cfg,src,...) standardGeneric("verticalLayers"))
-
-
-
-setMethod("verticalLayers",signature = c("PredEng.config","data.source"),function(cfg,src,f){
-  layer.mids <- src@layermids.fn(f)
-  #Which layer are the vert.range boundaries in?
-  layer.idxs <- round(approx(layer.mids,seq_along(layer.mids)+0.5,cfg@vert.range,method="linear",rule=2)$y)
-  #Now return the appropriate value - if more than 50% of a layer is in, then include it
-  return(min(layer.idxs):(max(layer.idxs)-1))})
-
+#' setMethod("verticalLayers",signature = c("PredEng.config","data.source"),function(cfg,src,f){
+#'   layer.mids <- src@layermids.fn(f)
+#'   #Which layer are the vert.range boundaries in?
+#'   layer.idxs <- round(approx(layer.mids,seq_along(layer.mids)+0.5,cfg@vert.range,method="linear",rule=2)$y)
+#'   #Now return the appropriate value - if more than 50% of a layer is in, then include it
+#'   return(min(layer.idxs):(max(layer.idxs)-1))})
+#' 
 
 #' Set the configuration
 #'

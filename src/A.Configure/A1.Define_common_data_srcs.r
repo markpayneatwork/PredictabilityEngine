@@ -27,13 +27,10 @@
 cat(sprintf("\n%s\n","Common Data Sources Configuration"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
-#Do house cleaning
-rm(list = ls(all.names=TRUE));  graphics.off();
-
 #Source the common elements
-library(PredEng)
-library(tibble)
-library(here)
+suppressPackageStartupMessages({
+  library(PredEng)
+})
 
 #'========================================================================
 # Helper functions ####
@@ -82,6 +79,8 @@ SST.Decadal$"MPI-LR" <-
   data.source(name="MPI.ESM.LR",
               type="Decadal",
               var="thetao",
+              fields.are.2D = FALSE,
+              level.bnds = "lev_bnds",
               sources=MPI.LR.SST.srcs,
               realization.fn=CMIP5_realisation,
               start.date=function(f){
@@ -127,6 +126,7 @@ CESM.DPLE.src <-
   data.source(name="CESM.DPLE",
               var="SST",
               type="Decadal",
+              fields.are.2D = TRUE,
               sources=dir(file.path(PE.cfg$dir$datasrc,"Decadal","CESM-DPLE","SST"),
                           pattern="\\.nc$",full.names = TRUE),
               use.timebounds=3,
@@ -156,6 +156,7 @@ NorCPM.SST.src.i1 <-
   data.source(name="NorCPM.i1",
               var="tos",
               type="Decadal",
+              fields.are.2D=TRUE,
               crs=default.crs, #raster can't seem to pick it up
               sources=filter(NorCPM.fnames,
                              field=="tos",
@@ -200,13 +201,10 @@ Sal.Decadal$"MPI-LR" <-
   data.source(name="MPI.ESM.LR",
               type="Decadal",
               var="so",
+              fields.are.2D = FALSE,
+              level.bnds = "lev_bnds",
               sources=MPI.LR.so.srcs,
               realization.fn=CMIP5_realisation,
-              layermids.fn = function(f) {
-                ncid <- nc_open(f)
-                layer.mids <- ncid$dim$lev$vals #[m]
-                nc_close(ncid)
-                return(layer.mids)},
               start.date=function(f){
                 init.str <- str_match(basename(f),"^.*?_([0-9]{6})-[0-9]{6}.*$")[,2]
                 init.date <- ymd(paste(init.str,"01",sep=""))
@@ -219,12 +217,7 @@ CESM.DPLE.SALT <-
               var="SALT",
               sources=dir(file.path(PE.cfg$dir$datasrc,"Decadal","CESM-DPLE","SALT"),
                                pattern="\\.nc$",full.names = TRUE),
-              layermids.fn = function(f) {
-                #z.idx are the indices, v is the vertical coordinate in metres
-                ncid <- nc_open(f)
-                layer.mids <- ncid$dim$z_t$vals/100 #[m]
-                nc_close(ncid)
-                return(layer.mids)},
+              fields.are.2D = FALSE,
               date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
 
 Sal.Decadal$CESM.DPLE.SALT <- CESM.DPLE.SALT
@@ -234,11 +227,7 @@ NorCPM.sal.src.i1 <-
       var="so",
       NorCPM.SST.src.i1,
       name="NorCPM.i1",
-      layermids.fn = function(f) {
-        ncid <- nc_open(f)
-        layer.mids <- ncid$dim$lev$vals #[m]
-        nc_close(ncid)
-        return(layer.mids)},
+      fields.are.2D=FALSE,
       sources=filter(NorCPM.fnames,
                           field=="so",
                           grid=="gr",
@@ -285,10 +274,12 @@ SST_obs <- PElst()
 SST_obs$HadISST <- data.source(name="HadISST",
                                type="Observations",
                                var="sst",
+                               fields.are.2D = TRUE,
                                sources="data_srcs/Observations/HadISST/HadISST_sst.nc")
 SST_obs$EN4  <- data.source(name="EN4",
                             type="Observations",
                             var="temperature",
+                            fields.are.2D = FALSE,
                             sources=dir("data_srcs/Observations/EN4/",
                                              pattern="\\.zip$",full.names = TRUE,recursive=TRUE))
 
@@ -296,14 +287,9 @@ Sal.obs <- PElst()
 Sal.obs$EN4  <- data.source(name="EN4",
                             type="Observations",
                             var="salinity",
+                            fields.are.2D = FALSE,
                             sources=dir("data_srcs/Observations/EN4/",
-                                             pattern="\\.nc$",full.names = TRUE,recursive=TRUE),
-                            layermids.fn = function(f) {
-                              #z.idx are the indices, v is the vertical coordinate in metres
-                              ncid <- nc_open(f)
-                              layer.mids <- ncid$dim$depth$vals
-                              nc_close(ncid)
-                              return(layer.mids)})
+                                             pattern="\\.nc$",full.names = TRUE,recursive=TRUE))
 
 
 # ========================================================================
@@ -323,6 +309,7 @@ for(mdl.name in names(NMME.mdls)){
   obj <- data.source(name=mdl.name,#sprintf("NMME-%s",mdl.name),
                      type="NMME",
                      var="sst",
+                     fields.are.2D = TRUE,
                      sources=mdl.src)  
   NMME.sst.l[[mdl.name]] <- obj
 }
@@ -362,7 +349,7 @@ make.CMIP5.srcs <- function(meta,var) {
   rtn <- lapply(mdl.l,function(f) {
     data.source(name=unique(f$model),
                 type="CMIP5",
-                layermids.fn = layermids.fn,
+#                layermids.fn = layermids.fn,
                 var=var,
                 sources=f$fname)
   })
