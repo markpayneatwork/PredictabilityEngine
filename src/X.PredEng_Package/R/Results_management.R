@@ -8,7 +8,7 @@
 #' @name PE.db
 PE.db.connection <- function(pcfg) {
    db.path <- file.path(pcfg@scratch.dir,sprintf("%s.sqlite",pcfg@project.name))
-   dbConnect(RSQLite::SQLite(), db.path)
+   dbConnect(RSQLite::SQLite(), db.path,synchronous=NULL)
 }
 
 
@@ -90,24 +90,41 @@ PE.db.setup <- function(pcfg) {
     dbExecute(this.db, tbl.cmd)
   }
   
+  #Enable support for parallel read/write, based on this SO reply:
+  #https://stackoverflow.com/questions/36831302/parallel-query-of-sqlite-database-in-r
+  RSQLite::dbClearResult(RSQLite::dbSendQuery(this.db, "PRAGMA journal_mode=WAL;"));
   dbDisconnect(this.db)
 }
 
 #' @export
 #' @rdname PE.db
-PE.db.delete.by.pKey <- function(db.con,tbl.name,pKeys) {
+PE.db.delete.by.pKey <- function(pcfg,tbl.name,pKeys) {
   #Delete rows
   SQL.cmd <- sprintf("DELETE FROM %s WHERE pKey IN (%s)",
                      tbl.name,
                      paste(pKeys,collapse=" , "))
-  n <- dbExecute(db.con,SQL.cmd)
-  log_msg("Deleted %i rows from %s table...\n",n,tbl.name)
   
+  #Poll until can get access to DB
+  db.con <- PE.db.connection(pcfg)
+
+  #Write
+  repeat{
+    rtn <- try(  n <- dbExecute(db.con,SQL.cmd),silent=TRUE)  
+    if(!is(rtn, "try-error")) break
+    Sys.sleep(runif(1,0.01,0.1))  #Avoid constant polling. Add some stochasticity to break synchronisation
+  }
+
+  #Fin
+  dbDisconnect(db.con)
+  log_msg("Deleted %i rows from %s table...\n",n,tbl.name)
+  return(invisible(NULL))
 }
 
 #' @export
 #' @rdname PE.db
-PE.db.delete.by.datasource <- function(db.con,tbl.name=PE.cfg$db$extract,datasrc) {
+PE.db.delete.by.datasource <- function(pcfg,tbl.name=PE.cfg$db$extract,datasrc) {
+  #Connect
+  db.con <- PE.db.connection(pcfg)
   this.tbl <- tbl(db.con, tbl.name)
   #Get row IDs where we want to delete
   row.ids <- 
@@ -116,14 +133,18 @@ PE.db.delete.by.datasource <- function(db.con,tbl.name=PE.cfg$db$extract,datasrc
            srcType == !!datasrc@type) %>%
     select(pKey) %>%
     collect()
+  
+  #Disconnect
+  dbDisconnect(db.con)
 
   #Delete rows
-  PE.db.delete.by.pKey(db.con,tbl.name,row.ids$pKey)
+  PE.db.delete.by.pKey(pcfg,tbl.name,row.ids$pKey)
 }
 
 #' @export
 #' @rdname PE.db
-PE.db.calc.realMeans <- function(this.db,this.datasrc) {
+PE.db.calc.realMeans <- function(pcfg,this.datasrc) {
+  this.db <- PE.db.connection(pcfg)
   #Extract data and perform averaging
   frag.dat <- 
     tbl(this.db,PE.cfg$db$extract) %>%
@@ -131,6 +152,7 @@ PE.db.calc.realMeans <- function(this.db,this.datasrc) {
            srcType == !!this.datasrc@type) %>%
     collect() %>%
     PE.db.unserialize()
+  dbDisconnect(this.db)
   
   realMeans <- 
     frag.dat %>%
@@ -144,7 +166,7 @@ PE.db.calc.realMeans <- function(this.db,this.datasrc) {
   realMeans %>%
     select(-duplicate.realizations) %>%
     add_column(realization="realmean",.after="srcType") %>%
-    PE.db.appendTable(this.db, PE.cfg$db$extract)
+    PE.db.appendTable(pcfg, PE.cfg$db$extract)
   log_msg("Wrote %i realisation means...\n",nrow(realMeans))
   
   return(invisible(NULL))
@@ -153,10 +175,21 @@ PE.db.calc.realMeans <- function(this.db,this.datasrc) {
 #' @details PE.db.appendTable serialises the data column and writes the data to the specified table
 #' @export
 #' @rdname PE.db
-PE.db.appendTable <- function(dat,db.con,tbl.name) {
+PE.db.appendTable <- function(dat,pcfg,tbl.name) {
+  #Serialise data
+  serial.dat <- 
     dat %>%
-    mutate(across(where(is.list),function(cl) map(cl,serialize,NULL))) %>%
-    dbWriteTable(conn=db.con, name=tbl.name, append = TRUE)
+    mutate(across(where(is.list),function(cl) map(cl,serialize,NULL))) 
+  #Write
+  db.con <- PE.db.connection(pcfg)
+  repeat{
+    rtn <- try(dbWriteTable(conn=db.con, name=tbl.name, value=serial.dat, append = TRUE),silent=TRUE)  
+    if(!is(rtn, "try-error")) break
+    Sys.sleep(runif(1,0.01,0.1))  #Avoid constant polling. Add some stochasticity to break synchronisation
+  }
+  #Fin
+  dbDisconnect(db.con)
+  return(invisible(NULL))
 }
 
 #' @details PE.db.unserialize  unserialises the data column

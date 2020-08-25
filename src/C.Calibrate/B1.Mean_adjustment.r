@@ -55,13 +55,15 @@ this.db <- PE.db.connection(pcfg)
 frag.tbl <- tbl(this.db,PE.cfg$db$extract)
 clim.tbl <- tbl(this.db,PE.cfg$db$climatology)
 
+
 #Clear all previous analyses
-tbl(this.db,PE.cfg$db$calibration) %>%
+del.this <-
+  tbl(this.db,PE.cfg$db$calibration) %>%
   filter(calibrationMethod %in% c("anomaly","Mean adjusted")) %>%
   select(pKey) %>%
   collect() %>%
-  pull(pKey) %>%
-  PE.db.delete.by.pKey(db.con=this.db,tbl.name=PE.cfg$db$calibration)
+  pull(pKey) 
+PE.db.delete.by.pKey(pcfg,tbl.name=PE.cfg$db$calibration,del.this)
 
 #Import observational climatology data
 obs.clim.dat <-
@@ -91,6 +93,9 @@ mdl.dat <-
   mutate(date=ymd(date),
          month=month(date)) %>%
   rename(data.mdl=data)
+
+#Finished import
+dbDisconnect(this.db)
 
 #'========================================================================
 # Recalibration ####
@@ -128,10 +133,7 @@ out.dat <-
                values_to = "data")
 
 #Write results
-PE.db.appendTable(out.dat,this.db,PE.cfg$db$calibration)
-
-#Finished with output
-dbDisconnect(this.db)
+PE.db.appendTable(out.dat,pcfg,PE.cfg$db$calibration)
 
 #'========================================================================
 # Complete ####

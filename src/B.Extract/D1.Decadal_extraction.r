@@ -65,8 +65,7 @@ analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
 # Setup ####
 #'========================================================================
 #Setup database
-this.db <- PE.db.connection(pcfg)
-PE.db.delete.by.datasource(this.db,PE.cfg$db$extract,this.datasrc)
+PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,this.datasrc)
 
 #Get list of files
 src.meta <- tibble(fname=this.datasrc@sources,
@@ -174,7 +173,7 @@ for(i in seq(nrow(src.meta))) {
   frag.data %>%
     mutate(startDate=as.character(startDate),
            date=as.character(date)) %>%
-    PE.db.appendTable(this.db,PE.cfg$db$extract)
+    PE.db.appendTable(pcfg,PE.cfg$db$extract)
 
   #Remove the temporary files to tidy up
   tmp.fnames <- dir(dirname(tmp.stem),pattern=basename(tmp.stem),full.names = TRUE)
@@ -189,10 +188,7 @@ log_msg("\n")
 
 #Calculate realization means
 log_msg("Calculating realization means...\n")
-PE.db.calc.realMeans(this.db,this.datasrc)
-
-#Finished with output
-dbDisconnect(this.db)
+PE.db.calc.realMeans(pcfg,this.datasrc)
 
 #'========================================================================
 # Complete 

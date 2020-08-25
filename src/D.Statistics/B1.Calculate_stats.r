@@ -116,7 +116,7 @@ existing.stats %>%
   select(pKey) %>%
   collect() %>%
   pull(pKey) %>%
-  PE.db.delete.by.pKey(db.con=this.db,tbl.name=PE.cfg$db$stats)
+  PE.db.delete.by.pKey(pcfg=pcfg,tbl.name=PE.cfg$db$stats)
 
 #'========================================================================
 # Calculation of statistics ####
@@ -154,7 +154,7 @@ for(i in ids.todo) {
                statName=this.stat@name) %>%
     bind_cols(this.res) %>%
     select(-data) 
-  PE.db.appendTable(out.dat,this.db,PE.cfg$db$stats)
+  PE.db.appendTable(out.dat,pcfg,PE.cfg$db$stats)
   
   #Loop back
   dmp <- pb$tick()

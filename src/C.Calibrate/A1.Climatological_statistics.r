@@ -70,10 +70,12 @@ clim.frag.dat <-
          month=month(date))%>%
   filter(year %in% pcfg@clim.years) %>%
   PE.db.unserialize()
+dbDisconnect(this.db)
 
 #Prepare to loop!
 clim.frag.dat <-
-  group_by(clim.frag.dat,srcName,srcType,leadIdx,month,.drop=TRUE)
+  clim.frag.dat %>%
+  group_by(srcName,srcType,leadIdx,month,.drop=TRUE)
 
 #Calculate climatologies in a summarisation loop
 clim.dat <-
@@ -82,10 +84,7 @@ clim.dat <-
             nYears=n())
 
 #Write results
-PE.db.appendTable(clim.dat,this.db,PE.cfg$db$climatology)
-
-#Finished with output
-dbDisconnect(this.db)
+PE.db.appendTable(clim.dat,pcfg,PE.cfg$db$climatology)
 
 #'========================================================================
 # Complete ####

@@ -53,8 +53,7 @@ analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
 # Setup ####
 #'========================================================================
 #Setup database
-this.db <- PE.db.connection(pcfg)
-PE.db.delete.by.datasource(this.db,PE.cfg$db$extract,this.datasrc)
+PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,this.datasrc)
 
 #/*======================================================================*/
 #'## Extract HadISST data
@@ -127,14 +126,11 @@ frag.dat <- tibble(srcName=this.datasrc@name,
 #Write to database
 frag.dat %>%
   mutate(date=as.character(date)) %>%
-  PE.db.appendTable(this.db,PE.cfg$db$extract)
+  PE.db.appendTable(pcfg,PE.cfg$db$extract)
 
 #Remove the temporary files to tidy up
 del.err <- unlink(regrid.fname)
 if(del.err!=0) stop("Error deleting temp files")
-
-#Finished with output
-dbDisconnect(this.db)
 
 # #Now, lets think for a minute. The downstream functions require two 
 # #files - Anomaly_metadata.RData and Realmean_metadata.RData. The choice

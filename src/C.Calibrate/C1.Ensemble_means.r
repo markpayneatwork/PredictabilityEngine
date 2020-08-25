@@ -54,14 +54,6 @@ log_msg("Import data..\n")
 this.db <- PE.db.connection(pcfg)
 calib.tbl <- tbl(this.db,PE.cfg$db$calibration)
 
-#Clear all previous ensemble means
-calib.tbl %>%
-  filter(srcType=="ensmean") %>%
-  select(pKey) %>%
-  collect() %>%
-  pull() %>%
-  PE.db.delete.by.pKey(db.con=this.db,tbl.name=PE.cfg$db$calibration)
-
 #Get list of realisation means
 realmeans <-
   calib.tbl %>%
@@ -69,6 +61,20 @@ realmeans <-
   collect() %>%
   PE.db.unserialize()
 
+#Clear all previous ensemble means
+prev.ensmeans <- 
+  calib.tbl %>%
+  filter(srcType=="ensmean") %>%
+  select(pKey) %>%
+  collect() %>%
+  pull() 
+dbDisconnect(this.db)  #Finished with database
+PE.db.delete.by.pKey(pcfg,tbl.name=PE.cfg$db$calibration,pKeys = prev.ensmeans)
+
+
+#'========================================================================
+# Process ####
+#'========================================================================
 #Assertion: all months are rounded down to the first of the month, and therefore
 #the date field is always 01. 
 assert.day <- 
@@ -77,9 +83,6 @@ assert.day <-
          day=day(date)) 
 assert_that(all(assert.day$day==1),msg="Day = 1 condition violated")
 
-#'========================================================================
-# Process ####
-#'========================================================================
 #Throw it all at dplyr
 ensmeans <- 
   realmeans %>%
@@ -92,7 +95,7 @@ ensmeans <-
 #Write results
 ensmeans %>%
   select(-n) %>%
-  PE.db.appendTable(db.con = this.db,tbl.name = PE.cfg$db$calibration)
+  PE.db.appendTable(pcfg,tbl.name = PE.cfg$db$calibration)
 
 #'========================================================================
 # Complete ####

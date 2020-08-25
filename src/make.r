@@ -27,10 +27,6 @@ cat(sprintf("\n%s\n","make"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 start.time <- proc.time()[3];
 
-#Helper functions, externals and libraries
-log.msg <- function(fmt,...) {cat(sprintf(fmt,...));
-  flush.console();return(invisible(NULL))}
-
 library(drake)
 library(callr)
 library(PredEng)
@@ -47,19 +43,29 @@ if(interactive() ) {
 #'========================================================================
 # Setup ####
 #'========================================================================
+# Helper functions
 script.complete <- function() {
   list(time = Sys.time(), tempfile = tempfile())
-  }
+}
+
+log.file <- function(...) {
+  file.path(PE.scratch.path(pcfg,"logs"),sprintf(...))
+}
+
 
 #Setup functions
 extract.observations <- function(...) {
-  rscript(here("src/B.Extract/C1.HadISST_data.r"))
-  script.complete()
+  callr::rscript(here("src/B.Extract/C1.HadISST_data.r"),
+                 stdout=log.file("B.Observations.%s",pcfg@Observations@name),
+                 stderr=log.file("B.Observations.%s",pcfg@Observations@name))
+script.complete()
 }
 
 extract.decadal <- function(datsrc.name) {
-  rscript(here('src/B.Extract/D1.Decadal_extraction.r'),
-          cmdargs=datsrc.name)
+  callr::rscript(here('src/B.Extract/D1.Decadal_extraction.r'),
+                 cmdargs=datsrc.name,
+                 stdout=log.file("B.Decadal.%s",datsrc.name),
+                 stderr=log.file("B.Decadal.%s",datsrc.name))
   script.complete()
 }
 
@@ -70,19 +76,23 @@ extract.models <- function(...) {
 calibration.scripts <- function(...) {
   calib.scripts <- dir(here("src/C.Calibrate/"),pattern=".r$",full.names = TRUE)
   for(scp in calib.scripts) {
-    rscript(scp)
+    callr::rscript(scp,
+                   stdout=log.file("C.%s",basename(scp)),
+                   stderr=log.file("C.%s",basename(scp)))
   }
   script.complete()
 }
 
 stat.jobs <- function(...){
-  rscript(here("src/D.Statistics/A1.Partition_stats.r"))
+  callr::rscript(here("src/D.Statistics/A1.Partition_stats.r"))
   return(seq(readRDS(PE.scratch.path(pcfg,"statjoblist"))))
 }
 
 process.stat <- function(stat.id) {
-  rscript(here("src/D.Statistics/B1.Calculate_stats.r"),
-          cmdargs=stat.id)
+  callr::rscript(here("src/D.Statistics/B1.Calculate_stats.r"),
+          cmdargs=stat.id,
+          stdout=log.file("D.Stats.%03i",stat.id),
+          stderr=log.file("D.Stats.%03i",stat.id))
   script.complete()
 }
 
@@ -106,18 +116,17 @@ the.plan <-
 #'========================================================================
 # And Go ####
 #'========================================================================
-if(interactive()) {
-  #Visualise
-  print(vis_drake_graph(the.plan,targets_only=TRUE))
-} else {
-  #Parallelism
-  options(clustermq.scheduler = "lsf",
-          clustermq.template=here("src/Y.HPC/HPC_template.tmpl"))
+#Set parallelism
+options(clustermq.scheduler = "multicore")
 
-  #Paw Patrol - så er det nu!
-  make(the.plan, parallelism = "clustermq", jobs = 4)
-  make(the.plan)
-}
+#Paw Patrol - så er det nu!
+make(the.plan, parallelism = "clustermq", jobs = 4)
+
+#'========================================================================
+# Supplementary ####
+#'========================================================================
+#Visualise
+print(vis_drake_graph(the.plan,targets_only=TRUE))
 
 #Custom cleaning function
 clean_regex <- function(regex) {
@@ -129,7 +138,7 @@ clean_regex <- function(regex) {
 #'========================================================================
 #Turn off the lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
-log.msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
+log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
 # .............
 # This work by Mark R Payne is licensed under a  Creative Commons

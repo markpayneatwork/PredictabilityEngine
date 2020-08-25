@@ -15,13 +15,13 @@ PE.db.connection(pcfg)
 
 PE.db.setup(pcfg)
 
-PE.db.delete.by.pKey(db.con, tbl.name, pKeys)
+PE.db.delete.by.pKey(pcfg, tbl.name, pKeys)
 
-PE.db.delete.by.datasource(db.con, tbl.name = PE.cfg$db$extract, datasrc)
+PE.db.delete.by.datasource(pcfg, tbl.name = PE.cfg$db$extract, datasrc)
 
-PE.db.calc.realMeans(this.db, this.datasrc)
+PE.db.calc.realMeans(pcfg, this.datasrc)
 
-PE.db.appendTable(dat, db.con, tbl.name)
+PE.db.appendTable(dat, pcfg, tbl.name)
 
 PE.db.unserialize(this.dat)
 }
