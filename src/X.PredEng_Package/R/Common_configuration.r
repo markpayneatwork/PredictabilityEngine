@@ -12,8 +12,8 @@ PE.cfg$path$datasrcs <- file.path(PE.cfg$dir$objects,"datasrcs.RData")
 PE.cfg$file <- list(analysis.grid="analysis.grid",
                     landmask="landmask.nc",
                     config=basename(PE.cfg$path$config),
-                    fragment.data="frag_data.rds",
-                    statjoblist="statjoblist.rds")
+                    statjoblist="statjoblist.rds",
+                    logs="logs/")
 
 #Results database tables
 PE.cfg$db <- list(extract="extraction",
@@ -65,10 +65,11 @@ usethis::use_data(PE.cfg,overwrite = TRUE)
 #' @export
 #'
 PE.scratch.path <- function(pcfg,type) {
-  scratch.types <- c(#list(extract="B.Extract"),
-                     PE.cfg$file)
+  scratch.types <- c(PE.cfg$file)
   rtn <- file.path(pcfg@scratch.dir,scratch.types[[type]])
   return(rtn)
 }
+
+
 
 

@@ -187,8 +187,9 @@ set.configuration <- function(pcfg) {
   #Check object is initially valid
   validObject(pcfg)
 
-  #Set output directory
+  #Set output directories
   define_dir(pcfg@scratch.dir)
+  define_dir(PE.scratch.path(pcfg,"logs"))
 
   #Write CDO grid descriptors
   griddes.txt <- griddes(pcfg@global.ROI,res=pcfg@global.res)
