@@ -40,10 +40,9 @@ pcfg <- readRDS(PE.cfg$path$config)
 #'========================================================================
 # Configure ####
 #'========================================================================
-pcfg@Decadal <- pcfg@Decadal[3:4]
-
-#Parallelism
-options(clustermq.scheduler = "multicore")
+if(interactive() ) {
+  pcfg@Decadal <- pcfg@Decadal[2:4]  #Debugging
+} 
 
 #'========================================================================
 # Setup ####
@@ -111,8 +110,12 @@ if(interactive()) {
   #Visualise
   print(vis_drake_graph(the.plan,targets_only=TRUE))
 } else {
+  #Parallelism
+  options(clustermq.scheduler = "lsf",
+          clustermq.template=here("src/Y.HPC/HPC_template.tmpl"))
+
   #Paw Patrol - så er det nu!
-  #make(the.plan, parallelism = "clustermq", jobs = 4)
+  make(the.plan, parallelism = "clustermq", jobs = 4)
   make(the.plan)
 }
 
