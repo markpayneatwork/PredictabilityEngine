@@ -126,7 +126,9 @@ make(the.plan, parallelism = "clustermq", jobs = 4)
 # Supplementary ####
 #'========================================================================
 #Visualise
-print(vis_drake_graph(the.plan,targets_only=TRUE))
+if(interactive()) {
+  print(vis_drake_graph(the.plan,targets_only=TRUE))
+}
 
 #Custom cleaning function
 clean_regex <- function(regex) {
