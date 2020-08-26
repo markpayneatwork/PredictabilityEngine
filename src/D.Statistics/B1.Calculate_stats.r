@@ -112,11 +112,13 @@ if(this.cfg$stat.realizations==0) {
     filter.by.realization.code(this.cfg$stat.realizations) %>%
     filter(calibrationMethod==!!this.cfg$stat.calibration)
 }
-existing.stats %>%
+del.these <- 
+  existing.stats %>%
   select(pKey) %>%
   collect() %>%
-  pull(pKey) %>%
-  PE.db.delete.by.pKey(pcfg=pcfg,tbl.name=PE.cfg$db$stats)
+  pull(pKey)
+dbDisconnect(this.db)
+PE.db.delete.by.pKey(pcfg=pcfg,tbl.name=PE.cfg$db$stats,pKeys = del.these)
 
 #'========================================================================
 # Calculation of statistics ####
@@ -134,13 +136,17 @@ dmp <- pb$tick(0)
 for(i in ids.todo) {
   
   #Import data
-  this.dat <- 
-    frags.todo %>%
+  this.db <- PE.db.connection(pcfg)
+  this.dat.raw <- 
+    tbl(this.db,PE.cfg$db$extract) %>% #Get the observational references
     filter(pKey==i) %>%
-    collect() %>%
-    PE.db.unserialize() %>%
-    select(-pKey)
-  
+    collect() 
+  dbDisconnect(this.db)
+  this.dat <-
+    this.dat.raw %>%
+    select(-pKey) %>%
+    PE.db.unserialize() 
+
   #Apply the masks to data
   masked.dat <- mask(this.dat$data[[1]],combined.mask,maskvalue=1)
   
