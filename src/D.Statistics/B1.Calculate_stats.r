@@ -65,9 +65,6 @@ log_msg("Stat   : %s\nCalib  : %s\nReal   : %i\nSp.Dom : %s\n",
 
 #Setup databases
 this.db <- PE.db.connection(pcfg)
-calib.tbl <- tbl(this.db,PE.cfg$db$calibration)
-extr.tbl  <- tbl(this.db,PE.cfg$db$extract) #Get the observational references
-stats.tbl <- tbl(this.db,PE.cfg$db$stats) 
 
 #Load of fragments to process 
 #We have chosen here to load it all into memory, as it simplifies the process
@@ -85,17 +82,19 @@ filter.by.realization.code <- function(tb,realization.code) {
 if(this.cfg$stat.realizations==0) {
   #Use observations
   frags.todo <- 
-    extr.tbl %>% 
+    PE.db.tbl(this.db,PE.cfg$db$extract,silent=FALSE) %>% 
     filter(srcType=="Observations") %>%
     collect()
 } else {
   #Use calibrated model outputs
   frags.todo <- 
-    calib.tbl %>% 
+    PE.db.tbl(this.db,PE.cfg$db$calibration,silent=FALSE) %>% 
     filter.by.realization.code(this.cfg$stat.realizations) %>%
     filter(calibrationMethod == !!this.cfg$stat.calibration) %>%
     collect()
 }  
+
+
 
 #Get list of ids to process
 ids.todo <-
@@ -105,7 +104,7 @@ ids.todo <-
 
 #Clear existing results 
 existing.stats <-
-  stats.tbl %>%
+  PE.db.tbl(this.db,PE.cfg$db$stats,silent=FALSE)  %>%
   filter(statName==!!this.stat@name,
          sdName==!!this.cfg$sd.name) 
 if(this.cfg$stat.realizations==0) {

@@ -106,7 +106,7 @@ the.plan <-
                    transform = map(datsrc=!!(names(pcfg@Decadal))),
                    trigger=trigger(change=pcfg@Decadal[[datsrc]])),
     Extractions=target(extract.models(Observations,Decadal),
-                    transform=combine(Decadal)),
+                       transform=combine(Decadal)),
     Calibration=calibration.scripts(Extractions),
     Statjobs=stat.jobs(Calibration),
     Stats=target(process.stat(Statjobs),

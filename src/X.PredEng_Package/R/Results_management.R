@@ -192,6 +192,30 @@ PE.db.appendTable <- function(dat,pcfg,tbl.name) {
   return(invisible(NULL))
 }
 
+#' Parallel-safe tbl constructor
+#' 
+#' Creates a tbl object in a way that is concurrency safe
+#'
+#' @param src 
+#' @param from 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+PE.db.tbl <- function(src,from,silent=TRUE) {
+  #Try to get access
+  repeat{
+    rtn <- try(tbl(src,from),silent=silent)  
+    if(!is(rtn, "try-error")) break
+    Sys.sleep(runif(1,0.01,0.1))  #Avoid constant polling. Add some stochasticity to break synchronisation
+  }
+  #Fin
+  return(invisible(rtn))
+}
+
+
+
 #' @details PE.db.unserialize  unserialises the data column
 #' @export
 #' @rdname PE.db
