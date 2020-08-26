@@ -39,7 +39,7 @@ pcfg <- readRDS(PE.cfg$path$config)
 #Take input arguments, if any
 if(interactive()) {
   set.log_msg.silent()
-  cfg.id <- 3
+  cfg.id <- 4
 } else {
   cmd.args <- commandArgs(TRUE)
   if(length(cmd.args)!=1) stop("Cannot get command args")
@@ -66,10 +66,13 @@ log_msg("Stat   : %s\nCalib  : %s\nReal   : %i\nSp.Dom : %s\n",
 #Setup databases
 this.db <- PE.db.connection(pcfg)
 calib.tbl <- tbl(this.db,PE.cfg$db$calibration)
-frag.tbl  <- tbl(this.db,PE.cfg$db$extract) #Get the observational references
+extr.tbl  <- tbl(this.db,PE.cfg$db$extract) #Get the observational references
 stats.tbl <- tbl(this.db,PE.cfg$db$stats) 
 
-#Get list of fragments to process 
+#Load of fragments to process 
+#We have chosen here to load it all into memory, as it simplifies the process
+#and avoids generating issues with concurrency (I hope). However, if this
+#gets to be too big in the future, we may need to rethink the approach. 
 #We need to choose here between Observation and model types
 filter.by.realization.code <- function(tb,realization.code) {
   switch(as.character(realization.code),
@@ -80,21 +83,24 @@ filter.by.realization.code <- function(tb,realization.code) {
     
 }
 if(this.cfg$stat.realizations==0) {
+  #Use observations
   frags.todo <- 
-    frag.tbl %>% #Use observations
-    filter(srcType=="Observations")
+    extr.tbl %>% 
+    filter(srcType=="Observations") %>%
+    collect()
 } else {
+  #Use calibrated model outputs
   frags.todo <- 
-    calib.tbl %>% #Use calibrated model outputs
+    calib.tbl %>% 
     filter.by.realization.code(this.cfg$stat.realizations) %>%
-    filter(calibrationMethod == !!this.cfg$stat.calibration) 
+    filter(calibrationMethod == !!this.cfg$stat.calibration) %>%
+    collect()
 }  
 
 #Get list of ids to process
 ids.todo <-
   frags.todo %>%
-  select(pKey) %>%
-  collect() %>%
+  select(pKey)%>%
   pull() 
 
 #Clear existing results 
@@ -134,16 +140,10 @@ combined.mask <- mask(landmask,as(this.sd,"Spatial"),updatevalue=1)
 pb <- PE.progress(ids.todo)
 dmp <- pb$tick(0)
 for(i in ids.todo) {
-  
   #Import data
-  this.db <- PE.db.connection(pcfg)
-  this.dat.raw <- 
-    tbl(this.db,PE.cfg$db$extract) %>% #Get the observational references
+  this.dat <- 
+    frags.todo %>%
     filter(pKey==i) %>%
-    collect() 
-  dbDisconnect(this.db)
-  this.dat <-
-    this.dat.raw %>%
     select(-pKey) %>%
     PE.db.unserialize() 
 
@@ -161,7 +161,6 @@ for(i in ids.todo) {
     bind_cols(this.res) %>%
     select(-data) 
   PE.db.appendTable(out.dat,pcfg,PE.cfg$db$stats)
-  
   #Loop back
   dmp <- pb$tick()
 }  #/end loop over calibrated fragments
