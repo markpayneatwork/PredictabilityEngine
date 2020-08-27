@@ -71,58 +71,55 @@ this.db <- PE.db.connection(pcfg)
 #and avoids generating issues with concurrency (I hope). However, if this
 #gets to be too big in the future, we may need to rethink the approach. 
 #We need to choose here between Observation and model types
-filter.by.realization.code <- function(tb,realization.code) {
+select.by.realization.code <- function(realization.code) {
   switch(as.character(realization.code),
-         "1"=filter(tb,!realization %in% c("realmean","ensmean")),
-         "2"=filter(tb,realization=="realmean"),
-         "3"=filter(tb,srcName=="ensmean"),
+         "1"="NOT(`srcType` IN ('realmean', 'ensmean'))",
+         "2"="`realization` = 'realmean'",
+         "3"="`srcName` = 'ensmean'",
          stop("Unknown option"))
     
 }
 if(this.cfg$stat.realizations==0) {
   #Use observations
-  frags.todo <- 
-    PE.db.tbl(this.db,PE.cfg$db$extract,silent=FALSE) %>% 
-    filter(srcType=="Observations") %>%
-    collect()
+  frag.src <- PE.cfg$db$extract
+  frag.todo.SQL <- 
+    sprintf("SELECT pKey FROM %s WHERE (`srcType` = 'Observations')",
+            frag.src)
 } else {
   #Use calibrated model outputs
-  frags.todo <- 
-    PE.db.tbl(this.db,PE.cfg$db$calibration,silent=FALSE) %>% 
-    filter.by.realization.code(this.cfg$stat.realizations) %>%
-    filter(calibrationMethod == !!this.cfg$stat.calibration) %>%
-    collect()
+  frag.src <- PE.cfg$db$calibration
+  frag.todo.SQL <- 
+    sprintf("SELECT pKey FROM %s WHERE %s AND `calibrationMethod` = '%s'",
+            frag.src,
+            select.by.realization.code(this.cfg$stat.realizations),
+            this.cfg$stat.calibration)
 }  
-
-
 
 #Get list of ids to process
 ids.todo <-
-  frags.todo %>%
-  select(pKey)%>%
+  dbGetQuery(this.db,frag.todo.SQL) %>%
   pull() 
 
 #Clear existing results 
-existing.stats <-
-  PE.db.tbl(this.db,PE.cfg$db$stats,silent=FALSE)  %>%
-  filter(statName==!!this.stat@name,
-         sdName==!!this.cfg$sd.name) 
+existing.stats.sel <- 
+  sprintf("SELECT pKey FROM %s WHERE `statName` = '%s' AND `sdName` = '%s'",
+          PE.cfg$db$stats,
+          this.cfg$stat.name,
+          this.cfg$sd.name)
 if(this.cfg$stat.realizations==0) {
-  existing.stats <-
-    existing.stats %>%
-    filter(srcType=="Observations")
+  existing.stats.sel <-
+    sprintf("%s AND `srcType` = 'Observations'",existing.stats.sel)
+
 } else {
-  existing.stats <-
-    existing.stats %>%
-    filter.by.realization.code(this.cfg$stat.realizations) %>%
-    filter(calibrationMethod==!!this.cfg$stat.calibration)
+  existing.stats.sel <-
+    sprintf("%s AND %s AND `calibrationMethod` = '%s'",
+            existing.stats.sel,
+            select.by.realization.code(this.cfg$stat.realizations),
+            this.cfg$stat.calibration)
 }
 del.these <- 
-  existing.stats %>%
-  select(pKey) %>%
-  collect() %>%
-  pull(pKey)
-dbDisconnect(this.db)
+  dbGetQuery(this.db,existing.stats.sel) %>%
+  pull()
 PE.db.delete.by.pKey(pcfg=pcfg,tbl.name=PE.cfg$db$stats,pKeys = del.these)
 
 #'========================================================================
@@ -141,8 +138,11 @@ dmp <- pb$tick(0)
 for(i in ids.todo) {
   #Import data
   this.dat <- 
-    frags.todo %>%
-    filter(pKey==i) %>%
+    sprintf("SELECT * FROM %s WHERE `pKey` = %i",
+            frag.src,
+            i) %>%
+    dbGetQuery(conn=this.db) %>%
+    as_tibble() %>%
     select(-pKey) %>%
     PE.db.unserialize() 
 
