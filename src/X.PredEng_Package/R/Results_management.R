@@ -192,6 +192,22 @@ PE.db.appendTable <- function(dat,pcfg,tbl.name) {
   return(invisible(NULL))
 }
 
+#' @details PE.db.getQuery performs a concurrency-safe query
+#' @export
+#' @rdname PE.db
+PE.db.getQuery <- function(pcfg,this.sql) {
+  #Open connection
+  db.con <- PE.db.connection(pcfg)
+  #Get query
+  repeat{
+    rtn <- try(dbGetQuery(conn=db.con, this.sql),silent=TRUE)  
+    if(!is(rtn, "try-error")) break
+    Sys.sleep(runif(1,0.01,0.1))  #Avoid constant polling. Add some stochasticity to break synchronisation
+  }
+  #Fin
+  dbDisconnect(db.con)
+  return(rtn)
+}
 
 
 #' @details PE.db.unserialize  unserialises the data column

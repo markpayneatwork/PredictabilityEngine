@@ -8,6 +8,7 @@
 \alias{PE.db.delete.by.datasource}
 \alias{PE.db.calc.realMeans}
 \alias{PE.db.appendTable}
+\alias{PE.db.getQuery}
 \alias{PE.db.unserialize}
 \title{Setup results database}
 \usage{
@@ -23,6 +24,8 @@ PE.db.calc.realMeans(pcfg, this.datasrc)
 
 PE.db.appendTable(dat, pcfg, tbl.name)
 
+PE.db.getQuery(pcfg, this.sql)
+
 PE.db.unserialize(this.dat)
 }
 \arguments{
@@ -36,6 +39,8 @@ Setup results database
 }
 \details{
 PE.db.appendTable serialises the data column and writes the data to the specified table
+
+PE.db.getQuery performs a concurrency-safe query
 
 PE.db.unserialize  unserialises the data column
 }
