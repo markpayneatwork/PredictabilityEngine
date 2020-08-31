@@ -156,9 +156,17 @@ get.cfgs <- function(fname){
 #' @export
 PE.progress <- function(n) {
   if(length(n)>1) n <- length(n)
-  pb <- progress_bar$new(total=n,
-                   show=0,clear=FALSE,
-                   force=TRUE,
-                   format = "[:bar] :elapsedfull (:percent), :eta remaining")
+  if(interactive()) {
+    pb <- progress_bar$new(total=n,
+                           show=0,clear=FALSE,
+                           force=TRUE,
+                           format = "[:bar] :elapsedfull (:percent), :eta remaining")    
+  } else {
+    pb <- progress_bar$new(total=n,
+                           show=0,clear=FALSE,
+                           force=TRUE,
+                           format = "Elapsed: :elapsedfull (:percent), :eta remaining\n")    
+  }
+
   return(pb)
 }
