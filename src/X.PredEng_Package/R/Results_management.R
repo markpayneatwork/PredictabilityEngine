@@ -8,7 +8,7 @@
 #' @name PE.db
 PE.db.connection <- function(pcfg) {
    db.path <- file.path(pcfg@scratch.dir,sprintf("%s.sqlite",pcfg@project.name))
-   dbConnect(RSQLite::SQLite(), db.path)
+   dbConnect(RSQLite::SQLite(), db.path,synchronous=NULL)
 }
 
 
