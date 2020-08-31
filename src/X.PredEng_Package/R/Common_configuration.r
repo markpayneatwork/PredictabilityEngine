@@ -2,7 +2,8 @@ PE.cfg <- list()
 
 #Directories
 PE.cfg$dir <- list(objects="objects",
-                    datasrc= "data_srcs")
+                    datasrc= "data_srcs",
+                   scratch="scratch")
 
 #Configuration
 PE.cfg$path$config   <- file.path(PE.cfg$dir$objects,"configuration.rds")

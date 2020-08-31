@@ -49,7 +49,7 @@ pcfg <- PredEng.config(project.name= "Bluefin",
                NMME=NMME.sst.l)
 
 #Setup scratch directory
-pcfg@scratch.dir <- file.path("scratch",pcfg@project.name)
+pcfg@scratch.dir <- file.path(PE.cfg$dir$scratch,pcfg@project.name)
 define_dir(pcfg@scratch.dir)
 
 #Select decadal models
@@ -83,7 +83,7 @@ sp.objs$"SouthOfIceland" <- sfpolygon.from.extent(extent(-50,-10,54,70))
 
 #Add to object
 pcfg@spatial.polygons <- 
-  a<-sp.objs %>% enframe(value="geometry") %>% st_sf()
+  sp.objs %>% enframe(value="geometry") %>% st_sf()
 
 
 #'========================================================================

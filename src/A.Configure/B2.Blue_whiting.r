@@ -27,13 +27,11 @@
 cat(sprintf("\n%s\n","Blue Whiting Configuration"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
-#Do house cleaning
-rm(list = ls(all.names=TRUE));  graphics.off();
-
 #Source the common elements
-library(PredEng)
-library(tidyverse)
-source("src/B.Configuration/B0.Define_common_data_srcs.r")
+suppressPackageStartupMessages({
+  library(PredEng)
+})
+load(PE.cfg$path$datasrcs)
 
 # ========================================================================
 # Generic Configuration
@@ -44,10 +42,11 @@ pcfg <- PredEng.config(project.name= "Blue_whiting",
                        average.months=FALSE,
                        clim.years=1982:2005,  
                        comp.years=1970:2015,
+                       Observations = Sal.obs$EN4,
                        landmask="data_srcs/NMME/landmask.nc")
 
 #Setup scratch directory
-pcfg@scratch.dir <- file.path("scratch",pcfg@project.name)
+pcfg@scratch.dir <- file.path(PE.cfg$dir$scratch,pcfg@project.name)
 define_dir(pcfg@scratch.dir)
 
 #'========================================================================
@@ -59,20 +58,19 @@ pcfg@global.res  <- 0.5
 pcfg@vert.range <- c(250,600)
 
 #Polygons
-sp.objs <- PElst()
-sp.objs$spawing.area <- spatial.domain("ROI",extent(-20,-5,50,60))
-
-#Correct names and add to object
-pcfg@spatial.domains <- sp.objs
+sp.objs <- list()
+sp.objs$"Spawning area" <- sfpolygon.from.extent(extent(-20,-5,50,60))
+pcfg@spatial.polygons <- 
+  sp.objs %>% enframe(value="geometry") %>% st_sf()
 
 #'========================================================================
 # Data Sources ####
 #'========================================================================
 #Define observational sources
-pcfg@Observations <- Sal.obs$EN4
+#pcfg@Observations <- Sal.obs$EN4
 
 #Decadal salinity models
-#pcfg@Decadal <- Sal.Decadal
+pcfg@Decadal <- Sal.Decadal
 
 #CMIP5 salinity
 #pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="so")
@@ -85,21 +83,15 @@ stat.l <- PElst()
 
 #Average salinity
 stat.l[["MeanSal"]]  <- spatial.mean(name="Mean-salinity",
-                             desc="Mean salinity",
-                             use.full.field=TRUE)
+                                     desc="Mean salinity",
+                                     realizations=c(1:3),
+                                     calibration="Mean adjusted")
 
 #Full salinity field and anomaly
 stat.l[["SalAnomField"]] <- pass.through(name="SalAnomaly",
                                          desc="Salinity anomaly",
-                                         use.globally=TRUE,
-                                         use.full.field = FALSE,
-                                         use.realmeans=TRUE)
-
-stat.l[["SalField"]] <- pass.through(name="SalField",
-                                     desc="Salinity full field values",
-                                     use.globally=TRUE,
-                                     use.full.field = TRUE,
-                                     use.realmeans=TRUE)
+                                         realizations=1:3,
+                                         calibration="anomaly")
 
 #Setup Miesner & Payne habitat model
 require(mgcv)
@@ -166,8 +158,8 @@ stat.l[["SDM_range"]] <- habitat(name="SDMrange",
                            fn=GAM.sdm.fn,
                            resources=GAM.sdm.resources,
                            skill.metrics = "correlation",
-                           use.full.field = TRUE,
-                           use.realmeans=TRUE)
+                           calibration="Mean adjusted",
+                           realizations = 1:3)
 
 #Just focus on 15th April (DOY=105) => Spawning in mid March
 GAM.sdm.resources$pred.consts <- data.frame(doy=105,
@@ -177,9 +169,8 @@ stat.l[["SDM15apr"]] <- habitat(name="SDM15Apr",
                                fn=GAM.sdm.fn,
                                resources=GAM.sdm.resources,
                                skill.metrics = "correlation",
-                               use.full.field = TRUE,
-                               use.realmeans=TRUE)
-
+                               calibration="Mean adjusted",
+                               realizations=1:3)
 
 GAM.sdm.resources$apply.threshold <- FALSE
 stat.l[["SDM15apr_nothreshold"]] <- habitat(name="SDM15AprNoThresh",
@@ -187,8 +178,8 @@ stat.l[["SDM15apr_nothreshold"]] <- habitat(name="SDM15AprNoThresh",
                                 fn=GAM.sdm.fn,
                                 resources=GAM.sdm.resources,
                                 skill.metrics = "correlation",
-                                use.full.field = TRUE,
-                                use.realmeans=TRUE)
+                                calibration="Mean adjusted",
+                                realizations=1:3)
 
 # stat.l[["SDM-PA-reals"]] <- habitat(name="SDM-PA-reals",
 #                        desc="SDM based on individual realisations, PA",
@@ -216,7 +207,7 @@ pcfg@statistics <- stat.l
 #'========================================================================
 # Output ####
 #'========================================================================
-source("src/B.Configuration/B99.Configuration_wrapup.r")
+set.configuration(pcfg)
 
 # ========================================================================
 # Done

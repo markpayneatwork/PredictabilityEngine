@@ -361,6 +361,8 @@ save(SST_obs,
      SST.Decadal.production,
      NMME.sst.l,
      make.CMIP5.srcs,
+     Sal.obs,
+     Sal.Decadal,
      CMIP5.db,
      file=PE.cfg$path$datasrcs)
 
