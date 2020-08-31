@@ -40,7 +40,7 @@ pcfg <- readRDS(PE.cfg$path$config)
 #'========================================================================
 #Take input arguments, if any
  if(interactive()) {
-  cfg.id <- "MPI.ESM.LR"
+  cfg.id <- "NorCPM.i1"
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
 } else {
@@ -107,7 +107,7 @@ for(i in seq(nrow(src.meta))) {
       vert.idxs <- 1
     } else {
       #Need to work it out ourselves
-      vert.idxs <- get.vertical.levels(pcfg,this.datasrc,tmp.in)
+      vert.idxs <- this.datasrc@z2idx(pcfg@vert.range,tmp.in)
     }
     sellev.cmd <- cdo(csl("sellevidx",vert.idxs),
                       tmp.in,tmp.out)

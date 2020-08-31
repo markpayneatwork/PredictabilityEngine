@@ -36,9 +36,12 @@ pcfg <- readRDS(PE.cfg$path$config)
 #'========================================================================
 # Configure ####
 #'========================================================================
+<<<<<<< HEAD
 if(interactive() ) {
 #  pcfg@Decadal <- pcfg@Decadal[2:4]  #Debugging
 } 
+=======
+>>>>>>> 8555bd728f97e14188ecaac908aad34f6c9769b9
 
 #'========================================================================
 # Setup ####
@@ -55,7 +58,11 @@ log.file <- function(...) {
 
 #Setup functions
 extract.observations <- function(...) {
-  callr::rscript(here("src/B.Extract/C1.HadISST_data.r"),
+  obs.script <- switch(pcfg@Observations@name,
+                      "EN4"="C2.EN4_extraction.r",
+                      "HadISST"="C1.HadISST_data.r",
+                      stop("Cannot find observation script"))
+  callr::rscript(here("src/B.Extract/",obs.script),
                  stdout=log.file("B.Observations.%s",pcfg@Observations@name),
                  stderr=log.file("B.Observations.%s",pcfg@Observations@name))
 script.complete()
@@ -100,6 +107,7 @@ process.stat <- function(stat.id) {
 #Make a plan
 the.plan <-  
   drake_plan(
+<<<<<<< HEAD
 #    Observations=target(command=extract.observations(),
  #                       trigger=trigger(change=pcfg@Observations)),
     Decadal=target(extract.decadal(datsrc),
@@ -107,12 +115,33 @@ the.plan <-
                    trigger=trigger(change=pcfg@Decadal[[datsrc]])),
 #    Extractions=target(extract.models(Observations,Decadal),
     Extractions=target(extract.models(Decadal),
+=======
+    Observations=target(command=extract.observations(),
+                        trigger=trigger(command=FALSE,change=pcfg@Observations)),
+    Decadal=target(extract.decadal(datsrc),
+                   transform = map(datsrc=!!(names(pcfg@Decadal))),
+                   trigger=trigger(command=FALSE,change=pcfg@Decadal[[datsrc]])),
+    Extractions=target(extract.models(Observations,Decadal),
+>>>>>>> 8555bd728f97e14188ecaac908aad34f6c9769b9
                        transform=combine(Decadal)),
     Calibration=calibration.scripts(Extractions),
     Statjobs=stat.jobs(Calibration),
     Stats=target(process.stat(Statjobs),
                  dynamic=map(Statjobs)))
 
+<<<<<<< HEAD
+=======
+
+#'========================================================================
+# And Go ####
+#'========================================================================
+#Set parallelism
+options(clustermq.scheduler = "multicore")
+
+#Paw Patrol - så er det nu!
+make(the.plan, parallelism = "clustermq", jobs = 4,keep_going=TRUE)
+
+>>>>>>> 8555bd728f97e14188ecaac908aad34f6c9769b9
 #'========================================================================
 # Supplementary ####
 #'========================================================================

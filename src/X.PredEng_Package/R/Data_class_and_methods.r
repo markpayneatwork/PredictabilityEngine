@@ -14,9 +14,10 @@
 #' by time. Valid values are NA (don't use timebounds, use the time variable), 1 (use the lower bound),
 #' 2 (use the upper bound) or 3 (use the average value)
 #' @slot realization.fn A function to extract the realisation ID
-#' @slot zrng2levs.fn Converts a range of vertical depths (postive downwards) to the corresponding layers. Should take
+#' @slot z2idx Converts a range of vertical depths (postive downwards) to the corresponding layers. Should take
 #' the arguments z (a length=2 vector of depths) and f (a link to a file). Returns a list of levels that closest
 #' approximate the range
+#' @slot date.fn Given a filename, f, returns the corresponding date
 #' @slot start.date Function to extract the dates for the start of the forecasts. Note that we define this to
 #' be different to the initialisation dates (when the model is actually initialised). A decadal model 
 #' might be initialised on 1 Nov but we are primarily interested in it's post-January output, and so call 
@@ -37,13 +38,14 @@ data.source <-
                       realizations="character",
                       use.timebounds="numeric",
                       realization.fn="function",
-                      level.bnds="character",
+                      z2idx="function",
                       start.date="function", 
                       date.fn="function"),
            prototype=list(use.timebounds=as.numeric(NA),
                           time.var="time",
                           realizations=as.character(NA),
-                          date.fn=function(x) {stop("Date.fn not specified")},
+                          date.fn=function(f) {stop("Date.fn not specified")},
+                          z2idx=function(z,f) {stop("z2idx function not specified")},
                           realization.fn=function(x) {stop("Realization function not specified")},
                           start.date=function(x) { stop("Start.date function not specified")}),
            validity = function(object) {
@@ -52,7 +54,11 @@ data.source <-
                     validate_that(!grepl("-",object@name),msg="Object name must not contain hyphens"),
                     validate_that(!grepl("_",object@name),msg="Object name must not contain underscores"),
                     validate_that(is.na(object@use.timebounds) | object@use.timebounds %in% 1:3,
-                                  msg="Use.timebounds must be either NA, or 1,2 or 3"))
+                                  msg="Use.timebounds must be either NA, or 1,2 or 3"),
+                    validate_that(identical(names(formals(object@date.fn)),"f"),
+                                  msg="Function in 'date.fn' slot must only take argument 'f'"),
+                    validate_that(identical(names(formals(object@z2idx)),c("z","f")),
+                                  msg="Function in 'z2idx' slot must only take arguments 'z' and 'f'"))
              err.idxs <- map_lgl(err.msg,is.character)
              if(all(!err.idxs)) return(TRUE) else unlist(err.msg[err.idxs])
            })
@@ -119,32 +125,34 @@ timebounds.to.time <- function(this.obj,f){
 }
 
 
-#' Get vertical levels
+#' Convert z-layer bounds to layer indices
 #'
-#' Gets vertical levels from an arbitrary file
+#' Converts a vertical range (two elements) to the indices of the vertical levels defined by their
+#' upper and lower bounds. A layer is included if the bound includes more than 50% of it
 #'
-#' @param this.cfg 
-#' @param this.datasrc 
-#' @param f 
+#' @param z.range the vertical range
+#' @param layer.top a vector defining the depths of the tops of the layers
+#' @param layer.bottom a vector defining the depths of the bottoms of the layers
 #'
 #' @return
 #' @export
-get.vertical.levels <- function(this.cfg,this.datasrc,f) {
-  assert_that(length(this.cfg@vert.range)==2,msg="vert.range needs to be of length two")
-  ncid <- nc_open(f)
-  z <- this.cfg@vert.range
+bounds.to.indices <- function(z.range,layer.top,layer.bottom) {
+  #Check inputs
+  assert_that(length(z.range)==2,msg="z.range needs to be of length two")
+  assert_that(length(layer.top)==length(layer.bottom),
+              msg="Size of 'upper.bnd'layer.top' and 'layer.bottom' vectors must be the same")
+  #Apply logic
   keep.layers <-  
-    ncvar_get(ncid,this.datasrc@level.bnds) %>%
-    t() %>%
-    as_tibble() %>%
-    mutate(idx=1:nrow(.),
-           zmin.rel.pos=(min(z)-V1)/(V2-V1),
+    tibble(layer.top,
+           layer.bottom,
+           layer.thickness=-(layer.top-layer.bottom),
+           zmin.rel.pos=(min(z.range)-layer.top)/layer.thickness,
            zmin.ok=round(zmin.rel.pos)<=0,
-           zmax.rel.pos=(max(z)-V1)/(V2-V1),
+           zmax.rel.pos=(max(z.range)-layer.top)/layer.thickness,
            zmax.ok=round(zmax.rel.pos)>=1) %>%
+    mutate(idx=1:nrow(.)) %>%
     filter(zmin.ok & zmax.ok)
-  assert_that(nrow(keep.layers)>0,msg="Problem with zrng specification")
-  nc_close(ncid)
+  assert_that(nrow(keep.layers)>0,msg="Problem with z.range specification")
   return(keep.layers$idx)
 }
 
