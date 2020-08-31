@@ -17,6 +17,7 @@
 #' @slot z2idx Converts a range of vertical depths (postive downwards) to the corresponding layers. Should take
 #' the arguments z (a length=2 vector of depths) and f (a link to a file). Returns a list of levels that closest
 #' approximate the range
+#' @slot date.fn Given a filename, f, returns the corresponding date
 #' @slot start.date Function to extract the dates for the start of the forecasts. Note that we define this to
 #' be different to the initialisation dates (when the model is actually initialised). A decadal model 
 #' might be initialised on 1 Nov but we are primarily interested in it's post-January output, and so call 
@@ -43,7 +44,7 @@ data.source <-
            prototype=list(use.timebounds=as.numeric(NA),
                           time.var="time",
                           realizations=as.character(NA),
-                          date.fn=function(x) {stop("Date.fn not specified")},
+                          date.fn=function(f) {stop("Date.fn not specified")},
                           z2idx=function(z,f) {stop("z2idx function not specified")},
                           realization.fn=function(x) {stop("Realization function not specified")},
                           start.date=function(x) { stop("Start.date function not specified")}),
@@ -54,8 +55,10 @@ data.source <-
                     validate_that(!grepl("_",object@name),msg="Object name must not contain underscores"),
                     validate_that(is.na(object@use.timebounds) | object@use.timebounds %in% 1:3,
                                   msg="Use.timebounds must be either NA, or 1,2 or 3"),
+                    validate_that(identical(names(formals(object@date.fn)),"f"),
+                                  msg="Function in 'date.fn' slot must only take argument 'f'"),
                     validate_that(identical(names(formals(object@z2idx)),c("z","f")),
-                                  msg="Function in z2idx slot must only take arguments 'z' and 'f'"))
+                                  msg="Function in 'z2idx' slot must only take arguments 'z' and 'f'"))
              err.idxs <- map_lgl(err.msg,is.character)
              if(all(!err.idxs)) return(TRUE) else unlist(err.msg[err.idxs])
            })

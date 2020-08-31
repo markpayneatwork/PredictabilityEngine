@@ -295,6 +295,18 @@ SST_obs$EN4  <- data.source(name="EN4",
                             type="Observations",
                             var="temperature",
                             fields.are.2D = FALSE,
+                            z2idx=function(z,f){
+                              ncid <- nc_open(f)
+                              depth_bnds <- ncvar_get(ncid,"depth_bnds")
+                              nc_close(ncid)
+                              idxs <- bounds.to.indices(z,depth_bnds[1,],depth_bnds[2,])
+                              return(idxs)},
+                            date.fn = function(f) {
+                              ncid <- nc_open(f)
+                              time.var <- ncvar_get(ncid,"time")
+                              nc_close(ncid)
+                              return(time.var+ as.Date("1800-01-01"))
+                            },
                             sources=dir("data_srcs/Observations/EN4/",
                                              pattern="\\.zip$",full.names = TRUE,recursive=TRUE))
 
@@ -303,6 +315,8 @@ Sal.obs$EN4  <- data.source(name="EN4",
                             type="Observations",
                             var="salinity",
                             fields.are.2D = FALSE,
+                            z2idx=SST_obs$EN4@z2idx,
+                            date.fn=SST_obs$EN@date.fn,
                             sources=dir("data_srcs/Observations/EN4/",
                                              pattern="\\.nc$",full.names = TRUE,recursive=TRUE))
 

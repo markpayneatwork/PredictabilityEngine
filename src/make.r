@@ -36,9 +36,6 @@ pcfg <- readRDS(PE.cfg$path$config)
 #'========================================================================
 # Configure ####
 #'========================================================================
-if(interactive() ) {
-  pcfg@Decadal <- pcfg@Decadal[2:4]  #Debugging
-} 
 
 #'========================================================================
 # Setup ####
@@ -55,7 +52,11 @@ log.file <- function(...) {
 
 #Setup functions
 extract.observations <- function(...) {
-  callr::rscript(here("src/B.Extract/C1.HadISST_data.r"),
+  obs.script <- switch(pcfg@Observations@name,
+                      "EN4"="C2.EN4_extraction.r",
+                      "HadISST"="C1.HadISST_data.r",
+                      stop("Cannot find observation script"))
+  callr::rscript(here("src/B.Extract/",obs.script),
                  stdout=log.file("B.Observations.%s",pcfg@Observations@name),
                  stderr=log.file("B.Observations.%s",pcfg@Observations@name))
 script.complete()
@@ -101,10 +102,10 @@ process.stat <- function(stat.id) {
 the.plan <-  
   drake_plan(
     Observations=target(command=extract.observations(),
-                        trigger=trigger(change=pcfg@Observations)),
+                        trigger=trigger(command=FALSE,change=pcfg@Observations)),
     Decadal=target(extract.decadal(datsrc),
                    transform = map(datsrc=!!(names(pcfg@Decadal))),
-                   trigger=trigger(change=pcfg@Decadal[[datsrc]])),
+                   trigger=trigger(command=FALSE,change=pcfg@Decadal[[datsrc]])),
     Extractions=target(extract.models(Observations,Decadal),
                        transform=combine(Decadal)),
     Calibration=calibration.scripts(Extractions),
@@ -120,7 +121,7 @@ the.plan <-
 options(clustermq.scheduler = "multicore")
 
 #Paw Patrol - så er det nu!
-make(the.plan, parallelism = "clustermq", jobs = 4)
+make(the.plan, parallelism = "clustermq", jobs = 4,keep_going=TRUE)
 
 #'========================================================================
 # Supplementary ####

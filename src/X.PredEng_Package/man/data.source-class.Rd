@@ -33,6 +33,8 @@ by time. Valid values are NA (don't use timebounds, use the time variable), 1 (u
 the arguments z (a length=2 vector of depths) and f (a link to a file). Returns a list of levels that closest
 approximate the range}
 
+\item{\code{date.fn}}{Given a filename, f, returns the corresponding date}
+
 \item{\code{start.date}}{Function to extract the dates for the start of the forecasts. Note that we define this to
 be different to the initialisation dates (when the model is actually initialised). A decadal model 
 might be initialised on 1 Nov but we are primarily interested in it's post-January output, and so call 
