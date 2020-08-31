@@ -78,7 +78,12 @@ SST.Decadal$"MPI-LR" <-
               type="Decadal",
               var="thetao",
               fields.are.2D = FALSE,
-              level.bnds = "lev_bnds",
+              z2idx = function(z,f) {
+                ncid <- nc_open(f)
+                z.bnds <- ncvar_get(ncid,"lev_bnds")
+                idxs <- bounds.to.indices(z,z.bnds[1,],z.bnds[2,])
+                nc_close(ncid)
+                return(idxs)},
               sources=MPI.LR.SST.srcs,
               realization.fn=CMIP5_realisation,
               start.date=function(f){
@@ -199,7 +204,7 @@ Sal.Decadal$"MPI-LR" <-
               type="Decadal",
               var="so",
               fields.are.2D = FALSE,
-              level.bnds = "lev_bnds",
+              z2idx = SST.Decadal$"MPI-LR"@z2idx,
               sources=MPI.LR.so.srcs,
               realization.fn=CMIP5_realisation,
               start.date=function(f){
@@ -213,8 +218,15 @@ CESM.DPLE.SALT <-
   data.source(CESM.DPLE.src,
               var="SALT",
               sources=dir(file.path(PE.cfg$dir$datasrc,"Decadal","CESM-DPLE","SALT"),
-                               pattern="\\.nc$",full.names = TRUE),
+                          pattern="\\.nc$",full.names = TRUE),
               fields.are.2D = FALSE,
+              z2idx = function(z,f) {
+                ncid <- nc_open(f)
+                z_w_top <- ncvar_get(ncid,"z_w_top")/100 #convert cm -> m
+                z_w_bot <- ncvar_get(ncid,"z_w_bot")/100 #convert cm -> m
+                nc_close(ncid)
+                idxs <- bounds.to.indices(z,z_w_top,z_w_bot)
+                return(idxs)},
               date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
 
 Sal.Decadal$CESM.DPLE.SALT <- CESM.DPLE.SALT
@@ -225,6 +237,12 @@ NorCPM.sal.src.i1 <-
       NorCPM.SST.src.i1,
       name="NorCPM.i1",
       fields.are.2D=FALSE,
+      z2idx=function(z,f) {
+        ncid <- nc_open(f)
+        lev_bnds <- ncvar_get(ncid,"lev_bnds")
+        nc_close(ncid)
+        idxs <- bounds.to.indices(z,lev_bnds[1,],lev_bnds[2,])
+        return(idxs)},
       sources=filter(NorCPM.fnames,
                           field=="so",
                           grid=="gr",

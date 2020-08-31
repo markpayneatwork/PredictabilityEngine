@@ -29,7 +29,7 @@ by time. Valid values are NA (don't use timebounds, use the time variable), 1 (u
 
 \item{\code{realization.fn}}{A function to extract the realisation ID}
 
-\item{\code{zrng2levs.fn}}{Converts a range of vertical depths (postive downwards) to the corresponding layers. Should take
+\item{\code{z2idx}}{Converts a range of vertical depths (postive downwards) to the corresponding layers. Should take
 the arguments z (a length=2 vector of depths) and f (a link to a file). Returns a list of levels that closest
 approximate the range}
 
