@@ -37,7 +37,7 @@ pcfg <- readRDS(PE.cfg$path$config)
 # Configure ####
 #'========================================================================
 if(interactive() ) {
-  pcfg@Decadal <- pcfg@Decadal[2:4]  #Debugging
+#  pcfg@Decadal <- pcfg@Decadal[2:4]  #Debugging
 } 
 
 #'========================================================================
@@ -100,18 +100,32 @@ process.stat <- function(stat.id) {
 #Make a plan
 the.plan <-  
   drake_plan(
-    Observations=target(command=extract.observations(),
-                        trigger=trigger(change=pcfg@Observations)),
+#    Observations=target(command=extract.observations(),
+ #                       trigger=trigger(change=pcfg@Observations)),
     Decadal=target(extract.decadal(datsrc),
                    transform = map(datsrc=!!(names(pcfg@Decadal))),
                    trigger=trigger(change=pcfg@Decadal[[datsrc]])),
-    Extractions=target(extract.models(Observations,Decadal),
+#    Extractions=target(extract.models(Observations,Decadal),
+    Extractions=target(extract.models(Decadal),
                        transform=combine(Decadal)),
     Calibration=calibration.scripts(Extractions),
     Statjobs=stat.jobs(Calibration),
     Stats=target(process.stat(Statjobs),
                  dynamic=map(Statjobs)))
 
+#'========================================================================
+# Supplementary ####
+#'========================================================================
+#Visualise
+vis <- function() print(vis_drake_graph(the.plan,targets_only=TRUE))
+if(interactive()) {
+	vis()
+}
+
+#Custom cleaning function
+clean_regex <- function(regex) {
+  clean(list=grep(regex,cached(),value=TRUE))
+}
 
 #'========================================================================
 # And Go ####
@@ -120,20 +134,9 @@ the.plan <-
 options(clustermq.scheduler = "multicore")
 
 #Paw Patrol - så er det nu!
-make(the.plan, parallelism = "clustermq", jobs = 4)
+make(the.plan, parallelism = "clustermq", jobs = 8)
+#make(the.plan)
 
-#'========================================================================
-# Supplementary ####
-#'========================================================================
-#Visualise
-if(interactive()) {
-  print(vis_drake_graph(the.plan,targets_only=TRUE))
-}
-
-#Custom cleaning function
-clean_regex <- function(regex) {
-  clean(list=grep(regex,cached(),value=TRUE))
-}
 
 #'========================================================================
 # Complete ####
