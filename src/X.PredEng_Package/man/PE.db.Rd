@@ -6,27 +6,35 @@
 \alias{PE.db.setup}
 \alias{PE.db.delete.by.pKey}
 \alias{PE.db.delete.by.datasource}
+\alias{PE.db.delete.by.hash}
 \alias{PE.db.calc.realMeans}
 \alias{PE.db.appendTable}
-\alias{PE.db.getQuery}
 \alias{PE.db.unserialize}
+\alias{PE.db.getQuery}
 \title{Setup results database}
 \usage{
 PE.db.connection(pcfg)
 
 PE.db.setup(pcfg)
 
-PE.db.delete.by.pKey(pcfg, tbl.name, pKeys)
+PE.db.delete.by.pKey(pcfg, tbl.name, pKeys, silent = TRUE)
 
-PE.db.delete.by.datasource(pcfg, tbl.name = PE.cfg$db$extract, datasrc)
+PE.db.delete.by.datasource(
+  pcfg,
+  tbl.name = PE.cfg$db$extract,
+  datasrc,
+  silent = TRUE
+)
+
+PE.db.delete.by.hash(pcfg, hash, silent = TRUE)
 
 PE.db.calc.realMeans(pcfg, this.datasrc)
 
-PE.db.appendTable(dat, pcfg, tbl.name)
-
-PE.db.getQuery(pcfg, this.sql)
+PE.db.appendTable(dat, pcfg, tbl.name, silent = TRUE)
 
 PE.db.unserialize(this.dat)
+
+PE.db.getQuery(pcfg, this.sql, silent = TRUE)
 }
 \arguments{
 \item{pcfg}{}
@@ -40,7 +48,7 @@ Setup results database
 \details{
 PE.db.appendTable serialises the data column and writes the data to the specified table
 
-PE.db.getQuery performs a concurrency-safe query
-
 PE.db.unserialize  unserialises the data column
+
+PE.db.getQuery performs a concurrency-safe query
 }

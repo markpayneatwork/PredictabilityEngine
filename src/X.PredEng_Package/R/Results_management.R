@@ -17,10 +17,11 @@ PE.db.connection <- function(pcfg) {
 PE.db.setup <- function(pcfg) {
   #Setup connection
   this.db <- PE.db.connection(pcfg)
-  #Setup Extraction table
+  #Setup Extraction table and indices
   if(!PE.cfg$db$extract %in% dbListTables(this.db)) {
     tbl.cols <-  
       c("pKey INTEGER NOT NULL PRIMARY KEY",
+        "srcHash",
         "srcType",
         "srcName",
         "realization",
@@ -96,9 +97,21 @@ PE.db.setup <- function(pcfg) {
   dbDisconnect(this.db)
 }
 
+PE.db.safe.try <- function(expr,silent=TRUE) {
+  i <- 1
+  while(i<10) {
+    rtn <- try(expr,silent=silent)  
+    if(!is(rtn, "try-error")) return(rtn)
+    Sys.sleep(runif(1,0.01,0.1))  #Avoid constant polling. Add some stochasticity to break synchronisation
+    i <- i+1
+  }
+  stop("Maximum number of tries exceeded")
+}
+
+
 #' @export
 #' @rdname PE.db
-PE.db.delete.by.pKey <- function(pcfg,tbl.name,pKeys) {
+PE.db.delete.by.pKey <- function(pcfg,tbl.name,pKeys,silent=TRUE) {
   #Delete rows
   SQL.cmd <- sprintf("DELETE FROM %s WHERE pKey IN (%s)",
                      tbl.name,
@@ -106,23 +119,16 @@ PE.db.delete.by.pKey <- function(pcfg,tbl.name,pKeys) {
   
   #Poll until can get access to DB
   db.con <- PE.db.connection(pcfg)
-
-  #Write
-  repeat{
-    rtn <- try(  n <- dbExecute(db.con,SQL.cmd),silent=TRUE)  
-    if(!is(rtn, "try-error")) break
-    Sys.sleep(runif(1,0.01,0.1))  #Avoid constant polling. Add some stochasticity to break synchronisation
-  }
-
-  #Fin
+  PE.db.safe.try(n <- dbExecute(db.con,SQL.cmd),silent=silent)  
   dbDisconnect(db.con)
-  log_msg("Deleted %i rows from %s table...\n",n,tbl.name)
+  if(!silent) { log_msg("Deleted %i rows from %s table...\n",n,tbl.name)}
   return(invisible(NULL))
 }
 
+
 #' @export
 #' @rdname PE.db
-PE.db.delete.by.datasource <- function(pcfg,tbl.name=PE.cfg$db$extract,datasrc) {
+PE.db.delete.by.datasource <- function(pcfg,tbl.name=PE.cfg$db$extract,datasrc,silent=TRUE) {
   #Connect
   db.con <- PE.db.connection(pcfg)
   this.tbl <- tbl(db.con, tbl.name)
@@ -138,8 +144,25 @@ PE.db.delete.by.datasource <- function(pcfg,tbl.name=PE.cfg$db$extract,datasrc) 
   dbDisconnect(db.con)
 
   #Delete rows
-  PE.db.delete.by.pKey(pcfg,tbl.name,row.ids$pKey)
+  PE.db.delete.by.pKey(pcfg,tbl.name,row.ids$pKey,silent=silent)
 }
+
+
+
+#' @export
+#' @rdname PE.db
+PE.db.delete.by.hash <- function(pcfg,hash,silent=TRUE) {
+  #Get rows matching hash
+  SQL.cmd <- sprintf("SELECT pKey FROM %s WHERE (`srcHash` IN (%s))",
+                     PE.cfg$db$extract,
+                     paste(sprintf("'%s'",hash),collapse=", "))
+  row.ids <- PE.db.getQuery(pcfg,SQL.cmd)
+
+  #Delete rows
+  PE.db.delete.by.pKey(pcfg,PE.cfg$db$extract,row.ids$pKey,silent=silent)
+}
+
+
 
 #' @export
 #' @rdname PE.db
@@ -172,41 +195,22 @@ PE.db.calc.realMeans <- function(pcfg,this.datasrc) {
   return(invisible(NULL))
 }
 
+
+
 #' @details PE.db.appendTable serialises the data column and writes the data to the specified table
 #' @export
 #' @rdname PE.db
-PE.db.appendTable <- function(dat,pcfg,tbl.name) {
+PE.db.appendTable <- function(dat,pcfg,tbl.name,silent=TRUE) {
   #Serialise data
   serial.dat <- 
     dat %>%
     mutate(across(where(is.list),function(cl) map(cl,serialize,NULL))) 
   #Write
   db.con <- PE.db.connection(pcfg)
-  repeat{
-    rtn <- try(dbWriteTable(conn=db.con, name=tbl.name, value=serial.dat, append = TRUE),silent=TRUE)  
-    if(!is(rtn, "try-error")) break
-    Sys.sleep(runif(1,0.01,0.1))  #Avoid constant polling. Add some stochasticity to break synchronisation
-  }
+  PE.db.safe.try(dbWriteTable(conn=db.con, name=tbl.name, value=serial.dat, append = TRUE),silent=silent)  
   #Fin
   dbDisconnect(db.con)
   return(invisible(NULL))
-}
-
-#' @details PE.db.getQuery performs a concurrency-safe query
-#' @export
-#' @rdname PE.db
-PE.db.getQuery <- function(pcfg,this.sql) {
-  #Open connection
-  db.con <- PE.db.connection(pcfg)
-  #Get query
-  repeat{
-    rtn <- try(dbGetQuery(conn=db.con, this.sql),silent=TRUE)  
-    if(!is(rtn, "try-error")) break
-    Sys.sleep(runif(1,0.01,0.1))  #Avoid constant polling. Add some stochasticity to break synchronisation
-  }
-  #Fin
-  dbDisconnect(db.con)
-  return(rtn)
 }
 
 
@@ -214,9 +218,26 @@ PE.db.getQuery <- function(pcfg,this.sql) {
 #' @export
 #' @rdname PE.db
 PE.db.unserialize <- function(this.dat) {
-    mutate(this.dat,
-           across(where(~is(.x,"blob")),function(cl) map(cl,unserialize)))
+  mutate(this.dat,
+         across(where(~is(.x,"blob")),function(cl) map(cl,unserialize)))
 }
+
+
+
+#' @details PE.db.getQuery performs a concurrency-safe query
+#' @export
+#' @rdname PE.db
+PE.db.getQuery <- function(pcfg,this.sql,silent=TRUE) {
+  #Open connection
+  db.con <- PE.db.connection(pcfg)
+  #Get query
+  PE.db.safe.try(rtn <- dbGetQuery(conn=db.con, this.sql),silent=silent)  
+  #Fin
+  dbDisconnect(db.con)
+  return(rtn)
+}
+
+
 
 
 #' Raster List functions
