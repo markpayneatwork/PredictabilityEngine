@@ -39,24 +39,21 @@ pcfg <- readRDS(PE.cfg$path$config)
 # Configuration ####
 #'========================================================================
 #Take input arguments, if any
- if(interactive()) {
-  cfg.id <- "NorCPM.i1"
+ if(!exists("...")) {  #Then we are running as a script
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
-} else {
-  cmd.args <- commandArgs(TRUE)
-  if(length(cmd.args)!=1) stop("Cannot get command args")
-  cfg.id <- cmd.args
+  sel.cfg <- "MPI.ESM.LR"
+  this.cfg <- tibble(this.datasrc=list( pcfg@Decadal[[sel.cfg]]),
+                     this.sources=!!pcfg@Decadal[[sel.cfg]]@sources)
+} else { #Running as a function
+  #Inputs are supplied as named arguments to the function version
+  this.cfg <- ..1
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
 }
 
 #Other configurations
 set.nco.defaults("--overwrite")
-
-#Retrieve configurations
-this.datasrc <- pcfg@Decadal[[cfg.id]]
-log_msg("Running with cfg.id %s...\n\n",cfg.id)
 
 #Setup
 analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
@@ -65,13 +62,11 @@ analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
 # Setup ####
 #'========================================================================
 #Setup database
-PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,this.datasrc)
+#PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,this.datasrc)
 
-#Get list of files
-src.meta <- tibble(fname=this.datasrc@sources,
-                   exists=file.exists(fname))
-if(nrow(src.meta)==0 ) stop("No source files provided")
-if(any(!src.meta$exists)) stop("Cannot find all source files")
+#Check configuration is sane
+assert_that(nrow(this.cfg)>0,msg="No source files provided")
+assert_that(all(file.exists(this.cfg$this.sources)),msg="Cannot find all source files")
 
 #'========================================================================
 # Extract Fragments from Source Files ####
@@ -84,33 +79,37 @@ if(any(!src.meta$exists)) stop("Cannot find all source files")
 
 #Loop over Source Files
 log_msg("Extracting fragments from source files...\n")
-pb <- PE.progress(nrow(src.meta))
+pb <- PE.progress(nrow(this.cfg))
 dmp <- pb$tick(0)
-for(i in seq(nrow(src.meta))) {
-  #Extract file
-  f <- src.meta$fname[i]
-  log_msg("Extracting from %s...\n",basename(f),silenceable = TRUE)
+for(i in seq(nrow(this.cfg))) {
+  #Extract configuration
+  this.src <- this.cfg$this.sources[i]
+  this.datasrc <- this.cfg$this.datasrc[[i]]
+  log_msg("Extracting from %s...\n",basename(this.src),silenceable = TRUE)
   tmp.stem <- tempfile()
+  src.hash <- tools::md5sum(this.src)
+  
+  #Clear results from output
+  PE.db.delete.by.hash(pcfg,src.hash)
   
   #Subset out the layer(s) from the field of interest, if relevant
   if(this.datasrc@fields.are.2D ) {
     #Then don't need to do any select
-    sym.link <- file.path(getwd(),f)
+    sym.link <- file.path(getwd(),this.src)
     if(file.exists(tmp.stem)) file.remove(tmp.stem)
     file.symlink(sym.link,tmp.stem)
     tmp.out <- tmp.stem
   } else { #Field is 3D and requires selection
-    tmp.in <- f
     tmp.out <- sprintf("%s_sellevel",tmp.stem)
     if(length(pcfg@vert.range)==1 & all(is.na(pcfg@vert.range))) { 
       #Then we are requesting the surface layer only
       vert.idxs <- 1
     } else {
       #Need to work it out ourselves
-      vert.idxs <- this.datasrc@z2idx(pcfg@vert.range,tmp.in)
+      vert.idxs <- this.datasrc@z2idx(pcfg@vert.range,this.src)
     }
     sellev.cmd <- cdo(csl("sellevidx",vert.idxs),
-                      tmp.in,tmp.out)
+                      this.src,tmp.out)
   }
 
   #Average over the layers
@@ -161,10 +160,11 @@ for(i in seq(nrow(src.meta))) {
   dat.b@crs <- PE.cfg$misc$crs
 
   #Create metadata
-  frag.data <- tibble(srcName=this.datasrc@name,
+  frag.data <- tibble(srcHash=src.hash,
+                      srcName=this.datasrc@name,
                       srcType=this.datasrc@type,
-                      realization=this.datasrc@realization.fn(f),
-                      startDate=this.datasrc@start.date(f),
+                      realization=this.datasrc@realization.fn(this.src),
+                      startDate=this.datasrc@start.date(this.src),
                       date=this.datasrc@date.fn(regrid.fname),
                       leadIdx=1:nlayers(dat.b),
                       data=as.list(dat.b))
@@ -187,8 +187,8 @@ for(i in seq(nrow(src.meta))) {
 log_msg("\n")
 
 #Calculate realization means
-log_msg("Calculating realization means...\n")
-PE.db.calc.realMeans(pcfg,this.datasrc)
+#log_msg("Calculating realization means...\n")
+#PE.db.calc.realMeans(pcfg,this.datasrc)
 
 #'========================================================================
 # Complete 

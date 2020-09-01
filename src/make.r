@@ -50,7 +50,7 @@ log.file <- function(...) {
 }
 
 
-#Setup functions
+#Setup extractions
 extract.observations <- function(...) {
   obs.script <- switch(pcfg@Observations@name,
                       "EN4"="C2.EN4_extraction.r",
@@ -62,17 +62,20 @@ extract.observations <- function(...) {
 script.complete()
 }
 
-extract.decadal <- function(datsrc.name) {
-  callr::rscript(here('src/B.Extract/D1.Decadal_extraction.r'),
-                 cmdargs=datsrc.name,
-                 stdout=log.file("B.Decadal.%s",datsrc.name),
-                 stderr=log.file("B.Decadal.%s",datsrc.name))
-  script.complete()
+joblist.decadal <- function(...) {
+  tibble(this.datasrc=pcfg@Decadal@.Data,
+         this.sources=map(this.datasrc,slot,"sources")) %>%
+    unnest(this.sources)
 }
+
+extract.decadal <- code_to_function(here('src/B.Extract/D1.Decadal_extraction.r'))
 
 extract.models <- function(...) {
   script.complete()
 }
+
+
+#
 
 calibration.scripts <- function(...) {
   calib.scripts <- dir(here("src/C.Calibrate/"),pattern=".r$",full.names = TRUE)
@@ -99,25 +102,25 @@ process.stat <- function(stat.id) {
 
 
 #Make a plan
-the.plan <-  drake_plan(
-  Observations=target(command=extract.observations(),
-                      trigger=trigger(command=FALSE,change=pcfg@Observations)),
-  Decadal=target(extract.decadal(datsrc),
-                 transform = map(datsrc=!!(names(pcfg@Decadal))),
-                 trigger=trigger(command=FALSE,change=pcfg@Decadal[[datsrc]])),
-  Extractions=target(extract.models(Observations,Decadal),
-                     transform=combine(Decadal)),
-  Calibration=calibration.scripts(Extractions),
-  Statjobs=stat.jobs(Calibration),
-  Stats=target(process.stat(Statjobs),
-               dynamic=map(Statjobs)))
-
+the.plan <-  
+  drake_plan(Observations=target(command=extract.observations(),
+                                 trigger=trigger(command=FALSE,
+                                                 change=pcfg@Observations)),
+             Decadaljobs=target(joblist.decadal(),
+                                trigger=trigger(command=FALSE)),
+             Decadal=target(extract.decadal(Decadaljobs),
+                            dynamic=map(Decadaljobs)),
+             Extractions=target(extract.models(Observations,Decadal)),
+             Calibration=calibration.scripts(Extractions),
+             Statjobs=stat.jobs(Calibration),
+             Stats=target(process.stat(Statjobs),
+                          dynamic=map(Statjobs)))
 
 #'========================================================================
 # Supplementary ####
 #'========================================================================
 #Check it twice.
-vis <- function() print(vis_drake_graph(the.plan,targets_only=TRUE))
+vis <- function() print(vis_drake_graph(the.plan))
 if(interactive()) {
 	vis()
 }
