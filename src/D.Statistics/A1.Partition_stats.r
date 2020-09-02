@@ -95,10 +95,9 @@ todo.list <-
   filter(sd.is.spatial.polygon==stat.use.spatial.polygon) %>%
   #  - remove duplicate
   #Set ids
-  select(-sd.id,-statJob.id) %>%
-  add_column(statjob.id=1:nrow(.),.before=1)
+  select(-sd.id,-statJob.id) 
 
-split(todo.list,todo.list$statjob.id) %>%
+todo.list %>%
   saveRDS(file=PE.scratch.path(pcfg,"statjoblist"))
 
 #Clear all stats results

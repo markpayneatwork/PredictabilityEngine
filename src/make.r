@@ -52,20 +52,23 @@ log.file <- function(...) {
 
 #Setup extractions
 extract.observations <- function(...) {
-  obs.script <- switch(pcfg@Observations@name,
-                      "EN4"="C2.EN4_extraction.r",
-                      "HadISST"="C1.HadISST_data.r",
-                      stop("Cannot find observation script"))
-  callr::rscript(here("src/B.Extract/",obs.script),
-                 stdout=log.file("B.Observations.%s",pcfg@Observations@name),
-                 stderr=log.file("B.Observations.%s",pcfg@Observations@name))
-script.complete()
+    obs.script <- switch(pcfg@Observations@name,
+                         "EN4"="C2.EN4_extraction.r",
+                         "HadISST"="C1.HadISST_data.r",
+                         stop("Cannot find observation script"))
+    callr::rscript(here("src/B.Extract/",obs.script),
+                   stdout=log.file("B.Observations.%s",pcfg@Observations@name),
+                   stderr=log.file("B.Observations.%s",pcfg@Observations@name))
+    script.complete()
 }
 
-joblist.decadal <- function(...) {
-  tibble(this.datasrc=pcfg@Decadal@.Data,
-         this.sources=map(this.datasrc,slot,"sources")) %>%
-    unnest(this.sources)
+extract.source.list <- function(srcType,srcName) {
+  ignore(
+    tibble(this.datasrc=list(slot(pcfg,srcType)[[srcName]]))  %>%
+      mutate(srcName=map_chr(this.datasrc,slot,"name"),
+             srcType=map_chr(this.datasrc,slot,"type"),
+             this.sources=map(this.datasrc,slot,"sources")) %>%
+      unnest(this.sources))
 }
 
 extract.decadal <- code_to_function(here('src/B.Extract/D1.Decadal_extraction.r'))
@@ -74,47 +77,81 @@ extract.models <- function(...) {
   script.complete()
 }
 
-
-#
+#Calibration
+calc.realmeans <- function(...) {
+  return(list(...))
+}
 
 calibration.scripts <- function(...) {
-  calib.scripts <- dir(here("src/C.Calibrate/"),pattern=".r$",full.names = TRUE)
-  for(scp in calib.scripts) {
-    callr::rscript(scp,
-                   stdout=log.file("C.%s",basename(scp)),
-                   stderr=log.file("C.%s",basename(scp)))
-  }
-  script.complete()
+  # calib.scripts <- dir(here("src/C.Calibrate/"),pattern=".r$",full.names = TRUE)
+  # for(scp in calib.scripts) {
+  #   callr::rscript(scp,
+  #                  stdout=log.file("C.%s",basename(scp)),
+  #                  stderr=log.file("C.%s",basename(scp)))
+  # }
+   script.complete()
 }
+
+#Stats
 
 stat.jobs <- function(...){
-  callr::rscript(here("src/D.Statistics/A1.Partition_stats.r"))
-  return(seq(readRDS(PE.scratch.path(pcfg,"statjoblist"))))
+    ignore({
+      callr::rscript(here("src/D.Statistics/A1.Partition_stats.r"))
+      return(readRDS(PE.scratch.path(pcfg,"statjoblist")))
+    })
 }
 
-process.stat <- function(stat.id) {
-  callr::rscript(here("src/D.Statistics/B1.Calculate_stats.r"),
-          cmdargs=stat.id,
-          stdout=log.file("D.Stats.%03i",stat.id),
-          stderr=log.file("D.Stats.%03i",stat.id))
-  script.complete()
+process.stat <- function(this.stat) {
+  #This is not a very elegant solution, but it is the best I can think of for
+  #the time being. We want to maintain Calculate_stats as a script, because it
+  #make it easy to write out the log files. However that presents challenges with
+  #taking full advantage of the hashing feature of drake. We therefore take in the
+  #full configuration line, and then convert it to a line id.
+  all.jobs <- readRDS(PE.scratch.path(pcfg,"statjoblist"))
+  row.match <- 
+    all.jobs %>%
+    split(f=seq(nrow(.))) %>%
+    map_lgl(.,~ isTRUE(all.equal(.x,this.stat)))
+  assert_that(sum(row.match)==1,msg="Cannot identify stat job")
+  this.id <- which(row.match)
+  #Now call the script
+   callr::rscript(here("src/D.Statistics/B1.Calculate_stats.r"),
+           cmdargs=this.id,
+           stdout=log.file("D.Stats.%03i",this.id),
+           stderr=log.file("D.Stats.%03i",this.id))
+  return(this.stat)
 }
 
+#Debugging
+# extract.decadal <- function(...) {script.complete()}
+# extract.observations <- function(...) {script.complete()}
+# process.stat <- function(...) {script.complete()}
 
 #Make a plan
 the.plan <-  
   drake_plan(Observations=target(command=extract.observations(),
                                  trigger=trigger(command=FALSE,
                                                  change=pcfg@Observations)),
-             Decadaljobs=target(joblist.decadal(),
+             DecSources=target(extract.source.list(srcType="Decadal",decadalSrcName),
+                               transform = map(decadalSrcName=!!names(pcfg@Decadal)),
+                               trigger=trigger(command=FALSE)),
+             DecExtr=target(extract.decadal(DecSources),
+                            transform=map(DecSources),
+                            dynamic=map(DecSources),
+                            trigger=trigger(command=FALSE)),
+             DecRealmean=target(calc.realmeans(DecExtr),
+                                transform=map(DecExtr),
                                 trigger=trigger(command=FALSE)),
-             Decadal=target(extract.decadal(Decadaljobs),
-                            dynamic=map(Decadaljobs)),
-             Extractions=target(extract.models(Observations,Decadal)),
-             Calibration=calibration.scripts(Extractions),
-             Statjobs=stat.jobs(Calibration),
-             Stats=target(process.stat(Statjobs),
-                          dynamic=map(Statjobs)))
+             Extractions=target(extract.models(Observations,DecRealmean),
+                                transform = combine(DecRealmean),
+                                trigger=trigger(command=FALSE)),
+             Calibration=target(calibration.scripts(Extractions),
+                                trigger=trigger(command=FALSE)),
+             StatJobs=target(stat.jobs(Calibration,pcfg@statistics),
+                             trigger=trigger(command=FALSE)),
+             Stats=target(process.stat(StatJobs),
+                          dynamic=map(StatJobs),
+                          trigger=trigger(command=FALSE)))
 
 #'========================================================================
 # Supplementary ####
@@ -137,7 +174,7 @@ clean_regex <- function(regex) {
 options(clustermq.scheduler = "multicore")
 
 #Find out, who's been naughty or nice... Paw Patrol - så er det nu!
-make(the.plan, parallelism = "clustermq", jobs = 8,keep_going = TRUE)
+make(the.plan, parallelism = "clustermq", jobs = 8,keep_going = FALSE)
 
 #'========================================================================
 # Complete ####

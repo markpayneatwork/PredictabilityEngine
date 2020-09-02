@@ -39,7 +39,7 @@ pcfg <- readRDS(PE.cfg$path$config)
 #Take input arguments, if any
 if(interactive()) {
   set.log_msg.silent()
-  cfg.id <- 4
+  cfg.id <- 1
 } else {
   cmd.args <- commandArgs(TRUE)
   if(length(cmd.args)!=1) stop("Cannot get command args")
@@ -54,7 +54,7 @@ log_msg("Configuration\nCfg id : %i\n",cfg.id)
 #'========================================================================
 #Setup item todo
 todo.list <- readRDS(PE.scratch.path(pcfg,"statjoblist"))
-this.cfg <- todo.list[[cfg.id]]
+this.cfg <- todo.list[cfg.id,]
 
 #Extract elements based on configuration
 this.stat <- this.cfg$stat.obj[[1]]
