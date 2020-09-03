@@ -7,7 +7,6 @@
 \alias{PE.db.delete.by.pKey}
 \alias{PE.db.delete.by.datasource}
 \alias{PE.db.delete.by.hash}
-\alias{PE.db.calc.realMeans}
 \alias{PE.db.appendTable}
 \alias{PE.db.unserialize}
 \alias{PE.db.getQuery}
@@ -27,8 +26,6 @@ PE.db.delete.by.datasource(
 )
 
 PE.db.delete.by.hash(pcfg, hash, silent = TRUE)
-
-PE.db.calc.realMeans(pcfg, this.datasrc)
 
 PE.db.appendTable(dat, pcfg, tbl.name, silent = TRUE)
 

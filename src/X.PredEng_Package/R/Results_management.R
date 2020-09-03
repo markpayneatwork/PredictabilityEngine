@@ -163,40 +163,6 @@ PE.db.delete.by.hash <- function(pcfg,hash,silent=TRUE) {
 }
 
 
-
-#' @export
-#' @rdname PE.db
-PE.db.calc.realMeans <- function(pcfg,this.datasrc) {
-  this.db <- PE.db.connection(pcfg)
-  #Extract data and perform averaging
-  frag.dat <- 
-    tbl(this.db,PE.cfg$db$extract) %>%
-    filter(srcName == !!this.datasrc@name,
-           srcType == !!this.datasrc@type) %>%
-    collect() %>%
-    PE.db.unserialize()
-  dbDisconnect(this.db)
-  
-  realMeans <- 
-    frag.dat %>%
-    group_by(srcName,srcType,startDate,date,leadIdx,.drop=TRUE) %>%
-    summarise(data=raster.list.mean(data),
-              duplicate.realizations=any(duplicated(realization))) %>% #Check for duplicated realization codes
-    ungroup()
-  if(any(realMeans$duplicate.realizations)) stop("Duplicate realizations detected in database. Rebuild.")
-
-  #Write to database 
-  realMeans %>%
-    select(-duplicate.realizations) %>%
-    add_column(realization="realmean",.after="srcType") %>%
-    PE.db.appendTable(pcfg, PE.cfg$db$extract)
-  log_msg("Wrote %i realisation means...\n",nrow(realMeans))
-  
-  return(invisible(NULL))
-}
-
-
-
 #' @details PE.db.appendTable serialises the data column and writes the data to the specified table
 #' @export
 #' @rdname PE.db
