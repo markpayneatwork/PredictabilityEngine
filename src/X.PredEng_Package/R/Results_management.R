@@ -178,8 +178,9 @@ PE.db.appendTable <- function(dat,pcfg,tbl.name,silent=TRUE) {
 #' @export
 #' @rdname PE.db
 PE.db.unserialize <- function(this.dat) {
-  mutate(this.dat,
-         across(where(~is(.x,"blob")),function(cl) map(cl,unserialize)))
+  this.dat %>%
+    as_tibble() %>%
+  mutate(across(where(~is(.x,"blob")),function(cl) map(cl,unserialize)))
 }
 
 
