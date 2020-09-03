@@ -45,6 +45,7 @@ set.nco.defaults("--overwrite")
 
 #Data source
 this.datasrc <- pcfg@Observations
+assert_that(this.datasrc@name=="EN4",msg="This script is only for processing EN4 data")
 
 #Working directories
 analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
@@ -56,6 +57,7 @@ if(!this.datasrc@name=="EN4") stop("Not configured to use EN4 data")
 #/*======================================================================*/
 #'## Extract EN4 meta data into fragments
 #/*======================================================================*/
+#Remove existing EN4 data
 log_msg("Extracting fragments...\n")
 
 #Loop over files

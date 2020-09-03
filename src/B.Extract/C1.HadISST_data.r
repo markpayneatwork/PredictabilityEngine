@@ -45,6 +45,7 @@ set.nco.defaults("--overwrite")
 
 #Data source
 this.datasrc <- pcfg@Observations
+assert_that(this.datasrc@name=="HadISST",msg="This script is only for processing HadISST data")
 
 #Working directories
 analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
