@@ -129,22 +129,16 @@ PE.db.delete.by.pKey <- function(pcfg,tbl.name,pKeys,silent=TRUE) {
 #' @export
 #' @rdname PE.db
 PE.db.delete.by.datasource <- function(pcfg,tbl.name=PE.cfg$db$extract,datasrc,silent=TRUE) {
-  #Connect
-  db.con <- PE.db.connection(pcfg)
-  this.tbl <- tbl(db.con, tbl.name)
-  #Get row IDs where we want to delete
-  row.ids <- 
-    this.tbl %>%
-    filter(srcName == !!datasrc@name,
-           srcType == !!datasrc@type) %>%
-    select(pKey) %>%
-    collect()
+  #Setup query
+  SQL.cmd <- sprintf("SELECT pKey FROM %s WHERE `srcType` = '%s' AND `srcName` = '%s'",
+                     tbl.name,
+                     datasrc@type,
+                     datasrc@name)
+  #Fetch list to delete
+  del.these <- PE.db.getQuery(pcfg,SQL.cmd,silent=silent)
   
-  #Disconnect
-  dbDisconnect(db.con)
-
-  #Delete rows
-  PE.db.delete.by.pKey(pcfg,tbl.name,row.ids$pKey,silent=silent)
+  #Delete
+  PE.db.delete.by.pKey(pcfg,PE.cfg$db$extract,del.these$pKey,silent=silent)
 }
 
 
