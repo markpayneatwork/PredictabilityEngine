@@ -58,6 +58,8 @@ if(!this.datasrc@name=="EN4") stop("Not configured to use EN4 data")
 #'## Extract EN4 meta data into fragments
 #/*======================================================================*/
 #Remove existing EN4 data
+PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,this.datasrc)
+
 log_msg("Extracting fragments...\n")
 
 #Loop over files
