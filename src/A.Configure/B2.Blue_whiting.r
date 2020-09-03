@@ -145,7 +145,7 @@ GAM.sdm.fn <- function(dat,resources) {
     if(resources$apply.threshold) {
       res.l[[l]] <- sum(p > resources$model$threshold)
     } else {
-      stop("Dunno what's going on here")
+      #stop("Dunno what's going on here")
       res.l[[l]] <- p }
   }
   rtn <- brick(res.l)
@@ -172,14 +172,14 @@ stat.l[["SDM15apr"]] <- habitat(name="SDM15Apr",
                                calibration="Mean adjusted",
                                realizations=1:3)
 
-GAM.sdm.resources$apply.threshold <- FALSE
-stat.l[["SDM15apr_nothreshold"]] <- habitat(name="SDM15AprNoThresh",
-                                desc="Habitat is suitable on 15 Apr, without a threshold being applied",
-                                fn=GAM.sdm.fn,
-                                resources=GAM.sdm.resources,
-                                skill.metrics = "correlation",
-                                calibration="Mean adjusted",
-                                realizations=1:3)
+# GAM.sdm.resources$apply.threshold <- FALSE
+# stat.l[["SDM15apr_nothreshold"]] <- habitat(name="SDM15AprNoThresh",
+#                                 desc="Habitat is suitable on 15 Apr, without a threshold being applied",
+#                                 fn=GAM.sdm.fn,
+#                                 resources=GAM.sdm.resources,
+#                                 skill.metrics = "correlation",
+#                                 calibration="Mean adjusted",
+#                                 realizations=1:3)
 
 # stat.l[["SDM-PA-reals"]] <- habitat(name="SDM-PA-reals",
 #                        desc="SDM based on individual realisations, PA",

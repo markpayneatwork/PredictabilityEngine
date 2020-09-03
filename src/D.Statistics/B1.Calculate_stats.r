@@ -39,7 +39,7 @@ pcfg <- readRDS(PE.cfg$path$config)
 #Take input arguments, if any
 if(interactive()) {
   set.log_msg.silent()
-  cfg.id <- 1
+  cfg.id <- 9
 } else {
   cmd.args <- commandArgs(TRUE)
   if(length(cmd.args)!=1) stop("Cannot get command args")
@@ -158,7 +158,8 @@ for(i in ids.todo) {
     add_column(sdName=this.cfg$sd.name,
                statName=this.stat@name) %>%
     bind_cols(this.res) %>%
-    select(-data) 
+    select(-data,-any_of("srcHash"))
+  
   PE.db.appendTable(out.dat,pcfg,PE.cfg$db$stats)
   #Loop back
   dmp <- pb$tick()

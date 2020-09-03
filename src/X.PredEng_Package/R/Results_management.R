@@ -99,7 +99,7 @@ PE.db.setup <- function(pcfg) {
 
 PE.db.safe.try <- function(expr,silent=TRUE) {
   i <- 1
-  while(i<10) {
+  while(i<100) {
     rtn <- try(expr,silent=silent)  
     if(!is(rtn, "try-error")) return(rtn)
     Sys.sleep(runif(1,0.01,0.1))  #Avoid constant polling. Add some stochasticity to break synchronisation
