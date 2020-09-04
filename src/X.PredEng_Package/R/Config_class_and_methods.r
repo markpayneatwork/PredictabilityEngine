@@ -98,6 +98,10 @@ PredEng.config <-
 setMethod("plot",signature(x="PredEng.config",y="missing"),
           function(x,y,...) {
             x@spatial.polygons %>%
+              select(name,geometry) %>%
+              rbind(st_sf(name="@globalROI",
+                          geometry=st_sfc(sfpolygon.from.extent(x@global.ROI)),
+                          crs=crs(.))) %>%
             ggplot()+
               annotation_map(map_data("world"),fill="black",col="black")+
               geom_sf(aes(col=name,fill=name),alpha=0.25)+
