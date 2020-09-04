@@ -95,6 +95,7 @@ ensmeans <-
 #Write results
 ensmeans %>%
   select(-n) %>%
+  mutate(realization="ensmean") %>%
   PE.db.appendTable(pcfg,tbl.name = PE.cfg$db$calibration)
 
 #'========================================================================
