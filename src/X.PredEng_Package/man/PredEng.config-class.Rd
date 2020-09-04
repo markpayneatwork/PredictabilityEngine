@@ -41,7 +41,11 @@ Different extraction modes can be combined in the same list.
 
 \item{\code{extraction}}{PredEng.list definining temporal and spatial extraction characteristics}
 
-\item{\code{MOI}}{The months of interest (a vector of integers between 1 and 12 inclusive)}
+\item{\code{MOI}}{The months of interest (a vector of integers between 1 and 12 inclusive). Currently only support one month
+but this can be extened in the future}
+
+\item{\code{average.months}}{Should we average over the months of interest? Currently redundant as we do not support multiple
+month extraction, but may come back in the future}
 
 \item{\code{vert.range}}{The vertical range, in m, over which to average. NA indicates no vertical averaging (for 
 2D fields) or to use the surface layer (for 3D fields).}
@@ -62,7 +66,5 @@ integers)}
 \item{\code{retain.realizations}}{Is there interest in retaining the individual realisations from each model, or
 should we go straight to the realisation means (as a way of saving disk space and simiplifying the
 processing)?}
-
-\item{\code{average.months}}{Should we average over the months of interest?}
 }}
 

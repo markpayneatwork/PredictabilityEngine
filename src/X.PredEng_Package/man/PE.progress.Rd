@@ -4,11 +4,13 @@
 \alias{PE.progress}
 \title{PredEng Progress bar}
 \usage{
-PE.progress(n)
+PE.progress(n, show.bar = interactive())
 }
 \arguments{
 \item{n}{Number of iterations. If a vector of length greater than 1, then the
 number of iterations is set to the length of the vector instead}
+
+\item{show.bar}{Show progress bar, or just list status}
 }
 \value{
 A progress bar object

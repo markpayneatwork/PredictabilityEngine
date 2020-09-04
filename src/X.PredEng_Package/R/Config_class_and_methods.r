@@ -9,7 +9,10 @@
 #' @slot spatial.polygons A sf data.frame defining the spatial domains over which  to operate
 #' @slot statistics PredEng.list of statistics to apply over each spatial area
 #' @slot extraction PredEng.list definining temporal and spatial extraction characteristics
-#' @slot MOI The months of interest (a vector of integers between 1 and 12 inclusive)
+#' @slot MOI The months of interest (a vector of integers between 1 and 12 inclusive). Currently only support one month
+#' but this can be extened in the future 
+#' @slot average.months Should we average over the months of interest? Currently redundant as we do not support multiple
+#' month extraction, but may come back in the future
 #' @slot vert.range The vertical range, in m, over which to average. NA indicates no vertical averaging (for 
 #' 2D fields) or to use the surface layer (for 3D fields). 
 #' @slot clim.years The years to include in the climatology and analysis of hindcast skill (vector of 
@@ -22,7 +25,6 @@
 #' @slot retain.realizations Is there interest in retaining the individual realisations from each model, or
 #' should we go straight to the realisation means (as a way of saving disk space and simiplifying the
 #' processing)?
-#' @slot average.months Should we average over the months of interest?
 #'
 #' @include Data_class_and_methods.r
 #' @include PElst.r
@@ -71,7 +73,10 @@ PredEng.config <-
                validate_that(!(length(object@MOI)!=1 & object@average.months),
                              msg="Dates are currently not handled correctly when averaging over multiple months"),
                validate_that(length(object@vert.range)==2 | all(is.na(object@vert.range)),
-                             msg="Vertical range slot must be of length 2 if not NA"))
+                             msg="Vertical range slot must be of length 2 if not NA"),
+               validate_that(length(object@MOI)==1,msg="Currently only support one month of interest"),
+               validate_that(all(object@MOI %in% 1:12),msg="Month(s) of interest must be in range 1-12"))
+             
              #Check for consistency between presence of 2D fields and requested vertical range
              datsrc.meta <- 
                tibble(data.srcs=c(object@Decadal,object@NMME,object@Observations,object@CMIP5)@.Data) %>%
