@@ -20,7 +20,8 @@ PE.cfg$file <- list(analysis.grid="analysis.grid",
 PE.cfg$db <- list(extract="extraction",
                   climatology="climatology",
                   calibration="calibration",
-                  stats="statistics")
+                  stats="statistics",
+                  metrics="metrics")
 
 #Validity
 PE.cfg$validity <- list(calibrationMethods=c("anomaly","Mean adjusted"))

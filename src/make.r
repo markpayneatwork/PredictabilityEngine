@@ -125,6 +125,15 @@ process.stat <- function(this.stat) {
   })
 }
 
+process.metrics <- function(...){
+  ignore({
+    callr::rscript(here("src/D.Statistics/C1.Calculate_scalar_skill_metrics.r"),
+                   stdout=log.file("D.C1.metrics"),
+                   stderr=log.file("D.C1.metrics"))
+    script.complete()
+  })
+}
+
 #'========================================================================
 # The Plan! ####
 #'========================================================================
@@ -167,7 +176,8 @@ end.game <-
                              trigger=trigger(command=FALSE)),
              Stats=target(process.stat(StatJobs),
                           dynamic=map(StatJobs),
-                          trigger=trigger(command=FALSE)))
+                          trigger=trigger(command=FALSE)),
+             Metrics=target(process.metrics(Stats)))
 
 the.plan <- bind_plans(dec.plan,end.game)
 
