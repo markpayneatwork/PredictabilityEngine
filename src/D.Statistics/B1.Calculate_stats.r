@@ -39,7 +39,7 @@ pcfg <- readRDS(PE.cfg$path$config)
 #Take input arguments, if any
 if(interactive()) {
   set.log_msg.silent()
-  cfg.id <- 9
+  cfg.id <- 1
 } else {
   cmd.args <- commandArgs(TRUE)
   if(length(cmd.args)!=1) stop("Cannot get command args")
@@ -62,9 +62,6 @@ this.sd <- this.cfg$sd.geometry[[1]]
 log_msg("Stat   : %s\nCalib  : %s\nReal   : %i\nSp.Dom : %s\n",
         this.stat@name,this.cfg$stat.calibration,this.cfg$stat.realizations,
         this.cfg$sd.name)
-
-#Setup databases
-this.db <- PE.db.connection(pcfg)
 
 #Load of fragments to process 
 #We have chosen here to load it all into memory, as it simplifies the process
@@ -97,7 +94,7 @@ if(this.cfg$stat.realizations==0) {
 
 #Get list of ids to process
 ids.todo <-
-  dbGetQuery(this.db,frag.todo.SQL) %>%
+  PE.db.getQuery(pcfg,frag.todo.SQL) %>%
   pull() 
 
 #Clear existing results 
@@ -118,7 +115,7 @@ if(this.cfg$stat.realizations==0) {
             this.cfg$stat.calibration)
 }
 del.these <- 
-  dbGetQuery(this.db,existing.stats.sel) %>%
+  PE.db.getQuery(pcfg,existing.stats.sel) %>%
   pull()
 PE.db.delete.by.pKey(pcfg=pcfg,tbl.name=PE.cfg$db$stats,pKeys = del.these)
 
@@ -141,7 +138,7 @@ for(i in ids.todo) {
     sprintf("SELECT * FROM %s WHERE `pKey` = %i",
             frag.src,
             i) %>%
-    dbGetQuery(conn=this.db) %>%
+    PE.db.getQuery(pcfg=pcfg) %>%
     as_tibble() %>%
     select(-pKey) %>%
     PE.db.unserialize() 
