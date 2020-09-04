@@ -80,7 +80,7 @@ obs.stats <-
   collect() %>%
   #Setup year-month key
   mutate(ym=date_to_ym(date)) %>%
-  select(ym,sdName,statName,value) %>%
+  select(ym,spName,statName,value) %>%
   #Drop NAs (which are probably field-only)
   filter(!is.na(value))
 
@@ -110,7 +110,7 @@ comp.dat <-
   filter(!is.na(value)) %>%
   #Join in observational data
   left_join(obs.stats,
-            by=c("ym","statName","sdName"),
+            by=c("ym","statName","spName"),
             suffix=c(".mdl",".obs")) 
 
 #'========================================================================
@@ -125,7 +125,7 @@ RMSE <- function(x,y) { sqrt(mean((x-y)^2,na.rm=TRUE))}
 #Now calculate the skill over all start dates.
 #ASSERTION: there is only one month of interest defined here. We may need to
 #extend this in the future
-g.vars <- c("srcType","srcName","realization","calibrationMethod","sdName","statName","leadIdx")
+g.vars <- c("srcType","srcName","realization","calibrationMethod","spName","statName","leadIdx")
 skill.wide <- 
   comp.dat %>%
   group_by(across(all_of(g.vars)),.drop = TRUE) %>%

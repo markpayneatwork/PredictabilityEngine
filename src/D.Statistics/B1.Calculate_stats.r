@@ -39,7 +39,7 @@ pcfg <- readRDS(PE.cfg$path$config)
 #Take input arguments, if any
 if(interactive()) {
   set.log_msg.silent()
-  cfg.id <- 1
+  cfg.id <- 3
 } else {
   cmd.args <- commandArgs(TRUE)
   if(length(cmd.args)!=1) stop("Cannot get command args")
@@ -58,10 +58,10 @@ this.cfg <- todo.list[cfg.id,]
 
 #Extract elements based on configuration
 this.stat <- this.cfg$stat.obj[[1]]
-this.sd <- this.cfg$sd.geometry[[1]]
+this.sp <- this.cfg$sp.geometry[[1]]
 log_msg("Stat   : %s\nCalib  : %s\nReal   : %i\nSp.Dom : %s\n",
         this.stat@name,this.cfg$stat.calibration,this.cfg$stat.realizations,
-        this.cfg$sd.name)
+        this.cfg$sp.name)
 
 #Load of fragments to process 
 #We have chosen here to load it all into memory, as it simplifies the process
@@ -99,10 +99,10 @@ ids.todo <-
 
 #Clear existing results 
 existing.stats.sel <- 
-  sprintf("SELECT pKey FROM %s WHERE `statName` = '%s' AND `sdName` = '%s'",
+  sprintf("SELECT pKey FROM %s WHERE `statName` = '%s' AND `spName` = '%s'",
           PE.cfg$db$stats,
           this.cfg$stat.name,
-          this.cfg$sd.name)
+          this.cfg$sp.name)
 if(this.cfg$stat.realizations==0) {
   existing.stats.sel <-
     sprintf("%s AND `srcType` = 'Observations'",existing.stats.sel)
@@ -127,7 +127,7 @@ landmask <- raster(PE.scratch.path(pcfg,"landmask"))
 
 #Setup the mask for the corresponding spatial boundary
 #based on the combination of the landmask and the spatial boundary mask
-combined.mask <- mask(landmask,as(this.sd,"Spatial"),updatevalue=1)
+combined.mask <- mask(landmask,as(this.sp,"Spatial"),updatevalue=1)
 
 #Then loop over fragments
 pb <- PE.progress(ids.todo)
@@ -152,7 +152,7 @@ for(i in ids.todo) {
   #Store the results
   out.dat <-
     this.dat %>%
-    add_column(sdName=this.cfg$sd.name,
+    add_column(spName=this.cfg$sp.name,
                statName=this.stat@name) %>%
     bind_cols(this.res) %>%
     select(-data,-any_of("srcHash"))

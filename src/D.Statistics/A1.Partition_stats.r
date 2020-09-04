@@ -48,7 +48,7 @@ if(interactive()) {
 # Setup the todo list ####
 #'========================================================================
 # The configuration of the statistics informs many aspects of the analysis, including
-# the spatial domain that we need to apply. We therefore extract the metadata for the stats
+# the spatial polygon that we need to apply. We therefore extract the metadata for the stats
 stat.obj.meta <- 
   tibble(stat.name=map_chr(pcfg@statistics ,slot,name="name"),
          stat.use.spatial.polygon=map_lgl(pcfg@statistics,slot,name="use.spatial.polygons"),
@@ -71,31 +71,31 @@ stat.jobs <-
   arrange(stat.name,stat.realizations) %>%
   add_column(statJob.id=seq(nrow(.)),.before=1)
 
-#Develop a similar table for the spatial domains
-sd.tb <- 
+#Develop a similar table for the spatial polygons
+sp.tb <- 
   pcfg@spatial.polygons %>%
-  mutate(sd.is.spatial.polygon=TRUE) %>%
-  rename(sd.name=name,sd.geometry=geometry) %>%
-  rbind(st_sf(sd.geometry=st_sfc(sfpolygon.from.extent(pcfg@global.ROI)),
-              sd.name="GlobalROI",
-              sd.is.spatial.polygon=FALSE)) %>%
-  add_column(sd.id=1:nrow(.),.before=1)
+  mutate(sp.is.spatial.polygon=TRUE) %>%
+  rename(sp.name=name,sp.geometry=geometry) %>%
+  rbind(st_sf(sp.geometry=st_sfc(sfpolygon.from.extent(pcfg@global.ROI)),
+              sp.name="GlobalROI",
+              sp.is.spatial.polygon=FALSE)) %>%
+  add_column(sp.id=1:nrow(.),.before=1)
 
 # Merge everything into one large overview table of what needs to be done
 # We then restrict the full set of cominbations to combinations that are
 # requested / sane
 todo.list <- 
-  expand_grid(sd.id=sd.tb$sd.id,
+  expand_grid(sp.id=sp.tb$sp.id,
               statJob.id=stat.jobs$statJob.id) %>%
   #Add in metadata
   left_join(y=stat.jobs,by="statJob.id") %>%
-  left_join(y=sd.tb,by="sd.id") %>%
+  left_join(y=sp.tb,by="sp.id") %>%
   #Drop combinations that don't make sense
   #  - ensure match between needs for spatial vs global polygons
-  filter(sd.is.spatial.polygon==stat.use.spatial.polygon) %>%
+  filter(sp.is.spatial.polygon==stat.use.spatial.polygon) %>%
   #  - remove duplicate
   #Set ids
-  select(-sd.id,-statJob.id) 
+  select(-sp.id,-statJob.id) 
 
 todo.list %>%
   saveRDS(file=PE.scratch.path(pcfg,"statjoblist"))

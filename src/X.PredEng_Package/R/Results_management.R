@@ -80,7 +80,7 @@ PE.db.setup <- function(pcfg) {
         "startDate",
         "date",
         "leadIdx",
-        "sdName",
+        "spName",
         "statName",
         "field",
         "value")  
