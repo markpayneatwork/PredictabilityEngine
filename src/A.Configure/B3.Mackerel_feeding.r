@@ -1,5 +1,5 @@
 #'========================================================================
-# B9. Mackerel Summer Feeding
+# B3. Mackerel Summer Feeding
 #'========================================================================
 #
 # by Mark R Payne
@@ -33,19 +33,16 @@ rm(list = ls(all.names=TRUE));  graphics.off();
 start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 
 #Source the common elements
-library(sf)
-library(PredEng)
-library(tibble)
-library(raster)
-library(tidyverse)
-source("src/B.Configuration/B0.Define_common_data_srcs.r")
+suppressPackageStartupMessages({
+  library(PredEng)
+})
+load(PE.cfg$path$datasrcs)
 
 #'========================================================================
 # Project Configuration ####
 #'========================================================================
 #Global project configuration
 pcfg <- PredEng.config(project.name= "Mackerel_summer",
-                       recalculate=TRUE,
                        MOI=8,
                        average.months=FALSE,
                        clim.years=1982:2005,  
@@ -62,12 +59,7 @@ define_dir(pcfg@scratch.dir)
 pcfg@Decadal <- SST.Decadal.production
 
 #Select CMIP5 models
-pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="tos")
-
-#If working locally, only keep the simplest two models
-if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
-  pcfg@Decadal <- pcfg@Decadal[c(1,4)]
-}
+#pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="tos")
 
 #'========================================================================
 # Spatial Configurations ####
@@ -85,49 +77,40 @@ eez.gland.full <- filter(eez.sf,str_detect(GeoName,c("Greenland")))
 N.lim <- 70
 greenland.EW.split <- -45
 eez.gland.W <- st_crop(eez.gland.full,xmin=-180,xmax=greenland.EW.split,ymin=0,ymax=N.lim) %>%
-                mutate(GeoName="West_Greenland")
+                mutate(name="West_Greenland")
 eez.gland.E <- st_crop(eez.gland.full,xmin=greenland.EW.split,xmax=180,ymin=0,ymax=N.lim) %>%
-                mutate(GeoName="East_Greenland")
+                mutate(name="East_Greenland")
 
 #Extract Iceland
 eez.iceland <- filter(eez.sf,str_detect(GeoName,c("Iceland")),Pol_type=="200NM") %>%
-               mutate(GeoName="Iceland")
+               mutate(name="Iceland")
 
+#Add a global domain as well
+sp.regional <- 
+  st_sf(name="regional",geometry=st_sfc(sfpolygon.from.extent(extent(-60,0,56,70))),
+        crs=crs(eez.iceland))
 
-#Correct names and add to object
-eez.sel <- rbind(eez.iceland, eez.gland.E,eez.gland.W) 
-EEZ.objs <- list()
-for(i in seq(nrow(eez.sel))) {
-  this.sp <- eez.sel[i,]
-  EEZ.objs[[i]] <- spatial.domain(name=as.character(this.sp$GeoName),
-                                  desc=this.sp$GeoName,
-                                  boundary=as(this.sp$geometry,"Spatial"))
-}
-names(EEZ.objs) <- eez.sel$GeoName
-pcfg@spatial.domains <- EEZ.objs
-
-
-#'========================================================================
-# Extraction configuration ####
-#'========================================================================
-
+#Add to object
+pcfg@spatial.polygons <- 
+  rbind(eez.iceland, eez.gland.E,eez.gland.W) %>%
+  select(name,geometry) %>%
+  rbind(sp.regional)
 
 #'========================================================================
 # Summary statistics ####
 #'========================================================================
 #Configure summary stats
-statsum.l <- list()
-statsum.l[[1]] <- threshold(name = "Area above 8.5 degrees",
-                                 skill.metrics=c("cor","RMSE"),
-                                 above=TRUE,
-                                 use.full.field = TRUE,
-                                 use.realmeans=TRUE,
-                                 threshold=8.5)  #Based on Teunis' paper
-statsum.l[[2]] <- pass.through(name="Temperature anomaly",
-                               skill.metrics = "correlation",
-                               use.globally=TRUE,
-                               use.full.field = FALSE,
-                               use.realmeans=TRUE)
+statsum.l <- PElst()
+statsum.l[[1]] <- threshold(name="JansenTreshold",
+                            desc = "Area above 8.5 degrees",
+                            above=TRUE,
+                            calibration = c("Mean adjusted"),
+                            realizations=c(1,2,3),
+                            threshold=8.5)  #Based on Jansen et al
+statsum.l[[2]] <- pass.through(name="TempAnomaly",
+                               desc="Temperature anomaly",
+                               realizations=1:3,
+                               calibration="anomaly")
 
 #Setup habitat suitability functionality
 habitat.mdl.dat <- readRDS("resources/Mackerel_summer_QR_values.rds")
@@ -139,26 +122,21 @@ habitat.fn <- function(dat,resources) {
   return(exp(res))
 }
 
-statsum.l[[3]] <-  habitat(name="Habitat",
+statsum.l[[3]] <-  habitat(name="HabitatModel",
+                           desc="Quantile regression habitat model",
                            fn=habitat.fn,
                            resources=resource.l,
-                           use.realmeans=FALSE,
-                           use.full.field = TRUE)
-
-statsum.l[[4]] <-  new("habitat",
-                       statsum.l[[3]],
-                       name="Global Habitat",
-                       use.globally=TRUE)
+                           calibration = c("Mean adjusted"),
+                           realizations=c(1,2,3))
 
 #Merge it all in
-names(statsum.l) <- sapply(statsum.l,slot,"name")
 pcfg@statistics <- statsum.l
 
 #'========================================================================
 # Done
 #'========================================================================
 #Output
-source("src/B.Configuration/B99.Configuration_wrapup.r")
+set.configuration(pcfg)
 
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
