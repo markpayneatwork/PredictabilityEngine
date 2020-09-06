@@ -78,7 +78,8 @@ sp.tb <-
   rename(sp.name=name,sp.geometry=geometry) %>%
   rbind(st_sf(sp.geometry=st_sfc(sfpolygon.from.extent(pcfg@global.ROI)),
               sp.name="GlobalROI",
-              sp.is.spatial.polygon=FALSE)) %>%
+              sp.is.spatial.polygon=FALSE,
+              crs=crs(pcfg@spatial.polygons))) %>%
   add_column(sp.id=1:nrow(.),.before=1)
 
 # Merge everything into one large overview table of what needs to be done
