@@ -97,7 +97,9 @@ calibration.scripts <- function(...) {
 # Stats ---------------------------------------------------------------------------
 stat.jobs <- function(...){
     ignore({
-      callr::rscript(here("src/D.Statistics/A1.Partition_stats.r"))
+      callr::rscript(here("src/D.Statistics/A1.Partition_stats.r"),
+                     stdout=log.file("D.A1.Partition_stats"),
+                     stderr=log.file("D.A1.Partition_stats"))
       return(readRDS(PE.scratch.path(pcfg,"statjoblist")))
     })
 }
