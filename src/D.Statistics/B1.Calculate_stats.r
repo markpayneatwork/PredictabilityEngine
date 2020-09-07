@@ -59,14 +59,16 @@ this.cfg <- todo.list[cfg.id,]
 #Extract elements based on configuration
 this.stat <- this.cfg$stat.obj[[1]]
 this.sp <- this.cfg$sp.geometry[[1]]
-log_msg("Stat   : %s\nCalib  : %s\nReal   : %i\nSp.Dom : %s\n",
+log_msg("Stat   : %s\nCalib  : %s\nReal   : %i\nSp.Dom : %s\n\n",
         this.stat@name,this.cfg$stat.calibration,this.cfg$stat.realizations,
         this.cfg$sp.name)
 
-#Load of fragments to process 
+#List of fragments to process 
 #We have chosen here to load it all into memory, as it simplifies the process
 #and avoids generating issues with concurrency (I hope). However, if this
 #gets to be too big in the future, we may need to rethink the approach. 
+log_msg("Getting list of ids to process...")
+
 #We need to choose here between Observation and model types
 select.by.realization.code <- function(realization.code) {
   switch(as.character(realization.code),
@@ -91,13 +93,14 @@ if(this.cfg$stat.realizations==0) {
             select.by.realization.code(this.cfg$stat.realizations),
             this.cfg$stat.calibration)
 }  
-
-#Get list of ids to process
-ids.todo <-
+this.query.time <- 
+  system.time({ids.todo <-
   PE.db.getQuery(pcfg,frag.todo.SQL) %>%
-  pull() 
+  pull() })
+log_msg("Complete in %0.3fs.\n",this.query.time[3])
 
-#Clear existing results 
+#Existing results to be cleared
+log_msg("Getting list of previous ids to clear...")
 existing.stats.sel <- 
   sprintf("SELECT pKey FROM %s WHERE `statName` = '%s' AND `spName` = '%s'",
           PE.cfg$db$stats,
@@ -114,10 +117,21 @@ if(this.cfg$stat.realizations==0) {
             select.by.realization.code(this.cfg$stat.realizations),
             this.cfg$stat.calibration)
 }
-del.these <- 
-  PE.db.getQuery(pcfg,existing.stats.sel) %>%
-  pull()
-PE.db.delete.by.pKey(pcfg=pcfg,tbl.name=PE.cfg$db$stats,pKeys = del.these)
+this.query.time <- 
+  system.time({
+    del.these <- 
+      PE.db.getQuery(pcfg,existing.stats.sel) %>%
+      pull()
+  })
+log_msg("Complete in %0.3fs.\n",this.query.time[3])
+
+#Deleting
+log_msg("Deleting existing results...")
+this.query.time <- 
+  system.time({
+    PE.db.delete.by.pKey(pcfg=pcfg,tbl.name=PE.cfg$db$stats,pKeys = del.these)
+  })
+log_msg("Complete in %0.3fs.\n\n",this.query.time[3])
 
 #'========================================================================
 # Calculation of statistics ####
