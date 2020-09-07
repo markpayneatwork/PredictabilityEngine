@@ -102,7 +102,9 @@ todo.list %>%
   saveRDS(file=PE.scratch.path(pcfg,"statjoblist"))
 
 #Clear all stats results
-dbRemoveTable(PE.db.connection(pcfg),PE.cfg$db$stats)
+this.db <- PE.db.connection(pcfg)
+dbRemoveTable(this.db,PE.cfg$db$stats)
+dbDisconnect(this.db)
 PE.db.setup(pcfg)
 
 #'========================================================================
