@@ -34,6 +34,11 @@ PE.db.setup <- function(pcfg) {
                 PE.cfg$db$extract,
                 paste(tbl.cols, collapse = ", "))
     dbExecute(this.db, tbl.cmd)
+    idx.cmd <- 
+      sprintf("CREATE INDEX idx_%s ON %s(srcType,srcName)",
+              PE.cfg$db$extract,
+              PE.cfg$db$extract)
+    dbExecute(this.db,idx.cmd)
   }
   #Setup climatology table
   if(!PE.cfg$db$climatology %in% dbListTables(this.db)) {
@@ -51,7 +56,7 @@ PE.db.setup <- function(pcfg) {
               paste(tbl.cols, collapse = ", "))
     dbExecute(this.db, tbl.cmd)
   }
-  #Setup calibration table
+  #Setup calibration table and indices
   if(!PE.cfg$db$calibration %in% dbListTables(this.db)) {
     tbl.cols <-  
       c("pKey INTEGER NOT NULL PRIMARY KEY",
@@ -68,6 +73,11 @@ PE.db.setup <- function(pcfg) {
               PE.cfg$db$calibration,
               paste(tbl.cols, collapse = ", "))
     dbExecute(this.db, tbl.cmd)
+    idx.cmd <- 
+      sprintf("CREATE INDEX idx_%s ON %s(srcType,srcName)",
+            PE.cfg$db$calibration,
+            PE.cfg$db$calibration)
+    dbExecute(this.db,idx.cmd)
   }
   #Setup statistics table
   if(!PE.cfg$db$stats %in% dbListTables(this.db)) {
@@ -89,6 +99,11 @@ PE.db.setup <- function(pcfg) {
               PE.cfg$db$stats,
               paste(tbl.cols, collapse = ", "))
     dbExecute(this.db, tbl.cmd)
+    idx.cmd <- 
+      sprintf("CREATE INDEX idx_%s ON %s(srcType,srcName)",
+              PE.cfg$db$stats,
+              PE.cfg$db$stats)
+    dbExecute(this.db,idx.cmd)    
   }
   
   #Enable support for parallel read/write, based on this SO reply:
