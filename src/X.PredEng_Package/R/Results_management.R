@@ -78,6 +78,16 @@ PE.db.setup <- function(pcfg) {
             PE.cfg$db$calibration,
             PE.cfg$db$calibration)
     dbExecute(this.db,idx.cmd)
+    idx.cmd <- 
+      sprintf("CREATE INDEX idx_%s_calMethod ON %s(calibrationMethod,realization)",
+              PE.cfg$db$calibration,
+              PE.cfg$db$calibration)
+    dbExecute(this.db,idx.cmd)
+    idx.cmd <- 
+      sprintf("CREATE INDEX idx_%s_realization ON %s(realization)",
+              PE.cfg$db$calibration,
+              PE.cfg$db$calibration)
+    dbExecute(this.db,idx.cmd)
   }
   #Setup statistics table
   if(!PE.cfg$db$stats %in% dbListTables(this.db)) {
@@ -101,6 +111,11 @@ PE.db.setup <- function(pcfg) {
     dbExecute(this.db, tbl.cmd)
     idx.cmd <- 
       sprintf("CREATE INDEX idx_%s ON %s(srcType,srcName)",
+              PE.cfg$db$stats,
+              PE.cfg$db$stats)
+    dbExecute(this.db,idx.cmd)    
+    idx.cmd <- 
+      sprintf("CREATE INDEX idx_%s_stat ON %s(statName,spName)",
               PE.cfg$db$stats,
               PE.cfg$db$stats)
     dbExecute(this.db,idx.cmd)    
