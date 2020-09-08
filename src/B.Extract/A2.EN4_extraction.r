@@ -58,7 +58,7 @@ if(!this.datasrc@name=="EN4") stop("Not configured to use EN4 data")
 #'## Extract EN4 meta data into fragments
 #/*======================================================================*/
 #Remove existing EN4 data
-PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,this.datasrc)
+PE.db.delete.by.datasource(pcfg,PE.cfg$db$calibration,this.datasrc)
 
 log_msg("Extracting fragments...\n")
 
@@ -124,7 +124,7 @@ for(f in this.datasrc@sources) {
   frag.data %>%
     mutate(startDate=as.character(startDate),
            date=as.character(date)) %>%
-    PE.db.appendTable(pcfg,PE.cfg$db$extract)
+    PE.db.appendTable(pcfg,PE.cfg$db$calibration)
   
   #Tidy up
   tmp.fnames <- dir(dirname(f.tmpstem),pattern=basename(f.tmpstem),full.names = TRUE)

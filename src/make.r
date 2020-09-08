@@ -56,8 +56,8 @@ log.file <- function(...) {
 extract.observations <- function(...) {
   ignore({
     obs.script <- switch(pcfg@Observations@name,
-                         "EN4"="C2.EN4_extraction.r",
-                         "HadISST"="C1.HadISST_data.r",
+                         "EN4"="A2.EN4_extraction.r",
+                         "HadISST"="A1.HadISST_data.r",
                          stop("Cannot find observation script"))
     callr::rscript(here("src/B.Extract/",obs.script),
                    stdout=log.file("B.Observations.%s",pcfg@Observations@name),
