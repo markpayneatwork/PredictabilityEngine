@@ -31,8 +31,9 @@ PE.cfg$validity <- list(calibrationMethods=c("anomaly","Mean adjusted"))
 #                     results="Results",
 
 #Misc
-PE.cfg$misc <- list(crs=CRS("+proj=longlat +datum=WGS84"))  #The analysis grid currently only
-                                                            #cable of working on lon-lat
+PE.cfg$misc <- list(globalROI="globalROI",
+                    crs=CRS("+proj=longlat +datum=WGS84"))  #The analysis grid currently only
+                                                            #capable of working on lon-lat
 
 #File names
 # PE.cfg$PE.files <- list(Obs.monthly.anom.metadata=file.path(PE.cfg$PE.dir$Misc.meta,"Monthly_anom_metadata.rds"),
