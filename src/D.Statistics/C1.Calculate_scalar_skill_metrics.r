@@ -51,9 +51,6 @@ if(interactive()) {
 this.db <- PE.db.connection(pcfg)
 stats.tbl <- tbl(this.db,PE.cfg$db$stats)
 
-#Import stats overview
-stat.overview <- readRDS(PE.scratch.path(pcfg,"statjoblist"))
-
 # #Reset the resutls table by deleting and reestablishing it
 # dbRemoveTable(this.db,PE.cfg$db$stats)
 # PE.db.setup(pcfg)
@@ -102,7 +99,7 @@ comp.these <-
 comp.dat <- 
   #Import relevant data first
   stats.tbl %>%
-  filter(pkey %in% comp.these) %>%
+  filter(pKey %in% comp.these) %>%
   select(-field,-pKey) %>% 
   collect() %>%
   mutate(ym=date_to_ym(date)) %>%

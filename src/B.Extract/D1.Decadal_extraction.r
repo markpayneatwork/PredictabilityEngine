@@ -44,7 +44,7 @@ pcfg <- readRDS(PE.cfg$path$config)
   set.log_msg.silent()
   sel.cfg <- "MPI.ESM.LR"
   this.cfg <- tibble(this.datasrc=list( pcfg@Decadal[[sel.cfg]]),
-                     this.sources=!!pcfg@Decadal[[sel.cfg]]@sources)
+                     sources=!!pcfg@Decadal[[sel.cfg]]@sources)
 } else { #Running as a function
   #Inputs are supplied as named arguments to the function version
   this.cfg <- ..1
@@ -66,7 +66,7 @@ analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
 
 #Check configuration is sane
 assert_that(nrow(this.cfg)>0,msg="No source files provided")
-assert_that(all(file.exists(this.cfg$this.sources)),msg="Cannot find all source files")
+assert_that(all(file.exists(this.cfg$sources)),msg="Cannot find all source files")
 
 #'========================================================================
 # Extract Fragments from Source Files ####
@@ -83,7 +83,7 @@ pb <- PE.progress(nrow(this.cfg))
 dmp <- pb$tick(0)
 for(i in seq(nrow(this.cfg))) {
   #Extract configuration
-  this.src <- this.cfg$this.sources[i]
+  this.src <- this.cfg$sources[i]
   this.datasrc <- this.cfg$this.datasrc[[i]]
   log_msg("Extracting from %s...\n",basename(this.src),silenceable = TRUE)
   tmp.stem <- tempfile()

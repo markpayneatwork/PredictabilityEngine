@@ -152,7 +152,7 @@ PE.db.delete.by.pKey <- function(pcfg,tbl.name,pKeys,silent=TRUE) {
   PE.db.safe.try(n <- dbExecute(db.con,SQL.cmd),silent=silent)  
   dbDisconnect(db.con)
   if(!silent) { log_msg("Deleted %i rows from %s table...\n",n,tbl.name)}
-  return(invisible(NULL))
+  return(invisible(n))
 }
 
 
@@ -168,7 +168,8 @@ PE.db.delete.by.datasource <- function(pcfg,tbl.name=PE.cfg$db$extract,datasrc,s
   del.these <- PE.db.getQuery(pcfg,SQL.cmd,silent=silent)
   
   #Delete
-  PE.db.delete.by.pKey(pcfg,tbl.name,del.these$pKey,silent=silent)
+  n <- PE.db.delete.by.pKey(pcfg,tbl.name,del.these$pKey,silent=silent)
+  return(invisible(n))
 }
 
 
@@ -183,7 +184,8 @@ PE.db.delete.by.hash <- function(pcfg,hash,silent=TRUE) {
   row.ids <- PE.db.getQuery(pcfg,SQL.cmd)
 
   #Delete rows
-  PE.db.delete.by.pKey(pcfg,PE.cfg$db$extract,row.ids$pKey,silent=silent)
+  n <- PE.db.delete.by.pKey(pcfg,PE.cfg$db$extract,row.ids$pKey,silent=silent)
+  return(invisible(n))
 }
 
 
@@ -197,10 +199,10 @@ PE.db.appendTable <- function(dat,pcfg,tbl.name,silent=TRUE) {
     mutate(across(where(is.list),function(cl) map(cl,serialize,NULL))) 
   #Write
   db.con <- PE.db.connection(pcfg)
-  PE.db.safe.try(dbWriteTable(conn=db.con, name=tbl.name, value=serial.dat, append = TRUE),silent=silent)  
+  n <- PE.db.safe.try(dbWriteTable(conn=db.con, name=tbl.name, value=serial.dat, append = TRUE),silent=silent)  
   #Fin
   dbDisconnect(db.con)
-  return(invisible(NULL))
+  return(invisible(n))
 }
 
 

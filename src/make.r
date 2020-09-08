@@ -36,6 +36,13 @@ pcfg <- readRDS(PE.cfg$path$config)
 #'========================================================================
 # Configure ####
 #'========================================================================
+#Take input arguments, if any
+if(interactive()) {
+  n.cores <- 8
+} else {
+  n.cores <-   as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))
+}
+log_msg("Running with %i cores...\n",n.cores)
 
 #'========================================================================
 # Setup ####
@@ -66,13 +73,14 @@ extract.observations <- function(...) {
   })
 }
 
-extract.source.list <- function(this.src) {
+extract.source.list <- function(srcType,srcName) {
   ignore({
-    tibble(this.datasrc=if(is(this.src,"PElst")) {this.src@.Data} else {list(this.src)})  %>%
-      mutate(srcName=map_chr(this.datasrc,slot,"name"),
-             srcType=map_chr(this.datasrc,slot,"type"),
-             this.sources=map(this.datasrc,slot,"sources")) %>%
-      unnest(this.sources)
+    tibble(this.datasrc=slot(pcfg,srcType)@.Data)  %>%
+      mutate(this.srcName=map_chr(this.datasrc,slot,"name"),
+             this.srcType=map_chr(this.datasrc,slot,"type"),
+             sources=map(this.datasrc,slot,"sources")) %>%
+      filter(this.srcName %in% srcName) %>%
+      unnest(sources)
   })
 }
 
@@ -96,34 +104,39 @@ calibration.scripts <- function(...) {
 
 # Stats ---------------------------------------------------------------------------
 stat.jobs <- function(...){
-    ignore({
-      callr::rscript(here("src/D.Statistics/A1.Partition_stats.r"),
-                     stdout=log.file("D.A1.Partition_stats"),
-                     stderr=log.file("D.A1.Partition_stats"))
-      return(readRDS(PE.scratch.path(pcfg,"statjoblist")))
-    })
+  ignore({
+    stats.tbl <- 
+      tibble(stat.obj=pcfg@statistics@.Data) %>%
+      mutate(st.name=map_chr(stat.obj,slot,"name"),
+             st.uses.globalROI=map_lgl(stat.obj,slot,"use.globalROI"))
+    stat.sp.comb <-
+      stats.tbl %>%
+      filter(!st.uses.globalROI) %>%
+      pull(st.name) %>%
+      expand_grid(stat=.,
+                  sp=pcfg@spatial.polygons$name)
+    global.stats <- 
+      stats.tbl %>%
+      filter(st.uses.globalROI) %>%
+      pull(st.name) %>%
+      tibble(stat=.,sp=PE.cfg$misc$globalROI)
+    
+    todo.stats <- 
+      bind_rows(stat.sp.comb,global.stats) %>%
+      relocate(sp)
+    
+    return(todo.stats)
+  })
 }
 
-process.stat <- function(this.stat) {
+process.stat <- function(this) {
   ignore({
-    #This is not a very elegant solution, but it is the best I can think of for
-    #the time being. We want to maintain Calculate_stats as a script, because it
-    #make it easy to write out the log files. However that presents challenges with
-    #taking full advantage of the hashing feature of drake. We therefore take in the
-    #full configuration line, and then convert it to a line id.
-    all.jobs <- readRDS(PE.scratch.path(pcfg,"statjoblist"))
-    row.match <- 
-      all.jobs %>%
-      split(f=seq(nrow(.))) %>%
-      map_lgl(.,~ isTRUE(all.equal(.x,this.stat)))
-    assert_that(sum(row.match)==1,msg="Cannot identify stat job")
-    this.id <- which(row.match)
     #Now call the script
     callr::rscript(here("src/D.Statistics/B1.Calculate_stats.r"),
-                   cmdargs=this.id,
-                   stdout=log.file("D.Stats.%03i",this.id),
-                   stderr=log.file("D.Stats.%03i",this.id))
-    return(this.stat)
+                   cmdargs=c(this$sp,this$stat,n.cores),
+                   stdout=log.file("D.Stats.%s.%s",this$sp,this$stat),
+                   stderr=log.file("D.Stats.%s.%s",this$sp,this$stat))
+    return(this)
   })
 }
 
@@ -147,39 +160,41 @@ process.metrics <- function(...){
 
 #Make a plan
 dec.plan <- 
-  drake_plan(DecSources=target(extract.source.list(this.src=decadalDatSrc),
-                               transform = map(decadalDatSrc=!!pcfg@Decadal@.Data,
-                                               .names=paste0("DecSources_",!!names(pcfg@Decadal))),
-                               trigger=trigger(command=FALSE)),
-             DecExtr=target(extract.decadal(DecSources),
-                            transform=map(DecSources),
-                            dynamic=map(DecSources),
-                            trigger=trigger(command=FALSE)),
-             combRealmeans=target(c(DecExtr),  #Simple placeholder
-                                  transform=combine(DecExtr),
-                                  trigger=trigger(command=FALSE)),
-             Realmeans=target(calc.realmeans(this.datasrc=datasrc,combRealmeans),
-                              transform=map(datasrc=!!pcfg@Decadal@.Data,
-                                            .names=paste0("Realmeans_",!!names(pcfg@Decadal)))),
-             DecFrags=target(c(Realmeans),
-                             transform=combine(Realmeans)))
-#vis_drake_graph(dec.plan,targets_only = TRUE)             
+  drake_plan(DSrc=target(extract.source.list(srcType="Decadal",
+                                             srcName=decadalSrcName),
+                         transform = map(decadalSrcName=!!names(pcfg@Decadal)),
+                         trigger=trigger(command=FALSE,
+                                         change=pcfg@Decadal[[decadalSrcName]])),
+             DExtr=target(extract.decadal(DSrc),
+                          transform=map(DSrc),
+                          dynamic=map(DSrc),
+                          trigger=trigger(command=FALSE)),
+             DRealmeans=target(calc.realmeans(srcType="Decadal",
+                                              srcName=decadalSrcName,
+                                              DExtr),
+                               transform=map(DExtr)),
+             DFrags=target(c(DRealmeans),
+                           transform=combine(DRealmeans)),
+             trace=TRUE)
+vis_drake_graph(dec.plan,targets_only = TRUE)             
 
 end.game <-
-  drake_plan(obs.obj=ignore(pcfg@Observations),
-             Observations=target(command=extract.observations(obs.obj),
-                                 trigger=trigger(command=FALSE)),
-             Extractions=target(list(Observations,DecFrags),
+  drake_plan(Observations=target(command=extract.observations(),
+                                 trigger=trigger(command=FALSE,
+                                                 change=pcfg@Observations)),
+             Extractions=target(list(Observations,DFrags),
                                 trigger=trigger(command=FALSE)),
              Calibration=target(calibration.scripts(Extractions),
                                 trigger=trigger(command=FALSE)),
-             stat.objs=ignore(pcfg@statistics),
-             StatJobs=target(stat.jobs(Calibration,stat.objs),
-                             trigger=trigger(command=FALSE)),
+             StatJobs=target(stat.jobs(Calibration),
+                             trigger=trigger(command=FALSE,
+                                             change=pcfg@statistics)),
              Stats=target(process.stat(StatJobs),
-                          dynamic=map(StatJobs),
-                          trigger=trigger(command=FALSE)),
-             Metrics=target(process.metrics(Stats)))
+                          dynamic=map(statjob=StatJobs),
+                          trigger=trigger(command=FALSE),
+                          hpc=FALSE),
+             Metrics=target(process.metrics(Stats)),
+             trace=TRUE)
 
 the.plan <- bind_plans(dec.plan,end.game)
 
@@ -188,7 +203,9 @@ the.plan <- bind_plans(dec.plan,end.game)
 # Supplementary ####
 #'========================================================================
 #Check it twice.
-print(vis_drake_graph(the.plan))
+on.exit({
+print(vis_drake_graph(the.plan,targets_only = TRUE))
+})
 
 #Custom cleaning function
 clean_regex <- function(regex) {
@@ -204,7 +221,7 @@ options(clustermq.scheduler = "multicore")
 #Find out, who's been naughty or nice... Paw Patrol - så er det nu!
 make(the.plan, 
      parallelism = "clustermq", 
-     jobs = 8,
+     jobs = n.cores,
      keep_going = FALSE,
      verbose=1)
 

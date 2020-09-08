@@ -64,13 +64,12 @@ realmeans <-
 #Clear all previous ensemble means
 prev.ensmeans <- 
   calib.tbl %>%
-  filter(srcType=="ensmean") %>%
+  filter(srcName=="ensmean") %>%
   select(pKey) %>%
   collect() %>%
   pull() 
 dbDisconnect(this.db)  #Finished with database
-PE.db.delete.by.pKey(pcfg,tbl.name=PE.cfg$db$calibration,pKeys = prev.ensmeans)
-
+PE.db.delete.by.pKey(pcfg,tbl.name=PE.cfg$db$calibration,pKeys = prev.ensmeans,silent=FALSE)
 
 #'========================================================================
 # Process ####
@@ -88,7 +87,8 @@ ensmeans <-
   realmeans %>%
   group_by(srcType,calibrationMethod,startDate,date,leadIdx,.drop=TRUE) %>%
   summarise(data=raster.list.mean(data),
-            n=n()) %>% #Check for duplicated realization codes
+            n=n(),
+            .groups="keep") %>% #Check for duplicated realization codes
   ungroup() %>%
   add_column(srcName="ensmean",.after=1)
 

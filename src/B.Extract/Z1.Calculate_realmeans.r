@@ -48,8 +48,11 @@ if(!exists("...")) {  #Then we are running as a script
 } else { #Running as a function
   #Inputs are supplied as named arguments to the function version
   args.in <- list(...)
-  assert_that(!is.null(args.in$this.datasrc),msg="'this.datasrc' not supplied as argument")
-  this.datasrc <- args.in$this.datasrc
+  assert_that(!is.null(args.in$srcType),msg="'srcType' not supplied as argument")
+  assert_that(!is.null(args.in$srcName),msg="'srcName' not supplied as argument")
+  this.srcType <- args.in$srcType
+  this.srcName <- args.in$srcName
+  this.datasrc <- slot(pcfg,this.srcType)[[this.srcName]]
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
 }

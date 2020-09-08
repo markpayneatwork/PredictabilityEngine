@@ -8,7 +8,9 @@
 #
 # Created Wed Aug 19 08:31:33 2020
 #
-# Calculates the individual statistics
+# Calculates the individual statistics. This version is discretised into 
+# handling a single stat and a single spatial polygon domain at the same
+# time, and then iterating over all of the calibration fragments.
 #
 # This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 # You are largely free to do what you like with it, so long as you "attribute"
@@ -30,6 +32,7 @@ start.time <- proc.time()[3];
 #Helper functions, externals and libraries
 suppressPackageStartupMessages({
   library(PredEng)
+  library(pbapply)
 })
 pcfg <- readRDS(PE.cfg$path$config)
 
@@ -39,99 +42,111 @@ pcfg <- readRDS(PE.cfg$path$config)
 #Take input arguments, if any
 if(interactive()) {
   set.log_msg.silent()
-  cfg.id <- 3
+  stat.id <- names(pcfg@statistics)[1]
+  sp.id <- c(PE.cfg$misc$globalROI,pcfg@spatial.polygons$name)[2]
+  n.cores <- 4
 } else {
   cmd.args <- commandArgs(TRUE)
-  if(length(cmd.args)!=1) stop("Cannot get command args")
-  cfg.id <- as.numeric(cmd.args)
+  if(length(cmd.args)!=3) stop("Cannot get command args")
+  sp.id <- cmd.args[1]
+  stat.id <- cmd.args[2]
+  n.cores <- cmd.args[3]
   set.log_msg.silent()
+  pboptions(type="txt")
 }
 
-log_msg("Configuration\nCfg id : %i\n",cfg.id)
+log_msg("Configuration\nStat id : %s\nSp id   : %s\n",stat.id,sp.id)
 
 #'========================================================================
 # Setup  ####
 #'========================================================================
-#Setup item todo
-todo.list <- readRDS(PE.scratch.path(pcfg,"statjoblist"))
-this.cfg <- todo.list[cfg.id,]
+#Fail gracefully
+dmp <- assert_that(all(stat.id %in% names(pcfg@statistics)) & length(stat.id)==1,
+            msg="Unknown stat(s) requested")
+dmp <- assert_that(all(sp.id %in% c(PE.cfg$misc$globalROI,pcfg@spatial.polygons$name)) & length(sp.id)==1,
+            msg="Unknown spatial polygon(s) requested")
+
+#Extract elements to process
+this.stat <- pcfg@statistics[[stat.id]]
+this.sp <- 
+  if(sp.id == PE.cfg$misc$globalROI) {
+    st_sf(geometry=st_sfc(sfpolygon.from.extent(pcfg@global.ROI)),
+          name=PE.cfg$misc$globalROI,
+          crs=crs(pcfg@spatial.polygons))
+  } else {
+    pcfg@spatial.polygons %>% 
+      filter(name==sp.id)
+  }
+dmp <- assert_that(nrow(this.sp)==1,msg="Failed to select only one spatial polygon")
+
+#TODO:
+# Parallelise, reduce write frequency
+
 
 #Extract elements based on configuration
-this.stat <- this.cfg$stat.obj[[1]]
-this.sp <- this.cfg$sp.geometry[[1]]
-log_msg("Stat   : %s\nCalib  : %s\nReal   : %i\nSp.Dom : %s\n\n",
-        this.stat@name,this.cfg$stat.calibration,this.cfg$stat.realizations,
-        this.cfg$sp.name)
+log_msg("Calib   : %s\nReal    : %s\n\n",
+        paste0(this.stat@calibration),
+        paste0(this.stat@realizations,collapse=", "))
 
-#List of fragments to process 
-#We have chosen here to load it all into memory, as it simplifies the process
-#and avoids generating issues with concurrency (I hope). However, if this
-#gets to be too big in the future, we may need to rethink the approach. 
-log_msg("Getting list of ids to process...")
 
-#We need to choose here between Observation and model types
-select.by.realization.code <- function(realization.code) {
-  switch(as.character(realization.code),
-         "1"="NOT(`srcType` IN ('realmean', 'ensmean'))",
-         "2"="`realization` = 'realmean'",
-         "3"="`srcName` = 'ensmean'",
-         stop("Unknown option"))
-    
-}
-if(this.cfg$stat.realizations==0) {
-  #Use observations
-  frag.src <- PE.cfg$db$extract
-  frag.todo.SQL <- 
-    sprintf("SELECT pKey FROM %s WHERE (`srcType` = 'Observations')",
-            frag.src)
-} else {
-  #Use calibrated model outputs
-  frag.src <- PE.cfg$db$calibration
-  frag.todo.SQL <- 
-    sprintf("SELECT pKey FROM %s WHERE %s AND `calibrationMethod` = '%s'",
-            frag.src,
-            select.by.realization.code(this.cfg$stat.realizations),
-            this.cfg$stat.calibration)
-}  
-this.query.time <- 
-  system.time({ids.todo <-
-  PE.db.getQuery(pcfg,frag.todo.SQL) %>%
-  pull() })
-log_msg("Complete in %0.3fs.\n",this.query.time[3])
-
-#Existing results to be cleared
+#Delete existing results 
 log_msg("Getting list of previous ids to clear...")
 existing.stats.sel <- 
   sprintf("SELECT pKey FROM %s WHERE `statName` = '%s' AND `spName` = '%s'",
           PE.cfg$db$stats,
-          this.cfg$stat.name,
-          this.cfg$sp.name)
-if(this.cfg$stat.realizations==0) {
-  existing.stats.sel <-
-    sprintf("%s AND `srcType` = 'Observations'",existing.stats.sel)
-
-} else {
-  existing.stats.sel <-
-    sprintf("%s AND %s AND `calibrationMethod` = '%s'",
-            existing.stats.sel,
-            select.by.realization.code(this.cfg$stat.realizations),
-            this.cfg$stat.calibration)
-}
+          stat.id,
+          sp.id)
 this.query.time <- 
   system.time({
     del.these <- 
       PE.db.getQuery(pcfg,existing.stats.sel) %>%
       pull()
   })
-log_msg("Complete in %0.3fs.\n",this.query.time[3])
-
-#Deleting
-log_msg("Deleting existing results...")
+log_msg("Complete in %0.3fs. Deleting...\n",this.query.time[3])
 this.query.time <- 
   system.time({
-    PE.db.delete.by.pKey(pcfg=pcfg,tbl.name=PE.cfg$db$stats,pKeys = del.these)
+    n <- PE.db.delete.by.pKey(pcfg=pcfg,tbl.name=PE.cfg$db$stats,pKeys = del.these)
   })
-log_msg("Complete in %0.3fs.\n\n",this.query.time[3])
+log_msg("Deleted %i rows in %0.3fs.\n\n",n,this.query.time[3])
+
+#'========================================================================
+# Get lists of fragments to process ####
+#'========================================================================
+log_msg("Getting list of fragments to process...\n")
+#Processing frags
+cr.frags <-  #Calibrations x realisations frags
+  expand_grid(calibration=this.stat@calibration,
+              realizations=this.stat@realizations) %>%  
+  mutate(SQL.sel=case_when(
+    realizations==1 ~ "NOT(`realization` IN ('realmean', 'ensmean')) AND NOT(`srcType`= 'Observations')",
+    realizations==2 ~ "`realization` = 'realmean'",
+    realizations==3 ~ "`realization` = 'ensmean'",
+    TRUE~ as.character(NA))) %>%
+  mutate(SQL.sel=sprintf("SELECT pKey FROM %s WHERE `calibrationMethod` = '%s' AND %s",
+                         PE.cfg$db$calibration,
+                         calibration,
+                         SQL.sel))
+obs.frags <-
+  tibble(calibration=NA,
+         realizations=0,
+         SQL.sel=sprintf("SELECT pKey FROM %s WHERE `srcType`='Observations'",
+                         PE.cfg$db$calibration))
+
+#Now get list of pKeys to process
+this.query.time <- 
+  system.time({
+    todo.frags <- 
+      bind_rows(obs.frags,cr.frags)%>%
+      mutate(pKeys=map(SQL.sel,~ PE.db.getQuery(pcfg,.x)))
+  })
+log_msg("Complete in %0.3fs.\n",this.query.time[3])
+
+#And generate a todo list
+pKey.todos <- 
+  todo.frags %>%
+  unnest(pKeys) %>% 
+  pull(pKey)
+dmp <- assert_that(!any(duplicated(pKey.todos)),msg="Expecting unique set of pKeys to process")
 
 #'========================================================================
 # Calculation of statistics ####
@@ -143,20 +158,18 @@ landmask <- raster(PE.scratch.path(pcfg,"landmask"))
 #based on the combination of the landmask and the spatial boundary mask
 combined.mask <- mask(landmask,as(this.sp,"Spatial"),updatevalue=1)
 
-#Then loop over fragments
-pb <- PE.progress(ids.todo)
-dmp <- pb$tick(0)
-for(i in ids.todo) {
+# Stat calculation function -------------------------------------------------------
+calc.stat.fn <- function(this.pKey) {
   #Import data
   this.dat <- 
     sprintf("SELECT * FROM %s WHERE `pKey` = %i",
-            frag.src,
-            i) %>%
+            PE.cfg$db$calibration,
+            this.pKey) %>%
     PE.db.getQuery(pcfg=pcfg) %>%
     as_tibble() %>%
     select(-pKey) %>%
     PE.db.unserialize() 
-
+  
   #Apply the masks to data
   masked.dat <- mask(this.dat$data[[1]],combined.mask,maskvalue=1)
   
@@ -166,15 +179,23 @@ for(i in ids.todo) {
   #Store the results
   out.dat <-
     this.dat %>%
-    add_column(spName=this.cfg$sp.name,
-               statName=this.stat@name) %>%
+    add_column(spName=sp.id,
+               statName=stat.id) %>%
     bind_cols(this.res) %>%
     select(-data,-any_of("srcHash"))
   
-  PE.db.appendTable(out.dat,pcfg,PE.cfg$db$stats)
-  #Loop back
-  dmp <- pb$tick()
-}  #/end loop over calibrated fragments
+  return(out.dat)
+}
+
+# Parallelised extraction loop ----------------------------------------------------
+stat.l <- pblapply(pKey.todos,
+                   calc.stat.fn,
+                   cl = n.cores)
+
+# Write results -------------------------------------------------------------------
+out.res <-
+  bind_rows(stat.l)
+PE.db.appendTable(out.res,pcfg,PE.cfg$db$stats)
 
 #'========================================================================
 # Complete ####
