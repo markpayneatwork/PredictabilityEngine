@@ -153,7 +153,7 @@ PE.db.delete.by.datasource <- function(pcfg,tbl.name=PE.cfg$db$extract,datasrc,s
   del.these <- PE.db.getQuery(pcfg,SQL.cmd,silent=silent)
   
   #Delete
-  PE.db.delete.by.pKey(pcfg,PE.cfg$db$extract,del.these$pKey,silent=silent)
+  PE.db.delete.by.pKey(pcfg,tbl.name,del.these$pKey,silent=silent)
 }
 
 
