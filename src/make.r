@@ -193,7 +193,8 @@ end.game <-
                           dynamic=map(statjob=StatJobs),
                           trigger=trigger(command=FALSE),
                           hpc=FALSE),
-             Metrics=target(process.metrics(Stats)),
+             Metrics=target(process.metrics(Stats),
+			    hpc=FALSE),
              trace=TRUE)
 
 the.plan <- bind_plans(dec.plan,end.game)
