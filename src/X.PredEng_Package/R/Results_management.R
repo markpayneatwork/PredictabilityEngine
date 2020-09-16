@@ -79,7 +79,7 @@ PE.db.setup <- function(pcfg) {
             PE.cfg$db$calibration)
     dbExecute(this.db,idx.cmd)
     idx.cmd <- 
-      sprintf("CREATE INDEX idx_%s_calMethod ON %s(calibrationMethod,realization)",
+      sprintf("CREATE INDEX idx_%s_calMethod ON %s(calibrationMethod,realization,srcType)",
               PE.cfg$db$calibration,
               PE.cfg$db$calibration)
     dbExecute(this.db,idx.cmd)
