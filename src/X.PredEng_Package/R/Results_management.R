@@ -181,7 +181,7 @@ PE.db.delete.by.hash <- function(pcfg,hash,silent=TRUE) {
   SQL.cmd <- sprintf("SELECT pKey FROM %s WHERE (`srcHash` IN (%s))",
                      PE.cfg$db$extract,
                      paste(sprintf("'%s'",hash),collapse=", "))
-  row.ids <- PE.db.getQuery(pcfg,SQL.cmd)
+  row.ids <- PE.db.getQuery(pcfg,SQL.cmd,silent=silent)
 
   #Delete rows
   n <- PE.db.delete.by.pKey(pcfg,PE.cfg$db$extract,row.ids$pKey,silent=silent)
