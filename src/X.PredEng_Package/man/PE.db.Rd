@@ -12,9 +12,9 @@
 \alias{PE.db.getQuery}
 \title{Setup results database}
 \usage{
-PE.db.connection(pcfg)
+PE.db.connection(pcfg, results.db = FALSE)
 
-PE.db.setup(pcfg)
+PE.db.setup(pcfg, results.only = FALSE)
 
 PE.db.delete.by.pKey(pcfg, tbl.name, pKeys, silent = TRUE)
 

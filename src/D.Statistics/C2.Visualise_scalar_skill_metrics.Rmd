@@ -87,7 +87,7 @@ show(pcfg)
 # Setup ####
 #'========================================================================
 #Import data
-this.db <- PE.db.connection(pcfg)
+this.db <- PE.db.connection(pcfg,results.db = TRUE)
 stats.tbl <- tbl(this.db,PE.cfg$db$stats)
 mets.tbl <- tbl(this.db,PE.cfg$db$metrics)
 

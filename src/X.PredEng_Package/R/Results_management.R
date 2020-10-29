@@ -6,89 +6,99 @@
 #' @export
 #' 
 #' @name PE.db
-PE.db.connection <- function(pcfg) {
-   db.path <- here(pcfg@scratch.dir,sprintf("%s.sqlite",pcfg@project.name))
+PE.db.connection <- function(pcfg,results.db=FALSE) {
+  if(!results.db) {
+    db.path <- here(pcfg@scratch.dir,sprintf("%s.sqlite",pcfg@project.name))
+  } else {
+    db.path <- here(pcfg@scratch.dir,sprintf("%s_results.sqlite",pcfg@project.name))
+  }
    dbConnect(RSQLite::SQLite(), db.path,synchronous=NULL)
 }
 
 
 #' @export
 #' @rdname PE.db
-PE.db.setup <- function(pcfg) {
+PE.db.setup <- function(pcfg,results.only=FALSE) {
   #Setup connection
-  this.db <- PE.db.connection(pcfg)
-  #Setup Extraction table and indices
-  if(!PE.cfg$db$extract %in% dbListTables(this.db)) {
-    tbl.cols <-  
-      c("pKey INTEGER NOT NULL PRIMARY KEY",
-        "srcHash",
-        "srcType",
-        "srcName",
-        "realization",
-        "startDate",
-        "date",
-        "leadIdx",
-        "data") 
-    tbl.cmd <- 
-      sprintf("CREATE TABLE %s(%s)", 
+  this.db <- PE.db.connection(pcfg,results.db=results.only)
+  
+  # Data extraction tables -----------------------------------------------------------
+  if(!results.only) {
+    #Setup Extraction table and indices
+    if(!PE.cfg$db$extract %in% dbListTables(this.db)) {
+      tbl.cols <-  
+        c("pKey INTEGER NOT NULL PRIMARY KEY",
+          "srcHash",
+          "srcType",
+          "srcName",
+          "realization",
+          "startDate",
+          "date",
+          "leadIdx",
+          "data") 
+      tbl.cmd <- 
+        sprintf("CREATE TABLE %s(%s)", 
                 PE.cfg$db$extract,
                 paste(tbl.cols, collapse = ", "))
-    dbExecute(this.db, tbl.cmd)
-    idx.cmd <- 
-      sprintf("CREATE INDEX idx_%s ON %s(srcType,srcName)",
-              PE.cfg$db$extract,
-              PE.cfg$db$extract)
-    dbExecute(this.db,idx.cmd)
+      dbExecute(this.db, tbl.cmd)
+      idx.cmd <- 
+        sprintf("CREATE INDEX idx_%s ON %s(srcType,srcName)",
+                PE.cfg$db$extract,
+                PE.cfg$db$extract)
+      dbExecute(this.db,idx.cmd)
+    }
+    #Setup climatology table
+    if(!PE.cfg$db$climatology %in% dbListTables(this.db)) {
+      tbl.cols <-  
+        c("pKey INTEGER NOT NULL PRIMARY KEY",
+          "srcType",
+          "srcName",
+          "leadIdx",
+          "month",
+          "data",
+          "nYears")  #Number of years in the climatology
+      tbl.cmd <- 
+        sprintf("CREATE TABLE %s(%s)", 
+                PE.cfg$db$climatology,
+                paste(tbl.cols, collapse = ", "))
+      dbExecute(this.db, tbl.cmd)
+    }
+    #Setup calibration table and indices
+    if(!PE.cfg$db$calibration %in% dbListTables(this.db)) {
+      tbl.cols <-  
+        c("pKey INTEGER NOT NULL PRIMARY KEY",
+          "srcType",
+          "srcName",
+          "calibrationMethod",
+          "realization",
+          "startDate",
+          "date",
+          "leadIdx",
+          "data")  
+      tbl.cmd <- 
+        sprintf("CREATE TABLE %s(%s)", 
+                PE.cfg$db$calibration,
+                paste(tbl.cols, collapse = ", "))
+      dbExecute(this.db, tbl.cmd)
+      idx.cmd <- 
+        sprintf("CREATE INDEX idx_%s ON %s(srcType,srcName)",
+                PE.cfg$db$calibration,
+                PE.cfg$db$calibration)
+      dbExecute(this.db,idx.cmd)
+      idx.cmd <- 
+        sprintf("CREATE INDEX idx_%s_calMethod ON %s(calibrationMethod,realization,srcType)",
+                PE.cfg$db$calibration,
+                PE.cfg$db$calibration)
+      dbExecute(this.db,idx.cmd)
+      idx.cmd <- 
+        sprintf("CREATE INDEX idx_%s_realization ON %s(realization)",
+                PE.cfg$db$calibration,
+                PE.cfg$db$calibration)
+      dbExecute(this.db,idx.cmd)
+    }
   }
-  #Setup climatology table
-  if(!PE.cfg$db$climatology %in% dbListTables(this.db)) {
-    tbl.cols <-  
-      c("pKey INTEGER NOT NULL PRIMARY KEY",
-        "srcType",
-        "srcName",
-        "leadIdx",
-        "month",
-        "data",
-        "nYears")  #Number of years in the climatology
-    tbl.cmd <- 
-      sprintf("CREATE TABLE %s(%s)", 
-              PE.cfg$db$climatology,
-              paste(tbl.cols, collapse = ", "))
-    dbExecute(this.db, tbl.cmd)
-  }
-  #Setup calibration table and indices
-  if(!PE.cfg$db$calibration %in% dbListTables(this.db)) {
-    tbl.cols <-  
-      c("pKey INTEGER NOT NULL PRIMARY KEY",
-        "srcType",
-        "srcName",
-        "calibrationMethod",
-        "realization",
-        "startDate",
-        "date",
-        "leadIdx",
-        "data")  
-    tbl.cmd <- 
-      sprintf("CREATE TABLE %s(%s)", 
-              PE.cfg$db$calibration,
-              paste(tbl.cols, collapse = ", "))
-    dbExecute(this.db, tbl.cmd)
-    idx.cmd <- 
-      sprintf("CREATE INDEX idx_%s ON %s(srcType,srcName)",
-            PE.cfg$db$calibration,
-            PE.cfg$db$calibration)
-    dbExecute(this.db,idx.cmd)
-    idx.cmd <- 
-      sprintf("CREATE INDEX idx_%s_calMethod ON %s(calibrationMethod,realization,srcType)",
-              PE.cfg$db$calibration,
-              PE.cfg$db$calibration)
-    dbExecute(this.db,idx.cmd)
-    idx.cmd <- 
-      sprintf("CREATE INDEX idx_%s_realization ON %s(realization)",
-              PE.cfg$db$calibration,
-              PE.cfg$db$calibration)
-    dbExecute(this.db,idx.cmd)
-  }
+    
+  # Results tables ------------------------------------------------------------------
   #Setup statistics table
   if(!PE.cfg$db$stats %in% dbListTables(this.db)) {
     tbl.cols <-  
