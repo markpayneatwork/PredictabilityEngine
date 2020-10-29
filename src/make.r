@@ -149,8 +149,11 @@ process.metrics <- function(...){
   })
 }
 
+# Outputs -------------------------------------------------------------------------
+
+
 #'========================================================================
-# The Plan! ####
+# Make a Plan! ####
 #'========================================================================
 #Debugging
 # extract.decadal <- function(...) {script.complete()}
@@ -158,7 +161,6 @@ process.metrics <- function(...){
 # process.stat <- function(...) {script.complete()}
 #calc.realmeans <- function(...) {return(list(...))}
 
-#Make a plan
 dec.plan <- 
   drake_plan(DSrc=target(extract.source.list(srcType="Decadal",
                                              srcName=decadalSrcName),
@@ -194,16 +196,16 @@ end.game <-
                           trigger=trigger(command=FALSE),
                           hpc=FALSE),
              Metrics=target(process.metrics(Stats),
-			    hpc=FALSE),
+                            hpc=FALSE),
              trace=TRUE)
 
 the.plan <- bind_plans(dec.plan,end.game)
 
 
 #'========================================================================
-# Supplementary ####
+# Check it twice ####
 #'========================================================================
-#Check it twice.
+#Visualise
 on.exit({
 print(vis_drake_graph(the.plan,targets_only = TRUE))
 })
@@ -214,12 +216,12 @@ clean_regex <- function(regex) {
 }
 
 #'========================================================================
-# And Go ####
+# Find out, who's been naughty or nice... 
 #'========================================================================
 #Set parallelism
 options(clustermq.scheduler = "multicore")
 
-#Find out, who's been naughty or nice... Paw Patrol - så er det nu!
+#Paw Patrol - så er det nu!
 make(the.plan, 
      parallelism = "clustermq", 
      jobs = n.cores,
