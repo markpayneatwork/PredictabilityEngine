@@ -50,6 +50,10 @@ src.db <- PE.db.connection(pcfg)
 mets.tbl <- tbl(src.db,PE.cfg$db$metrics)
 
 #Create new results db
+res.db.fname <- here(pcfg@scratch.dir,sprintf("%s_results.sqlite",pcfg@project.name))
+if(file.exists(res.db.fname)) {
+  unlink(res.db.fname,force=TRUE)
+}
 PE.db.setup(pcfg,results.only = TRUE)
 res.db <- PE.db.connection(pcfg,results.db = TRUE)
 
@@ -63,7 +67,8 @@ if(include.field.stats) {
 } else {
   stats.tbl <- 
     tbl(src.db,PE.cfg$db$stats) %>%
-    filter(is.na(field))
+    filter(!is.na(value)) %>%
+    dplyr::select(-field)
 }
 dat.out <- 
   stats.tbl %>%
