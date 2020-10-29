@@ -1,0 +1,303 @@
+---
+output:
+  html_document:
+    keep_md: false
+    toc: true
+    toc_float: true
+editor_options: 
+  chunk_output_type: inline
+params:
+  set_title: Statistics and Forecast Skill Visualisations
+---
+
+---
+title: `r params$set_title`
+---
+
+```{r setup, include="FALSE"}
+#'========================================================================
+# Visualise skill metrics
+#'========================================================================
+#
+# by Mark R Payne
+# DTU-Aqua, Kgs. Lyngby, Denmark
+# http://www.staff.dtu.dk/mpay
+#
+# Created Wed May  1 10:48:18 2019
+#
+# Makes a series of generic skill visualisations
+#
+# This work is subject to a Creative Commons "Attribution" "ShareALike" License.
+# You are largely free to do what you like with it, so long as you "attribute"
+# me for my contribution. See the fine print at the end for exact details.
+#
+# To do:
+#
+# Notes:
+#   Make sure when knitting that you have the Knit directory set to "project directory"
+#'========================================================================
+
+#Load packages
+library(tidyverse)
+library(PredEng)
+library(sf)
+library(here)
+#library(scales)
+
+#GGplot config
+theme_set(theme_bw(base_size = 14))
+
+#Configure Knitr
+knitr::opts_chunk$set(
+  echo=FALSE,
+	error = FALSE,
+	message = FALSE,
+	warning = FALSE,
+	include = TRUE,
+	results = "markup",
+	fig.width = 10,
+	fig.height=14/25*10,
+  fig.align="center")
+
+#Powerpoint needs 14 x 25cm figures
+
+#knitr::opts_knit$set(root.dir=getwd())
+#cat(sprintf("title: %s skill visualisation\n",pcfg@project.name))
+
+```
+
+by Mark R Payne  <br>
+DTU-Aqua, Kgs. Lyngby, Denmark  <br>
+http://www.staff.dtu.dk/mpay  <br>
+```{r results="asis"}
+cat(sprintf("Visualisations generated  %s\n",date()))
+```
+
+
+## Configuration
+
+```{r}
+#==========================================================================
+# Configure
+#==========================================================================
+pcfg <- readRDS(here(PE.cfg$path$config))
+show(pcfg)
+
+#'========================================================================
+# Setup ####
+#'========================================================================
+#Import data
+this.db <- PE.db.connection(pcfg)
+stats.tbl <- tbl(this.db,PE.cfg$db$stats)
+mets.tbl <- tbl(this.db,PE.cfg$db$metrics)
+
+#Rescale time axis
+rescale.fn <- function(x,b) {  #Creates axes that change in linear timescale
+  ifelse(x>b[2],
+         rescale(x,from=b[2:3],to=c(1,2)),
+         rescale(x,from=b[1:2],to=c(0,1)))
+}
+
+
+# #Plot misc!
+# x.lbls <- tibble(months=c(seq(0,12,by=3),seq(24,120,by=24)),t=rescale.fn(months)) %>%
+#   mutate(lbl=ifelse(months<=12,sprintf("%g m",months),
+#                     sprintf("%g y",months/12)))
+# x.minor <- tibble(months=c(0:12,seq(24,120,by=12)),t=rescale.fn(months))
+
+
+```
+
+
+
+```{r results="asis"}
+#'========================================================================
+# Field skills ####
+#'========================================================================
+# if(nrow(field.skill.mets)>0) {
+#     cat("## Field statistics\n")
+#   
+#   #For simplicity, we only look at the skill of the ensemble mean
+#   ensmean.field.skill <- field.skill.mets %>%
+#                           filter(src.name==PE.cfg$files$ensmean.name) 
+#   
+#   #Now extract the raster-based skill fields into a format ready for plotting
+#   plt.dat.all <- rowwise(ensmean.field.skill) %>%
+#     group_split() %>%
+#     lapply(function(x) {
+#       rast.df <- rasterToPoints(x$field.skill[[1]])
+#       colnames(rast.df)[3] <- "skill"
+#       cbind(x,rast.df)}) %>%
+#     bind_rows() %>%
+#     as_tibble() %>%
+#     dplyr::select(-src.name,-sp.subdomain,-skill.type,-value,-field.skill) 
+#   
+#   #Now split into plots
+#   plt.dat.stat <- group_by(plt.dat.all) %>% group_split(stat.name)
+#   for(this.stat.dat in plt.dat.stat) {
+#     cat(sprintf("\n\n### %s\n",unique(this.stat.dat$stat.name)))
+# 
+#     #Now split into the individual plots
+#     plt.dat.l <- group_by(this.stat.dat,src.type,skill.metric) %>% group_split()
+#     for(plt.dat in plt.dat.l) {
+#       g <- ggplot(plt.dat,aes(x,y,fill=skill))+
+#         geom_raster()+
+#         facet_wrap(~lead)+
+#         coord_quickmap()+
+#         annotation_map(map_data("world"))+
+#         scale_fill_viridis_c()+
+#         labs(fill=unique(plt.dat$skill.metric),x="",y="")+
+#         ggtitle(unique(plt.dat$src.type))
+#       print(g)
+#       
+#       
+#     }
+#     
+#     
+#   }
+#   
+#     
+#   
+# }
+
+#'========================================================================
+# Stat skills ####
+#'========================================================================
+#Present results by spatial region
+sp.names <-
+  stats.tbl %>%
+  distinct(spName) %>%
+  collect() %>%
+  pull(spName)
+
+for(this.sp in sp.names) {
+  #Show title
+  cat(sprintf("\n\n## %s\n",gsub("_"," ",this.sp)))
+  
+  #Map of the Spatial region
+  #May need to handle global case here as well???
+  sp.obj <- 
+    pcfg@spatial.polygons %>%
+    filter(name==this.sp)
+  assert_that(nrow(sp.obj)==1,msg = "Must be one unique spatial object")
+  g <- ggplot()+
+    geom_sf(data=sp.obj) +
+    annotation_map(map_data("world"),fill="black",colour="grey")
+  print(g)
+  
+  #Now split it down further into Individual statistics and loop
+  stat.names <-
+    stats.tbl %>%
+    filter(spName==this.sp) %>%
+    distinct(statName) %>%
+    collect() %>%
+    pull(statName)
+
+  for(this.stat in stat.names) {
+    # Stats ---------------------------------------------------------------------------
+
+    #Show a subtitle
+    cat(sprintf("\n\n### %s\n",this.stat))
+    
+    #Extract the corresponding stat data observations 
+    stat.obs <- 
+      stats.tbl %>%
+      filter(srcType=="Observations",
+             spName==this.sp,
+             statName==this.stat) %>% 
+      collect() %>%
+      filter(year(date)>=min(pcfg@comp.years)) 
+    
+    #Extract the most recent starts in each model
+    stat.pred <- 
+      stats.tbl %>%
+      filter(srcType %in% c("Decadal","NMME"),
+             spName==this.sp,
+             statName==this.stat,
+             realization %in% c("realmean","ensmean")) %>%
+      collect() %>% #Retrieve all
+      group_by(srcType,srcName) %>%
+      filter(startDate==max(startDate)) %>% #Select the most recent starts
+      mutate(type.name=paste(srcType,srcName,sep=".")) 
+
+    #Make plot
+    stat.plt.dat <- 
+      bind_rows(stat.obs,stat.pred) %>%
+      mutate(date=as.Date(date),
+             timeframe=ifelse(year(date)<min(year(stat.pred$date)),
+                              "Historical","Near-term predictions"))
+
+    g <- 
+      ggplot(stat.plt.dat,aes(x=date,y=value,colour=srcName,group=type.name))+
+      geom_line()+
+      labs(x="Year",y=this.stat)+
+      facet_wrap(~timeframe,nrow=1,scales="free_x")
+    print(g) 
+    
+    # Metrics -------------------------------------------------------------------------
+    metric.names <-
+      mets.tbl %>%
+      filter(spName==this.sp,
+             statName==this.stat) %>%
+      distinct(metric) %>%
+      collect() %>%
+      pull(metric)
+    
+    #Iterate over skill metrics
+    for(this.met in metric.names) {
+      #Get data
+      met.dat <- 
+        mets.tbl %>%
+        filter(spName==this.sp,
+               statName==this.stat,
+               metric==this.met,
+               realization %in% c("realmean","ensmean")) %>% 
+        collect() %>%
+        mutate(type.name=paste(srcType,srcName,sep="."),
+               is.ensmean=realization=="ensmean") 
+
+      #Set y range accordingly
+      if(this.met=="pearson.correlation") {
+        y.rng <- c(0,1)
+      } else {
+        y.rng <- range(pretty(c(0,met.dat$value)))
+      }
+      
+      #Plot
+      g <- ggplot(met.dat,aes(x=leadIdx,y=value,group=type.name))+
+        geom_line(aes(colour=type.name,size=is.ensmean))+
+        facet_wrap(~metric,scales = "free_y")+
+        coord_cartesian(ylim=y.rng)+
+        scale_size_manual(values=c(0.25,1))+
+        guides(size="none")+
+        labs(x="Lead (number of forecasts)",y=this.met,colour="Forecast System")
+      print(g)
+
+    }  #Plot  
+    
+  }
+  
+
+}
+
+```
+
+
+
+
+
+***
+*This work by Mark R Payne is licensed under a  Creative Commons
+Attribution-NonCommercial-ShareAlike 3.0 Unported License. 
+For details, see http://creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US
+Basically, this means that you are free to "share" and "remix" for 
+non-commerical purposes as you see fit, so long as you "attribute" me for my
+contribution. Derivatives can be distributed under the same or 
+similar license.*
+
+*This work comes with ABSOLUTELY NO WARRANTY or support.*
+
+***
+
+
+

@@ -1,5 +1,5 @@
 #'========================================================================
-# H4.Visualise_summary_stats.r
+# C2.Visualise stats and metrics.r
 #'========================================================================
 #
 # by Mark R Payne
@@ -23,7 +23,7 @@
 #'========================================================================
 # Initialise system ####
 #'========================================================================
-cat(sprintf("\n%s\n","Visualise_summary_stats.r"))
+cat(sprintf("\n%s\n","Visualise stats and metrics"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Do house cleaning
@@ -33,12 +33,12 @@ start.time <- proc.time()[3];
 library(tidyverse)
 library(rmarkdown)
 library(PredEng)
+pcfg <- readRDS(PE.cfg$path$config)
 
 #'========================================================================
 # Configure ####
 #'========================================================================
-pcfg <- readRDS(PE.cfg$config.path)
-Rmd.src <- "src/H.Statistics/H5.Visualise_stats_and_skill_metrics.Rmd"
+Rmd.src <- here("src/D.Statistics/C2.Visualise_scalar_skill_metrics.Rmd")
 
 #'========================================================================
 # Setup ####
