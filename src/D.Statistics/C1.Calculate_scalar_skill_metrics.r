@@ -131,9 +131,13 @@ skill.wide <-
             .groups="keep")  
 
 #Now write to database
-skill.wide %>% 
+skill.long <- 
+  skill.wide %>% 
   pivot_longer(-all_of(g.vars),names_to = "metric") %>%
-  ungroup() %>%
+  ungroup() 
+
+
+skill.long %>%
   PE.db.appendTable(pcfg,PE.cfg$db$metrics)
 
 #'========================================================================
