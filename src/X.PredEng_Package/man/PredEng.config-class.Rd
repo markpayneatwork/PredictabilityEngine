@@ -33,6 +33,8 @@ Different extraction modes can be combined in the same list.
 
 \item{\code{CMIP5}}{A list of data source objects to configure extraction from the CMIP5 ensemble.}
 
+\item{\code{obs.only}}{Only process observations. Useful for cases where we don't want to process everything.}
+
 \item{\code{persistence.leads}}{A vector (in months) of lead times at which to generate persistence forcasts}
 
 \item{\code{spatial.polygons}}{A sf data.frame defining the spatial domains over which  to operate}

@@ -5,6 +5,7 @@
 #' @slot Decadal A list of GCM objects defining the decadal forecast systems to be analysed
 #' @slot NMME A list of GCM objects defining the NMME models to be analysed
 #' @slot CMIP5 A list of data source objects to configure extraction from the CMIP5 ensemble. 
+#' @slot obs.only Only process observations. Useful for cases where we don't want to process everything.
 #' @slot persistence.leads A vector (in months) of lead times at which to generate persistence forcasts
 #' @slot spatial.polygons A sf data.frame defining the spatial domains over which  to operate
 #' @slot statistics PredEng.list of statistics to apply over each spatial area
@@ -48,6 +49,7 @@ PredEng.config <-
                       Decadal="PElst",
                       NMME="PElst",
                       CMIP5="PElst",
+                      obs.only="logical",
                       persistence.leads="numeric",
                       spatial.polygons="sf",
                       statistics="PElst",
@@ -63,6 +65,7 @@ PredEng.config <-
                       retain.realizations="logical",
                       average.months="logical"),
            prototype = list(global.ROI=extent(as.numeric(rep(NA,4))),
+                            obs.only=FALSE,
                             persistence.leads=1:120,  #1-10 years
                             retain.realizations=TRUE,
                             vert.range=as.numeric(NA),  #Use surface unless specified

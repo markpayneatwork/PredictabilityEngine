@@ -44,6 +44,8 @@ if(interactive()) {
 }
 log_msg("Running with %i cores...\n",n.cores)
 
+obs.only <- TRUE
+
 #'========================================================================
 # Setup ####
 #'========================================================================
@@ -161,31 +163,10 @@ process.metrics <- function(...){
 # process.stat <- function(...) {script.complete()}
 #calc.realmeans <- function(...) {return(list(...))}
 
-dec.plan <- 
-  drake_plan(DSrc=target(extract.source.list(srcType="Decadal",
-                                             srcName=decadalSrcName),
-                         transform = map(decadalSrcName=!!names(pcfg@Decadal)),
-                         trigger=trigger(command=FALSE,
-                                         change=pcfg@Decadal[[decadalSrcName]])),
-             DExtr=target(extract.decadal(DSrc),
-                          transform=map(DSrc),
-                          dynamic=map(DSrc),
-                          trigger=trigger(command=FALSE)),
-             DRealmeans=target(calc.realmeans(srcType="Decadal",
-                                              srcName=decadalSrcName,
-                                              DExtr),
-                               transform=map(DExtr)),
-             DFrags=target(c(DRealmeans),
-                           transform=combine(DRealmeans)),
-             trace=TRUE)
-vis_drake_graph(dec.plan,targets_only = TRUE)             
-
 end.game <-
   drake_plan(Observations=target(command=extract.observations(),
                                  trigger=trigger(command=FALSE,
                                                  change=pcfg@Observations)),
-             Extractions=target(list(Observations,DFrags),
-                                trigger=trigger(command=FALSE)),
              Calibration=target(calibration.scripts(Extractions),
                                 trigger=trigger(command=FALSE)),
              StatJobs=target(stat.jobs(Calibration),
@@ -199,7 +180,36 @@ end.game <-
                             hpc=FALSE),
              trace=TRUE)
 
-the.plan <- bind_plans(dec.plan,end.game)
+if(!pcfg@obs.only) {
+  dec.plan <- 
+    drake_plan(DSrc=target(extract.source.list(srcType="Decadal",
+                                               srcName=decadalSrcName),
+                           transform = map(decadalSrcName=!!names(pcfg@Decadal)),
+                           trigger=trigger(command=FALSE,
+                                           change=pcfg@Decadal[[decadalSrcName]])),
+               DExtr=target(extract.decadal(DSrc),
+                            transform=map(DSrc),
+                            dynamic=map(DSrc),
+                            trigger=trigger(command=FALSE)),
+               DRealmeans=target(calc.realmeans(srcType="Decadal",
+                                                srcName=decadalSrcName,
+                                                DExtr),
+                                 transform=map(DExtr)),
+               DFrags=target(c(DRealmeans),
+                             transform=combine(DRealmeans)),
+               Extractions=target(list(Observations,DFrags),
+                                  trigger=trigger(command=FALSE)),
+               trace=TRUE)
+  vis_drake_graph(dec.plan,targets_only = TRUE)             
+  the.plan <- bind_plans(dec.plan,end.game)
+} else {
+  
+  obs.extractions <- 
+    drake_plan(Extractions=target(list(Observations),
+                     trigger=trigger(command=FALSE)))
+  
+  the.plan <- bind_plans(obs.extractions,end.game)
+}
 
 
 #'========================================================================

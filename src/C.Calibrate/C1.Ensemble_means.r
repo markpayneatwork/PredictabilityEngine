@@ -83,20 +83,23 @@ assert.day <-
 assert_that(all(assert.day$day==1),msg="Day = 1 condition violated")
 
 #Throw it all at dplyr
-ensmeans <- 
-  realmeans %>%
-  group_by(srcType,calibrationMethod,startDate,date,leadIdx,.drop=TRUE) %>%
-  summarise(data=raster.list.mean(data),
-            n=n(),
-            .groups="keep") %>% #Check for duplicated realization codes
-  ungroup() %>%
-  add_column(srcName="ensmean",.after=1)
+if(!pcfg@obs.only) {
+  ensmeans <- 
+    realmeans %>%
+    group_by(srcType,calibrationMethod,startDate,date,leadIdx,.drop=TRUE) %>%
+    summarise(data=raster.list.mean(data),
+              n=n(),
+              .groups="keep") %>% #Check for duplicated realization codes
+    ungroup() %>%
+    add_column(srcName="ensmean",.after=1)
+  
+  #Write results
+  ensmeans %>%
+    select(-n) %>%
+    mutate(realization="ensmean") %>%
+    PE.db.appendTable(pcfg,tbl.name = PE.cfg$db$calibration)
+}
 
-#Write results
-ensmeans %>%
-  select(-n) %>%
-  mutate(realization="ensmean") %>%
-  PE.db.appendTable(pcfg,tbl.name = PE.cfg$db$calibration)
 
 #'========================================================================
 # Complete ####
