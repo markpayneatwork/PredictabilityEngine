@@ -28,14 +28,14 @@ PE.db.setup <- function(pcfg,results.only=FALSE) {
     if(!PE.cfg$db$extract %in% dbListTables(this.db)) {
       tbl.cols <-  
         c("pKey INTEGER NOT NULL PRIMARY KEY",
-          "srcHash",
-          "srcType",
-          "srcName",
-          "realization",
-          "startDate",
-          "date",
-          "leadIdx",
-          "data") 
+          "srcHash TEXT",
+          "srcType TEXT",
+          "srcName TEXT",
+          "realization TEXT",
+          "startDate TEXT",
+          "date TEXT",
+          "leadIdx INTEGER",
+          "data BLOB") 
       tbl.cmd <- 
         sprintf("CREATE TABLE %s(%s)", 
                 PE.cfg$db$extract,
@@ -51,12 +51,12 @@ PE.db.setup <- function(pcfg,results.only=FALSE) {
     if(!PE.cfg$db$climatology %in% dbListTables(this.db)) {
       tbl.cols <-  
         c("pKey INTEGER NOT NULL PRIMARY KEY",
-          "srcType",
-          "srcName",
-          "leadIdx",
-          "month",
-          "data",
-          "nYears")  #Number of years in the climatology
+          "srcType TEXT",
+          "srcName TEXT",
+          "leadIdx INTEGER",
+          "month INTEGER",
+          "data BLOB",
+          "nYears INTEGER")  #Number of years in the climatology
       tbl.cmd <- 
         sprintf("CREATE TABLE %s(%s)", 
                 PE.cfg$db$climatology,
@@ -67,14 +67,14 @@ PE.db.setup <- function(pcfg,results.only=FALSE) {
     if(!PE.cfg$db$calibration %in% dbListTables(this.db)) {
       tbl.cols <-  
         c("pKey INTEGER NOT NULL PRIMARY KEY",
-          "srcType",
-          "srcName",
-          "calibrationMethod",
-          "realization",
-          "startDate",
-          "date",
-          "leadIdx",
-          "data")  
+          "srcType TEXT",
+          "srcName TEXT",
+          "calibrationMethod TEXT",
+          "realization TEXT",
+          "startDate TEXT",
+          "date TEXT",
+          "leadIdx INTEGER",
+          "data BLOB")  
       tbl.cmd <- 
         sprintf("CREATE TABLE %s(%s)", 
                 PE.cfg$db$calibration,
@@ -103,17 +103,17 @@ PE.db.setup <- function(pcfg,results.only=FALSE) {
   if(!PE.cfg$db$stats %in% dbListTables(this.db)) {
     tbl.cols <-  
       c("pKey INTEGER NOT NULL PRIMARY KEY",
-        "srcType",
-        "srcName",
-        "calibrationMethod",
-        "realization",
-        "startDate",
-        "date",
-        "leadIdx",
-        "spName",
-        "statName",
-        "field",
-        "value")  
+        "srcType TEXT",
+        "srcName TEXT",
+        "calibrationMethod TEXT",
+        "realization TEXT",
+        "startDate TEXT",
+        "date TEXT",
+        "leadIdx TEXT",
+        "spName TEXT",
+        "statName TEXT",
+        "field BLOB",
+        "value REAL")  
     tbl.cmd <- 
       sprintf("CREATE TABLE %s(%s)", 
               PE.cfg$db$stats,
