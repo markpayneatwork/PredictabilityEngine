@@ -176,8 +176,6 @@ end.game <-
                           dynamic=map(statjob=StatJobs),
                           trigger=trigger(command=FALSE),
                           hpc=FALSE),
-             Metrics=target(process.metrics(Stats),
-                            hpc=FALSE),
              trace=TRUE)
 
 if(!pcfg@obs.only) {
@@ -199,6 +197,8 @@ if(!pcfg@obs.only) {
                              transform=combine(DRealmeans)),
                Extractions=target(list(Observations,DFrags),
                                   trigger=trigger(command=FALSE)),
+               Metrics=target(process.metrics(Stats),
+                              hpc=FALSE),
                trace=TRUE)
   vis_drake_graph(dec.plan,targets_only = TRUE)             
   the.plan <- bind_plans(dec.plan,end.game)
