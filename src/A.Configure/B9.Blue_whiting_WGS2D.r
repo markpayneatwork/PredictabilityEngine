@@ -82,17 +82,7 @@ stat.l[["MeanSal"]]  <- spatial.mean(name="Mean-salinity",
                                      realizations=c(1:3),
                                      calibration="Mean adjusted")
 
-stat.l[["MeanSal"]]  <- spatial.mean(name="Mean-salinity",
-                                     desc="Mean salinity",
-                                     realizations=c(1:3),
-                                     calibration="anomaly")
-
-#Full salinity field and anomaly
-stat.l[["SalAnomField"]] <- pass.through(name="SalAnomaly",
-                                         desc="Salinity anomaly",
-                                         realizations=1:3,
-                                         calibration="anomaly")
-
+#Full salinity field 
 stat.l[["SalField"]] <- pass.through(name="SalField",
                                          desc="Salinity field",
                                          realizations=1:3,
@@ -104,106 +94,69 @@ require(mgcv)
 #Note that we need to account for the extraction buffer here, to get a 
 #perfect match with the rest of the data
 log10bath <- raster("resources/BlueWhiting/ETOPO1_Bed_c_gmt4.grd") %>%
-              crop(extent(pcfg@global.ROI)) %>%
-              raster::aggregate(fact=pcfg@global.res/res(.),fun=mean)
+  crop(extent(pcfg@global.ROI)) %>%
+  raster::aggregate(fact=pcfg@global.res/res(.),fun=mean)
 log10bath <- log10(-log10bath)
-
-#if(max(abs(extent(log10bath)[1:4]-pcfg@global.ROI[1:4]))>1e-9) stop("Mismatch in bathymetric dimensions")
 if(!identical(res(log10bath)[1],pcfg@global.res)) stop("Mismatch in bathymetric resolution")
-
-#Setup latitude raster
-lat.rast <- log10bath
+lat.rast <- log10bath    #Setup latitude raster
 lat.rast[] <- yFromCell(lat.rast,1:ncell(log10bath))
 
-#Setup prediction grid
-pred.l <- list(latitude=lat.rast,
-                       log10bath=log10bath)
-pred.consts <- data.frame(doy=seq(30,180,by=3),
-                          sol.el=0)
-
 #Setup resource list
-GAM.sdm.resources <- list(model=readRDS("resources/BlueWhiting/BW_GAM_SDM.rds"),
-                          apply.threshold=TRUE,
-                          pred.l=pred.l,
-                          pred.consts=pred.consts)
+GAM.sdm.resources <- 
+  list(model=readRDS("resources/BlueWhiting/BW_GAM_SDM.rds"),
+       pred.l=list(latitude=lat.rast,
+                   log10bath=log10bath))
 
 #Setup prediction function
 GAM.sdm.fn <- function(dat,resources) {
   require(mgcv)
-  #Crop the prediction data down to the same scale as the values
-  res.l <- vector("list",nlayers(dat))
-  for(l in seq(nlayers(dat))) {
-    this.layer <- dat[[l]]
-    pred.dat <- brick(c(resources$pred.l,EN4.salinity=this.layer))
-    #Loop over rows in prediction constants
-    p.l <- vector("list",nrow(resources$pred.consts))
-    for(i in seq(nrow(resources$pred.consts))) {
-      p.l[[i]] <- raster::predict(object=pred.dat,
-                           model=resources$model,
-                           fun=predict.gam,
-                           const=resources$pred.consts[i,], 
-                           type="response")
-      
-    }
-    #Compress into a brick
-    p <- brick(p.l)
-    if(resources$apply.threshold) {
-      res.l[[l]] <- sum(p > resources$model$threshold)
-    } else {
-      #stop("Dunno what's going on here")
-      res.l[[l]] <- p }
+  #Setup
+  pred.consts <-
+    tibble(doy=seq(30,180,by=3),
+           sol.el=0)
+  assert_that(nlayers(dat)==1,msg="Inputs with multiple layers not supported")
+  pred.dat <- brick(c(resources$pred.l,EN4.salinity=dat))
+  
+  #Loop over rows in prediction constants
+  p.l <- vector("list",nrow(pred.consts))
+  for(i in seq(nrow(pred.consts))) {
+    p.l[[i]] <- raster::predict(object=pred.dat,
+                                model=resources$model,
+                                fun=predict.gam,
+                                const=pred.consts[i,], 
+                                type="response")
   }
-  rtn <- brick(res.l)
-  return(rtn)
+  pred.b <- brick(p.l)#Compress into a brick
+  
+  # Store results
+  field.l <- list()  #Results storage
+  #Maximum probability
+  field.l$maximumProbability <- max(pred.b)
+  #15 April
+  field.l$april15 <- pred.b[[which(pred.consts$doy==105)]]
+  #Suitable habitat at some point
+  field.l$suitableHabitat <- field.l$maximumProbability > resources$model$threshold
+  #Area of suitable habitat
+  pxl.area <- area(pred.b)
+  scalar.l <- c(areaSuitableHabitat=cellStats(pxl.area* field.l$suitableHabitat,sum,na.rm=TRUE))
+  
+  #Return results
+  this.rtn <- 
+    bind_rows(enframe(field.l,"resultName","field"),
+              enframe(scalar.l,"resultName","value"))
+  
+  return(this.rtn)
 }
 
 #Setup to look across all days of year
-stat.l[["SDM_range"]] <- habitat(name="SDMrange",
-                           desc="Habitat is suitable on at least one day",
-                           fn=GAM.sdm.fn,
-                           resources=GAM.sdm.resources,
-                           skill.metrics = "correlation",
-                           calibration="Mean adjusted",
-                           realizations = 1:3)
-
-#Just focus on 15th April (DOY=105) => Spawning in mid March
-GAM.sdm.resources$pred.consts <- data.frame(doy=105,
-                                            sol.el=0)
-stat.l[["SDM15apr"]] <- habitat(name="SDM15Apr",
-                               desc="Habitat is suitable on 15 Apr",
-                               fn=GAM.sdm.fn,
-                               resources=GAM.sdm.resources,
-                               skill.metrics = "correlation",
-                               calibration="Mean adjusted",
-                               realizations=1:3)
-
-# GAM.sdm.resources$apply.threshold <- FALSE
-# stat.l[["SDM15apr_nothreshold"]] <- habitat(name="SDM15AprNoThresh",
-#                                 desc="Habitat is suitable on 15 Apr, without a threshold being applied",
-#                                 fn=GAM.sdm.fn,
-#                                 resources=GAM.sdm.resources,
-#                                 skill.metrics = "correlation",
-#                                 calibration="Mean adjusted",
-#                                 realizations=1:3)
-
-# stat.l[["SDM-PA-reals"]] <- habitat(name="SDM-PA-reals",
-#                        desc="SDM based on individual realisations, PA",
-#                        fn=GAM.sdm.fn,
-#                        resources=GAM.sdm.resources,
-#                        skill.metrics = "correlation",
-#                        use.full.field = TRUE,
-#                        use.realmeans = FALSE)
-
-#Add a stat that returns the probability as well
-# GAM.sdm.resources$apply.threshold <- FALSE
-# 
-# stat.l[["SDM-Prob-realmean"]] <- habitat(name="SDM-prob-realmean",
-#                                      desc="SDM based on realisation means predicting probability",
-#                                      fn=GAM.sdm.fn,
-#                                      resources=GAM.sdm.resources,
-#                                      skill.metrics = "correlation",
-#                                      use.full.field = TRUE,
-#                                      use.realmeans=TRUE)
+stat.l$SDM <- 
+  custom.stat(name="SDM",
+              desc="Apply Miesner and Payne 2018 habitat model",
+              fn=GAM.sdm.fn,
+              resources=GAM.sdm.resources,
+              skill.metrics = "correlation",
+              calibration="Mean adjusted",
+              realizations = 1:3)
 
 #Merge it all in
 pcfg@statistics <- stat.l

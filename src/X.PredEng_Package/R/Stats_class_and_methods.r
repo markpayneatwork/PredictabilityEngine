@@ -118,6 +118,10 @@ setMethod("eval.stat",signature(st="threshold",dat="Raster"),
             } else {
               pass.threshold <- dat < st@threshold
             }
+            res.field <- 
+              tibble(statName=sprintf("%s.field",st@name),
+                     field=purrr::map(1:nlayers(pass.threshold),
+                                      function(i) pass.threshold[[i]]))
             
             #Now calculate the area
             pxl.area <- area(dat)
@@ -128,12 +132,11 @@ setMethod("eval.stat",signature(st="threshold",dat="Raster"),
             #Filter areas where it doesn't work.
             mean.temp <- cellStats(dat,mean)
             area.filt <- ifelse(is.na(mean.temp),NA,area.satistfying.thresh)
+            res.value <- tibble(statName=sprintf("%s.area",st@name),
+                                 value=area.filt)
             
             #Return
-            thresh.layers <- purrr::map(1:nlayers(pass.threshold),function(i) pass.threshold[[i]])
-            return(tibble(field=if(st@retain.field) {thresh.layers} else {NA},
-                          value=area.filt)) 
-            
+            return(bind_rows(res.field,res.value)) 
           })
 
 
@@ -165,7 +168,8 @@ setMethod("eval.stat",signature(st="spatial.mean",dat="Raster"),
             na.by.area   <- (!is.na(dat))*pxl.area
             wt.temp <- cellStats(temp.by.area,sum)/cellStats(na.by.area,sum)
             
-            return(tibble(field=NA,
+            return(tibble(statName=st@name,
+                          field=NA,
                           value=wt.temp))
           })
 
@@ -191,7 +195,9 @@ pass.through <-
 #' @export
 setMethod("eval.stat",signature(st="pass.through",dat="Raster"),
           function(st,dat) {
-            return(tibble(field=list(dat)))
+            return(tibble(statName=st@name,
+                          value=NA,
+                          field=list(dat)))
           })
 
 setMethod("returns.field",signature(st="pass.through"),
@@ -253,19 +259,20 @@ setMethod("returns.field",signature(st="isoline.lat"),
           })
 
 
-# Habitat Model ========================================================================
+# Custom Stat ========================================================================
 
-#' Habitat model 
+#' Custom Stat 
 #'
-#' Applies a habitat suitability model to calculate the habitat suitability on a pixel-by-pixel
-#' basis and then integrates it
-#' @name habitat
-#' @export habitat
-habitat <- 
-  setClass("habitat",
+#' Applies a custom function on a pixel-by-pixel basis, potentially integrating it to a scalar
+#' response variable. The responsibility for the implementation of this model lies with the user - the only
+#' check made here is that the function returns a tibble with columns "resultName", "field" and "value"
+#' @name custom.stat
+#' @export custom.stat
+custom.stat<- 
+  setClass("custom.stat",
            slots=list(fn="function",
                       resources="list"),
-           prototype=list(name="habitat"),
+           prototype=list(name="custom.stat"),
            contains="stat",
            validity = function(object) {
              err.msg <- list(
@@ -275,24 +282,20 @@ habitat <-
              if(all(!err.idxs)) return(TRUE) else unlist(err.msg[err.idxs])
            })
 
-setMethod("eval.stat",signature(st="habitat",dat="Raster"),
+setMethod("eval.stat",signature(st="custom.stat",dat="Raster"),
           function(st,dat){
             
-            #Apply the habitat model
-            hab.r <- st@fn(dat,st@resources)
+            #Apply the custom model
+            this.res <- st@fn(dat,st@resources)
             
-            #Get pixel area
-            pxl.area <- area(hab.r)
-            
-            #Calculate total carrying capacity over ROI
-            pxl.cap <- pxl.area*hab.r
-            car.cap <- cellStats(pxl.cap,sum,na.rm=TRUE)
-            
-            #Break the field into indvidual layers
-            hab.layers <- purrr::map(1:nlayers(hab.r),function(i) hab.r[[i]])
+            #Check results are valid
+            assert_that(is.data.frame(this.res),msg="Result from custom function must be a data.frame or tibble")
+            ok.colnames <- c("resultName","field","value")
+            assert_that(identical(names(this.res),ok.colnames),
+                        msg=sprintf("Results from custom function must have column names `%s`",
+                                    paste(ok.colnames,collapse=", ")))
             
             #Return
-            return(tibble(field=if(st@retain.field) {hab.layers} else {NA},
-                          value=car.cap)) })
+            return(this.res)})
 
 
