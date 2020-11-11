@@ -42,7 +42,7 @@ pcfg <- readRDS(PE.cfg$path$config)
 #Take input arguments, if any
 if(interactive()) {
   set.log_msg.silent()
-  stat.id <- names(pcfg@statistics)[1]
+  stat.id <- names(pcfg@statistics)[3]
   sp.id <- c(PE.cfg$misc$globalROI,pcfg@spatial.polygons$name)[2]
   n.cores <- 4
 } else {
@@ -159,7 +159,7 @@ landmask <- raster(PE.scratch.path(pcfg,"landmask"))
 combined.mask <- mask(landmask,as(this.sp,"Spatial"),updatevalue=1)
 
 # Stat calculation function -------------------------------------------------------
-calc.stat.fn <- function(this.pKey) {
+calc.stat.fn <- function(this.pKey,debug=FALSE) {
   #Import data
   this.dat <- 
     sprintf("SELECT * FROM %s WHERE `pKey` = %i",
@@ -172,6 +172,8 @@ calc.stat.fn <- function(this.pKey) {
   
   #Apply the masks to data
   masked.dat <- mask(this.dat$data[[1]],combined.mask,maskvalue=1)
+  
+  if(debug) return(masked.dat)
   
   #And we're ready. Lets calculate some statistics
   this.res <- eval.stat(st=this.stat,dat=masked.dat) 
@@ -186,6 +188,12 @@ calc.stat.fn <- function(this.pKey) {
   
   return(out.dat)
 }
+
+#Debugging
+# this.pKey <- pKey.todos[1]
+# dat <- calc.stat.fn(this.pKey,debug=TRUE)
+# resources <- this.stat@resources
+# stop()
 
 # Parallelised extraction loop ----------------------------------------------------
 stat.l <- pblapply(pKey.todos,
