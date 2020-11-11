@@ -111,8 +111,8 @@ PE.db.setup <- function(pcfg,results.only=FALSE) {
         "date TEXT",
         "leadIdx TEXT",
         "spName TEXT",
-        "resultName TEXT",
         "statName TEXT",
+        "resultName TEXT",
         "field BLOB",
         "value REAL")  
     tbl.cmd <- 

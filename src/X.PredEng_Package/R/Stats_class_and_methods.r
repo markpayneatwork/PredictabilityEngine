@@ -119,7 +119,7 @@ setMethod("eval.stat",signature(st="threshold",dat="Raster"),
               pass.threshold <- dat < st@threshold
             }
             res.field <- 
-              tibble(statName=sprintf("%s.field",st@name),
+              tibble(resultName="field",
                      field=purrr::map(1:nlayers(pass.threshold),
                                       function(i) pass.threshold[[i]]))
             
@@ -132,7 +132,7 @@ setMethod("eval.stat",signature(st="threshold",dat="Raster"),
             #Filter areas where it doesn't work.
             mean.temp <- cellStats(dat,mean)
             area.filt <- ifelse(is.na(mean.temp),NA,area.satistfying.thresh)
-            res.value <- tibble(statName=sprintf("%s.area",st@name),
+            res.value <- tibble(resultName="area",
                                  value=area.filt)
             
             #Return
@@ -168,7 +168,7 @@ setMethod("eval.stat",signature(st="spatial.mean",dat="Raster"),
             na.by.area   <- (!is.na(dat))*pxl.area
             wt.temp <- cellStats(temp.by.area,sum)/cellStats(na.by.area,sum)
             
-            return(tibble(statName=st@name,
+            return(tibble(resultName="average",
                           field=NA,
                           value=wt.temp))
           })
@@ -195,7 +195,7 @@ pass.through <-
 #' @export
 setMethod("eval.stat",signature(st="pass.through",dat="Raster"),
           function(st,dat) {
-            return(tibble(statName=st@name,
+            return(tibble(resultName="field",
                           value=NA,
                           field=list(dat)))
           })
@@ -289,7 +289,8 @@ setMethod("eval.stat",signature(st="custom.stat",dat="Raster"),
             this.res <- st@fn(dat,st@resources)
             
             #Check results are valid
-            assert_that(is.data.frame(this.res),msg="Result from custom function must be a data.frame or tibble")
+            assert_that(is.data.frame(this.res),
+                        msg="Result from custom function must be a data.frame or tibble")
             ok.colnames <- c("resultName","field","value")
             assert_that(identical(names(this.res),ok.colnames),
                         msg=sprintf("Results from custom function must have column names `%s`",
