@@ -55,12 +55,13 @@ define_dir(pcfg@scratch.dir)
 #'========================================================================
 #Set global variables
 pcfg@global.ROI <- extent(-25,0,40,65)
-pcfg@global.res  <- 0.5
+pcfg@global.res  <- 0.25
 pcfg@vert.range <- c(250,600)
 
 #Polygons
 sp.objs <- list()
-sp.objs$"Spawning area" <- sfpolygon.from.extent(extent(-20,-5,50,60))
+#sp.objs$"Spawning area" <- sfpolygon.from.extent(extent(-20,-5,50,60))
+sp.objs$"Spawning area" <- sfpolygon.from.extent(pcfg@global.ROI)
 pcfg@spatial.polygons <- 
   sp.objs %>% enframe(value="geometry") %>% st_sf()
 
