@@ -45,6 +45,7 @@ if(interactive()) {
 log_msg("Running with %i cores...\n",n.cores)
 
 obs.only <- TRUE
+show.onscreen <- interactive()
 
 #'========================================================================
 # Setup ####
@@ -70,7 +71,8 @@ extract.observations <- function(...) {
                          stop("Cannot find observation script"))
     callr::rscript(here("src/B.Extract/",obs.script),
                    stdout=log.file("B.Observations.%s",pcfg@Observations@name),
-                   stderr=log.file("B.Observations.%s",pcfg@Observations@name))
+                   stderr=log.file("B.Observations.%s",pcfg@Observations@name),
+                   show=show.onscreen)
     script.complete()
   })
 }
@@ -98,7 +100,8 @@ calibration.scripts <- function(...) {
     for(scp in calib.scripts) {
       callr::rscript(scp,
                      stdout=log.file("C.%s",basename(scp)),
-                     stderr=log.file("C.%s",basename(scp)))
+                     stderr=log.file("C.%s",basename(scp)),
+                     show=show.onscreen)
     }
     script.complete()
   })
@@ -137,8 +140,10 @@ process.stat <- function(this) {
     callr::rscript(here("src/D.Statistics/B1.Calculate_stats.r"),
                    cmdargs=c(this$sp,this$stat,n.cores),
                    stdout=log.file("D.Stats.%s.%s",this$sp,this$stat),
-                   stderr=log.file("D.Stats.%s.%s",this$sp,this$stat))
-    return(this)
+                   stderr=log.file("D.Stats.%s.%s",this$sp,this$stat),
+                   show=show.onscreen)
+
+        return(this)
   })
 }
 
@@ -146,7 +151,8 @@ process.metrics <- function(...){
   ignore({
     callr::rscript(here("src/D.Statistics/C1.Calculate_scalar_skill_metrics.r"),
                    stdout=log.file("D.C1.metrics"),
-                   stderr=log.file("D.C1.metrics"))
+                   stderr=log.file("D.C1.metrics"),
+                   show=show.onscreen)
     script.complete()
   })
 }
