@@ -111,8 +111,9 @@ GAM.sdm.resources <-
 GAM.sdm.fn <- function(dat,resources) {
   require(mgcv)
   #Setup
+  grid.dt <- 3
   pred.consts <-
-    tibble(doy=seq(30,180,by=3),
+    tibble(doy=seq(30,180,by=grid.dt),
            sol.el=0)
   assert_that(nlayers(dat)==1,msg="Inputs with multiple layers not supported")
   pred.dat <- brick(c(resources$pred.l,EN4.salinity=dat))
@@ -130,16 +131,28 @@ GAM.sdm.fn <- function(dat,resources) {
   
   # Store results
   field.l <- list()  #Results storage
+  scalar.l <- vector()
   #Maximum probability
   field.l$maximumProbability <- max(pred.b)
   #15 April
   field.l$april15 <- pred.b[[which(pred.consts$doy==105)]]
   #Suitable habitat at some point
   field.l$suitableHabitat <- field.l$maximumProbability > resources$model$threshold
-  #Area of suitable habitat
+  #Days of suitable habitat
+  field.l$daysSuitableHabitat <- sum(pred.b > resources$model$threshold) * grid.dt
+  #Scalar values
   pxl.area <- area(pred.b)
-  scalar.l <- c(areaSuitableHabitat=cellStats(pxl.area* field.l$suitableHabitat,sum,na.rm=TRUE))
-  
+  scalar.l["areaSuitableHabitat"] <- cellStats(pxl.area* field.l$suitableHabitat,sum,na.rm=TRUE)
+  #Westerward extent we base on the meridonal sums
+  west.focus <- crop(field.l$suitableHabitat,extent(-25,0,54,58))
+  west.ext <- 
+    rasterToPoints(west.focus) %>%
+    as_tibble() %>%
+    filter(layer==1) %>%
+    group_by(y) %>%
+    summarise(min.x=min(x)) 
+  scalar.l["westwardExtent"] <- mean(west.ext$min.x,na.rm=TRUE)
+
   #Return results
   this.rtn <- 
     bind_rows(enframe(field.l,"resultName","field"),
@@ -160,7 +173,6 @@ stat.l$SDM <-
 
 #Merge it all in
 pcfg@statistics <- stat.l
-
 
 #'========================================================================
 # Output ####
