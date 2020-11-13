@@ -57,8 +57,7 @@ if(!this.datasrc@name=="EN4") stop("Not configured to use EN4 data")
 #/*======================================================================*/
 #'## Extract EN4 meta data into fragments
 #/*======================================================================*/
-#Remove existing EN4 data
-PE.db.delete.by.datasource(pcfg,PE.cfg$db$calibration,this.datasrc)
+PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,this.datasrc)
 
 log_msg("Extracting fragments...\n")
 
@@ -66,6 +65,8 @@ log_msg("Extracting fragments...\n")
 pb <- PE.progress(this.datasrc@sources)
 
 for(f in this.datasrc@sources) {
+  src.hash <- tools::md5sum(f)
+  
   f.tmpstem <- tempfile()
   #For each individual file, strip out as much extra info as possible
   #by selecting the field of interest, region of interest and the layers of interest
@@ -83,7 +84,7 @@ for(f in this.datasrc@sources) {
                     f,
                     f.sellev)
   
-  #If we are dealing with temperature, need to conver½t from K to C
+  #If we are dealing with temperature, need to convert from K to C
   if(this.datasrc@var=="temperature") {
     f.next <- paste0(f.sellev,"addC")
     levmean.cmd <- cdo("addc,-273.15",
@@ -112,19 +113,16 @@ for(f in this.datasrc@sources) {
   dat.b@crs <- PE.cfg$misc$crs
   
   #Create metadata
-  frag.data <- tibble(srcName=this.datasrc@name,
+  frag.data <- tibble(srcHash=src.hash,
+                      srcName=this.datasrc@name,
                       srcType=this.datasrc@type,
-                      realization=NA,
-                      startDate=NA,
                       date=this.datasrc@date.fn(f.remap),
-                      leadIdx=NA,
                       data=as.list(dat.b))
   
   #Write to database
   frag.data %>%
-    mutate(startDate=as.character(startDate),
-           date=as.character(date)) %>%
-    PE.db.appendTable(pcfg,PE.cfg$db$calibration)
+    mutate(date=as.character(date)) %>%
+    PE.db.appendTable(pcfg,PE.cfg$db$extract)
   
   #Tidy up
   tmp.fnames <- dir(dirname(f.tmpstem),pattern=basename(f.tmpstem),full.names = TRUE)

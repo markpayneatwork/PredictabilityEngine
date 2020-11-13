@@ -49,7 +49,6 @@ set.log_msg.silent()
 #Setup databases
 this.db <- PE.db.connection(pcfg)
 extr.tbl <- tbl(this.db,PE.cfg$db$extract)
-calib.tbl <- tbl(this.db,PE.cfg$db$calibration)
 
 #Reset the resutls table by deleting and reestablishing it
 dbRemoveTable(this.db,PE.cfg$db$climatology)
@@ -62,39 +61,34 @@ PE.db.setup(pcfg)
 # Note that we do this across the realisation means. This is deliberate, as 
 # it means that we can handle situations where the number of realizations
 # changes over time e.g. as in NMME.
-mdl.extr.dat <-
+# Note that we avoid loading everything into memory at once
+extr.these.pKeys<-
   extr.tbl %>%
-  filter(realization == "realmean") %>%
-  select(-pKey,-srcHash) %>%
-  collect() 
-
-obs.dat <-
-  calib.tbl %>% #Note that the observations are already in the calibration table
-  filter(srcType =="Observations") %>%
-  select(-pKey,-calibrationMethod) %>%
-  collect()
-dbDisconnect(this.db)
-
-#Combine
-clim.frag.dat <-
-  bind_rows(mdl.extr.dat,
-            obs.dat) %>%
+  filter(realization == "realmean" | srcType == "Observations") %>%
+  select(pKey,date) %>%
+  collect() %>%
   mutate(date=ymd(date),
-         year=year(date),
-         month=month(date))%>%
+         year=year(date)) %>%
   filter(year %in% pcfg@clim.years) %>%
-  PE.db.unserialize()
+  pull(pKey)
 
-#Prepare to loop!
-clim.frag.dat <-
-  clim.frag.dat %>%
+extr.dat <-
+  extr.tbl %>%
+  filter(pKey %in% extr.these.pKeys) %>%
+  select(-srcHash) %>%
+  collect() %>%
+  mutate(dat=ymd(date),
+         month=month(date)) %>%
+  PE.db.unserialize() %>%
   group_by(srcType,srcName,leadIdx,month,.drop=TRUE)
+dbDisconnect(this.db)
 
 #Calculate climatologies in a summarisation loop
 clim.dat <-
-  clim.frag.dat %>%
+  extr.dat %>%
   summarise(data=raster.list.mean(data),
-            nYears=n())
+            nYears=n(),
+            .groups="keep")
 
 #Write results
 PE.db.appendTable(clim.dat,pcfg,PE.cfg$db$climatology)

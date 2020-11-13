@@ -54,7 +54,11 @@ analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
 # Setup ####
 #'========================================================================
 #Setup database
-PE.db.delete.by.datasource(pcfg,PE.cfg$db$calibration,this.datasrc)
+PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,this.datasrc)
+
+#Calculate checksum
+log_msg("Calculating checksum...\n")
+src.hash <- tools::md5sum(this.datasrc@sources)
 
 #/*======================================================================*/
 #'## Extract HadISST data
@@ -72,7 +76,7 @@ PE.db.delete.by.datasource(pcfg,PE.cfg$db$calibration,this.datasrc)
 #                              in.fname,out.fname))
 
 #Remap onto the analysis grid
-log_msg("Remapping...")
+log_msg("Remapping...\n")
 regrid.fname <- tempfile(fileext=".nc")
 remap.cmd <- cdo("-f nc", csl("remapbil", analysis.grid.fname),
                   this.datasrc@sources,regrid.fname)
@@ -102,7 +106,7 @@ if(pcfg@average.months) {
 #'========================================================================
 # Import into fragments ####
 #'========================================================================
-log_msg("Fragmenting...")
+log_msg("Fragmenting...\n")
 
 #Import data into raster-land
 dat.b <- readAll(brick(regrid.fname))
@@ -116,7 +120,8 @@ dat.b[dat.b < -100] <- NA
 dat.b@crs <- PE.cfg$misc$crs
 
 #Create metadata
-frag.dat <- tibble(srcName=this.datasrc@name,
+frag.dat <- tibble(srcHash=src.hash,
+                   srcName=this.datasrc@name,
                    srcType=this.datasrc@type,
                    realization=NA,
                    startDate=NA,
@@ -127,7 +132,7 @@ frag.dat <- tibble(srcName=this.datasrc@name,
 #Write to database
 frag.dat %>%
   mutate(date=as.character(date)) %>%
-  PE.db.appendTable(pcfg,PE.cfg$db$calibration)
+  PE.db.appendTable(pcfg,PE.cfg$db$extract)
 
 #Remove the temporary files to tidy up
 del.err <- unlink(regrid.fname)

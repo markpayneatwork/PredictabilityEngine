@@ -52,9 +52,8 @@ if(interactive()) {
 log_msg("Import data..\n")
 #Setup databases
 this.db <- PE.db.connection(pcfg)
-frag.tbl <- tbl(this.db,PE.cfg$db$extract)
+extr.tbl <- tbl(this.db,PE.cfg$db$extract)
 clim.tbl <- tbl(this.db,PE.cfg$db$climatology)
-
 
 #Clear all previous analyses
 del.this <-
@@ -65,34 +64,41 @@ del.this <-
   pull(pKey) 
 PE.db.delete.by.pKey(pcfg,tbl.name=PE.cfg$db$calibration,del.this)
 
-#Import observational climatology data
-obs.clim.dat <-
+#Import observational climatology data for the month in question
+#Note that the extraction process has already ensured for all of the models
+#that the only thing in the extraction is the month of interest. However, for
+#the observations, we have all months present. However, in this case we want to
+#adjust the anomaly to the climatological observed value in the MOI. We therefore only
+#need one value here.
+#TODO: When implementing multiple MOIs, would extract relevant MOIs and average, I guess
+obs.clim <-
   clim.tbl %>%
-  filter(srcType=="Observations") %>%
+  filter(srcType=="Observations",
+         month %in% !!pcfg@MOI) %>%
   collect() %>% 
-  PE.db.unserialize() %>% 
-  select(month,data) %>%
-  rename(data.obsClim=data)
+  PE.db.unserialize() %>%
+  pull(data) %>%
+  brick() %>%
+  mean()
 
 #Import model climatology data
 mdl.clim.dat <-
   clim.tbl %>%
-  filter(srcType!="Observations") %>%
+  #filter(srcType!="Observations") %>%
   collect() %>% 
   PE.db.unserialize() %>% 
-  select(-nYears) %>%
+  select(srcType,srcName,leadIdx,month,data) %>%
   rename(data.mdlClim=data)
 
-#Import model data 
-mdl.dat <-
-  frag.tbl %>%
-  filter(srcType != "Observations") %>%
+#TODO:Work through extraction table systematically based on the pKeys that are present
+extr.dat <-
+  extr.tbl %>%
   collect() %>%
   PE.db.unserialize() %>%
   #Calculate date information
   mutate(date=ymd(date),
          month=month(date)) %>%
-  rename(data.mdl=data)
+  rename(data.extr=data)
 
 #Finished import
 dbDisconnect(this.db)
@@ -102,20 +108,17 @@ dbDisconnect(this.db)
 #'========================================================================
 log_msg("Merging...\n")
 all.dat <- 
-  mdl.dat %>%
+  extr.dat %>%
   #Join in model climatological data
   left_join(y=mdl.clim.dat,
-            by=c("srcName","srcType","month","leadIdx")) %>%
-  #Join in observational climatology 
-  left_join(y=obs.clim.dat,
-            by=c("month"))
+            by=c("srcName","srcType","month","leadIdx")) 
 
 log_msg("Recalibration...\n")
 calib.dat <-
   all.dat %>%
   #Calculate the anomaly and make the correction
-  mutate(data.anom=map2(data.mdl,data.mdlClim,~ .x - .y),
-         data.calib=map2(data.anom,data.obsClim,~ .x + .y))
+  mutate(data.anom=map2(data.extr,data.mdlClim,~ .x - .y),
+         data.calib=map(data.anom,~ .x + obs.clim))
 
 #'========================================================================
 # Output ####

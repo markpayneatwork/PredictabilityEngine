@@ -42,7 +42,7 @@ pcfg <- readRDS(PE.cfg$path$config)
 #Take input arguments, if any
 if(interactive()) {
   set.log_msg.silent()
-  stat.id <- names(pcfg@statistics)[3]
+  stat.id <- names(pcfg@statistics)[1]
   sp.id <- c(PE.cfg$misc$globalROI,pcfg@spatial.polygons$name)[2]
   n.cores <- 4
 } else {
@@ -70,24 +70,24 @@ dmp <- assert_that(all(sp.id %in% c(PE.cfg$misc$globalROI,pcfg@spatial.polygons$
 this.stat <- pcfg@statistics[[stat.id]]
 this.sp <- 
   if(sp.id == PE.cfg$misc$globalROI) {
+    assert_that(this.stat@use.globalROI,msg="Function requested globalROI, but stat doesn't use one.")
     st_sf(geometry=st_sfc(sfpolygon.from.extent(pcfg@global.ROI)),
           name=PE.cfg$misc$globalROI,
           crs=crs(pcfg@spatial.polygons))
   } else {
+    assert_that(!this.stat@use.globalROI,msg="Function didn't request globalROI, but stat wants one.")
     pcfg@spatial.polygons %>% 
       filter(name==sp.id)
   }
-dmp <- assert_that(nrow(this.sp)==1,msg="Failed to select only one spatial polygon")
+assert_that(nrow(this.sp)==1,msg="Failed to select only one spatial polygon")
 
 #TODO:
 # Parallelise, reduce write frequency
 
-
 #Extract elements based on configuration
-log_msg("Calib   : %s\nReal    : %s\n\n",
+log_msg("Calib   : %s\nReals   : %s\n\n",
         paste0(this.stat@calibration),
         paste0(this.stat@realizations,collapse=", "))
-
 
 #Delete existing results 
 log_msg("Getting list of previous ids to clear...")
@@ -98,45 +98,41 @@ existing.stats.sel <-
           sp.id)
 this.query.time <- 
   system.time({
-    del.these <- 
+    del.these.pKeys <- 
       PE.db.getQuery(pcfg,existing.stats.sel) %>%
       pull()
   })
-log_msg("Complete in %0.3fs. Deleting...\n",this.query.time[3])
+log_msg("Complete in %0.3fs. \nDeleting...",this.query.time[3])
 this.query.time <- 
   system.time({
-    n <- PE.db.delete.by.pKey(pcfg=pcfg,tbl.name=PE.cfg$db$stats,pKeys = del.these)
+    n <- PE.db.delete.by.pKey(pcfg=pcfg,tbl.name=PE.cfg$db$stats,pKeys = del.these.pKeys)
   })
 log_msg("Deleted %i rows in %0.3fs.\n\n",n,this.query.time[3])
 
 #'========================================================================
 # Get lists of fragments to process ####
 #'========================================================================
-log_msg("Getting list of fragments to process...\n")
+log_msg("Getting list of calibrations to process...\n")
 #Processing frags
 cr.frags <-  #Calibrations x realisations frags
   expand_grid(calibration=this.stat@calibration,
               realizations=this.stat@realizations) %>%  
-  mutate(SQL.sel=case_when(
-    realizations==1 ~ "NOT(`realization` IN ('realmean', 'ensmean')) AND NOT(`srcType`= 'Observations')",
-    realizations==2 ~ "`realization` = 'realmean'",
-    realizations==3 ~ "`realization` = 'ensmean'",
+  mutate(real.SQL.sel=case_when(
+    realizations==1 ~ "`srcType`='Observations'",
+    realizations==2 ~ "NOT(`realization` IN ('realmean', 'ensmean')) AND NOT(`srcType`= 'Observations')",
+    realizations==3 ~ "`realization` = 'realmean'",
+    realizations==4 ~ "`realization` = 'ensmean'",
     TRUE~ as.character(NA))) %>%
   mutate(SQL.sel=sprintf("SELECT pKey FROM %s WHERE `calibrationMethod` = '%s' AND %s",
                          PE.cfg$db$calibration,
                          calibration,
-                         SQL.sel))
-obs.frags <-
-  tibble(calibration=NA,
-         realizations=0,
-         SQL.sel=sprintf("SELECT pKey FROM %s WHERE `srcType`='Observations'",
-                         PE.cfg$db$calibration))
+                         real.SQL.sel))
 
 #Now get list of pKeys to process
 this.query.time <- 
   system.time({
     todo.frags <- 
-      bind_rows(obs.frags,cr.frags)%>%
+      cr.frags%>%
       mutate(pKeys=map(SQL.sel,~ PE.db.getQuery(pcfg,.x)))
   })
 log_msg("Complete in %0.3fs.\n",this.query.time[3])

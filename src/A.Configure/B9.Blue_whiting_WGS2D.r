@@ -80,14 +80,8 @@ stat.l <- PElst()
 #Average salinity
 stat.l[["MeanSal"]]  <- spatial.mean(name="Mean-salinity",
                                      desc="Mean salinity",
-                                     realizations=c(1:3),
+                                     realizations = 1,
                                      calibration="Mean adjusted")
-
-#Full salinity field 
-stat.l[["SalField"]] <- pass.through(name="SalField",
-                                         desc="Salinity field",
-                                         realizations=1:3,
-                                         calibration="Mean adjusted")
 
 #Setup Miesner & Payne habitat model
 require(mgcv)
@@ -175,8 +169,8 @@ stat.l$SDM <-
               fn=GAM.sdm.fn,
               resources=GAM.sdm.resources,
               skill.metrics = "correlation",
-              calibration="Mean adjusted",
-              realizations = 1:3)
+              realizations=1,
+              calibration="Mean adjusted")
 
 #Merge it all in
 pcfg@statistics <- stat.l

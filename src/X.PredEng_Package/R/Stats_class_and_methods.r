@@ -4,8 +4,8 @@
 #'
 #' @param name Name of the statistics class. Cannot contain spaces, underscores or dots. Must be less than 20 char
 #' @param desc Description of the statistics class. 
-#' @param realizations Tells what sort of realisations to be considered 1 = Individual realisations 
-#' 2 = Realization means 3 = Ensemble means
+#' @param realizations Tells what sort of data to be considered 1 = Observations 2 = Individual realisations 
+#' 3 = Realization means 4 = Ensemble means
 #' @param calibration Choose the calibration method to base the statistic on. Defaults to 
 #' "Mean adjusted".
 #' @param use.globalROI Indicates whether the stat should be calculated on a local or 
@@ -26,9 +26,9 @@ stat <-
                       retain.field="logical",
                       use.globalROI="logical",
                       skill.metrics="character"),
-           prototype = list(realizations=1,
+           prototype = list(realizations=as.numeric(NA),  #Must be specified explicitly
                             retain.field=TRUE,
-                            calibration="Mean adjusted",
+                            calibration=as.character(NA),
                             use.globalROI=FALSE),
            validity = function(object) {
              err.msg <- list(
@@ -40,8 +40,8 @@ stat <-
                validate_that(!is_empty(object@name),msg=".@name slot must not be empty"),
                validate_that(all(object@calibration %in% PE.cfg$validity$calibrationMethod),
                              msg="Unsupported calibration method selected"),
-               validate_that(all(object@realizations %in% c(1,2,3)),
-                             msg="Valid choices for realization are 1, 2, and 3"))
+               validate_that(all(object@realizations %in% 1:4),
+                             msg="Valid choices for realization are 1, 2, 3 and 4"))
              err.idxs <- map_lgl(err.msg,is.character)
              if(all(!err.idxs)) return(TRUE) else unlist(err.msg[err.idxs])
            })
