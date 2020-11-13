@@ -84,13 +84,13 @@ stat.l <- PElst()
 #Average salinity
 stat.l[["MeanSal"]]  <- spatial.mean(name="Mean-salinity",
                                      desc="Mean salinity",
-                                     realizations=c(1:3),
+                                     realizations=1:4,
                                      calibration="Mean adjusted")
 
 #Full salinity field and anomaly
 stat.l[["SalAnomField"]] <- pass.through(name="SalAnomaly",
                                          desc="Salinity anomaly",
-                                         realizations=1:3,
+                                         realizations=1:4,
                                          calibration="anomaly")
 
 #Setup Miesner & Payne habitat model
@@ -153,24 +153,24 @@ GAM.sdm.fn <- function(dat,resources) {
 }
 
 #Setup to look across all days of year
-stat.l[["SDM_range"]] <- habitat(name="SDMrange",
-                           desc="Habitat is suitable on at least one day",
-                           fn=GAM.sdm.fn,
-                           resources=GAM.sdm.resources,
-                           skill.metrics = "correlation",
-                           calibration="Mean adjusted",
-                           realizations = 1:3)
+stat.l[["SDM_range"]] <- custom.stat(name="SDMrange",
+                                     desc="Habitat is suitable on at least one day",
+                                     fn=GAM.sdm.fn,
+                                     resources=GAM.sdm.resources,
+                                     skill.metrics = "correlation",
+                                     calibration="Mean adjusted",
+                                     realizations = 1:4)
 
 #Just focus on 15th April (DOY=105) => Spawning in mid March
 GAM.sdm.resources$pred.consts <- data.frame(doy=105,
                                             sol.el=0)
-stat.l[["SDM15apr"]] <- habitat(name="SDM15Apr",
-                               desc="Habitat is suitable on 15 Apr",
-                               fn=GAM.sdm.fn,
-                               resources=GAM.sdm.resources,
-                               skill.metrics = "correlation",
-                               calibration="Mean adjusted",
-                               realizations=1:3)
+stat.l[["SDM15apr"]] <- custom.stat(name="SDM15Apr",
+                                    desc="Habitat is suitable on 15 Apr",
+                                    fn=GAM.sdm.fn,
+                                    resources=GAM.sdm.resources,
+                                    skill.metrics = "correlation",
+                                    calibration="Mean adjusted",
+                                    realizations=1:4)
 
 # GAM.sdm.resources$apply.threshold <- FALSE
 # stat.l[["SDM15apr_nothreshold"]] <- habitat(name="SDM15AprNoThresh",

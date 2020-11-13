@@ -105,11 +105,11 @@ statsum.l[[1]] <- threshold(name="JansenTreshold",
                             desc = "Area above 8.5 degrees",
                             above=TRUE,
                             calibration = c("Mean adjusted"),
-                            realizations=c(1,2,3),
+                            realizations=1:4,
                             threshold=8.5)  #Based on Jansen et al
 statsum.l[[2]] <- pass.through(name="TempAnomaly",
                                desc="Temperature anomaly",
-                               realizations=1:3,
+                               realizations=1:4,
                                calibration="anomaly")
 
 #Setup habitat suitability functionality
@@ -122,12 +122,12 @@ habitat.fn <- function(dat,resources) {
   return(exp(res))
 }
 
-statsum.l[[3]] <-  habitat(name="HabitatModel",
+statsum.l[[3]] <-  custom.stat(name="HabitatModel",
                            desc="Quantile regression habitat model",
                            fn=habitat.fn,
                            resources=resource.l,
                            calibration = c("Mean adjusted"),
-                           realizations=c(1,2,3))
+                           realizations=1:4)
 
 #Merge it all in
 pcfg@statistics <- statsum.l

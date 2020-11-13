@@ -112,7 +112,7 @@ stat.l[[1]] <- threshold(name="threshold",
                          threshold=11,
                          above=TRUE,
                          calibration = c("Mean adjusted"),
-                         realizations=c(1,2,3))
+                         realizations=1:4)
 
 #Merge it all in
 pcfg@statistics <- stat.l
