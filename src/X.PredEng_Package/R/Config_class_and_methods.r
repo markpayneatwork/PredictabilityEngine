@@ -66,7 +66,7 @@ PredEng.config <-
                       average.months="logical"),
            prototype = list(global.ROI=extent(as.numeric(rep(NA,4))),
                             obs.only=FALSE,
-                            persistence.leads=1:120,  #1-10 years
+                            persistence.leads=0:120,  #1-10 years
                             retain.realizations=TRUE,
                             vert.range=as.numeric(NA),  #Use surface unless specified
                             spatial.polygons=st_sf(st_sfc(st_point(c(0,0))))),
