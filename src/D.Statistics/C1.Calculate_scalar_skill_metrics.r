@@ -200,6 +200,7 @@ skill.wide <-
   group_by(across(all_of(g.vars)),.drop = TRUE) %>%
   summarise(pearson.correlation=cor(value.mdl,value.obs,use="pairwise.complete"),
             RMSE=RMSE(value.mdl,value.obs),
+            n=n(),
             .groups="keep")  
 
 #Now write to database
