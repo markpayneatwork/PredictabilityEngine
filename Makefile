@@ -18,6 +18,7 @@
 #    help      ; Displays Makefile header with list of target
 #    clean     : Remove all log files from working directory
 #    install   : Installs support R packages
+#    extract   : Extracts results into a separate SQLite database
 #
 #    NMME_sync : Downloads NMME data via OpenDAP
 #
@@ -27,7 +28,7 @@
 # ----------------------------------------------------------------------
 
 #Setup
-Rscript= Rscript #/appl/R/bin/Rscript-3.5.2-sl73
+Rscript= /appl/R/4.0.2-mkl2020/bin/Rscript
   
 #Default target
 default: help 
@@ -40,6 +41,9 @@ make: FORCE
 
 install: FORCE
 	$(Rscript) src/ZZ.Helpers/Setup_system.r
+
+extract: 
+	$(Rscript) src/ZZ.Helpers/Extract_results_from_SQlite.r
 
 NMME_sync:
 	bsub  < src/Y.HPC_scripts/bNMME_sync.sh
