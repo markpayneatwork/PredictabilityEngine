@@ -129,30 +129,40 @@ GAM.sdm.fn <- function(dat,resources) {
   #Maximum probability
   field.l$maximumProbability <- max(pred.b)
   #Suitable habitat at some point
-  field.l$suitableHabitat <- field.l$maximumProbability > resources$model$threshold
-  #Days of suitable habitat
-  field.l$daysSuitableHabitat <- sum(pred.b > resources$model$threshold) * grid.dt
+  field.l$meanProbability <- mean(pred.b)
   #15 April
   field.l$april15 <- pred.b[[which(pred.consts$doy==105)]]
   
   # Scalar values -------------------------------------------------------------------
   scalar.l <- vector()
   pxl.area <- area(pred.b)
-  scalar.l["areaSuitableHabitat"] <- cellStats(pxl.area* field.l$suitableHabitat,sum,na.rm=TRUE)
-  scalar.l["area15April"] <- cellStats(pxl.area* field.l$april15,sum,na.rm=TRUE)
+  scalar.l["areaMaxProbability"] <-
+    cellStats(pxl.area* field.l$maximumProbability > resources$model$threshold,
+              sum,na.rm=TRUE)
+  scalar.l["areaMeanProbability"] <-
+    cellStats(pxl.area* field.l$meanProbability > resources$model$threshold,
+              sum,na.rm=TRUE)
+  scalar.l["area15April"] <- 
+    cellStats(pxl.area* field.l$april15 > resources$model$threshold,
+              sum,na.rm=TRUE)
   #Westward extent 
   west.ext <- function(r) {
     west.focus <- crop(field.l$suitableHabitat,extent(-25,0,54,58))
     west.ext.df <- 
-      rasterToPoints(west.focus) %>%
+      west.focus >resources$model$threshold %>%
+      rasterToPoints() %>%
       as_tibble() %>%
       filter(layer==1) %>%
       group_by(y) %>%
       summarise(min.x=min(x)) 
     return(mean(west.ext.df$min.x,na.rm=TRUE))
   }
-  scalar.l["westwardExtentMax"] <- west.ext(field.l$suitableHabitat)
-  scalar.l["westwardExtent15April"] <- west.ext(field.l$april15)
+  scalar.l["westwardExtentMaxProb"] <- 
+    west.ext(field.l$maximumProbability)
+  scalar.l["westwardExtentMeanProb"] <- 
+    west.ext(field.l$meanProbability)
+  scalar.l["westwardExtent15April"] <- 
+    west.ext(field.l$april15)
 
   #Return results
   this.rtn <- 
