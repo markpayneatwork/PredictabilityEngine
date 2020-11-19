@@ -73,42 +73,112 @@ log_msg("Merging...\n")
 obs.stats <-
   stats.tbl %>%
   filter(srcType=="Observations") %>% 
-  select(-field) %>%
+  select(srcType,srcName,date,spName,statName,resultName,value) %>%
   collect() %>%
   #Setup year-month key
-  mutate(ym=date_to_ym(date)) %>%
-  select(ym,spName,statName,value) %>%
+  mutate(date=ymd(date),
+         ym=date_to_ym(date)) %>%
   #Drop NAs (which are probably field-only)
   filter(!is.na(value))
 
-#And merge it back into the comparison dataframe. This way we have both the
-#modelled and the observed results together in the same dataframe. We note
+#'========================================================================
+# Setup persistence forecasts ####
+#'========================================================================
+#'At the moment, we only apply persistence forecasts to scalar variables.
+#'However, the approach could (quite) easily be applied over to fields as
+#'well, especially given that we now are applying the meanadjusted calibration
+#'method to the observations as well (especially giving us the basis for an 
+#'anomaly persistence forecast)
+
+persis.stats.dat <- 
+  #Setup grid
+  expand_grid(startDate=unique(obs.stats$date),
+              lead=pcfg@persistence.leads) %>%
+  mutate(forecastDate=startDate+months(lead)) %>%
+  #Drop non-relevant forecasts
+  filter(month(forecastDate) %in% pcfg@MOI,
+         year(forecastDate) %in% pcfg@comp.years) %>%
+  #Make the forecasts 
+  mutate(startDate=date_to_ym(startDate)) %>%
+  left_join(y=obs.stats,
+            by=c(startDate="ym")) %>%
+  #Tidy up to merge with rest
+  transmute(srcType="Persistence",
+            srcName,
+            calibrationMethod=NA,
+            realization=NA,
+            startDate=date,
+            date=forecastDate,
+            spName,statName,resultName,value)
+
+#'========================================================================
+# Extract other data sources ####
+#'========================================================================
+#Now merge observations with stats from the other data sources We note
 #that we do the merging by yearmonth - this should generally be ok for most of the
 #situations where we envisage using PredEnd i.e. one data point per year - but
 #we need to be aware that this is not exactly the case 
 
 #To reduce the computational load, we first get a list of values that we actually want to include
-comp.these <- 
+mdl.stats.df<- 
   stats.tbl %>%
   filter(srcType != "Observations") %>%
   select(pKey,date) %>%
   collect() %>%
-  filter(year(date) %in% pcfg@comp.years) %>%
-  pull(pKey)
+  filter(year(date) %in% pcfg@comp.years) 
+
+#If the database hasn't been run with forecast models, then there is nothing to do here
+if(nrow(mdl.stats.df)!=0) {
+  mdl.stats <-
+    mdl.stats.df %>%
+    pull(pKey)
+
+  mdl.stats.dat <- 
+    #Import relevant data first
+    stats.tbl %>%
+    filter(pKey %in% mdl.stats) %>%
+    select(-field,-pKey,-leadIdx) %>% 
+    collect() %>%
+    #Remove NAs
+    filter(!is.na(value)) %>%
+    #Tweak
+    mutate(startDate=ymd(startDate),
+           date=ymd(date))
+  
+  #Now combine with persistence forecasts
+  all.dat <- 
+    bind_rows(persis.stats.dat,
+              mdl.stats.dat)
+
+} else { #Only process persistence data
+  all.dat <- persis.stats.dat
+  
+}
+
+#'========================================================================
+# Join in observations ####
+#'========================================================================
+#'Merge in observations
+obs.stats.bare <- 
+  obs.stats %>%
+  select(-srcType,-srcName,-date)
+comp.dat <-
+  all.dat %>%
+  mutate(ym=date_to_ym(date)) %>%
+  left_join(y=obs.stats.bare,
+            by=c("ym","spName","statName","resultName"),
+            suffix=c(".mdl",".obs")) %>%
+  #Tidy up
+  select(-ym)
+
+#Calculate lead time.  I've been avoiding this forever, but now it's become unavoidable
+lead.months <- function(t1,t2) {
+  year(t1)*12+month(t1) - year(t2)*12-month(t2)
+}
 
 comp.dat <- 
-  #Import relevant data first
-  stats.tbl %>%
-  filter(pKey %in% comp.these) %>%
-  select(-field,-pKey) %>% 
-  collect() %>%
-  mutate(ym=date_to_ym(date)) %>%
-  #Remove NAs
-  filter(!is.na(value)) %>%
-  #Join in observational data
-  left_join(obs.stats,
-            by=c("ym","statName","spName"),
-            suffix=c(".mdl",".obs")) 
+  comp.dat %>%
+  mutate(lead=lead.months(date,startDate))
 
 #'========================================================================
 # Calculate the metrics for scalar statistics ####
@@ -122,12 +192,15 @@ RMSE <- function(x,y) { sqrt(mean((x-y)^2,na.rm=TRUE))}
 #Now calculate the skill over all start dates.
 #ASSERTION: there is only one month of interest defined here. We may need to
 #extend this in the future
-g.vars <- c("srcType","srcName","realization","calibrationMethod","spName","statName","leadIdx")
+assert_that(length(pcfg@MOI)==1,msg="Only currently working with one MOI")
+g.vars <- c("srcType","srcName","realization","calibrationMethod",
+            "spName","statName","resultName","lead")
 skill.wide <- 
   comp.dat %>%
   group_by(across(all_of(g.vars)),.drop = TRUE) %>%
   summarise(pearson.correlation=cor(value.mdl,value.obs,use="pairwise.complete"),
             RMSE=RMSE(value.mdl,value.obs),
+            n=n(),
             .groups="keep")  
 
 #Now write to database
