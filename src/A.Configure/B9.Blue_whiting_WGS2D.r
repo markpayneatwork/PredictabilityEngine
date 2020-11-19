@@ -106,9 +106,9 @@ GAM.sdm.resources <-
 GAM.sdm.fn <- function(dat,resources) {
   require(mgcv)
   #Setup
-  grid.dt <- 3
+  grid.dt <- 1
   pred.consts <-
-    tibble(doy=seq(30,180,by=grid.dt),
+    tibble(doy=seq(105,135,by=grid.dt),
            sol.el=0)
   assert_that(nlayers(dat)==1,msg="Inputs with multiple layers not supported")
   pred.dat <- brick(c(resources$pred.l,EN4.salinity=dat))
