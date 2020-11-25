@@ -40,7 +40,7 @@ echo "=========================================================="
 module load cdo
 module load gcc
 module load nco
-module load gdal
+module load gdal/2.2.3
 
 /appl/R/4.0.2-mkl2020/bin/Rscript ./src/make.r
 
