@@ -147,7 +147,7 @@ GAM.sdm.fn <- function(dat,resources) {
               sum,na.rm=TRUE)
   #Westward extent 
   west.ext <- function(r) {
-    west.focus <- crop(field.l$suitableHabitat,extent(-25,0,54,58))
+    west.focus <- crop(r,extent(-25,0,54,58))
     west.ext.df <- 
       west.focus >resources$model$threshold %>%
       rasterToPoints() %>%
