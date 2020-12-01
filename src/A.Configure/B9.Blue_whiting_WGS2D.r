@@ -149,7 +149,7 @@ GAM.sdm.fn <- function(dat,resources) {
   west.ext <- function(r) {
     west.focus <- crop(r,extent(-25,0,54,58))
     west.ext.df <- 
-      west.focus >resources$model$threshold %>%
+      (west.focus > resources$model$threshold ) %>%
       rasterToPoints() %>%
       as_tibble() %>%
       filter(layer==1) %>%
