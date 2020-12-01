@@ -168,13 +168,9 @@ comp.dat <-
   select(-ym)
 
 #Calculate lead time.  I've been avoiding this forever, but now it's become unavoidable
-lead.months <- function(t1,t2) {
-  year(t1)*12+month(t1) - year(t2)*12-month(t2)
-}
-
 comp.dat <- 
   comp.dat %>%
-  mutate(lead=lead.months(date,startDate))
+  mutate(lead=month_diff(date,startDate))
 
 #'========================================================================
 # Calculate the metrics for scalar statistics ####

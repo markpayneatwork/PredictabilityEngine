@@ -38,17 +38,24 @@ sfpolygon.from.extent <- function(ext) {
 }
 
 
-#' Date to year month
+#' Month handling functions 
 #' 
-#' Converts a date to a standardised year-month representation. Handy for standardising time where there is
+#' Works with dates in terms of their months only, ignoring days. Handy for standardising time where there is
 #' a risk that the days of the month may be different between data sources.
 #'
 #' @param d Vector of dates to convert, as Date classes
+#' @param t1 First Date
+#' @param t2 Second Date
 #'
 #' @return String of format yyyy-mm
 #' @export
-#'
-#' @examples
+#' @name month_fns
 date_to_ym <- function(d) {
   sprintf("%i-%02i",year(d),month(d))
+}
+
+#' @export
+#' @rdname month_fns
+month_diff <- function(t1,t2) {
+  year(t1)*12+month(t1) - year(t2)*12-month(t2)
 }
