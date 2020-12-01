@@ -55,10 +55,6 @@ stats.tbl <- tbl(this.db,PE.cfg$db$stats)
 # dbRemoveTable(this.db,PE.cfg$db$stats)
 # PE.db.setup(pcfg)
 
-date_to_ym <- function(d) {
-  sprintf("%i-%02i",year(d),month(d))
-}
-
 #Clear existing metrics table
 if(dbExistsTable(PE.db.connection(pcfg),PE.cfg$db$metrics)) {
   dbRemoveTable(PE.db.connection(pcfg),PE.cfg$db$metrics)  
