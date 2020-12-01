@@ -222,9 +222,9 @@ if(!pcfg@obs.only) {
 # Check it twice ####
 #'========================================================================
 #Visualise
-on.exit({
-print(vis_drake_graph(the.plan,targets_only = TRUE))
-})
+if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
+  print(vis_drake_graph(the.plan,targets_only = TRUE))
+}
 
 #Custom cleaning function
 clean_regex <- function(regex) {
@@ -238,11 +238,21 @@ clean_regex <- function(regex) {
 options(clustermq.scheduler = "multicore")
 
 #Paw Patrol - så er det nu!
-make(the.plan, 
-     parallelism = "clustermq", 
-     jobs = n.cores,
-     keep_going = FALSE,
-     verbose=1)
+do.make <- function() {
+  make(the.plan, 
+       parallelism = "clustermq", 
+       jobs = n.cores,
+       keep_going = FALSE,
+       verbose=1)}
+
+if(interactive()) {
+  log_msg("Outdated targets....\n")
+  print(outdated(the.plan))
+  log_msg("\nRun do.make() to initiate the make manually.\n")
+} else {
+  do.make()
+}
+
 
 #'========================================================================
 # Complete ####
