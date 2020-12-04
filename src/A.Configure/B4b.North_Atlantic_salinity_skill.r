@@ -19,61 +19,47 @@
 # Notes:
 #
 #'========================================================================
-
 #'========================================================================
 # Initialise system ####
 #'========================================================================
-cat(sprintf("\n%s\n","B4b. NA Salinity"))
+cat(sprintf("\n%s\n","B4a. North Atlantic Salinity Skill"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
-#Do house cleaning
-rm(list = ls(all.names=TRUE));  graphics.off();
-start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
-
 #Source the common elements
-library(sf)
-library(PredEng)
-library(tibble)
-library(raster)
-library(tidyverse)
-source("src/B.Configuration/B0.Define_common_data_srcs.r")
+suppressPackageStartupMessages({
+  library(PredEng)
+})
+load(PE.cfg$path$datasrcs)
 
 #'========================================================================
 # Project Configuration ####
 #'========================================================================
 #Global project configuration
-pcfg <- PredEng.config(project.name= "NA_Salinity_Predictability",
-                       recalculate=TRUE,
+pcfg <- PredEng.config(project.name= "NA_Sal",
                        MOI=3,
                        average.months=FALSE,
-                       clim.years=1985:2004,  
+                       clim.years=1981:2010,  
                        comp.years=1970:2015,
-                       landmask="data_srcs/NMME/landmask.nc")
+                       landmask="data_srcs/NMME/landmask.nc",
+                       Observations=Sal.obs$EN4,
+                       Decadal=Sal.Decadal,
+                       calibrationMethods=c("anomaly","MeanVarAdj"))
+
+
+#CMIP5 salinity
+# pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="so")
+# 
 
 #Setup scratch directory
-pcfg@scratch.dir <- file.path("scratch",pcfg@project.name)
-define_dir(pcfg@scratch.dir)
+pcfg@scratch.dir <- file.path(PE.cfg$dir$scratch,pcfg@project.name)
 
 #'========================================================================
 # Spatial Configurations ####
 #'========================================================================
 #Set global variables
-pcfg@global.ROI <- extent(-70,0,40,70)
-pcfg@global.res  <- 0.5 #0.25
-pcfg@retain.realizations <- TRUE
+pcfg@global.ROI <- extent(-80,15,40,80)
+pcfg@global.res  <- 1
 pcfg@vert.range <- c(250,600)
-
-#'========================================================================
-# Data Sources ####
-#'========================================================================
-#Define observational sources
-pcfg@Observations <- Sal.obs$EN4
-
-#Decadal salinity models
-pcfg@Decadal <- Sal.Decadal
-
-#CMIP5 salinity
-# pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="so")
 
 #'========================================================================
 # Extraction configuration ####
@@ -86,20 +72,15 @@ pcfg@Decadal <- Sal.Decadal
 #Configure summary stats
 statsum.l <- list()
 statsum.l[[1]] <- pass.through(name="Anomaly",
+                               desc="SST anomaly",
                                skill.metrics = "correlation",
-                               use.globally=TRUE,
-                               use.full.field = FALSE,
-                               use.realmeans=TRUE)
-
-#Merge it all in
-names(statsum.l) <- sapply(statsum.l,slot,"name")
-pcfg@statistics <- statsum.l
+                               calibration = c("anomaly","MeanVarAdj"),
+                               realizations=1:4)
 
 #'========================================================================
-# Done
+# Finish
 #'========================================================================
-#Output
-source("src/B.Configuration/B99.Configuration_wrapup.r")
+set.configuration(pcfg)
 
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
