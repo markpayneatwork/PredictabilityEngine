@@ -197,6 +197,7 @@ calc.stat.fn <- function(this.pKey,debug=FALSE) {
 # before getting medieval on their asses...
 # Use of lapply mirrors the use of pblapply in subsequent step
 dmp <- lapply(head(pKey.todos,1),calc.stat.fn)
+log_msg("Sanity check passed. Parallellising now...\n")
 
 # Parallelised extraction loop ----------------------------------------------------
 stat.l <- pblapply(pKey.todos,

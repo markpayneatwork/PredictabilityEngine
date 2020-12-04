@@ -129,7 +129,7 @@ habitat.fn <- function(dat,resources) {
 
   # Scalar values -------------------------------------------------------------------
   scalar.l <- vector()
-  pxl.area <- area(pred.b)
+  pxl.area <- area(hab.suit)
   scalar.l["carryingCapacity"] <-
     cellStats(pxl.area* hab.suit,sum,na.rm=TRUE)
 
@@ -138,7 +138,7 @@ habitat.fn <- function(dat,resources) {
     bind_rows(enframe(field.l,"resultName","field"),
               enframe(scalar.l,"resultName","value"))
 
-  return()
+  return(this.rtn)
 }
 
 statsum.l[[3]] <-  custom.stat(name="HabitatModel",
