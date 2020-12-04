@@ -18,6 +18,7 @@
 #    help      ; Displays Makefile header with list of target
 #    clean     : Remove all log files from working directory
 #    install   : Installs support R packages
+#    cfg       : (Re-)runs the configuration file linked as this.cfg
 #    extract   : Extracts results into a separate SQLite database
 #
 #    NMME_sync : Downloads NMME data via OpenDAP
@@ -41,6 +42,9 @@ make: FORCE
 
 install: FORCE
 	$(Rscript) src/ZZ.Helpers/Setup_system.r
+
+cfg: FORCE
+	$(Rscript) this.cfg
 
 extract: 
 	$(Rscript) src/ZZ.Helpers/Extract_results_from_SQlite.r
