@@ -65,7 +65,7 @@ PE.db.setup(pcfg)
 extr.these.pKeys<-
   extr.tbl %>%
   filter(realization == "realmean" | srcType == "Observations") %>%
-  select(pKey,date) %>%
+  select(pKey,date,srcType,srcName) %>%
   collect() %>%
   mutate(date=ymd(date),
          year=year(date)) %>%
@@ -79,15 +79,15 @@ extr.dat <-
   collect() %>%
   mutate(dat=ymd(date),
          month=month(date)) %>%
-  PE.db.unserialize() %>%
-  group_by(srcType,srcName,leadIdx,month,.drop=TRUE)
+  PE.db.unserialize() 
 dbDisconnect(this.db)
 
 #Calculate climatologies in a summarisation loop
 clim.dat <-
   extr.dat %>%
+  group_by(srcType,srcName,leadIdx,month,.drop=TRUE) %>%
   summarise(mean=raster.list.mean(data),
-            sd=raster.list.sd(data),
+            sd=list(calc(brick(data),sd)),
             nYears=n(),
             .groups="keep")
 
