@@ -24,7 +24,7 @@ PE.cfg$db <- list(extract="extraction",
                   metrics="metrics")
 
 #Validity
-PE.cfg$validity <- list(calibrationMethods=c("anomaly","Mean adjusted"))
+PE.cfg$validity <- list(calibrationMethods=c("anomaly","MeanAdj","MeanVarAdj"))
 
 # PE.cfg$PE.dirs <- list(Misc.meta="Z.Misc.meta",
 #                     statistics="Statistics",

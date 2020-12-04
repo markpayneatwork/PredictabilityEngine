@@ -41,7 +41,10 @@ Different extraction modes can be combined in the same list.
 
 \item{\code{statistics}}{PredEng.list of statistics to apply over each spatial area}
 
-\item{\code{extraction}}{PredEng.list definining temporal and spatial extraction characteristics}
+\item{\code{extraction}}{PredEng.list defining temporal and spatial extraction characteristics}
+
+\item{\code{calibrationMethods}}{A vector listing the calibration methods to use. The full list of supported values is 
+stored in PE.cfg$validity$calibrationMethods}
 
 \item{\code{MOI}}{The months of interest (a vector of integers between 1 and 12 inclusive). Currently only support one month
 but this can be extened in the future}

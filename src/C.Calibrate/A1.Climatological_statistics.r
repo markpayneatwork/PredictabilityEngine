@@ -86,7 +86,8 @@ dbDisconnect(this.db)
 #Calculate climatologies in a summarisation loop
 clim.dat <-
   extr.dat %>%
-  summarise(data=raster.list.mean(data),
+  summarise(mean=raster.list.mean(data),
+            sd=raster.list.sd(data),
             nYears=n(),
             .groups="keep")
 

@@ -9,7 +9,9 @@
 #' @slot persistence.leads A vector (in months) of lead times at which to generate persistence forcasts
 #' @slot spatial.polygons A sf data.frame defining the spatial domains over which  to operate
 #' @slot statistics PredEng.list of statistics to apply over each spatial area
-#' @slot extraction PredEng.list definining temporal and spatial extraction characteristics
+#' @slot extraction PredEng.list defining temporal and spatial extraction characteristics
+#' @slot calibrationMethods A vector listing the calibration methods to use. The full list of supported values is 
+#' stored in PE.cfg$validity$calibrationMethods
 #' @slot MOI The months of interest (a vector of integers between 1 and 12 inclusive). Currently only support one month
 #' but this can be extened in the future 
 #' @slot average.months Should we average over the months of interest? Currently redundant as we do not support multiple
@@ -54,6 +56,7 @@ PredEng.config <-
                       spatial.polygons="sf",
                       statistics="PElst",
                       #extraction="list",
+                      calibrationMethods="character",
                       global.ROI="Extent",
                       global.res="numeric",
                       MOI="numeric",
@@ -78,7 +81,10 @@ PredEng.config <-
                validate_that(length(object@vert.range)==2 | all(is.na(object@vert.range)),
                              msg="Vertical range slot must be of length 2 if not NA"),
                validate_that(length(object@MOI)==1,msg="Currently only support one month of interest"),
-               validate_that(all(object@MOI %in% 1:12),msg="Month(s) of interest must be in range 1-12"))
+               validate_that(all(object@MOI %in% 1:12),msg="Month(s) of interest must be in range 1-12"),
+               validate_that(length(object@calibrationMethods)>0,msg="No calibration method defined"),
+               validate_that(all(object@calibrationMethods %in% PE.cfg$validity$calibrationMethod),
+                             msg="Unsupported calibration method selected"))
              
              #Check for consistency between presence of 2D fields and requested vertical range
              datsrc.meta <- 

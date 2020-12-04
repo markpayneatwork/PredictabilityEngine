@@ -44,6 +44,7 @@ pcfg <- PredEng.config(WGS2D.pcfg,
                        project.name= "Blue_whiting_decadal",
                        clim.years=1982:2005,  
                        comp.years=1970:2015,
+                       calibrationMethods=c("MeanAdj","MeanVarAdj"),
                        obs.only=FALSE)
 
 #Setup scratch directory
