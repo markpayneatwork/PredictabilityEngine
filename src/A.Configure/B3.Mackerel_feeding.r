@@ -70,22 +70,25 @@ pcfg@global.res  <- 0.5
 pcfg@retain.realizations <- TRUE
 
 #Import EEZ's
-load("resources/EEZs/EEZs.RData",verbose=TRUE)
+load("resources/EEZs/EEZs.RData")
 
 #Split Greenlandic EEZ into an east and west EEZ, and carve off the top
 eez.gland.full <- filter(eez.sf,str_detect(GeoName,c("Greenland")))
 N.lim <- 70
 greenland.EW.split <- -45
-eez.gland.W <- st_crop(eez.gland.full,xmin=-180,xmax=greenland.EW.split,ymin=0,ymax=N.lim) %>%
-                mutate(name="West_Greenland")
-eez.gland.E <- st_crop(eez.gland.full,xmin=greenland.EW.split,xmax=180,ymin=0,ymax=N.lim) %>%
-                mutate(name="East_Greenland")
+eez.gland.W <- 
+  st_crop(eez.gland.full,xmin=-180,xmax=greenland.EW.split,ymin=0,ymax=N.lim) %>%
+  mutate(name="West_Greenland")
+eez.gland.E <- 
+  st_crop(eez.gland.full,xmin=greenland.EW.split,xmax=180,ymin=0,ymax=N.lim) %>%
+  mutate(name="East_Greenland")
 
 #Extract Iceland
-eez.iceland <- filter(eez.sf,str_detect(GeoName,c("Iceland")),Pol_type=="200NM") %>%
-               mutate(name="Iceland")
+eez.iceland <- 
+  filter(eez.sf,str_detect(GeoName,c("Iceland")),Pol_type=="200NM") %>%
+  mutate(name="Iceland")
 
-#Add a global domain as well
+#Add a regional domain as well
 sp.regional <- 
   st_sf(name="regional",geometry=st_sfc(sfpolygon.from.extent(extent(-60,0,56,70))),
         crs=crs(eez.iceland))
@@ -116,10 +119,26 @@ statsum.l[[2]] <- pass.through(name="TempAnomaly",
 habitat.mdl.dat <- readRDS("resources/Mackerel_summer_QR_values.rds")
 resource.l <-  list(fun=approxfun(habitat.mdl.dat$temp,habitat.mdl.dat$value,rule=2))
 habitat.fn <- function(dat,resources) {
-  res <- dat
-  res[] <- resources$fun(dat[])
-  #Don't forget to un-log it, before using it!
-  return(exp(res))
+  #Evaluate habitat suitability function
+  hab.suit <- dat
+  hab.suit[] <- exp(resources$fun(dat[]))
+  
+  # Field values --------------------------------------------------------------------
+  field.l <- list()  #Results storage
+  field.l$habitatSuitability <- hab.suit
+
+  # Scalar values -------------------------------------------------------------------
+  scalar.l <- vector()
+  pxl.area <- area(pred.b)
+  scalar.l["carryingCapacity"] <-
+    cellStats(pxl.area* hab.suit,sum,na.rm=TRUE)
+
+  #Return results
+  this.rtn <- 
+    bind_rows(enframe(field.l,"resultName","field"),
+              enframe(scalar.l,"resultName","value"))
+
+  return()
 }
 
 statsum.l[[3]] <-  custom.stat(name="HabitatModel",
