@@ -69,7 +69,7 @@ PredEng.config <-
                             persistence.leads=0:120,  #1-10 years
                             retain.realizations=TRUE,
                             vert.range=as.numeric(NA),  #Use surface unless specified
-                            spatial.polygons=st_sf(st_sfc(st_point(c(0,0))))),
+                            spatial.polygons=st_sf(st_sfc())),
            validity = function(object) {
              #Basics
              err.msg <- list(
@@ -100,12 +100,18 @@ PredEng.config <-
 #' @export
 setMethod("plot",signature(x="PredEng.config",y="missing"),
           function(x,y,...) {
-            x@spatial.polygons %>%
-              select(name,geometry) %>%
-              rbind(st_sf(name="@globalROI",
+            plt.sf <- 
+              st_sf(name="@globalROI",
                           geometry=st_sfc(sfpolygon.from.extent(x@global.ROI)),
-                          crs=crs(.))) %>%
-            ggplot()+
+                          crs=PE.cfg$misc$crs)
+            if(nrow(x@spatial.polygons)!=0) {
+              plt.sf <- 
+                x@spatial.polygons %>%
+                select(name,geometry) %>%
+                rbind(plt.sf)
+            }
+
+            ggplot(data=plt.sf)+
               annotation_map(map_data("world"),fill="black",col="black")+
               geom_sf(aes(col=name,fill=name),alpha=0.25)+
               theme_bw()
