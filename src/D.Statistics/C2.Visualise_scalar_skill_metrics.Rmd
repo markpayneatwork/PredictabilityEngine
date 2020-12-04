@@ -192,89 +192,106 @@ for(this.sp in sp.names) {
     distinct(statName) %>%
     collect() %>%
     pull(statName)
+  
 
   for(this.stat in stat.names) {
     # Stats ---------------------------------------------------------------------------
-
-    #Show a subtitle
-    cat(sprintf("\n\n### %s\n",this.stat))
-    
-    #Extract the corresponding stat data observations 
-    stat.obs <- 
+    #Loop over resultNames as well
+    result.names <- 
       stats.tbl %>%
-      filter(srcType=="Observations",
-             spName==this.sp,
-             statName==this.stat) %>% 
-      collect() %>%
-      filter(year(date)>=min(pcfg@comp.years)) 
-    
-    #Extract the most recent starts in each model
-    stat.pred <- 
-      stats.tbl %>%
-      filter(srcType %in% c("Decadal","NMME"),
-             spName==this.sp,
-             statName==this.stat,
-             realization %in% c("realmean","ensmean")) %>%
-      collect() %>% #Retrieve all
-      group_by(srcType,srcName) %>%
-      filter(startDate==max(startDate)) %>% #Select the most recent starts
-      mutate(type.name=paste(srcType,srcName,sep=".")) 
-
-    #Make plot
-    stat.plt.dat <- 
-      bind_rows(stat.obs,stat.pred) %>%
-      mutate(date=as.Date(date),
-             timeframe=ifelse(year(date)<min(year(stat.pred$date)),
-                              "Historical","Near-term predictions"))
-
-    g <- 
-      ggplot(stat.plt.dat,aes(x=date,y=value,colour=srcName,group=type.name))+
-      geom_line()+
-      labs(x="Year",y=this.stat)+
-      facet_wrap(~timeframe,nrow=1,scales="free_x")
-    print(g) 
-    
-    # Metrics -------------------------------------------------------------------------
-    metric.names <-
-      mets.tbl %>%
       filter(spName==this.sp,
              statName==this.stat) %>%
-      distinct(metric) %>%
+      distinct(resultName) %>%
       collect() %>%
-      pull(metric)
+      pull(resultName)
     
-    #Iterate over skill metrics
-    for(this.met in metric.names) {
-      #Get data
-      met.dat <- 
+    # Results -------------------------------------------------------------------------
+    for(this.result in result.names) {
+      #Show a subtitle
+      cat(sprintf("\n\n### %s / %s\n",this.stat,this.result))
+      
+      #Extract the corresponding stat data observations 
+      stat.obs <- 
+        stats.tbl %>%
+        filter(srcType=="Observations",
+               spName==this.sp,
+               statName==this.stat,
+               resultName==this.result) %>% 
+        collect() %>%
+        filter(year(date)>=min(pcfg@comp.years),
+               month(date) %in% pcfg@MOI) 
+      
+      #Extract the most recent starts in each model
+      stat.pred <- 
+        stats.tbl %>%
+        filter(srcType %in% c("Decadal","NMME"),
+               spName==this.sp,
+               statName==this.stat,
+               resultName==this.result,
+               realization %in% c("realmean","ensmean")) %>%
+        collect() %>% #Retrieve all
+        group_by(srcType,srcName) %>%
+        filter(startDate==max(startDate)) %>% #Select the most recent starts
+        mutate(type.name=paste(srcType,srcName,sep=".")) 
+      
+      #Combine data
+      stat.plt.dat <- 
+        bind_rows(stat.obs,stat.pred) %>%
+        mutate(date=as.Date(date),
+               timeframe=ifelse(year(date)<min(year(stat.pred$date)),
+                                "Historical","Near-term predictions"))
+      
+      g <- 
+        ggplot(stat.plt.dat,aes(x=date,y=value,colour=srcName,group=type.name))+
+        geom_line()+
+        labs(x="Year",y=this.stat)+
+        facet_wrap(~timeframe,nrow=1,scales="free_x")
+      print(g) 
+      
+      # Metrics -------------------------------------------------------------------------
+      metric.names <-
         mets.tbl %>%
         filter(spName==this.sp,
                statName==this.stat,
-               metric==this.met,
-               realization %in% c("realmean","ensmean")) %>% 
+               resultName==this.result,
+               metric!="n") %>%   #Don't really need to see this
+        distinct(metric) %>%
         collect() %>%
-        mutate(type.name=paste(srcType,srcName,sep="."),
-               is.ensmean=realization=="ensmean") 
-
-      #Set y range accordingly
-      if(this.met=="pearson.correlation") {
-        y.rng <- c(0,1)
-      } else {
-        y.rng <- range(pretty(c(0,met.dat$value)))
-      }
+        pull(metric)
       
-      #Plot
-      g <- ggplot(met.dat,aes(x=leadIdx,y=value,group=type.name))+
-        geom_line(aes(colour=type.name,size=is.ensmean))+
-        facet_wrap(~metric,scales = "free_y")+
-        coord_cartesian(ylim=y.rng)+
-        scale_size_manual(values=c(0.25,1))+
-        guides(size="none")+
-        labs(x="Lead (number of forecasts)",y=this.met,colour="Forecast System")
-      print(g)
-
-    }  #Plot  
-    
+      #Iterate over skill metrics
+      for(this.met in metric.names) {
+        #Get data
+        met.dat <- 
+          mets.tbl %>%
+          filter(spName==this.sp,
+                 statName==this.stat,
+                 resultName==this.result,
+                 metric==this.met,
+                 realization %in% c("realmean","ensmean")) %>% 
+          collect() %>%
+          mutate(type.name=paste(srcType,srcName,sep="."),
+                 is.ensmean=realization=="ensmean") 
+        
+        #Set y range accordingly
+        if(this.met=="pearson.correlation") {
+          y.rng <- c(0,1)
+        } else {
+          y.rng <- range(pretty(c(0,met.dat$value)))
+        }
+        
+        #Plot
+        g <- ggplot(met.dat,aes(x=lead/12,y=value,group=type.name))+
+          geom_line(aes(colour=type.name,size=is.ensmean))+
+          facet_wrap(~metric,scales = "free_y")+
+          coord_cartesian(ylim=y.rng)+
+          scale_size_manual(values=c(0.25,1))+
+          guides(size="none")+
+          labs(x="Lead (years)",y=this.met,colour="Forecast System")
+        print(g)
+        
+      }  #Plot  
+    } 
   }
   
 
