@@ -42,9 +42,10 @@ pcfg <- readRDS(PE.cfg$path$config)
 #Take input arguments, if any
 if(interactive()) {
   set.log_msg.silent()
-  stat.id <- names(pcfg@statistics)[1]
+  stat.id <- names(pcfg@statistics)[3]
   sp.id <- c(PE.cfg$misc$globalROI,pcfg@spatial.polygons$name)[2]
   n.cores <- 4
+  pboptions(type="txt")
 } else {
   cmd.args <- commandArgs(TRUE)
   if(length(cmd.args)!=3) stop("Cannot get command args")
@@ -52,7 +53,7 @@ if(interactive()) {
   stat.id <- cmd.args[2]
   n.cores <- cmd.args[3]
   set.log_msg.silent()
-  pboptions(type="txt")
+  pboptions(type="none")
 }
 
 log_msg("Configuration\nStat id : %s\nSp id   : %s\n",stat.id,sp.id)
@@ -79,7 +80,7 @@ this.sp <-
     pcfg@spatial.polygons %>% 
       filter(name==sp.id)
   }
-assert_that(nrow(this.sp)==1,msg="Failed to select only one spatial polygon")
+dmp <- assert_that(nrow(this.sp)==1,msg="Failed to select only one spatial polygon")
 
 #TODO:
 # Parallelise, reduce write frequency
@@ -190,6 +191,12 @@ calc.stat.fn <- function(this.pKey,debug=FALSE) {
 # dat <- calc.stat.fn(this.pKey,debug=TRUE)
 # resources <- this.stat@resources
 # stop()
+
+# Sanity check --------------------------------------------------------------------
+# Try doing the first evaluation as a sanity check. This will let us fail gracefully,
+# before getting medieval on their asses...
+# Use of lapply mirrors the use of pblapply in subsequent step
+dmp <- lapply(head(pKey.todos,1),calc.stat.fn)
 
 # Parallelised extraction loop ----------------------------------------------------
 stat.l <- pblapply(pKey.todos,
