@@ -4,7 +4,7 @@
 \alias{month_fns}
 \alias{date_to_ym}
 \alias{month_diff}
-\title{Month handling functions month}
+\title{Month handling functions}
 \usage{
 date_to_ym(d)
 
@@ -13,9 +13,9 @@ month_diff(t1, t2)
 \arguments{
 \item{d}{Vector of dates to convert, as Date classes}
 
-\item{t1}{}
+\item{t1}{First Date}
 
-\item{t2}{}
+\item{t2}{Second Date}
 }
 \value{
 String of format yyyy-mm
