@@ -65,6 +65,12 @@ pcfg@Decadal <- Sal.Decadal
 # Statistics ####
 #'========================================================================
 #Duplicate what's in B9
+#but update to run across all data, not just the observations
+for(i in seq(pcfg@statistics)) {
+  this.stat <- pcfg@statistics[[i]] 
+  this.stat@realizations <- 1:4
+  pcfg@statistics[[i]] <- this.stat
+}
 
 #'========================================================================
 # Output ####
