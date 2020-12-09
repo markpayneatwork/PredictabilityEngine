@@ -55,10 +55,10 @@ this.db <- PE.db.connection(pcfg)
 extr.tbl <- tbl(this.db,PE.cfg$db$extract)
 clim.tbl <- tbl(this.db,PE.cfg$db$climatology)
 
-#Clear all previous analyses
+#Clear all previous analyses that give these types of calibration methods
 del.this <-
   tbl(this.db,PE.cfg$db$calibration) %>%
-  filter(calibrationMethod %in% c("anomaly","Mean adjusted")) %>%
+  filter(calibrationMethod %in% c("anomaly","MeanAdj","MeanVarAdj")) %>%
   select(pKey) %>%
   collect() %>%
   pull(pKey) 
@@ -77,18 +77,15 @@ obs.clim <-
          month %in% !!pcfg@MOI) %>%
   collect() %>% 
   PE.db.unserialize() %>%
-  pull(data) %>%
-  brick() %>%
-  mean()
+  select(mean,sd)
+dmp <- assert_that(nrow(obs.clim)==1,msg = "Multiple rows detected in observational climatology.")
 
-#Import model climatology data
-mdl.clim.dat <-
+#Import climatology data from both observations and model forecasts
+clim.dat <-
   clim.tbl %>%
-  #filter(srcType!="Observations") %>%
   collect() %>% 
   PE.db.unserialize() %>% 
-  select(srcType,srcName,leadIdx,month,data) %>%
-  rename(data.mdlClim=data)
+  select(srcType,srcName,leadIdx,month,mdlClim.mean=mean,mdlClim.sd=sd)
 
 #TODO:Work through extraction table systematically based on the pKeys that are present
 extr.dat <-
@@ -110,15 +107,16 @@ log_msg("Merging...\n")
 all.dat <- 
   extr.dat %>%
   #Join in model climatological data
-  left_join(y=mdl.clim.dat,
+  left_join(y=clim.dat,
             by=c("srcName","srcType","month","leadIdx")) 
 
 log_msg("Recalibration...\n")
 calib.dat <-
   all.dat %>%
   #Calculate the anomaly and make the correction
-  mutate(data.anom=map2(data.extr,data.mdlClim,~ .x - .y),
-         data.calib=map(data.anom,~ .x + obs.clim))
+  mutate(data.anom=map2(data.extr,mdlClim.mean,~ .x - .y),
+         data.meanAdjust=map(data.anom,~ .x + obs.clim$mean[[1]]),
+         data.meanvarAdjust=map2(data.anom,mdlClim.sd,~(.x/.y)*obs.clim$sd[[1]]+obs.clim$mean[[1]]))
 
 #'========================================================================
 # Output ####
@@ -127,13 +125,19 @@ log_msg("Output...\n")
 out.dat <- 
   calib.dat %>%
   #Select columns and tidy
-  select(srcName,srcType,realization,startDate,date,leadIdx,data.anom,data.calib) %>% 
+  select(srcName,srcType,realization,startDate,date,leadIdx,
+         data.anom,data.meanAdjust,data.meanvarAdjust) %>% 
   mutate(date=as.character(date)) %>%
-  rename("anomaly"=data.anom,"Mean adjusted"=data.calib) %>%
+  rename("anomaly"=data.anom,
+         "MeanAdj"=data.meanAdjust,
+         "MeanVarAdj"=data.meanvarAdjust) %>%
   #Pivot
-  pivot_longer(c(anomaly,`Mean adjusted`),
+  pivot_longer(-c(srcName,srcType,realization,startDate,date,leadIdx),
                names_to = "calibrationMethod",
-               values_to = "data")
+               values_to = "data") %>%
+  #Drop unsupported calibrationMethods
+  filter(calibrationMethod %in% pcfg@calibrationMethods)
+  
 
 #Write results
 PE.db.appendTable(out.dat,pcfg,PE.cfg$db$calibration)

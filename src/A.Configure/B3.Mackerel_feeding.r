@@ -49,6 +49,7 @@ pcfg <- PredEng.config(project.name= "Mackerel_summer",
                        comp.years=1970:2015,
                        landmask="data_srcs/NMME/landmask.nc",
                        Observations=SST_obs[[c("HadISST")]],#,
+                       calibrationMethods=c("anomaly","MeanAdj","MeanVarAdj"),
                        NMME=NMME.sst.l)
 
 #Setup scratch directory
@@ -107,7 +108,7 @@ statsum.l <- PElst()
 statsum.l[[1]] <- threshold(name="JansenTreshold",
                             desc = "Area above 8.5 degrees",
                             above=TRUE,
-                            calibration = c("Mean adjusted"),
+                            calibration = c("MeanAdj","MeanVarAdj"),
                             realizations=1:4,
                             threshold=8.5)  #Based on Jansen et al
 statsum.l[[2]] <- pass.through(name="TempAnomaly",
@@ -145,7 +146,7 @@ statsum.l[[3]] <-  custom.stat(name="HabitatModel",
                            desc="Quantile regression habitat model",
                            fn=habitat.fn,
                            resources=resource.l,
-                           calibration = c("Mean adjusted"),
+                           calibration = c("MeanAdj","MeanVarAdj"),
                            realizations=1:4)
 
 #Merge it all in

@@ -46,6 +46,7 @@ pcfg <- PredEng.config(project.name= "Bluefin",
                comp.years=1970:2015,
                landmask="data_srcs/NMME/landmask.nc",
                Observations=SST_obs[[c("HadISST")]],
+               calibrationMethods=c("MeanAdj","MeanVarAdj"),
                NMME=NMME.sst.l)
 
 #Setup scratch directory
@@ -111,7 +112,7 @@ stat.l[[1]] <- threshold(name="threshold",
                          desc="11 degree threshold",
                          threshold=11,
                          above=TRUE,
-                         calibration = c("Mean adjusted"),
+                         calibration = c("MeanAdj","MeanVarAdj"),
                          realizations=1:4)
 
 #Merge it all in

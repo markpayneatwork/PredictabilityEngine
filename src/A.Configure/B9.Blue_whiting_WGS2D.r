@@ -44,6 +44,7 @@ pcfg <- PredEng.config(project.name= "Blue_whiting_WGS2D",
                        clim.years=1981:2009,  
                        comp.years=1970:2015,
                        Observations = Sal.obs$EN4,
+                       calibrationMethods=c("MeanAdj"),
                        landmask="data_srcs/NMME/landmask.nc")
 
 #Setup scratch directory
@@ -81,7 +82,7 @@ stat.l <- PElst()
 stat.l[["MeanSal"]]  <- spatial.mean(name="Mean-salinity",
                                      desc="Mean salinity",
                                      realizations = 1,
-                                     calibration="Mean adjusted")
+                                     calibration=c("MeanAdj","MeanVarAdj"))
 
 #Setup Miesner & Payne habitat model
 require(mgcv)
@@ -180,7 +181,7 @@ stat.l$SDM <-
               resources=GAM.sdm.resources,
               skill.metrics = "correlation",
               realizations=1,
-              calibration="Mean adjusted")
+              calibration=c("MeanAdj","MeanVarAdj"))
 
 #Merge it all in
 pcfg@statistics <- stat.l
