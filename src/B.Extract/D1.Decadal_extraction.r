@@ -167,7 +167,7 @@ for(i in seq(nrow(this.cfg))) {
                       startDate=this.datasrc@start.date(this.src),
                       date=this.datasrc@date.fn(regrid.fname),
                       leadIdx=1:nlayers(dat.b),
-                      data=as.list(dat.b))
+                      field=as.list(dat.b))
   
   #Write to database
   frag.data %>%

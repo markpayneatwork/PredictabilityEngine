@@ -95,7 +95,7 @@ extr.dat <-
   #Calculate date information
   mutate(date=ymd(date),
          month=month(date)) %>%
-  rename(data.extr=data)
+  rename(field.extr=field)
 
 #Finished import
 dbDisconnect(this.db)
@@ -114,9 +114,9 @@ log_msg("Recalibration...\n")
 calib.dat <-
   all.dat %>%
   #Calculate the anomaly and make the correction
-  mutate(data.anom=map2(data.extr,mdlClim.mean,~ .x - .y),
-         data.meanAdjust=map(data.anom,~ .x + obs.clim$mean[[1]]),
-         data.meanvarAdjust=map2(data.anom,mdlClim.sd,~(.x/.y)*obs.clim$sd[[1]]+obs.clim$mean[[1]]))
+  mutate(field.anom=map2(field.extr,mdlClim.mean,~ .x - .y),
+         field.meanAdjust=map(field.anom,~ .x + obs.clim$mean[[1]]),
+         field.meanvarAdjust=map2(field.anom,mdlClim.sd,~(.x/.y)*obs.clim$sd[[1]]+obs.clim$mean[[1]]))
 
 #'========================================================================
 # Output ####
@@ -126,15 +126,15 @@ out.dat <-
   calib.dat %>%
   #Select columns and tidy
   select(srcName,srcType,realization,startDate,date,leadIdx,
-         data.anom,data.meanAdjust,data.meanvarAdjust) %>% 
+         field.anom,field.meanAdjust,field.meanvarAdjust) %>% 
   mutate(date=as.character(date)) %>%
-  rename("anomaly"=data.anom,
-         "MeanAdj"=data.meanAdjust,
-         "MeanVarAdj"=data.meanvarAdjust) %>%
+  rename("anomaly"=field.anom,
+         "MeanAdj"=field.meanAdjust,
+         "MeanVarAdj"=field.meanvarAdjust) %>%
   #Pivot
   pivot_longer(-c(srcName,srcType,realization,startDate,date,leadIdx),
                names_to = "calibrationMethod",
-               values_to = "data") %>%
+               values_to = "field") %>%
   #Drop unsupported calibrationMethods
   filter(calibrationMethod %in% pcfg@calibrationMethods)
   

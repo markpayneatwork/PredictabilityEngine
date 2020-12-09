@@ -35,7 +35,7 @@ PE.db.setup <- function(pcfg,results.only=FALSE) {
           "startDate TEXT",
           "date TEXT",
           "leadIdx INTEGER",
-          "data BLOB") 
+          "field BLOB") 
       tbl.cmd <- 
         sprintf("CREATE TABLE %s(%s)", 
                 PE.cfg$db$extract,
@@ -75,7 +75,7 @@ PE.db.setup <- function(pcfg,results.only=FALSE) {
           "startDate TEXT",
           "date TEXT",
           "leadIdx INTEGER",
-          "data BLOB")  
+          "field BLOB")  
       tbl.cmd <- 
         sprintf("CREATE TABLE %s(%s)", 
                 PE.cfg$db$calibration,

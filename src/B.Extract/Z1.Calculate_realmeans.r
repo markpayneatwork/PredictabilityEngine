@@ -96,7 +96,7 @@ frag.dat <-
 realMeans <- 
   frag.dat %>%
   group_by(srcType,srcName,startDate,date,leadIdx,.drop=TRUE) %>%
-  summarise(data=raster.list.mean(data),
+  summarise(field=raster.list.mean(field),
             duplicate.realizations=any(duplicated(realization)),
             .groups="keep") %>% #Check for duplicated realization codes
   ungroup()

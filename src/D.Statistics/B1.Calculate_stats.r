@@ -168,7 +168,7 @@ calc.stat.fn <- function(this.pKey,debug=FALSE) {
     PE.db.unserialize() 
   
   #Apply the masks to data
-  masked.dat <- mask(this.dat$data[[1]],combined.mask,maskvalue=1)
+  masked.dat <- mask(this.dat$field[[1]],combined.mask,maskvalue=1)
   
   if(debug) return(masked.dat)
   
@@ -178,10 +178,10 @@ calc.stat.fn <- function(this.pKey,debug=FALSE) {
   #Store the results
   out.dat <-
     this.dat %>%
+    select(!field,!srcHash) %>% #Drop the source data
     add_column(spName=sp.id,
                statName=stat.id) %>%
-    bind_cols(this.res) %>%
-    select(-data,-any_of("srcHash"))
+    bind_cols(this.res) 
   
   return(out.dat)
 }

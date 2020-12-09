@@ -86,8 +86,8 @@ dbDisconnect(this.db)
 clim.dat <-
   extr.dat %>%
   group_by(srcType,srcName,leadIdx,month,.drop=TRUE) %>%
-  summarise(mean=raster.list.mean(data),
-            sd=list(calc(brick(data),sd)),
+  summarise(mean=raster.list.mean(field),
+            sd=list(calc(brick(field),sd)),
             nYears=n(),
             .groups="keep")
 

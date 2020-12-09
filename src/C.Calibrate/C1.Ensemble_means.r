@@ -87,7 +87,7 @@ if(!pcfg@obs.only) {
   ensmeans <- 
     realmeans %>%
     group_by(srcType,calibrationMethod,startDate,date,leadIdx,.drop=TRUE) %>%
-    summarise(data=raster.list.mean(data),
+    summarise(field=raster.list.mean(field),
               n=n(),
               .groups="keep") %>% #Check for duplicated realization codes
     ungroup() %>%

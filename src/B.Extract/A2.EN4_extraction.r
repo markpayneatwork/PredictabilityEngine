@@ -117,7 +117,7 @@ for(f in this.datasrc@sources) {
                       srcName=this.datasrc@name,
                       srcType=this.datasrc@type,
                       date=this.datasrc@date.fn(f.remap),
-                      data=as.list(dat.b))
+                      field=as.list(dat.b))
   
   #Write to database
   frag.data %>%

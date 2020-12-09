@@ -127,7 +127,7 @@ frag.dat <- tibble(srcHash=src.hash,
                    startDate=NA,
                    date=getZ(dat.b),
                    leadIdx=NA,
-                   data=as.list(dat.b))
+                   field=as.list(dat.b))
 
 #Write to database
 frag.dat %>%
