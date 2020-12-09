@@ -21,7 +21,8 @@ PE.cfg$db <- list(extract="extraction",
                   climatology="climatology",
                   calibration="calibration",
                   stats="statistics",
-                  metrics="metrics")
+                  metrics="metrics",
+                  pt.extraction="ptExtraction")
 
 #Validity
 PE.cfg$validity <- list(calibrationMethods=c("anomaly","MeanAdj","MeanVarAdj"))

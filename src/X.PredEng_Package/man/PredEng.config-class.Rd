@@ -41,7 +41,12 @@ Different extraction modes can be combined in the same list.
 
 \item{\code{statistics}}{PredEng.list of statistics to apply over each spatial area}
 
-\item{\code{extraction}}{PredEng.list defining temporal and spatial extraction characteristics}
+\item{\code{pt.extraction}}{A tibble defining the points to extract, with three columns 1) table - the database table to do 
+the extraction from 2) filter - a character string defining a dplyr::filter command to subset the set of fields
+in the table - extraction only tables place from these 3) points - a st_sf data frame defining the points at which
+to extract and the date time ("date" column). Other metadata is carried forward into the output database}
+
+\item{\code{pt.extraction.from.results.db}}{Extract the points from a results database, rather than the full}
 
 \item{\code{calibrationMethods}}{A vector listing the calibration methods to use. The full list of supported values is 
 stored in PE.cfg$validity$calibrationMethods}

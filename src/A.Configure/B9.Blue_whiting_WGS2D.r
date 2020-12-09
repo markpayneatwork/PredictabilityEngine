@@ -73,6 +73,23 @@ pcfg@spatial.polygons <-
 pcfg@Observations <- Sal.obs$EN4
 
 #'========================================================================
+# Pointwise extraction ####
+#'========================================================================
+#Extract the data used in creating the Blue Whiting SDM from the EN4 product.
+#Doing the comparison in this way lets us check whether it has worked
+BW.SDM.dat <- 
+  readRDS(here("resources/BlueWhiting/model_dat.rds")) %>%
+  select(haulID,latitude,longitude,date=datetime,EN4.salinity) %>%
+  mutate(date=as.Date(date)-months(1)) %>%  #Account for spawning one month before
+  st_as_sf(coords=c("longitude","latitude")) 
+
+pcfg@pt.extraction <- 
+  tibble(table=PE.cfg$db$extract,
+         filter='srcType=="Observations" & srcName=="EN4"',
+         points=list(BW.SDM.dat))
+
+
+#'========================================================================
 # Statistics ####
 #'========================================================================
 #Configure stats

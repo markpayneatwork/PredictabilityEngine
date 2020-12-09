@@ -90,18 +90,18 @@ pcfg@spatial.polygons <-
 #'========================================================================
 # Extraction configuration ####
 #'========================================================================
-extr <- list()
-extr$spatial.forecasts <- as.Date("2019-08-15")
-
-#A simple point-wise extraction point (corresponding to the point of capture)
-# pt <- data.frame(lat=65 +42/60, 
+# #A simple point-wise extraction point (corresponding to the point of capture)
+# pt <- data.frame(lat=65 +42/60,
 #                  lon=-(30+50/60),
 #                  date=as.Date(c("2012-08-22","2014-08-15")))
 # pt$ID <- seq(nrow(pt))
-# coordinates(pt) <- ~ lon +lat
-# extr$spacetime.extraction <- pt
-
-#pcfg@extraction <- extr
+# pcfg@pt.extraction <- 
+#   tibble(table=PE.cfg$db$stats,
+#          filter='srcType=="Observations" & srcName=="HadISST"',
+#          results.db=TRUE,
+#          points=list(st_as_sf(pt,coords=c("lon","lat"))))
+# 
+# pcfg@pt.extraction.from.results.db <- TRUE
 
 #'========================================================================
 # Statistics ####
