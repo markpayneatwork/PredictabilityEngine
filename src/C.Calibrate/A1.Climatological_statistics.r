@@ -73,7 +73,7 @@ extr.dat <-
   filter(pKey %in% extr.these.pKeys) %>%
   select(-srcHash) %>%
   collect() %>%
-  mutate(dat=ymd(date),
+  mutate(date=ymd(date),
          month=month(date)) %>%
   PE.db.unserialize() 
 dbDisconnect(this.db)

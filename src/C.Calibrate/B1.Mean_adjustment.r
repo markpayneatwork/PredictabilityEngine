@@ -75,6 +75,7 @@ obs.clim <-
   clim.tbl %>%
   filter(srcType=="Observations",
          month %in% !!pcfg@MOI) %>%
+  select(-pKey) %>%
   collect() %>% 
   PE.db.unserialize() %>%
   pivot_wider(names_from=statistic,values_from=field) %>%
@@ -84,6 +85,7 @@ dmp <- assert_that(nrow(obs.clim)==1,msg = "Multiple rows detected in observatio
 #Import climatology data from both observations and model forecasts
 clim.dat <-
   clim.tbl %>%
+  select(-pKey) %>%
   collect() %>% 
   PE.db.unserialize() %>% 
   pivot_wider(names_from=statistic,values_from=field)%>%

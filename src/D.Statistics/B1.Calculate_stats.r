@@ -42,7 +42,7 @@ pcfg <- readRDS(PE.cfg$path$config)
 #Take input arguments, if any
 if(interactive()) {
   set.log_msg.silent()
-  stat.id <- names(pcfg@statistics)[3]
+  stat.id <- names(pcfg@statistics)[1]
   sp.id <- c(PE.cfg$misc$globalROI,pcfg@spatial.polygons$name)[2]
   n.cores <- 4
   pboptions(type="txt")
@@ -178,7 +178,7 @@ calc.stat.fn <- function(this.pKey,debug=FALSE) {
   #Store the results
   out.dat <-
     this.dat %>%
-    select(!field,!srcHash) %>% #Drop the source data
+    select(!field) %>% #Drop the source data
     add_column(spName=sp.id,
                statName=stat.id) %>%
     bind_cols(this.res) 
