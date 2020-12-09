@@ -54,9 +54,8 @@ PE.db.setup <- function(pcfg,results.only=FALSE) {
           "srcType TEXT",
           "srcName TEXT",
           "leadIdx INTEGER",
-          "month INTEGER",
-          "mean BLOB",
-          "sd BLOB",
+          "statistic INTEGER",
+          "field BLOB",
           "nYears INTEGER")  #Number of years in the climatology
       tbl.cmd <- 
         sprintf("CREATE TABLE %s(%s)", 

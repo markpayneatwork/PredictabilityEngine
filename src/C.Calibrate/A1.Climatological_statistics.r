@@ -97,6 +97,7 @@ clim.out <-
 
 #Write results
 #Reset the resutls table by deleting and reestablishing it
+this.db <- PE.db.connection(pcfg)
 dbRemoveTable(this.db,PE.cfg$db$climatology)
 PE.db.setup(pcfg)
 PE.db.appendTable(clim.out,pcfg,PE.cfg$db$climatology)
