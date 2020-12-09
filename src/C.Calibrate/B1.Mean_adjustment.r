@@ -77,6 +77,7 @@ obs.clim <-
          month %in% !!pcfg@MOI) %>%
   collect() %>% 
   PE.db.unserialize() %>%
+  pivot_wider(names_from=statistic,values_from=field) %>%
   select(mean,sd)
 dmp <- assert_that(nrow(obs.clim)==1,msg = "Multiple rows detected in observational climatology.")
 
@@ -85,7 +86,8 @@ clim.dat <-
   clim.tbl %>%
   collect() %>% 
   PE.db.unserialize() %>% 
-  select(srcType,srcName,leadIdx,month,mdlClim.mean=mean,mdlClim.sd=sd)
+  pivot_wider(names_from=statistic,values_from=field)%>%
+  rename(mdlClim.mean=mean,mdlClim.sd=sd)
 
 #TODO:Work through extraction table systematically based on the pKeys that are present
 extr.dat <-

@@ -50,10 +50,6 @@ set.log_msg.silent()
 this.db <- PE.db.connection(pcfg)
 extr.tbl <- tbl(this.db,PE.cfg$db$extract)
 
-#Reset the resutls table by deleting and reestablishing it
-dbRemoveTable(this.db,PE.cfg$db$climatology)
-PE.db.setup(pcfg)
-
 #'========================================================================
 # Calculate climatologies ####
 #'========================================================================
@@ -91,8 +87,19 @@ clim.dat <-
             nYears=n(),
             .groups="keep")
 
+#Pivot longer and write results
+clim.out <- 
+  clim.dat %>%
+  ungroup() %>%
+  pivot_longer(!srcType & !srcName & !leadIdx & !month & !nYears,
+               names_to="statistic",
+               values_to="field") 
+
 #Write results
-PE.db.appendTable(clim.dat,pcfg,PE.cfg$db$climatology)
+#Reset the resutls table by deleting and reestablishing it
+dbRemoveTable(this.db,PE.cfg$db$climatology)
+PE.db.setup(pcfg)
+PE.db.appendTable(clim.out,pcfg,PE.cfg$db$climatology)
 
 #'========================================================================
 # Complete ####
