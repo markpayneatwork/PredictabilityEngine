@@ -26,11 +26,12 @@
 cat(sprintf("\n%s\n","make"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 start.time <- proc.time()[3];
-
-library(drake)
-library(callr)
-library(PredEng)
-library(here)
+suppressPackageStartupMessages({
+  library(drake)
+  library(callr)
+  library(PredEng)
+  library(here)
+})
 pcfg <- readRDS(PE.cfg$path$config)
 
 #'========================================================================
@@ -42,10 +43,11 @@ if(interactive()) {
 } else {
   n.cores <-   as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))
 }
+show.onscreen <- interactive()
+
+print(pcfg)
 log_msg("Running with %i cores...\n",n.cores)
 
-obs.only <- TRUE
-show.onscreen <- interactive()
 
 #'========================================================================
 # Setup ####
