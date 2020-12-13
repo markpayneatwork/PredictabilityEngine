@@ -219,7 +219,6 @@ set.configuration <- function(pcfg) {
 
   #Set output directories
   define_dir(pcfg@scratch.dir)
-  define_dir(here("_targets","logs"))
 
   #Write CDO grid descriptors
   griddes.txt <- griddes(pcfg@global.ROI,res=pcfg@global.res)
@@ -253,6 +252,7 @@ set.configuration <- function(pcfg) {
     file.remove(targets.link)
   }
   file.symlink(define_dir(here(pcfg@scratch.dir,"_targets")),targets.link)
+  define_dir(here("_targets","logs"))
   
   #Setup SQLite database to store results
   PE.db.setup(pcfg)
