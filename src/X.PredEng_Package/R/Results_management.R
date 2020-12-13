@@ -110,7 +110,7 @@ PE.db.setup <- function(pcfg,results.only=FALSE) {
         "realization TEXT",
         "startDate TEXT",
         "date TEXT",
-        "leadIdx TEXT",
+        "leadIdx INTEGER",
         "spName TEXT",
         "statName TEXT",
         "resultName TEXT",

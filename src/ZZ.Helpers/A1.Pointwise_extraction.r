@@ -60,6 +60,7 @@ if(interactive()) {
 #Loop over rows in pointwise extraction
 extr.res.l <- list()
 for(i in seq(nrow(pcfg@pt.extraction))) {
+  log_msg("Extracting point sets %i of %i...\n",i, nrow(pcfg@pt.extraction))
   #Setup data extraction
   this.row <- pcfg@pt.extraction[i,]
   this.db <- PE.db.connection(pcfg,results.db = pcfg@pt.extraction.from.results.db)
@@ -80,7 +81,8 @@ for(i in seq(nrow(pcfg@pt.extraction))) {
   #Now prepare the points
   pt.sf <- 
     this.row$points[[1]] %>%
-    rename(extr.date=date) %>%   #To avoid conflicts with data date field
+    mutate(extr.date=date,  #Rename doesn't seem to work with sf objects
+           date=NULL) %>%   #To avoid conflicts with data date field
     mutate(ym=date_to_ym(extr.date)) %>%
     group_by(ym) 
   
@@ -94,7 +96,7 @@ for(i in seq(nrow(pcfg@pt.extraction))) {
     #Extract splitting key manually
     this.key <- unique(this.sf$ym)
     
-    #Find data that we need to extract
+    #Find field data that we need to extract
     these.pKeys <-
       filt.dat %>%
       filter(ym==this.key) %>% 
@@ -103,20 +105,21 @@ for(i in seq(nrow(pcfg@pt.extraction))) {
       this.tb %>%
       filter(pKey %in% these.pKeys) %>%
       collect() %>%
-      PE.db.unserialize()
-    
+      PE.db.unserialize() %>%
+     # mutate(leadIdx=as.numeric(leadIdx)) %>%    #Temporary tweak until full run repeated
+      filter(!map_lgl(field,is.null)) 
+
     #Now apply the extraction algorithm
     this.extr <-
-      this.dat %>%
-      mutate(extract.df=map(data,~cbind(this.meta,
-                                        st_coordinates(this.sf),
+      bind_cols(this.meta,this.dat) %>%
+      mutate(extract.df=map(field,~cbind(st_coordinates(this.sf),
                                         st_drop_geometry(this.sf),
                                         extraction=raster::extract(.x,
                                                                    this.sf,
                                                                    method="bilinear"))))
     #Drop data and return
     this.extr %>%
-      select(-data) %>%
+      select(-any_of(c("field","value")))  %>%
       return()
   }
   
@@ -131,9 +134,8 @@ for(i in seq(nrow(pcfg@pt.extraction))) {
 
 extr.res <-
   extr.res.l %>%
-  bind_rows() %>% 
-  relocate(extract.df) %>%
-  unnest(extract.df)
+  bind_rows() %>%
+  relocate(extract.df,.after=last_col())
 
 #'========================================================================
 # Output ####

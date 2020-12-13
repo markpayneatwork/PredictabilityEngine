@@ -77,17 +77,41 @@ pcfg@Observations <- Sal.obs$EN4
 #'========================================================================
 #Extract the data used in creating the Blue Whiting SDM from the EN4 product.
 #Doing the comparison in this way lets us check whether it has worked
-BW.SDM.dat <- 
+BW.SDM.pts <- 
   readRDS(here("resources/BlueWhiting/model_dat.rds")) %>%
   select(haulID,latitude,longitude,date=datetime,EN4.salinity) %>%
   mutate(date=as.Date(date)-months(1)) %>%  #Account for spawning one month before
-  st_as_sf(coords=c("longitude","latitude")) 
+  st_as_sf(coords=c("longitude","latitude")) %>%
+  list() %>%
+  tibble(extrName="BW_SDM",
+         table=PE.cfg$db$extract,
+         filter='srcType=="Observations" & srcName=="EN4"',
+         points=.)
+
+IBWSS.SA.pts <-
+  readRDS(here("resources/BlueWhiting/IBWSS_BW_SA.rds")) %>%
+  mutate(type="SA",
+         date=as.Date(ISOdate(YEAR,3,15))) %>%
+  list() %>%
+  tibble(extrName="IBWSS_SA",
+         table=PE.cfg$db$stat,
+         filter='statName =="SDM" & srcType=="Observations"',
+         points=.)
+
+IBWSS.CTD.pts <-
+  readRDS(here("resources/BlueWhiting/IBWSS_CTD.rds")) %>%
+  mutate(type="CTD",
+         date=as.Date(ISOdate(YEAR,3,15))) %>%
+  list() %>%
+  tibble(extrName="IBWSS_CTD",
+         table=PE.cfg$db$extract,
+         filter='srcType=="Observations" & srcName=="EN4"',
+         points=.)
 
 pcfg@pt.extraction <- 
-  tibble(table=PE.cfg$db$extract,
-         filter='srcType=="Observations" & srcName=="EN4"',
-         points=list(BW.SDM.dat))
-
+  bind_rows(BW.SDM.pts,
+            IBWSS.SA.pts,
+            IBWSS.CTD.pts)
 
 #'========================================================================
 # Statistics ####
