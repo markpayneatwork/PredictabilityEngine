@@ -49,7 +49,7 @@ tar.l <- list()
 ext.script <- function(this.scp,...) {
   this.args <- unlist(list(...))
   log.fname <- 
-    file.path(PE.scratch.path(pcfg,"logs"),
+    file.path(here("_targets","logs"),
               paste(substr(basename(dirname(this.scp)),1,1),
                     gsub("\\.r$","",basename(this.scp)),
                     paste(this.args,collapse="."),
@@ -79,16 +79,15 @@ extract.observations <-
 
 tar.l$obs.src <-
   tar_target(src.obs,
-             pcfg@Observations,
-             cue=tar_cue("always"))
+             pcfg@Observations)
 
 tar.l$observations <-
   tar_target(observations,
              extract.observations(src.obs))
 
 #Decadal sources
-#But only process them if they are defined. The funky evaluation approach that is
-#being employed here doesn't seems to handle this ok.
+#But only process them if they are defined. The lazy evaluation approach that is
+#being employed here seems to handle this ok.
 extract.decadal <- 
   function(this.src) {
     ext.script(here('src/B.Extract/D1.Decadal_extraction.r'),
@@ -105,8 +104,7 @@ if(length(pcfg@Decadal)!=0 & !pcfg@obs.only){
   tar.l$decadal.srcs <-
     tar_target(decadal.srcs,
                pcfg@Decadal,
-               iteration = "list",
-               cue=tar_cue("always"))
+               iteration = "list")
   
   tar.l$extract.decadal <-
     tar_target(extr.decadal,
@@ -119,7 +117,7 @@ if(length(pcfg@Decadal)!=0 & !pcfg@obs.only){
                calc.realmeans(extr.decadal),
                pattern=map(extr.decadal),
                iteration="list")
-}
+} 
 
 
 #'========================================================================
@@ -186,7 +184,7 @@ stat.jobs.fn <- function(...){
 
 tar.l$stat.jobs <-
   tar_target(statJobs,
-             stat.jobs.fn(ensmeans,pcfg@statistics))
+             stat.jobs.fn(pcfg,ensmeans))
 
 #Process stats
 process.stat <- function(this) {
