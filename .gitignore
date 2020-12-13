@@ -7,4 +7,5 @@
 *.Rproj
 scratch*
 PE_*
+_targets
 .drake

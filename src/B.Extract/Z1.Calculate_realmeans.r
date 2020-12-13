@@ -40,18 +40,16 @@ pcfg <- readRDS(PE.cfg$path$config)
 # Configure ####
 #'========================================================================
 #Take input arguments, if any
-if(!exists("...")) {  #Then we are running as a script
+if(interactive()) {
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
   sel.cfg <- "NorCPM.i2"
   this.datasrc <- pcfg@Decadal[[sel.cfg]]
-} else { #Running as a function
-  #Inputs are supplied as named arguments to the function version
-  args.in <- list(...)
-  assert_that(!is.null(args.in$srcType),msg="'srcType' not supplied as argument")
-  assert_that(!is.null(args.in$srcName),msg="'srcName' not supplied as argument")
-  this.srcType <- args.in$srcType
-  this.srcName <- args.in$srcName
+} else {  #Running as a "function"
+  cmd.args <- commandArgs(TRUE)
+  if(length(cmd.args)!=2) stop("Cannot get command args")
+  this.srcType <- cmd.args[1]
+  this.srcName <- cmd.args[2]
   this.datasrc <- slot(pcfg,this.srcType)[[this.srcName]]
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()

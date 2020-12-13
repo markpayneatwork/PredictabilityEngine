@@ -48,10 +48,11 @@ if(interactive()) {
   pboptions(type="txt")
 } else {
   cmd.args <- commandArgs(TRUE)
-  if(length(cmd.args)!=3) stop("Cannot get command args")
+  if(length(cmd.args)!=2) stop("Cannot get command args")
   sp.id <- cmd.args[1]
   stat.id <- cmd.args[2]
-  n.cores <- cmd.args[3]
+  n.cores <-   as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))
+  if(is.na(n.cores)) n.cores <- 4
   set.log_msg.silent()
   pboptions(type="none")
 }

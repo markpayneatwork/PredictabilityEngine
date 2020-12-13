@@ -39,15 +39,14 @@ pcfg <- readRDS(PE.cfg$path$config)
 # Configuration ####
 #'========================================================================
 #Take input arguments, if any
- if(!exists("...")) {  #Then we are running as a script
+if(interactive()) {
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
-  sel.cfg <- "MPI.ESM.LR"
-  this.cfg <- tibble(this.datasrc=list( pcfg@Decadal[[sel.cfg]]),
-                     sources=!!pcfg@Decadal[[sel.cfg]]@sources)
-} else { #Running as a function
-  #Inputs are supplied as named arguments to the function version
-  this.cfg <- ..1
+  sel.src <- names(pcfg@Decadal)[2]
+} else {  #Running as a function
+  cmd.args <- commandArgs(TRUE)
+  if(length(cmd.args)!=1) stop("Cannot get command args")
+  sel.src <- cmd.args[1]
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
 }
@@ -61,8 +60,8 @@ analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
 #'========================================================================
 # Setup ####
 #'========================================================================
-#Setup database
-#PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,this.datasrc)
+this.cfg <- tibble(this.datasrc=list( pcfg@Decadal[[sel.src]]),
+                   sources=!!pcfg@Decadal[[sel.src]]@sources)
 
 #Check configuration is sane
 assert_that(nrow(this.cfg)>0,msg="No source files provided")
