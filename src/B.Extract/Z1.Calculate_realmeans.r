@@ -104,7 +104,7 @@ if(any(realMeans$duplicate.realizations)) stop("Duplicate realizations detected 
 realMeans %>%
   select(-duplicate.realizations) %>%
   add_column(realization="realmean",.after="srcType") %>%
-  add_column(srcHash=as.character(NA),.before=1) %>%
+  add_column(srcFname=as.character(NA),.before=1) %>%
   PE.db.appendTable(pcfg, PE.cfg$db$extract)
 
 #'========================================================================

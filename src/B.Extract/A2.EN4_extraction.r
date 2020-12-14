@@ -65,8 +65,6 @@ log_msg("Extracting fragments...\n")
 pb <- PE.progress(this.datasrc@sources)
 
 for(f in this.datasrc@sources) {
-  src.hash <- tools::md5sum(f)
-  
   f.tmpstem <- tempfile()
   #For each individual file, strip out as much extra info as possible
   #by selecting the field of interest, region of interest and the layers of interest
@@ -113,7 +111,7 @@ for(f in this.datasrc@sources) {
   dat.b@crs <- PE.cfg$misc$crs
   
   #Create metadata
-  frag.data <- tibble(srcHash=src.hash,
+  frag.data <- tibble(srcFname=basename(f),
                       srcName=this.datasrc@name,
                       srcType=this.datasrc@type,
                       date=this.datasrc@date.fn(f.remap),
