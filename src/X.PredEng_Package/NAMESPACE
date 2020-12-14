@@ -3,7 +3,6 @@
 export(PE.db.appendTable)
 export(PE.db.connection)
 export(PE.db.delete.by.datasource)
-export(PE.db.delete.by.hash)
 export(PE.db.delete.by.pKey)
 export(PE.db.getQuery)
 export(PE.db.setup)

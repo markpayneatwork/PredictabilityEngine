@@ -28,7 +28,7 @@ PE.db.setup <- function(pcfg,results.only=FALSE) {
     if(!PE.cfg$db$extract %in% dbListTables(this.db)) {
       tbl.cols <-  
         c("pKey INTEGER NOT NULL PRIMARY KEY",
-          "srcHash TEXT",
+          "srcFname TEXT",
           "srcType TEXT",
           "srcName TEXT",
           "realization TEXT",
@@ -139,8 +139,8 @@ PE.db.setup <- function(pcfg,results.only=FALSE) {
   dbDisconnect(this.db)
 }
 
-PE.db.safe.try <- function(expr,silent=TRUE,n.max=100) {
-  i <- 1
+PE.db.safe.try <- function(expr,silent=TRUE,n.max=1) {
+  i <- 0
   while(i<n.max) {
     rtn <- try(expr,silent=silent)  
     if(!is(rtn, "try-error")) return(rtn)
@@ -185,22 +185,6 @@ PE.db.delete.by.datasource <- function(pcfg,tbl.name=PE.cfg$db$extract,datasrc,s
 }
 
 
-
-#' @export
-#' @rdname PE.db
-PE.db.delete.by.hash <- function(pcfg,hash,silent=TRUE) {
-  #Get rows matching hash
-  SQL.cmd <- sprintf("SELECT pKey FROM %s WHERE (`srcHash` IN (%s))",
-                     PE.cfg$db$extract,
-                     paste(sprintf("'%s'",hash),collapse=", "))
-  row.ids <- PE.db.getQuery(pcfg,SQL.cmd,silent=silent)
-
-  #Delete rows
-  n <- PE.db.delete.by.pKey(pcfg,PE.cfg$db$extract,row.ids$pKey,silent=silent)
-  return(invisible(n))
-}
-
-
 #' @details PE.db.appendTable serialises the data column and writes the data to the specified table
 #' @export
 #' @rdname PE.db
@@ -241,9 +225,6 @@ PE.db.getQuery <- function(pcfg,this.sql,silent=TRUE) {
   dbDisconnect(db.con)
   return(rtn)
 }
-
-
-
 
 #' Raster List functions
 #' 

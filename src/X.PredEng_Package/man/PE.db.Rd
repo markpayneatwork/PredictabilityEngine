@@ -6,7 +6,6 @@
 \alias{PE.db.setup}
 \alias{PE.db.delete.by.pKey}
 \alias{PE.db.delete.by.datasource}
-\alias{PE.db.delete.by.hash}
 \alias{PE.db.appendTable}
 \alias{PE.db.unserialize}
 \alias{PE.db.getQuery}
@@ -24,8 +23,6 @@ PE.db.delete.by.datasource(
   datasrc,
   silent = TRUE
 )
-
-PE.db.delete.by.hash(pcfg, hash, silent = TRUE)
 
 PE.db.appendTable(dat, pcfg, tbl.name, silent = TRUE)
 

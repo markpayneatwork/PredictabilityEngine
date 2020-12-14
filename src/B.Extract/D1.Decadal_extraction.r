@@ -32,6 +32,7 @@ start.time <- proc.time()[3];
 #Helper functions, externals and libraries
 suppressPackageStartupMessages({
   library(PredEng)
+  #library(furrr)
 })
 pcfg <- readRDS(PE.cfg$path$config)
 
@@ -47,9 +48,18 @@ if(interactive()) {
   cmd.args <- commandArgs(TRUE)
   if(length(cmd.args)!=1) stop("Cannot get command args")
   sel.src <- cmd.args[1]
+
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
 }
+
+# #Setup parallelism
+# n.cores <-   as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))
+# if(is.na(n.cores)) {
+#   n.cores <- 8
+# } 
+# plan(multisession, workers = n.cores)
+
 
 #Other configurations
 set.nco.defaults("--overwrite")
@@ -60,41 +70,38 @@ analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
 #'========================================================================
 # Setup ####
 #'========================================================================
-this.cfg <- tibble(this.datasrc=list( pcfg@Decadal[[sel.src]]),
-                   sources=!!pcfg@Decadal[[sel.src]]@sources)
+#Setup
+#Note that we preassign tempfile filenames. This is probably not necessary,
+#but avoids the risk of duplication when we are dealing with parallelisation
+this.datasrc <- pcfg@Decadal[[sel.src]]
+these.srcs <- 
+  tibble(src.fname=this.datasrc@sources) %>%
+  mutate(tmp.stem=tempfile(fileext = rep("",nrow(.))))
 
 #Check configuration is sane
-assert_that(nrow(this.cfg)>0,msg="No source files provided")
-assert_that(all(file.exists(this.cfg$sources)),msg="Cannot find all source files")
+assert_that(nrow(these.srcs)>0,msg="No source files provided")
+assert_that(all(file.exists(these.srcs$src.fname)),msg="Cannot find all source files")
+
+#Delete all previous entries of this datasource
+#My fear is that
+#an interruption of the source processing may lead to only a subset of
+#the fragments being produced from a given file. Hence, required that
+#the datasource extraction is run in one large chunk all the way to completion.
+PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,datasrc=this.datasrc)
 
 #'========================================================================
 # Extract Fragments from Source Files ####
 #'========================================================================
-#Use the fragment meta data here as the trigging step. My fear is that
-#an interruption of the source processing may lead to only a subset of
-#the fragments being produced from a given file. Hence, required that
-#the source extraction and fragment metadata are run in one large chunk
-#all the way to completion.
-
-#Loop over Source Files
-log_msg("Extracting fragments from source files...\n")
-pb <- PE.progress(nrow(this.cfg))
-dmp <- pb$tick(0)
-for(i in seq(nrow(this.cfg))) {
+extract.frags <- function(src.fname,tmp.stem) {
+  # src.fname <- these.srcs[1,]$fname
+  # tmp.stem <- these.srcs[1,]$tmp.stem
   #Extract configuration
-  this.src <- this.cfg$sources[i]
-  this.datasrc <- this.cfg$this.datasrc[[i]]
-  log_msg("Extracting from %s...\n",basename(this.src),silenceable = TRUE)
-  tmp.stem <- tempfile()
-  src.hash <- tools::md5sum(this.src)
-  
-  #Clear results from output
-  PE.db.delete.by.hash(pcfg,src.hash)
-  
+  log_msg("Extracting from %s...\n",basename(src.fname),silenceable = TRUE)
+
   #Subset out the layer(s) from the field of interest, if relevant
   if(this.datasrc@fields.are.2D ) {
     #Then don't need to do any select
-    sym.link <- file.path(getwd(),this.src)
+    sym.link <- file.path(getwd(),src.fname)
     if(file.exists(tmp.stem)) file.remove(tmp.stem)
     file.symlink(sym.link,tmp.stem)
     tmp.out <- tmp.stem
@@ -105,12 +112,12 @@ for(i in seq(nrow(this.cfg))) {
       vert.idxs <- 1
     } else {
       #Need to work it out ourselves
-      vert.idxs <- this.datasrc@z2idx(pcfg@vert.range,this.src)
+      vert.idxs <- this.datasrc@z2idx(pcfg@vert.range,src.fname)
     }
     sellev.cmd <- cdo(csl("sellevidx",vert.idxs),
-                      this.src,tmp.out)
+                      src.fname,tmp.out)
   }
-
+  
   #Average over the layers
   tmp.in <- tmp.out
   tmp.out <- sprintf("%s_vertmean",tmp.in)
@@ -157,37 +164,65 @@ for(i in seq(nrow(this.cfg))) {
   #As everything is interpolated onto a common grid, it should also therefore
   #have a CRS reflecting that grid.
   dat.b@crs <- PE.cfg$misc$crs
-
+  
   #Create metadata
-  frag.data <- tibble(srcHash=src.hash,
+  this.frag <- tibble(srcFname=basename(src.fname),
                       srcName=this.datasrc@name,
                       srcType=this.datasrc@type,
-                      realization=this.datasrc@realization.fn(this.src),
-                      startDate=this.datasrc@start.date(this.src),
+                      realization=this.datasrc@realization.fn(src.fname),
+                      startDate=this.datasrc@start.date(src.fname),
                       date=this.datasrc@date.fn(regrid.fname),
                       leadIdx=1:nlayers(dat.b),
                       field=as.list(dat.b))
-  
-  #Write to database
-  frag.data %>%
-    mutate(startDate=as.character(startDate),
-           date=as.character(date)) %>%
-    PE.db.appendTable(pcfg,PE.cfg$db$extract)
 
   #Remove the temporary files to tidy up
   tmp.fnames <- dir(dirname(tmp.stem),pattern=basename(tmp.stem),full.names = TRUE)
   del.err <- unlink(tmp.fnames)
   if(del.err!=0) stop("Error deleting temp files")
   
-  #Update progress bar
-  pb$tick()
-  
+  #Return
+  return(this.frag)
 }
-log_msg("\n")
 
-#Calculate realization means
-#log_msg("Calculating realization means...\n")
-#PE.db.calc.realMeans(pcfg,this.datasrc)
+#'========================================================================
+# Apply extraction ####
+#'========================================================================
+#' To avoid conflicts with too many processes trying to write to the database
+#' at the same time, we batch the process up into chunks of approximately 100
+#' files at a time, and then use a parallelised apply process
+#Loop over Source Files
+log_msg("Extracting fragments from source files...\n")
+
+chunk.l <- 
+  these.srcs %>%
+  mutate(batch.id=rep(seq(nrow(.)),
+                      each=20,
+                      length.out=nrow(.))) %>%
+  group_by(batch.id) %>%
+  group_split(.keep=FALSE)
+
+#Now loop over the chunks
+pb <- PE.progress(length(chunk.l))
+dmp <- pb$tick(0)
+for(this.chunk in chunk.l) {
+  #Extract from files
+  frag.dat <-
+    pmap_dfr(this.chunk,
+                    extract.frags)
+  # frag.dat <-
+  #   future_pmap_dfr(this.chunk,
+  #                   extract.frags,
+  #                   .options = furrr_options(stdout=FALSE))
+  # 
+  #Write to database
+  frag.dat %>%
+    mutate(startDate=as.character(startDate),
+           date=as.character(date)) %>%
+    PE.db.appendTable(pcfg,PE.cfg$db$extract)
+  
+  #Loop
+  pb$tick()
+}
 
 #'========================================================================
 # Complete 
