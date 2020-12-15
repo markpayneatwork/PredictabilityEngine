@@ -3,7 +3,7 @@
 #' @param ... Relevant paramters to be displayed
 #'
 #' @export
-config.summary<- function(...){
+PE.config.summary<- function(...){
   
   l <- list(...)
   for(this in l){

@@ -66,6 +66,9 @@ set.nco.defaults("--overwrite")
 
 #Setup
 analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
+#Display configuration
+this.datasrc <- pcfg@Decadal[[sel.src]]
+PE.config.summary(pcfg,this.datasrc)
 
 #'========================================================================
 # Setup ####
@@ -73,7 +76,6 @@ analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
 #Setup
 #Note that we preassign tempfile filenames. This is probably not necessary,
 #but avoids the risk of duplication when we are dealing with parallelisation
-this.datasrc <- pcfg@Decadal[[sel.src]]
 these.srcs <- 
   tibble(src.fname=this.datasrc@sources) %>%
   mutate(tmp.stem=tempfile(fileext = rep("",nrow(.))))
