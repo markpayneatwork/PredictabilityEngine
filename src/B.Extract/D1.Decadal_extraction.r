@@ -41,31 +41,32 @@ pcfg <- readRDS(PE.cfg$path$config)
 # Configuration ####
 #'========================================================================
 #Take input arguments, if any
-if(interactive()) {
+isRStudio <- Sys.getenv("RSTUDIO") == "1"
+if(isRStudio) {
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
   sel.src <- names(pcfg@Decadal)[2]
-} else {  #Running as a function
+  this.plan <- sequential
+ # this.plan <- multisession
+  n.cores <- 4
+} else {  
+  #Running as a terminal
   cmd.args <- commandArgs(TRUE)
-  if(length(cmd.args)!=1) stop("Cannot get command args")
+  assert_that(length(cmd.args)!=1,msg="Cannot get command args")
   sel.src <- cmd.args[1]
-
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
+  n.cores <- as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))
+  this.plan <- multicore
 }
 
 #Setup parallelism
-n.cores <-   as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))
-if(is.na(n.cores)) {
-  n.cores <- 8
-} 
-plan(multisession, workers = n.cores)
+assert_that(!is.na(n.cores),msg = "Cannot detect number of allocated cores")
+plan(this.plan, workers = n.cores)
 
 #Other configurations
 set.nco.defaults("--overwrite")
 
-#Setup
-analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
 #Display configuration
 this.datasrc <- pcfg@Decadal[[sel.src]]
 PE.config.summary(pcfg,this.datasrc)
@@ -94,11 +95,10 @@ PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,datasrc=this.datasrc)
 #'========================================================================
 # Extract Fragments from Source Files ####
 #'========================================================================
-extract.frags <- function(src.fname,tmp.stem) {
+extract.frags <- function(src.fname,tmp.stem,opts) {
   # src.fname <- these.srcs[1,]$fname
   # tmp.stem <- these.srcs[1,]$tmp.stem
-  #Extract configuration
-  set.cdo.defaults("--silent --no_warnings -O")
+  options(opts)
 
   #Subset out the layer(s) from the field of interest, if relevant
   if(this.datasrc@fields.are.2D ) {
@@ -153,6 +153,7 @@ extract.frags <- function(src.fname,tmp.stem) {
   }
   
   #Remap recalculating weights every time
+  analysis.grid.fname <- PE.scratch.path(pcfg,PE.cfg$file$analysis.grid)
   tmp.in <- tmp.out
   regrid.fname <- sprintf("%s_regrid",tmp.in)
   regrid.cmd <- cdo("-f nc",
@@ -180,7 +181,7 @@ extract.frags <- function(src.fname,tmp.stem) {
   #Remove the temporary files to tidy up
   tmp.fnames <- dir(dirname(tmp.stem),pattern=basename(tmp.stem),full.names = TRUE)
   del.err <- unlink(tmp.fnames)
-  if(del.err!=0) stop("Error deleting temp files")
+  assert_that(del.err==0,msg="Error deleting temp files")
   
   #Return
   return(this.frag)
@@ -203,18 +204,23 @@ chunk.l <-
   group_by(batch.id) %>%
   group_split(.keep=FALSE)
 
-#Now loop over the chunks
+#Now loop over the chunks in a parallelised manner
 pb <- PE.progress(length(chunk.l))
 dmp <- pb$tick(0)
 for(this.chunk in chunk.l) {
-  #Extract from files
-  #frag.dat <-
-  #  pmap_dfr(this.chunk,
-  #                  extract.frags)
+  #Using Furrr and future
   frag.dat <-
     future_pmap_dfr(this.chunk,
                     extract.frags,
+                    opts=options("ClimateOperators"),
                     .options = furrr_options(stdout=FALSE))
+  
+  #Using purr (serialised)
+  #frag.dat <-
+  #  pmap_dfr(this.chunk,
+  #                  extract.frags)
+  
+  #Using mcmapply (parallel / multicore)
   # frag.dat <-
   #	mcmapply(extract.frags,
   #               this.chunk$src.fname,this.chunk$tmp.stem,
@@ -223,7 +229,6 @@ for(this.chunk in chunk.l) {
   #               mc.cores=n.cores) %>%
   #      bind_rows()
 
-   
   #Write to database
   frag.dat %>%
     mutate(startDate=as.character(startDate),
