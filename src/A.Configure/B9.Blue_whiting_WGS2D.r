@@ -144,6 +144,15 @@ GAM.sdm.resources <-
        pred.l=list(latitude=lat.rast,
                    log10bath=log10bath))
 
+# Threshold values are extracted by matching prevalence in IBWSS survey across the
+# main spawning region. See ~/gbar/Blue_whiting/IBWSS project for more details
+# The threshold for the blue whiting larvae from the SDM is stored in model$threshold
+GAM.sdm.resources$thresholds <- 
+  list(april15=0.154,
+       maximumProbability=0.208,
+       meanProbability=0.113,
+       larvae=GAM.sdm.resources$model$threshold)
+
 #Setup prediction function
 GAM.sdm.fn <- function(dat,resources) {
   require(mgcv)
@@ -174,24 +183,28 @@ GAM.sdm.fn <- function(dat,resources) {
   field.l$meanProbability <- mean(pred.b)
   #15 April
   field.l$april15 <- pred.b[[which(pred.consts$doy==105)]]
-  
+  #We use 15th april as the larvae habitat value.
+
   # Scalar values -------------------------------------------------------------------
   scalar.l <- vector()
   pxl.area <- area(pred.b)
   scalar.l["areaMaxProbability"] <-
-    cellStats(pxl.area* field.l$maximumProbability > resources$model$threshold,
+    cellStats(pxl.area* (field.l$maximumProbability > resources$thresholds$maximumProbability),
               sum,na.rm=TRUE)
   scalar.l["areaMeanProbability"] <-
-    cellStats(pxl.area* field.l$meanProbability > resources$model$threshold,
+    cellStats(pxl.area* (field.l$meanProbability > resources$thresholds$meanProbability),
               sum,na.rm=TRUE)
   scalar.l["area15April"] <- 
-    cellStats(pxl.area* field.l$april15 > resources$model$threshold,
+    cellStats(pxl.area* (field.l$april15 > resources$thresholds$april15),
+              sum,na.rm=TRUE)
+  scalar.l["areaLarvae"] <- 
+    cellStats(pxl.area* (field.l$april15 > resources$thresholds$larvae),
               sum,na.rm=TRUE)
   #Westward extent 
-  west.ext <- function(r) {
+  west.ext <- function(r,this.threshold) {
     west.focus <- crop(r,extent(-25,0,54,58))
     west.ext.df <- 
-      (west.focus > resources$model$threshold ) %>%
+      (west.focus > this.threshold ) %>%
       rasterToPoints() %>%
       as_tibble() %>%
       filter(layer==1) %>%
@@ -200,12 +213,14 @@ GAM.sdm.fn <- function(dat,resources) {
     return(mean(west.ext.df$min.x,na.rm=TRUE))
   }
   scalar.l["westwardExtentMaxProb"] <- 
-    west.ext(field.l$maximumProbability)
+    west.ext(field.l$maximumProbability,resources$thresholds$maximumProbability)
   scalar.l["westwardExtentMeanProb"] <- 
-    west.ext(field.l$meanProbability)
+    west.ext(field.l$meanProbability,resources$thresholds$meanProbability)
   scalar.l["westwardExtent15April"] <- 
-    west.ext(field.l$april15)
-
+    west.ext(field.l$april15,resources$thresholds$april15)
+  scalar.l["westwardExtentLarvae"] <- 
+    west.ext(field.l$april15,resources$thresholds$larvae)
+  
   #Return results
   this.rtn <- 
     bind_rows(enframe(field.l,"resultName","field"),
