@@ -32,7 +32,7 @@ suppressPackageStartupMessages({
 
 tar_make()
 
-log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
+cat(sprintf("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date()))
 
 # .............
 # This work by Mark R Payne is licensed under a  Creative Commons

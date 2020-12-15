@@ -38,7 +38,7 @@ default: help
 #Remove any existing To do files
 
 make: FORCE
-	bsub < src/Y.HPC/DrakeMake.sh
+	bsub < src/Y.HPC/Make.sh
 
 install: FORCE
 	$(Rscript) src/ZZ.Helpers/Setup_system.r
