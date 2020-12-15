@@ -32,7 +32,8 @@ start.time <- proc.time()[3];
 #Helper functions, externals and libraries
 suppressPackageStartupMessages({
   library(PredEng)
-  #library(furrr)
+  library(furrr)
+  #library(parallel)
 })
 pcfg <- readRDS(PE.cfg$path$config)
 
@@ -53,13 +54,12 @@ if(interactive()) {
   set.log_msg.silent()
 }
 
-# #Setup parallelism
-# n.cores <-   as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))
-# if(is.na(n.cores)) {
-#   n.cores <- 8
-# } 
-# plan(multisession, workers = n.cores)
-
+#Setup parallelism
+n.cores <-   as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))
+if(is.na(n.cores)) {
+  n.cores <- 8
+} 
+plan(multisession, workers = n.cores)
 
 #Other configurations
 set.nco.defaults("--overwrite")
@@ -96,7 +96,7 @@ extract.frags <- function(src.fname,tmp.stem) {
   # src.fname <- these.srcs[1,]$fname
   # tmp.stem <- these.srcs[1,]$tmp.stem
   #Extract configuration
-  log_msg("Extracting from %s...\n",basename(src.fname),silenceable = TRUE)
+  set.cdo.defaults("--silent --no_warnings -O")
 
   #Subset out the layer(s) from the field of interest, if relevant
   if(this.datasrc@fields.are.2D ) {
@@ -196,7 +196,7 @@ log_msg("Extracting fragments from source files...\n")
 chunk.l <- 
   these.srcs %>%
   mutate(batch.id=rep(seq(nrow(.)),
-                      each=20,
+                      each=n.cores*50,
                       length.out=nrow(.))) %>%
   group_by(batch.id) %>%
   group_split(.keep=FALSE)
@@ -206,14 +206,22 @@ pb <- PE.progress(length(chunk.l))
 dmp <- pb$tick(0)
 for(this.chunk in chunk.l) {
   #Extract from files
+  #frag.dat <-
+  #  pmap_dfr(this.chunk,
+  #                  extract.frags)
   frag.dat <-
-    pmap_dfr(this.chunk,
-                    extract.frags)
+    future_pmap_dfr(this.chunk,
+                    extract.frags,
+                    .options = furrr_options(stdout=FALSE))
   # frag.dat <-
-  #   future_pmap_dfr(this.chunk,
-  #                   extract.frags,
-  #                   .options = furrr_options(stdout=FALSE))
-  # 
+  #	mcmapply(extract.frags,
+  #               this.chunk$src.fname,this.chunk$tmp.stem,
+  #               SIMPLIFY=FALSE,
+  #               mc.silent=TRUE,
+  #               mc.cores=n.cores) %>%
+  #      bind_rows()
+
+   
   #Write to database
   frag.dat %>%
     mutate(startDate=as.character(startDate),
