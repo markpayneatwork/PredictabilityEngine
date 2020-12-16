@@ -78,12 +78,12 @@ extract.observations <-
   }
 
 tar.l$obs.src <-
-  tar_target(src.obs,
+  tar_target(obs.src,
              pcfg@Observations)
 
 tar.l$observations <-
   tar_target(observations,
-             extract.observations(src.obs))
+             extract.observations(obs.src))
 
 #Decadal sources
 #But only process them if they are defined. The lazy evaluation approach that is
@@ -107,15 +107,15 @@ if(length(pcfg@Decadal)!=0 & !pcfg@obs.only){
                iteration = "list")
   
   tar.l$extract.decadal <-
-    tar_target(extr.decadal,
+    tar_target(decadal.extr,
                extract.decadal(decadal.srcs),
                pattern=map(decadal.srcs),
                iteration="list")
 
   tar.l$realmean.decadal <-
-    tar_target(realmean.decadal,
-               calc.realmeans(extr.decadal),
-               pattern=map(extr.decadal),
+    tar_target(decadal.realmean,
+               calc.realmeans(decadal.extr),
+               pattern=map(decadal.extr),
                iteration="list")
 } 
 
@@ -130,7 +130,7 @@ climatology.fn <- function(...) {
 
 tar.l$clim <-
   tar_target(clim,
-             climatology.fn(realmean.decadal, observations))
+             climatology.fn(decadal.realmean, observations))
 
 #Calibration
 calibration.fn <- function(...) {
