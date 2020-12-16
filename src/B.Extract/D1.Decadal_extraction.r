@@ -41,28 +41,27 @@ pcfg <- readRDS(PE.cfg$path$config)
 # Configuration ####
 #'========================================================================
 #Take input arguments, if any
-isRStudio <- Sys.getenv("RSTUDIO") == "1"
-if(isRStudio) {
+if(interactive() ) {
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
   sel.src <- names(pcfg@Decadal)[2]
-  this.plan <- sequential
- # this.plan <- multisession
-  n.cores <- 4
 } else {  
   #Running as a terminal
   cmd.args <- commandArgs(TRUE)
-  assert_that(length(cmd.args)!=1,msg="Cannot get command args")
+  assert_that(length(cmd.args)==1,msg="Cannot get command args")
   sel.src <- cmd.args[1]
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
-  n.cores <- as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))
-  this.plan <- multicore
 }
 
 #Setup parallelism
-assert_that(!is.na(n.cores),msg = "Cannot detect number of allocated cores")
-plan(this.plan, workers = n.cores)
+if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
+  n.cores <- availableCores()
+} else {
+  n.cores <- as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))    
+  assert_that(!is.na(n.cores),msg = "Cannot detect number of allocated cores")
+}
+plan(multisession,workers = n.cores)
 
 #Other configurations
 set.nco.defaults("--overwrite")
@@ -213,7 +212,8 @@ for(this.chunk in chunk.l) {
     future_pmap_dfr(this.chunk,
                     extract.frags,
                     opts=options("ClimateOperators"),
-                    .options = furrr_options(stdout=FALSE))
+                    .options = furrr_options(stdout=FALSE,
+                                             seed=TRUE))
   
   #Using purr (serialised)
   #frag.dat <-
@@ -242,9 +242,8 @@ for(this.chunk in chunk.l) {
 #'========================================================================
 # Complete 
 #'========================================================================
-#+ results='asis'
 #Turn off thte lights
-if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
+plan(sequential)
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
 #' -----------
