@@ -6,7 +6,9 @@
 PE.config.summary<- function(...){
   
   l <- list(...)
-  for(this in l){
+  for(i in seq(l)){
+    this <- l[[i]]
+    this.name <- names(l)[i]
     if(is(this,"PredEng.config")) {
       show(this)
       log_msg("---------------------\n")}
@@ -15,10 +17,14 @@ PE.config.summary<- function(...){
     if(is(this,"spatial.domain"))     {
       log_msg("Spatial domain       : %s (%s)\n",this@name,this@desc)}
     if(is.numeric(this)) {
-      log_msg("Configuration id     : %i\n",this)
+      log_msg("%-20s : %i\n",this.name,this)
+    }
+    if(is.character(this)) {
+      log_msg("%-20s : %s\n",this.name,this)
     }
   }
-  log_msg("R.version            : %s\n",R.version$version.string)
+  log_msg("---------------------\n")
+  log_msg("%-20s : %s\n","R.version", R.version$version.string)
   log_msg("---------------------\n")
 }
 

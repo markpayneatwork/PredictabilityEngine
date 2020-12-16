@@ -139,15 +139,16 @@ PE.db.setup <- function(pcfg,results.only=FALSE) {
   dbDisconnect(this.db)
 }
 
-PE.db.safe.try <- function(expr,silent=TRUE,n.max=1) {
+PE.db.safe.try <- function(expr,silent=TRUE,n.max=100) {
   i <- 0
   while(i<n.max) {
     rtn <- try(expr,silent=silent)  
     if(!is(rtn, "try-error")) return(rtn)
-    Sys.sleep(runif(1,0.01,0.1))  #Avoid constant polling. Add some stochasticity to break synchronisation
+    Sys.sleep(runif(1,0.01,0.1)+i/10)  #Avoid constant polling. Add some stochasticity to break synchronisation
     i <- i+1
   }
-  stop(sprintf("Maximum number of tries exceeded after %i attempts. %s",n.max,rtn))
+  stop(sprintf("Maximum number of tries exceeded after %i attempts. %s\n",
+               n.max,rtn))
 }
 
 
