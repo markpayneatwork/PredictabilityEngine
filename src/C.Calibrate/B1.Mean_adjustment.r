@@ -30,8 +30,9 @@ start.time <- proc.time()[3];
 #Helper functions, externals and libraries
 suppressMessages({
   library(PredEng)
-  library(ncdf4)
   library(lubridate)
+  library(furrr)
+  library(forcats)
 })
 pcfg <- readRDS(PE.cfg$path$config)
 
@@ -45,6 +46,16 @@ if(interactive()) {
   #Do everything and tell us all about it
   set.log_msg.silent(FALSE)
 }
+
+#Setup parallelism
+if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
+  n.cores <- availableCores()
+} else {
+  n.cores <- as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))    
+  assert_that(!is.na(n.cores),msg = "Cannot detect number of allocated cores")
+}
+plan(multisession,workers = n.cores)
+options(future.globals.onReference = "error")
 
 #'========================================================================
 # Import data ####
@@ -91,66 +102,122 @@ clim.dat <-
   pivot_wider(names_from=statistic,values_from=field)%>%
   rename(mdlClim.mean=mean,mdlClim.sd=sd)
 
-#TODO:Work through extraction table systematically based on the pKeys that are present
-extr.dat <-
+#Get list of extraction pKeys
+extr.pKey <-
   extr.tbl %>%
+  select(pKey) %>%
   collect() %>%
-  PE.db.unserialize() %>%
-  #Calculate date information
-  mutate(date=ymd(date),
-         month=month(date)) %>%
-  rename(field.extr=field)
-
-#Finished import
-dbDisconnect(this.db)
+  pull()
 
 #'========================================================================
-# Recalibration ####
+# Calibration function####
 #'========================================================================
-log_msg("Merging...\n")
-all.dat <- 
-  extr.dat %>%
-  #Join in model climatological data
-  left_join(y=clim.dat,
-            by=c("srcName","srcType","month","leadIdx")) 
+calibration.fn <- function(this.dat,this.clim) {
+  #Debugging
+  # this.dat <- chunk.l[[1]]
+  # this.clim <- obs.clim
+  suppressMessages({
+    library(raster)
+  })
 
-log_msg("Recalibration...\n")
-calib.dat <-
-  all.dat %>%
-  #Calculate the anomaly and make the correction
-  mutate(field.anom=map2(field.extr,mdlClim.mean,~ .x - .y),
-         field.meanAdjust=map(field.anom,~ .x + obs.clim$mean[[1]]),
-         field.meanvarAdjust=map2(field.anom,mdlClim.sd,~(.x/.y)*obs.clim$sd[[1]]+obs.clim$mean[[1]]))
-
-#'========================================================================
-# Output ####
-#'========================================================================
-log_msg("Output...\n")
-out.dat <- 
-  calib.dat %>%
-  #Select columns and tidy
-  select(srcName,srcType,realization,startDate,date,leadIdx,
-         field.anom,field.meanAdjust,field.meanvarAdjust) %>% 
-  mutate(date=as.character(date)) %>%
-  rename("anomaly"=field.anom,
-         "MeanAdj"=field.meanAdjust,
-         "MeanVarAdj"=field.meanvarAdjust) %>%
-  #Pivot
-  pivot_longer(-c(srcName,srcType,realization,startDate,date,leadIdx),
-               names_to = "calibrationMethod",
-               values_to = "field") %>%
-  #Drop unsupported calibrationMethods
-  filter(calibrationMethod %in% pcfg@calibrationMethods)
+  #Apply recalibration
+  rtn <-
+    this.dat %>%
+    #Calculate the anomaly and make the correction
+    mutate(field.anom=map2(field.extr,mdlClim.mean,~ .x - .y),
+           field.meanAdjust=map(field.anom,~ .x + this.clim$mean[[1]]),
+           field.meanvarAdjust=map2(field.anom,mdlClim.sd,~(.x/.y)*this.clim$sd[[1]]+this.clim$mean[[1]]))
   
+  return(rtn)
+}
 
-#Write results
-PE.db.appendTable(out.dat,pcfg,PE.cfg$db$calibration)
+#'========================================================================
+# Apply recalibration ####
+#'========================================================================
+#' To avoid conflicts with too many processes trying to write to the database
+#' at the same time, we batch the process up into chunks and then use a parallelised apply process
+#Loop over Source Files
+log_msg("Applying recalibration...\n")
+
+#Now loop over the chunks in a parallelised manner
+chunk.size <- 100  #pKeys
+basket.size <- chunk.size * n.cores
+n.baskets <- ceiling(length(extr.pKey) / basket.size)
+basket.l <- split(extr.pKey,rep(1:n.baskets,
+                                each=basket.size,
+                                length.out=length(extr.pKey)))
+pb <- PE.progress(n.baskets)
+dmp <- pb$tick(0)
+
+for(this.basket in basket.l) {
+  #Import data from extraction table
+  extr.dat <-
+    extr.tbl %>%
+    filter(pKey %in% !!this.basket) %>%
+    collect()    %>%
+    PE.db.unserialize() %>%
+    #Calculate date information
+    mutate(date=ymd(date),
+           month=month(date)) %>%
+    rename(field.extr=field)
+  
+  #Merge in climatological data  
+  merged.dat <- 
+    extr.dat %>%
+    #Join in model climatological data
+    left_join(y=clim.dat,
+              by=c("srcName","srcType","month","leadIdx")) 
+  
+  
+  #Split basket into chunks
+  chunk.l <- 
+    merged.dat %>%
+    mutate(batch.id=rep(seq(nrow(.)),
+                        each=chunk.size,
+                        length.out=nrow(.))) %>%
+    group_by(batch.id) %>%
+    group_split(.keep=FALSE)
+  
+  #Using Furrr and future to do the raster-based calculations
+  calib.dat <-
+    future_map_dfr(chunk.l,
+                   calibration.fn,
+                   this.clim=obs.clim,
+                   .options = furrr_options(stdout=FALSE,
+                                            seed=TRUE))
+  
+  #Write results
+  out.dat <- 
+    calib.dat %>%
+    #Select columns and tidy
+    select(srcName,srcType,realization,startDate,date,leadIdx,
+           field.anom,field.meanAdjust,field.meanvarAdjust) %>% 
+    mutate(date=as.character(date)) %>%
+    rename("anomaly"=field.anom,
+           "MeanAdj"=field.meanAdjust,
+           "MeanVarAdj"=field.meanvarAdjust) %>%
+    #Pivot
+    pivot_longer(-c(srcName,srcType,realization,startDate,date,leadIdx),
+                 names_to = "calibrationMethod",
+                 values_to = "field") %>%
+    #Drop unsupported calibrationMethods
+    filter(calibrationMethod %in% pcfg@calibrationMethods)
+  
+  #Write results
+  PE.db.appendTable(out.dat,pcfg,PE.cfg$db$calibration)
+  
+  #Loop
+  pb$tick()
+}
+
 
 #'========================================================================
 # Complete ####
 #'========================================================================
+#Finished 
+dbDisconnect(this.db)
+
 #Turn off the lights
-if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
 # .............
