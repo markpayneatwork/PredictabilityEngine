@@ -40,25 +40,22 @@ pcfg <- readRDS(PE.cfg$path$config)
 # Configure ####
 #'========================================================================
 #Take input arguments, if any
-if(!exists("...")) {  #Then we are running as a script
+if(interactive()) {
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
-  sel.cfg <- "NorCPM.i2"
+  sel.cfg <- "CESM.DPLE"
   this.datasrc <- pcfg@Decadal[[sel.cfg]]
-} else { #Running as a function
-  #Inputs are supplied as named arguments to the function version
-  args.in <- list(...)
-  assert_that(!is.null(args.in$srcType),msg="'srcType' not supplied as argument")
-  assert_that(!is.null(args.in$srcName),msg="'srcName' not supplied as argument")
-  this.srcType <- args.in$srcType
-  this.srcName <- args.in$srcName
+} else {  #Running as a "function"
+  cmd.args <- commandArgs(TRUE)
+  assert_that(length(cmd.args)==2,msg="Cannot get command args")
+  this.srcType <- cmd.args[1]
+  this.srcName <- cmd.args[2]
   this.datasrc <- slot(pcfg,this.srcType)[[this.srcName]]
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
 }
 
-log_msg("Performing analysis for: %s, %s", this.datasrc@type, this.datasrc@name)
-
+PE.config.summary(pcfg,this.datasrc)
 
 #'========================================================================
 # Clear existing realmeans ####
@@ -100,13 +97,14 @@ realMeans <-
             duplicate.realizations=any(duplicated(realization)),
             .groups="keep") %>% #Check for duplicated realization codes
   ungroup()
-if(any(realMeans$duplicate.realizations)) stop("Duplicate realizations detected in database. Rebuild.")
+assert_that(!any(realMeans$duplicate.realizations),
+            msg="Duplicate realizations detected in database. Rebuild.")
 
 #Write to database 
 realMeans %>%
   select(-duplicate.realizations) %>%
   add_column(realization="realmean",.after="srcType") %>%
-  add_column(srcHash=as.character(NA),.before=1) %>%
+  add_column(srcFname=as.character(NA),.before=1) %>%
   PE.db.appendTable(pcfg, PE.cfg$db$extract)
 
 #'========================================================================

@@ -32,7 +32,7 @@ start.time <- proc.time()[3];
 #Helper functions, externals and libraries
 suppressPackageStartupMessages({
   library(PredEng)
-  library(pbapply)
+  library(furrr)
 })
 pcfg <- readRDS(PE.cfg$path$config)
 
@@ -43,20 +43,24 @@ pcfg <- readRDS(PE.cfg$path$config)
 if(interactive()) {
   set.log_msg.silent()
   stat.id <- names(pcfg@statistics)[1]
-  sp.id <- c(PE.cfg$misc$globalROI,pcfg@spatial.polygons$name)[2]
-  n.cores <- 4
-  pboptions(type="txt")
+  sp.id <- c(PE.cfg$misc$globalROI,pcfg@spatial.polygons$name)[3]
 } else {
+  set.log_msg.silent()
   cmd.args <- commandArgs(TRUE)
-  if(length(cmd.args)!=3) stop("Cannot get command args")
+  assert_that(length(cmd.args)==2,msg="Cannot get command args")
   sp.id <- cmd.args[1]
   stat.id <- cmd.args[2]
-  n.cores <- cmd.args[3]
-  set.log_msg.silent()
-  pboptions(type="none")
 }
 
-log_msg("Configuration\nStat id : %s\nSp id   : %s\n",stat.id,sp.id)
+#Setup parallelisation
+if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
+  n.cores <- availableCores()
+} else {
+  n.cores <- as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))    
+  assert_that(!is.na(n.cores),msg = "Cannot detect number of allocated cores")
+}
+plan(multisession,workers = n.cores)
+
 
 #'========================================================================
 # Setup  ####
@@ -85,10 +89,12 @@ dmp <- assert_that(nrow(this.sp)==1,msg="Failed to select only one spatial polyg
 #TODO:
 # Parallelise, reduce write frequency
 
-#Extract elements based on configuration
-log_msg("Calib   : %s\nReals   : %s\n\n",
-        paste0(this.stat@calibration),
-        paste0(this.stat@realizations,collapse=", "))
+#Display Configuration
+PE.config.summary(pcfg,
+                  "spName"=sp.id,
+                  "statName"=stat.id,
+                  "calibrationMethod(s)"=paste0(this.stat@calibration,collapse=", "),
+                  "realizations"=paste0(this.stat@realizations,collapse=", "))
 
 #Delete existing results 
 log_msg("Getting list of previous ids to clear...")
@@ -195,25 +201,42 @@ calc.stat.fn <- function(this.pKey,debug=FALSE) {
 # Sanity check --------------------------------------------------------------------
 # Try doing the first evaluation as a sanity check. This will let us fail gracefully,
 # before getting medieval on their asses...
-# Use of lapply mirrors the use of pblapply in subsequent step
-dmp <- lapply(head(pKey.todos,1),calc.stat.fn)
+dmp <- map(head(pKey.todos,1),calc.stat.fn)
 log_msg("Sanity check passed. Parallellising now...\n")
 
-# Parallelised extraction loop ----------------------------------------------------
-stat.l <- pblapply(pKey.todos,
-                   calc.stat.fn,
-                   cl = n.cores)
+# Chunking ------------------------------------------------------------------------
+n.todo <- length(pKey.todos)
+chunk.l <- 
+  split(pKey.todos,
+        rep(seq(n.todo),  
+            each=n.cores*20,
+            length.out=n.todo))
 
-# Write results -------------------------------------------------------------------
-out.res <-
-  bind_rows(stat.l)
-PE.db.appendTable(out.res,pcfg,PE.cfg$db$stats)
+#Progress bar
+pb <- PE.progress(length(chunk.l))
+dmp <- pb$tick(0)
+
+# Parallelised extraction loop ----------------------------------------------------
+for(this.chunk in chunk.l) {
+  #Using furrr
+  stat.dat <-
+    future_map_dfr(this.chunk,
+                   calc.stat.fn, 
+                   .options = furrr_options(stdout=FALSE,
+                                            seed=TRUE))
+  
+  #Write results
+  PE.db.appendTable(stat.dat,pcfg,PE.cfg$db$stats)
+  
+  #Loop
+  pb$tick()
+}
 
 #'========================================================================
 # Complete ####
 #'========================================================================
 #Turn off the lights
-if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
+plan(sequential)
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
 # .............

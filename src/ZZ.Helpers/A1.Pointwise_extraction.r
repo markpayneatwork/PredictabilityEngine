@@ -32,7 +32,7 @@ start.time <- proc.time()[3];
 suppressMessages({
   library(PredEng)
   library(pbapply)
-#  library(furrr)
+  #  library(furrr)
 })
 pcfg <- readRDS(PE.cfg$path$config)
 
@@ -43,13 +43,11 @@ pcfg <- readRDS(PE.cfg$path$config)
 if(interactive()) {
   set.log_msg.silent()
   n.cores <- 4
- # plan(multicore(workers=4)) 
   pboptions(type="txt")
 } else {
   cmd.args <- commandArgs(TRUE)
-  if(length(cmd.args)!=1) stop("Cannot get command args")
-  #plan(multicore(workers=cmd.args[1])) 
-  n.cores <- cmd.args[1]
+  n.cores <-   as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))
+  if(is.na(n.cores)) n.cores <- 4
   set.log_msg.silent()
   pboptions(type="none")
 }
@@ -59,100 +57,104 @@ if(interactive()) {
 #'========================================================================
 #Loop over rows in pointwise extraction
 extr.res.l <- list()
-for(i in seq(nrow(pcfg@pt.extraction))) {
-  log_msg("Extracting point sets %i of %i...\n",i, nrow(pcfg@pt.extraction))
-  #Setup data extraction
-  this.row <- pcfg@pt.extraction[i,]
-  this.db <- PE.db.connection(pcfg,results.db = pcfg@pt.extraction.from.results.db)
-  this.tb <- 
-    tbl(this.db,this.row$table) 
-  this.meta <- 
-    this.row %>%
-    select(-points)
 
-  #Now get list of dates available that meet the filter
-  filt.dat <- 
-    this.tb %>%
-    filter(rlang::parse_expr(this.row$filter)) %>%
-    select(pKey,date) %>%
-    collect() %>%
-    mutate(ym=date_to_ym(date))
-  
-  #Now prepare the points
-  pt.sf <- 
-    this.row$points[[1]] %>%
-    mutate(extr.date=date,  #Rename doesn't seem to work with sf objects
-           date=NULL) %>%   #To avoid conflicts with data date field
-    mutate(ym=date_to_ym(extr.date)) %>%
-    group_by(ym) 
-  
-  
-  #Extraction function
-  #Temporal matching is done by ym code initially.
-  pt.extractor <- function(this.sf) {
-    # #Debug setup
-    # this.sf <- group_split(pt.sf)[[1]]
-
-    #Extract splitting key manually
-    this.key <- unique(this.sf$ym)
+if(nrow(pcfg@pt.extraction)!=0) {
+  for(i in seq(nrow(pcfg@pt.extraction))) {
+    log_msg("Extracting point sets %i of %i...\n",i, nrow(pcfg@pt.extraction))
+    #Setup data extraction
+    this.row <- pcfg@pt.extraction[i,]
+    this.db <- PE.db.connection(pcfg,results.db = pcfg@pt.extraction.from.results.db)
+    this.tb <- 
+      tbl(this.db,this.row$table) 
+    this.meta <- 
+      this.row %>%
+      select(-points)
     
-    #Find field data that we need to extract
-    these.pKeys <-
-      filt.dat %>%
-      filter(ym==this.key) %>% 
-      pull(pKey)
-    this.dat <-
+    #Now get list of dates available that meet the filter
+    filt.dat <- 
       this.tb %>%
-      filter(pKey %in% these.pKeys) %>%
+      filter(rlang::parse_expr(this.row$filter)) %>%
+      select(pKey,date) %>%
       collect() %>%
-      PE.db.unserialize() %>%
-     # mutate(leadIdx=as.numeric(leadIdx)) %>%    #Temporary tweak until full run repeated
-      filter(!map_lgl(field,is.null)) 
-
-    #Now apply the extraction algorithm
-    this.extr <-
-      bind_cols(this.meta,this.dat) %>%
-      mutate(extract.df=map(field,~cbind(st_coordinates(this.sf),
-                                        st_drop_geometry(this.sf),
-                                        extraction=raster::extract(.x,
-                                                                   this.sf,
-                                                                   method="bilinear"))))
-    #Drop data and return
-    this.extr %>%
-      select(-any_of(c("field","value")))  %>%
-      return()
+      mutate(ym=date_to_ym(date))
+    
+    #Now prepare the points
+    pt.sf <- 
+      this.row$points[[1]] %>%
+      mutate(extr.date=date,  #Rename doesn't seem to work with sf objects
+             date=NULL) %>%   #To avoid conflicts with data date field
+      mutate(ym=date_to_ym(extr.date)) %>%
+      group_by(ym) 
+    
+    
+    #Extraction function
+    #Temporal matching is done by ym code initially.
+    pt.extractor <- function(this.sf) {
+      # #Debug setup
+      # this.sf <- group_split(pt.sf)[[1]]
+      
+      #Extract splitting key manually
+      this.key <- unique(this.sf$ym)
+      
+      #Find field data that we need to extract
+      these.pKeys <-
+        filt.dat %>%
+        filter(ym==this.key) %>% 
+        pull(pKey)
+      this.dat <-
+        this.tb %>%
+        filter(pKey %in% these.pKeys) %>%
+        collect() %>%
+        PE.db.unserialize() %>%
+        # mutate(leadIdx=as.numeric(leadIdx)) %>%    #Temporary tweak until full run repeated
+        filter(!map_lgl(field,is.null)) 
+      
+      #Now apply the extraction algorithm
+      this.extr <-
+        bind_cols(this.meta,this.dat) %>%
+        mutate(extract.df=map(field,~cbind(st_coordinates(this.sf),
+                                           st_drop_geometry(this.sf),
+                                           extraction=raster::extract(.x,
+                                                                      this.sf,
+                                                                      method="bilinear"))))
+      #Drop data and return
+      this.extr %>%
+        select(-any_of(c("field","value")))  %>%
+        return()
+    }
+    
+    #Apply function
+    pt.st.l <- group_split(pt.sf)
+    extr.res.l[[i]] <- pblapply(group_split(pt.sf),
+                                pt.extractor,
+                                cl = 1)
+    # extr.res.l <-
+    #   group_map(pt.sf,~pt.extractor(.x,.y))
   }
   
-  #Apply function
-  pt.st.l <- group_split(pt.sf)
-  extr.res.l[[i]] <- pblapply(group_split(pt.sf),
-                              pt.extractor,
-                              cl = 1)
-  # extr.res.l <-
-  #   group_map(pt.sf,~pt.extractor(.x,.y))
-}
-
-extr.res <-
-  extr.res.l %>%
-  bind_rows() %>%
-  relocate(extract.df,.after=last_col())
-
-#'========================================================================
-# Output ####
-#'========================================================================
-#Clear existing extractions table
-if(dbExistsTable(PE.db.connection(pcfg),PE.cfg$db$pt.extraction)) {
-  dbRemoveTable(PE.db.connection(pcfg),PE.cfg$db$pt.extraction)  
-}
-
-extr.res %>%
-  PE.db.appendTable(pcfg,PE.cfg$db$pt.extraction)
-
-#'========================================================================
-# Complete ####
-#'========================================================================
-#Turn off the lights
-dbDisconnect(this.db)
+  extr.res <-
+    extr.res.l %>%
+    bind_rows() %>%
+    relocate(extract.df,.after=last_col())
+  
+  #'========================================================================
+  # Output ####
+  #'========================================================================
+  #Clear existing extractions table
+  if(dbExistsTable(PE.db.connection(pcfg),PE.cfg$db$pt.extraction)) {
+    dbRemoveTable(PE.db.connection(pcfg),PE.cfg$db$pt.extraction)  
+  }
+  
+  extr.res %>%
+    PE.db.appendTable(pcfg,PE.cfg$db$pt.extraction)
+  
+  #'========================================================================
+  # Complete ####
+  #'========================================================================
+  #Turn off the lights
+  dbDisconnect(this.db)
+  
+}  #if no rows, don't do anything
 
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())

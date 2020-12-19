@@ -28,7 +28,7 @@ PE.db.setup <- function(pcfg,results.only=FALSE) {
     if(!PE.cfg$db$extract %in% dbListTables(this.db)) {
       tbl.cols <-  
         c("pKey INTEGER NOT NULL PRIMARY KEY",
-          "srcHash TEXT",
+          "srcFname TEXT",
           "srcType TEXT",
           "srcName TEXT",
           "realization TEXT",
@@ -140,14 +140,15 @@ PE.db.setup <- function(pcfg,results.only=FALSE) {
 }
 
 PE.db.safe.try <- function(expr,silent=TRUE,n.max=100) {
-  i <- 1
+  i <- 0
   while(i<n.max) {
     rtn <- try(expr,silent=silent)  
     if(!is(rtn, "try-error")) return(rtn)
-    Sys.sleep(runif(1,0.01,0.1))  #Avoid constant polling. Add some stochasticity to break synchronisation
+    Sys.sleep(runif(1,0.01,0.1)+i/10)  #Avoid constant polling. Add some stochasticity to break synchronisation
     i <- i+1
   }
-  stop(sprintf("Maximum number of tries exceeded after %i attempts. %s",n.max,rtn))
+  stop(sprintf("Maximum number of tries exceeded after %i attempts. %s\n",
+               n.max,rtn))
 }
 
 
@@ -181,22 +182,6 @@ PE.db.delete.by.datasource <- function(pcfg,tbl.name=PE.cfg$db$extract,datasrc,s
   
   #Delete
   n <- PE.db.delete.by.pKey(pcfg,tbl.name,del.these$pKey,silent=silent)
-  return(invisible(n))
-}
-
-
-
-#' @export
-#' @rdname PE.db
-PE.db.delete.by.hash <- function(pcfg,hash,silent=TRUE) {
-  #Get rows matching hash
-  SQL.cmd <- sprintf("SELECT pKey FROM %s WHERE (`srcHash` IN (%s))",
-                     PE.cfg$db$extract,
-                     paste(sprintf("'%s'",hash),collapse=", "))
-  row.ids <- PE.db.getQuery(pcfg,SQL.cmd,silent=silent)
-
-  #Delete rows
-  n <- PE.db.delete.by.pKey(pcfg,PE.cfg$db$extract,row.ids$pKey,silent=silent)
   return(invisible(n))
 }
 
@@ -241,9 +226,6 @@ PE.db.getQuery <- function(pcfg,this.sql,silent=TRUE) {
   dbDisconnect(db.con)
   return(rtn)
 }
-
-
-
 
 #' Raster List functions
 #' 

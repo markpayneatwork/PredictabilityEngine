@@ -32,6 +32,8 @@ start.time <- proc.time()[3];
 #Helper functions, externals and libraries
 suppressPackageStartupMessages({
   library(PredEng)
+  library(furrr)
+  #library(parallel)
 })
 pcfg <- readRDS(PE.cfg$path$config)
 
@@ -39,63 +41,68 @@ pcfg <- readRDS(PE.cfg$path$config)
 # Configuration ####
 #'========================================================================
 #Take input arguments, if any
- if(!exists("...")) {  #Then we are running as a script
+if(interactive() ) {
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
-  sel.cfg <- "MPI.ESM.LR"
-  this.cfg <- tibble(this.datasrc=list( pcfg@Decadal[[sel.cfg]]),
-                     sources=!!pcfg@Decadal[[sel.cfg]]@sources)
-} else { #Running as a function
-  #Inputs are supplied as named arguments to the function version
-  this.cfg <- ..1
+  sel.src <- names(pcfg@Decadal)[2]
+} else {  
+  #Running as a terminal
+  cmd.args <- commandArgs(TRUE)
+  assert_that(length(cmd.args)==1,msg="Cannot get command args")
+  sel.src <- cmd.args[1]
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
 }
 
+#Setup parallelism
+if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
+  n.cores <- availableCores()
+} else {
+  n.cores <- as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))    
+  assert_that(!is.na(n.cores),msg = "Cannot detect number of allocated cores")
+}
+plan(multisession,workers = n.cores)
+
 #Other configurations
 set.nco.defaults("--overwrite")
 
-#Setup
-analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
+#Display configuration
+this.datasrc <- pcfg@Decadal[[sel.src]]
+PE.config.summary(pcfg,this.datasrc)
 
 #'========================================================================
 # Setup ####
 #'========================================================================
-#Setup database
-#PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,this.datasrc)
+#Setup
+#Note that we preassign tempfile filenames. This is probably not necessary,
+#but avoids the risk of duplication when we are dealing with parallelisation
+these.srcs <- 
+  tibble(src.fname=this.datasrc@sources) %>%
+  mutate(tmp.stem=tempfile(fileext = rep("",nrow(.))))
 
 #Check configuration is sane
-assert_that(nrow(this.cfg)>0,msg="No source files provided")
-assert_that(all(file.exists(this.cfg$sources)),msg="Cannot find all source files")
+assert_that(nrow(these.srcs)>0,msg="No source files provided")
+assert_that(all(file.exists(these.srcs$src.fname)),msg="Cannot find all source files")
+
+#Delete all previous entries of this datasource
+#My fear is that
+#an interruption of the source processing may lead to only a subset of
+#the fragments being produced from a given file. Hence, required that
+#the datasource extraction is run in one large chunk all the way to completion.
+PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,datasrc=this.datasrc)
 
 #'========================================================================
 # Extract Fragments from Source Files ####
 #'========================================================================
-#Use the fragment meta data here as the trigging step. My fear is that
-#an interruption of the source processing may lead to only a subset of
-#the fragments being produced from a given file. Hence, required that
-#the source extraction and fragment metadata are run in one large chunk
-#all the way to completion.
+extract.frags <- function(src.fname,tmp.stem,opts) {
+  # src.fname <- these.srcs[1,]$fname
+  # tmp.stem <- these.srcs[1,]$tmp.stem
+  options(opts)
 
-#Loop over Source Files
-log_msg("Extracting fragments from source files...\n")
-pb <- PE.progress(nrow(this.cfg))
-dmp <- pb$tick(0)
-for(i in seq(nrow(this.cfg))) {
-  #Extract configuration
-  this.src <- this.cfg$sources[i]
-  this.datasrc <- this.cfg$this.datasrc[[i]]
-  log_msg("Extracting from %s...\n",basename(this.src),silenceable = TRUE)
-  tmp.stem <- tempfile()
-  src.hash <- tools::md5sum(this.src)
-  
-  #Clear results from output
-  PE.db.delete.by.hash(pcfg,src.hash)
-  
   #Subset out the layer(s) from the field of interest, if relevant
   if(this.datasrc@fields.are.2D ) {
     #Then don't need to do any select
-    sym.link <- file.path(getwd(),this.src)
+    sym.link <- file.path(getwd(),src.fname)
     if(file.exists(tmp.stem)) file.remove(tmp.stem)
     file.symlink(sym.link,tmp.stem)
     tmp.out <- tmp.stem
@@ -106,12 +113,12 @@ for(i in seq(nrow(this.cfg))) {
       vert.idxs <- 1
     } else {
       #Need to work it out ourselves
-      vert.idxs <- this.datasrc@z2idx(pcfg@vert.range,this.src)
+      vert.idxs <- this.datasrc@z2idx(pcfg@vert.range,src.fname)
     }
     sellev.cmd <- cdo(csl("sellevidx",vert.idxs),
-                      this.src,tmp.out)
+                      src.fname,tmp.out)
   }
-
+  
   #Average over the layers
   tmp.in <- tmp.out
   tmp.out <- sprintf("%s_vertmean",tmp.in)
@@ -145,6 +152,7 @@ for(i in seq(nrow(this.cfg))) {
   }
   
   #Remap recalculating weights every time
+  analysis.grid.fname <- PE.scratch.path(pcfg,PE.cfg$file$analysis.grid)
   tmp.in <- tmp.out
   regrid.fname <- sprintf("%s_regrid",tmp.in)
   regrid.cmd <- cdo("-f nc",
@@ -158,44 +166,84 @@ for(i in seq(nrow(this.cfg))) {
   #As everything is interpolated onto a common grid, it should also therefore
   #have a CRS reflecting that grid.
   dat.b@crs <- PE.cfg$misc$crs
-
+  
   #Create metadata
-  frag.data <- tibble(srcHash=src.hash,
+  this.frag <- tibble(srcFname=basename(src.fname),
                       srcName=this.datasrc@name,
                       srcType=this.datasrc@type,
-                      realization=this.datasrc@realization.fn(this.src),
-                      startDate=this.datasrc@start.date(this.src),
+                      realization=this.datasrc@realization.fn(src.fname),
+                      startDate=this.datasrc@start.date(src.fname),
                       date=this.datasrc@date.fn(regrid.fname),
                       leadIdx=1:nlayers(dat.b),
                       field=as.list(dat.b))
-  
-  #Write to database
-  frag.data %>%
-    mutate(startDate=as.character(startDate),
-           date=as.character(date)) %>%
-    PE.db.appendTable(pcfg,PE.cfg$db$extract)
 
   #Remove the temporary files to tidy up
   tmp.fnames <- dir(dirname(tmp.stem),pattern=basename(tmp.stem),full.names = TRUE)
   del.err <- unlink(tmp.fnames)
-  if(del.err!=0) stop("Error deleting temp files")
+  assert_that(del.err==0,msg="Error deleting temp files")
   
-  #Update progress bar
-  pb$tick()
-  
+  #Return
+  return(this.frag)
 }
-log_msg("\n")
 
-#Calculate realization means
-#log_msg("Calculating realization means...\n")
-#PE.db.calc.realMeans(pcfg,this.datasrc)
+#'========================================================================
+# Apply extraction ####
+#'========================================================================
+#' To avoid conflicts with too many processes trying to write to the database
+#' at the same time, we batch the process up into chunks of approximately 100
+#' files at a time, and then use a parallelised apply process
+#Loop over Source Files
+log_msg("Extracting fragments from source files...\n")
+
+chunk.l <- 
+  these.srcs %>%
+  mutate(batch.id=rep(seq(nrow(.)),
+                      each=n.cores*50,
+                      length.out=nrow(.))) %>%
+  group_by(batch.id) %>%
+  group_split(.keep=FALSE)
+
+#Now loop over the chunks in a parallelised manner
+pb <- PE.progress(length(chunk.l))
+dmp <- pb$tick(0)
+for(this.chunk in chunk.l) {
+  #Using Furrr and future
+  frag.dat <-
+    future_pmap_dfr(this.chunk,
+                    extract.frags,
+                    opts=options("ClimateOperators"),
+                    .options = furrr_options(stdout=FALSE,
+                                             seed=TRUE))
+  
+  #Using purr (serialised)
+  #frag.dat <-
+  #  pmap_dfr(this.chunk,
+  #                  extract.frags)
+  
+  #Using mcmapply (parallel / multicore)
+  # frag.dat <-
+  #	mcmapply(extract.frags,
+  #               this.chunk$src.fname,this.chunk$tmp.stem,
+  #               SIMPLIFY=FALSE,
+  #               mc.silent=TRUE,
+  #               mc.cores=n.cores) %>%
+  #      bind_rows()
+
+  #Write to database
+  frag.dat %>%
+    mutate(startDate=as.character(startDate),
+           date=as.character(date)) %>%
+    PE.db.appendTable(pcfg,PE.cfg$db$extract)
+  
+  #Loop
+  pb$tick()
+}
 
 #'========================================================================
 # Complete 
 #'========================================================================
-#+ results='asis'
 #Turn off thte lights
-if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
+plan(sequential)
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
 #' -----------

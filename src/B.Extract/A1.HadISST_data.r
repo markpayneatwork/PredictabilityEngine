@@ -56,10 +56,6 @@ analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
 #Setup database
 PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,this.datasrc)
 
-#Calculate checksum
-log_msg("Calculating checksum...\n")
-src.hash <- tools::md5sum(this.datasrc@sources)
-
 #/*======================================================================*/
 #'## Extract HadISST data
 #/*======================================================================*/
@@ -120,7 +116,7 @@ dat.b[dat.b < -100] <- NA
 dat.b@crs <- PE.cfg$misc$crs
 
 #Create metadata
-frag.dat <- tibble(srcHash=src.hash,
+frag.dat <- tibble(srcFname=basename(this.datasrc@sources),
                    srcName=this.datasrc@name,
                    srcType=this.datasrc@type,
                    realization=NA,

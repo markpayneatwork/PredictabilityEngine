@@ -71,7 +71,7 @@ extr.these.pKeys<-
 extr.dat <-
   extr.tbl %>%
   filter(pKey %in% extr.these.pKeys) %>%
-  select(-srcHash) %>%
+  select(-srcFname) %>%
   collect() %>%
   mutate(date=ymd(date),
          month=month(date)) %>%

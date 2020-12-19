@@ -47,7 +47,7 @@ include.field.stats <- FALSE
 #'========================================================================
 #Open existing
 src.db <- PE.db.connection(pcfg)
-mets.tbl <- tbl(src.db,PE.cfg$db$metrics)
+
 
 #Create new results db
 res.db.fname <- here(pcfg@scratch.dir,sprintf("%s_results.sqlite",pcfg@project.name))
@@ -76,10 +76,22 @@ dat.out <-
 dbWriteTable(conn=res.db, name=PE.cfg$db$stats, value=dat.out, append = TRUE)
 
 #Then the metrics
-dat.out <-
-  mets.tbl %>%
-  collect()
-dbWriteTable(conn=res.db, name=PE.cfg$db$metrics, value=dat.out, append = TRUE)
+if(dbExistsTable(src.db,PE.cfg$db$metrics)) {
+  mets.tbl <- tbl(src.db,PE.cfg$db$metrics)
+  dat.out <-
+    mets.tbl %>%
+    collect()
+  dbWriteTable(conn=res.db, name=PE.cfg$db$metrics, value=dat.out, append = TRUE)
+}
+
+#And pointwise extraction 
+if(dbExistsTable(src.db,PE.cfg$db$pt.extraction)) {
+  pt.tbl <- tbl(src.db,PE.cfg$db$pt.extraction)
+  dat.out <-
+    pt.tbl %>%
+    collect()
+  dbWriteTable(conn=res.db, name=PE.cfg$db$pt.extraction, value=dat.out, append = TRUE)
+}
 
 #Fin
 dbDisconnect(res.db)

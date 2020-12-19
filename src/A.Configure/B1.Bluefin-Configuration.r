@@ -58,6 +58,7 @@ pcfg@Decadal <- SST.Decadal.production
 
 #Select CMIP5 models
 #pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="tos")
+pcfg@obs.only <- FALSE
 
 #'========================================================================
 # Spatial Configurations ####
