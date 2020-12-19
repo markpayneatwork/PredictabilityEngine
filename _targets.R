@@ -160,25 +160,20 @@ tar.l$ensmean <-
 #'========================================================================
 #Get stat jobs to process
 stat.jobs.fn <- function(...){
-    stats.tbl <- 
-      tibble(stat.obj=pcfg@statistics@.Data) %>%
-      mutate(st.name=map_chr(stat.obj,slot,"name"),
-             st.uses.globalROI=map_lgl(stat.obj,slot,"use.globalROI"))
-    stat.sp.comb <-
-      stats.tbl %>%
-      filter(!st.uses.globalROI) %>%
-      pull(st.name) %>%
-      expand_grid(stat=.,
-                  sp=pcfg@spatial.polygons$name)
-    global.stats <- 
-      stats.tbl %>%
-      filter(st.uses.globalROI) %>%
-      pull(st.name) %>%
-      tibble(stat=.,sp=PE.cfg$misc$globalROI)
+    #Extract spatial regions
+    these.sp <- bind_rows(PE.global.sf(pcfg),
+                          pcfg@spatial.polygons)
     
+    #Merge with statistics
     todo.stats <- 
-      bind_rows(stat.sp.comb,global.stats) %>%
-      relocate(sp)
+      expand_grid(st=pcfg@statistics@.Data,
+                  sp=split(these.sp,these.sp$name)) %>%
+      mutate(statName=map_chr(st,slot,"name"),
+             st.uses.globalROI=map_lgl(st,slot,"use.globalROI"),
+             spName=map_chr(sp,~ .x$name)) %>%
+      #Remove any combinations that are asking for the global, but not using them
+      filter(!(spName==PE.cfg$misc$globalROI & !st.uses.globalROI))
+    
     return(todo.stats)
 }
 
@@ -189,7 +184,7 @@ tar.l$stat.jobs <-
 #Process stats
 process.stat <- function(this) {
     ext.script(here("src/D.Statistics/B1.Calculate_stats.r"),
-                this$sp,this$stat)
+                this$spName,this$statName)
 }
 tar.l$stats <-
   tar_target(stats,

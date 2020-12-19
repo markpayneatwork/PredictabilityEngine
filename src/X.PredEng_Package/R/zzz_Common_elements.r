@@ -44,6 +44,21 @@ sfpolygon.from.extent <- function(ext) {
 }
 
 
+#' Get a global ROI as simple features object
+#'
+#' @param this.pcfg PCFG, containing a valid global.ROI object
+#'
+#' @return
+#' @export
+#'
+#' @examples
+PE.global.sf <- function(this.pcfg) {
+  st_sf(geometry=st_sfc(sfpolygon.from.extent(this.pcfg@global.ROI)),
+        name=PE.cfg$misc$globalROI,
+        crs=crs(this.pcfg@spatial.polygons))
+        
+}
+
 #' Month handling functions 
 #' 
 #' Works with dates in terms of their months only, ignoring days. Handy for standardising time where there is

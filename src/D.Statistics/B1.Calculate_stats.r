@@ -76,9 +76,7 @@ this.stat <- pcfg@statistics[[stat.id]]
 this.sp <- 
   if(sp.id == PE.cfg$misc$globalROI) {
     assert_that(this.stat@use.globalROI,msg="Function requested globalROI, but stat doesn't use one.")
-    st_sf(geometry=st_sfc(sfpolygon.from.extent(pcfg@global.ROI)),
-          name=PE.cfg$misc$globalROI,
-          crs=crs(pcfg@spatial.polygons))
+    PE.global.sf(pcfg) 
   } else {
     assert_that(!this.stat@use.globalROI,msg="Function didn't request globalROI, but stat wants one.")
     pcfg@spatial.polygons %>% 
