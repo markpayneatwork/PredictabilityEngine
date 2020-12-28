@@ -109,12 +109,43 @@ pcfg@spatial.polygons <-
 #'========================================================================
 #Configure stats
 stat.l <- PElst()
-stat.l[[1]] <- threshold(name="threshold",
+stat.l$threshold <- 
+  threshold(name="threshold",
                          desc="11 degree threshold",
                          threshold=11,
                          above=TRUE,
                          calibration = c("MeanAdj","MeanVarAdj"),
                          realizations=1:4)
+
+# Northward extent ----------------------------------------------------------------
+ext.fn <- 
+  function(dat,resources) {
+    #Calculate the zonal averages - this has to be done
+    #by hand, as there is no direct support
+    zonal.mean <- 
+      raster::rowSums(dat,na.rm=TRUE)/raster::rowSums(!is.na(dat))
+    
+    #Apply temperature threshold
+    res <- try(approx(zonal.mean,yFromRow(dat),resources$threshold,rule=2,ties=min)$y)
+    if(is(res,"try-error")) {res <- NA}
+    
+    #Finish
+    return(tibble(resultName="latitude",
+           field=NA,
+           value=res))
+  }
+
+res.l <- list(threshold=11)
+
+stat.l$northern.extent <-
+  custom.stat(name="NorthExt",
+              desc="Northern extent of habitat",
+              fn=ext.fn,
+              resources=res.l,
+              skill.metrics = "correlation",
+              realizations=1:4,
+              calibration=c("MeanAdj","MeanVarAdj"))
+
 
 #Merge it all in
 pcfg@statistics <- stat.l

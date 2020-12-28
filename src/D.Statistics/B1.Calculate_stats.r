@@ -193,7 +193,6 @@ calc.stat.fn <- function(this.pKey,debug=FALSE) {
 #Debugging
 # this.pKey <- pKey.todos[1]
 # dat <- calc.stat.fn(this.pKey,debug=TRUE)
-# resources <- this.stat@resources
 # stop()
 
 # Sanity check --------------------------------------------------------------------

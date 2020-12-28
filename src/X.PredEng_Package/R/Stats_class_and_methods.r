@@ -210,54 +210,6 @@ setMethod("returns.scalar",signature(st="pass.through"),
             return(FALSE)
           })
 
-# Isoline ========================================================================
-
-
-#' Northward extent of an isolone
-#'
-#' Calculates the average latitudinal position extent of an isoline
-#' @export isoline.lat
-isoline.lat <- 
-  setClass("isoline.lat",slots=list(threshold="numeric"),
-           contains="stat",
-           prototype=list(name="isoline.lat"))
-
-#' @export
-setMethod("eval.stat",signature(st="isoline.lat",dat="Raster"),
-          function(st,dat){
-            #Crop supplied object to the spatial polygon and then mask
-            # b.crop <- crop(x,m@poly.ROI)
-            # b <- mask(b.crop,m@poly.ROI)
-            stop("This needs to be checked before useage to ensure it is up to modern standards")
-            
-            #Calculate the zonal averages - this has to be done
-            #by hand, as there is no direct support
-            zonal.mean <- raster::rowSums(dat,na.rm=TRUE)/raster::rowSums(!is.na(dat))
-            
-            #Loop over temperature thresholds
-            lat.val.l <- list()
-            for(i in seq(length(m@threshold))) {
-              lat.val <- apply(as.matrix(zonal.mean),2,
-                               function(zm) {
-                                 res <- try(approx(zm,yFromRow(dat),
-                                                   m@threshold[i],
-                                                   rule=2,ties=min)$y)
-                                 if(is(res,"try-error")) {res <- NA}
-                                 
-                                 return(res) })
-              lat.val.l[[i]] <- tibble(threshold=m@threshold[i],
-                                       value=lat.val)
-            }
-            lat.vals<- bind_rows(lat.val.l)
-            
-            return(lat.vals)
-          })
-
-setMethod("returns.field",signature(st="isoline.lat"),
-          function(st){
-            return(FALSE)
-          })
-
 
 # Custom Stat ========================================================================
 
