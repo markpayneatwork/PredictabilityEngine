@@ -120,8 +120,8 @@ log_msg("Deleted %i rows in %0.3fs.\n\n",n,this.query.time[3])
 log_msg("Getting list of calibrations to process...\n")
 #Processing frags
 cr.frags <-  #Calibrations x realisations frags
-  expand_grid(calibration=this.stat@calibration,
-              realizations=this.stat@realizations) %>%  
+  expand_grid(calibration=if(is.na(this.stat@calibration)) pcfg@calibrationMethods else this.stat@calibration,
+  realizations=this.stat@realizations) %>%  
   mutate(real.SQL.sel=case_when(
     realizations==1 ~ "`srcType`='Observations'",
     realizations==2 ~ "NOT(`realization` IN ('realmean', 'ensmean')) AND NOT(`srcType`= 'Observations')",

@@ -142,9 +142,7 @@ stat.l$northern.extent <-
               desc="Northern extent of habitat",
               fn=ext.fn,
               resources=res.l,
-              skill.metrics = "correlation",
-              realizations=1:4,
-              calibration=c("MeanAdj","MeanVarAdj"))
+              skill.metrics = "correlation")
 
 
 #Merge it all in

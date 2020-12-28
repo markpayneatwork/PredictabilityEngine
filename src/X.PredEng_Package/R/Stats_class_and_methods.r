@@ -26,7 +26,7 @@ stat <-
                       retain.field="logical",
                       use.globalROI="logical",
                       skill.metrics="character"),
-           prototype = list(realizations=as.numeric(NA),  #Must be specified explicitly
+           prototype = list(realizations=1:4,  #Default to all
                             retain.field=TRUE,
                             calibration=as.character(NA),
                             use.globalROI=FALSE),
@@ -38,7 +38,7 @@ stat <-
                validate_that(nchar(object@name)<20,msg="Object name must not exceed 20 characters"),
                validate_that(!is_empty(object@desc),msg=".description slot must not be empty"),
                validate_that(!is_empty(object@name),msg=".@name slot must not be empty"),
-               validate_that(all(object@calibration %in% PE.cfg$validity$calibrationMethod),
+               validate_that(all(object@calibration %in% PE.cfg$validity$calibrationMethod) | all(is.na(object@calibration)),
                              msg="Unsupported calibration method selected"),
                validate_that(all(object@realizations %in% 1:4),
                              msg="Valid choices for realization are 1, 2, 3 and 4"))
