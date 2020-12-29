@@ -62,7 +62,6 @@ analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
 #Setup database
 PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,this.datasrc)
 
-
 #'========================================================================
 # Import HadSLP2 data into raster ####
 #'========================================================================
@@ -84,8 +83,8 @@ dat.r <-
   #Extract metadata
   mutate(is.header=ifelse(is.header,"metadata","data")) %>%
   pivot_wider(names_from="is.header",values_from=mat) %>%
-  mutate(date=map(metadata,~as.Date(ISOdate(.x[1,1],.x[1,2],15))),
-         date=do.call(c,date)) %>%
+  mutate(date=map(metadata,~as.Date(ISOdate(.x[1,1],.x[1,2],15)))) %>%
+  unnest(date=date)%>%
   #Form rasters
   #Coordinate specifications are based on documentation
   mutate(r=map(data,~raster(.x,xmn=-182.5,xmx=177.5,ymn=-92.5,ymx=92.5)))
@@ -115,6 +114,9 @@ log_msg("Storing...\n")
 #As everything is interpolated onto a common grid, it should also therefore
 #have a CRS that reflects that grid
 dat.b@crs <- PE.cfg$misc$crs
+
+#Force dat.b back into memory
+dat.b <- readAll(dat.b)
 
 #Create metadata
 frag.dat <- tibble(srcFname=NA,

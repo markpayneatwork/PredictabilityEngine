@@ -64,7 +64,7 @@ if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
 plan(multisession,workers = n.cores)
 
 #Other configurations
-set.nco.defaults("--overwrite")
+set.nco.defaults("--quench --overwrite")
 
 #Display configuration
 this.datasrc <- pcfg@Decadal[[sel.src]]

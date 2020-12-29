@@ -90,8 +90,7 @@ obs.clim <-
   collect() %>% 
   PE.db.unserialize() %>%
   pivot_wider(names_from=statistic,values_from=field) %>%
-  select(mean,sd)
-dmp <- assert_that(nrow(obs.clim)==1,msg = "Multiple rows detected in observational climatology.")
+  select(month,obsMean=mean,obsSd=sd)
 
 #Import climatology data from both observations and model forecasts
 clim.dat <-
@@ -119,14 +118,18 @@ calibration.fn <- function(this.dat,this.clim) {
   suppressMessages({
     library(raster)
   })
-
+  
   #Apply recalibration
   rtn <-
+    #Merge in observational climatology for the relevant month
     this.dat %>%
+    left_join(y=this.clim,by="month") %>%
     #Calculate the anomaly and make the correction
     mutate(field.anom=map2(field.extr,mdlClim.mean,~ .x - .y),
-           field.meanAdjust=map(field.anom,~ .x + this.clim$mean[[1]]),
-           field.meanvarAdjust=map2(field.anom,mdlClim.sd,~(.x/.y)*this.clim$sd[[1]]+this.clim$mean[[1]]))
+           field.meanAdjust=map2(field.anom,obsMean,~ .x + .y),
+           field.meanvarAdjust=pmap(list(field.anom, mdlClim.sd, obsSd, obsMean),
+                                    function(anom,mdl.sd,obs.sd,obs.mean) {
+                                      ( anom / mdl.sd)*obs.sd+obs.mean}))
   
   return(rtn)
 }
