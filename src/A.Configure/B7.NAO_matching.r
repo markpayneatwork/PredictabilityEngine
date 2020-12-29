@@ -62,7 +62,7 @@ pcfg@obs.only <- FALSE
 #'========================================================================
 #Set global variables
 pcfg@global.ROI <- extent(-30,-15,35,70)
-pcfg@global.res  <- 0.5
+pcfg@global.res  <- 1
 
 #Polygons
 sp.objs <- list()

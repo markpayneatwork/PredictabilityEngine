@@ -425,6 +425,8 @@ save(SST_obs,
      make.CMIP5.srcs,
      Sal.obs,
      Sal.Decadal,
+     SLP.Decadal,
+     SLP.obs,
      CMIP5.db,
      file=PE.cfg$path$datasrcs)
 
