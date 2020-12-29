@@ -74,9 +74,12 @@ pcfg@retain.realizations <- TRUE
 load("resources/EEZs/EEZs.RData")
 
 #Split Greenlandic EEZ into an east and west EEZ, and carve off the top
-eez.gland.full <- filter(eez.sf,str_detect(GeoName,c("Greenland")))
 N.lim <- 70
 greenland.EW.split <- -45
+eez.gland.full <- 
+  filter(eez.sf,str_detect(GeoName,c("Greenland"))) %>%
+  st_crop(xmin=-180,xmax=180,ymin=0,ymax=N.lim) %>%
+  mutate(name="Greenland")
 eez.gland.W <- 
   st_crop(eez.gland.full,xmin=-180,xmax=greenland.EW.split,ymin=0,ymax=N.lim) %>%
   mutate(name="West_Greenland")
@@ -96,7 +99,7 @@ sp.regional <-
 
 #Add to object
 pcfg@spatial.polygons <- 
-  rbind(eez.iceland, eez.gland.E,eez.gland.W) %>%
+  rbind(eez.iceland, eez.gland.E,eez.gland.W,eez.gland.full) %>%
   select(name,geometry) %>%
   rbind(sp.regional)
 
