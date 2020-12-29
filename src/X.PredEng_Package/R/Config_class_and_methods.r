@@ -113,9 +113,8 @@ PredEng.config <-
 setMethod("plot",signature(x="PredEng.config",y="missing"),
           function(x,y,...) {
             plt.sf <- 
-              st_sf(name="@globalROI",
-                          geometry=st_sfc(sfpolygon.from.extent(x@global.ROI)),
-                          crs=PE.cfg$misc$crs)
+              PE.global.sf(x) %>%
+              mutate(name=sprintf("@%s",name))
             if(nrow(x@spatial.polygons)!=0) {
               plt.sf <- 
                 x@spatial.polygons %>%
