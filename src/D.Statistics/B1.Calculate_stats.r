@@ -153,7 +153,21 @@ dmp <- assert_that(!any(duplicated(pKey.todos)),msg="Expecting unique set of pKe
 # Calculation of statistics ####
 #'========================================================================
 #Setup landmask 
-landmask <- raster(PE.scratch.path(pcfg,"landmask"))
+if(length(pcfg@landmask)==0) {
+  #Create a simple raster that includes everything
+  landmask <- raster(pcfg@global.ROI)
+  res(landmask) <- pcfg@global.res
+  landmask[] <- 0   #Include everything
+} else {
+  #Use the filename to specify and remap
+  landmask.cmd <- cdo("--silent -f nc",
+                      csl(" remapnn", PE.scratch.path(pcfg,"analysis.grid")),
+                      pcfg@landmask,
+                      PE.scratch.path(pcfg,"landmask"))
+  landmask <- raster(PE.scratch.path(pcfg,"landmask")) 
+}
+
+
 
 #Setup the mask for the corresponding spatial boundary
 #based on the combination of the landmask and the spatial boundary mask

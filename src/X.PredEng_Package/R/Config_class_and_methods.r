@@ -25,7 +25,7 @@
 #' @slot clim.years The years to include in the climatology and analysis of hindcast skill (vector of 
 #' integers)
 #' @slot comp.years The years over which to make comparisons between observations and models
-#' @slot landmask The file to use as the basis for masking out land [optional]
+#' @slot landmask The file to use as the basis for masking out land [optional]. If null, all pixels are used.
 #' @slot scratch.dir Directory in which processed files are to be stored
 #' @slot global.ROI  Extent object defining the global ROI to work with. 
 #' @slot global.res Resolution of the analysis to be applied globally
@@ -223,11 +223,6 @@ set.configuration <- function(pcfg) {
   griddes.txt <- griddes(pcfg@global.ROI,res=pcfg@global.res)
   writeLines(griddes.txt,PE.scratch.path(pcfg,"analysis.grid"))
 
-  #Write regridded landmask
-  landmask.cmd <- cdo("--silent -f nc",
-                      csl(" remapnn", PE.scratch.path(pcfg,"analysis.grid")),
-                      pcfg@landmask,
-                      PE.scratch.path(pcfg,"landmask"))
   #Output
   cfg.fname <- PE.scratch.path(pcfg,"config")
   cfg.linked <- PE.cfg$path$config
