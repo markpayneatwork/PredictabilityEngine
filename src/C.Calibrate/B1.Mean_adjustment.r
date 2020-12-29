@@ -84,8 +84,7 @@ PE.db.delete.by.pKey(pcfg,tbl.name=PE.cfg$db$calibration,del.this)
 #TODO: When implementing multiple MOIs, would extract relevant MOIs and average, I guess
 obs.clim <-
   clim.tbl %>%
-  filter(srcType=="Observations",
-         month %in% !!pcfg@MOI) %>%
+  filter(srcType=="Observations") %>%
   select(-pKey) %>%
   collect() %>% 
   PE.db.unserialize() %>%
@@ -127,10 +126,12 @@ calibration.fn <- function(this.dat,this.clim) {
     #Calculate the anomaly and make the correction
     mutate(field.anom=map2(field.extr,mdlClim.mean,~ .x - .y),
            field.meanAdjust=map2(field.anom,obsMean,~ .x + .y),
-           field.meanvarAdjust=pmap(list(field.anom, mdlClim.sd, obsSd, obsMean),
+           field.meanvarAdjust=pmap(list(anom=field.anom, 
+                                         mdl.sd=mdlClim.sd, 
+                                         obs.sd=obsSd, 
+                                         obs.mean=obsMean),
                                     function(anom,mdl.sd,obs.sd,obs.mean) {
                                       ( anom / mdl.sd)*obs.sd+obs.mean}))
-  
   return(rtn)
 }
 
