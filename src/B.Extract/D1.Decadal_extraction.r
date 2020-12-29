@@ -44,7 +44,7 @@ pcfg <- readRDS(PE.cfg$path$config)
 if(interactive() ) {
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
-  sel.src <- names(pcfg@Decadal)[2]
+  sel.src <- names(pcfg@Decadal)[1]
 } else {  
   #Running as a terminal
   cmd.args <- commandArgs(TRUE)
@@ -95,7 +95,7 @@ PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,datasrc=this.datasrc)
 # Extract Fragments from Source Files ####
 #'========================================================================
 extract.frags <- function(src.fname,tmp.stem,opts) {
-  # src.fname <- these.srcs[1,]$fname
+  # src.fname <- these.srcs[1,]$src.fname
   # tmp.stem <- these.srcs[1,]$tmp.stem
   options(opts)
 

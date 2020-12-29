@@ -86,7 +86,7 @@ PredEng.config <-
                              msg="Dates are currently not handled correctly when averaging over multiple months"),
                validate_that(length(object@vert.range)==2 | all(is.na(object@vert.range)),
                              msg="Vertical range slot must be of length 2 if not NA"),
-               validate_that(length(object@MOI)==1,msg="Currently only support one month of interest"),
+               #validate_that(length(object@MOI)==1,msg="Currently only support one month of interest"),
                validate_that(all(object@MOI %in% 1:12),msg="Month(s) of interest must be in range 1-12"),
                validate_that(length(object@calibrationMethods)>0,msg="No calibration method defined"),
                validate_that(all(object@calibrationMethods %in% PE.cfg$validity$calibrationMethod),
