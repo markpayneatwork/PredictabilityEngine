@@ -71,6 +71,7 @@ extract.observations <-
     obs.script <- switch(this.src@name,
                          "EN4"="A2.EN4_extraction.r",
                          "HadISST"="A1.HadISST_data.r",
+                         "HadSLP2"="A3.HadSLP2.r",
                          stop("Cannot find observation script"))
     ext.script(here("src/B.Extract/",obs.script),
                this.src@name)
