@@ -57,7 +57,7 @@ PE.cfg$misc <- list(globalROI="globalROI",
 #                     NMME.epoch.start = as.Date("1960-01-01"))
 
 
-usethis::use_data(PE.cfg,overwrite = TRUE,internal = TRUE)
+usethis::use_data(PE.cfg,overwrite = TRUE)
 
 #' Get Standard Filenames 
 #'

@@ -34,7 +34,6 @@ Collate:
     'Results_management.R'
     'Stats_class_and_methods.r'
     'Workload_management.r'
+    'data.R'
     'zzz_Common_elements.r'
 Encoding: UTF-8
-
-    
