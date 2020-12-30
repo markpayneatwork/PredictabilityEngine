@@ -51,7 +51,6 @@ sfpolygon.from.extent <- function(ext) {
 #' @return
 #' @export
 #'
-#' @examples
 PE.global.sf <- function(this.pcfg) {
   st_sf(geometry=st_sfc(sfpolygon.from.extent(this.pcfg@global.ROI)),
         name=PE.cfg$misc$globalROI,
