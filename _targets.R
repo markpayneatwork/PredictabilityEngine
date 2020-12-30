@@ -180,16 +180,16 @@ stat.jobs.fn <- function(...){
 
 tar.l$stat.jobs <-
   tar_target(statJobs,
-             stat.jobs.fn(pcfg,ensmeans))
+             stat.jobs.fn(pcfg))
 
 #Process stats
-process.stat <- function(this) {
+process.stat <- function(this,...) {
     ext.script(here("src/D.Statistics/B1.Calculate_stats.r"),
                 this$spName,this$statName)
 }
 tar.l$stats <-
   tar_target(stats,
-             process.stat(statJobs),
+             process.stat(statJobs,ensmeans),
              pattern=map(statJobs))
 
 #Calculation verification metrics
