@@ -44,7 +44,7 @@ pcfg <- PredEng.config(project.name= "NAO_matching",
                clim.years=1954:2005,  
                comp.years=1954:2005,
                Observations=SLP.obs$HadSLP2,
-               calibrationMethods="MeanAdj")
+               calibrationMethods="anomaly")
 
 #Setup scratch directory
 pcfg@scratch.dir <- file.path(PE.cfg$dir$scratch,pcfg@project.name)

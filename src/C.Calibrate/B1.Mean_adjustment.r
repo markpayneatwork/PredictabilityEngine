@@ -78,10 +78,12 @@ PE.db.delete.by.pKey(pcfg,tbl.name=PE.cfg$db$calibration,del.this)
 #Import observational climatology data for the month in question
 #Note that the extraction process has already ensured for all of the models
 #that the only thing in the extraction is the month of interest. However, for
-#the observations, we have all months present. However, in this case we want to
-#adjust the anomaly to the climatological observed value in the MOI. We therefore only
-#need one value here.
-#TODO: When implementing multiple MOIs, would extract relevant MOIs and average, I guess
+#the observations, we have all months present. In the case where we have only one MOI,
+#we can adjust the anomaly to the climatological observed value in the MOI to produce an
+#"anomaly persistence" type of forecast. However, this is very hard to interpret when we
+#are starting to think about multiple MOIs - it might work ok though if thinking about
+#averaged MOIs on the other hand. Anyway, it's a bit hard to handle at the moment, so we
+#do not allow meanAdjustment when there are multiple MOIs at the moment.
 obs.clim <-
   clim.tbl %>%
   filter(srcType=="Observations") %>%
@@ -90,6 +92,14 @@ obs.clim <-
   PE.db.unserialize() %>%
   pivot_wider(names_from=statistic,values_from=field) %>%
   select(month,obsMean=mean,obsSd=sd)
+
+target.clim <-   #Climatological values which to do mean adjustment
+  obs.clim %>%
+  filter(month %in% pcfg@MOI) %>%
+  #Although we don't currently use it, we can nevertheless average over the months here
+  summarise(targetMean=list(mean(brick(obsMean))),
+            n=n(),
+            targetSd=list(1/n*sqrt(sum(brick(obsSd)^2))))
 
 #Import climatology data from both observations and model forecasts
 clim.dat <-
@@ -110,28 +120,34 @@ extr.pKey <-
 #'========================================================================
 # Calibration function####
 #'========================================================================
-calibration.fn <- function(this.dat,this.clim) {
+calibration.fn <- function(this.dat,this.target,this.calib) {
   #Debugging
   # this.dat <- chunk.l[[1]]
-  # this.clim <- obs.clim
-  suppressMessages({
-    library(raster)
-  })
-  
-  #Apply recalibration
+  # this.target <- target.clim
+  # this.calib <- pcfg@calibrationMethods
+ 
+  #First calculate the anomaly - we always need this
   rtn <-
-    #Merge in observational climatology for the relevant month
     this.dat %>%
-    left_join(y=this.clim,by="month") %>%
-    #Calculate the anomaly and make the correction
-    mutate(field.anom=map2(field.extr,mdlClim.mean,~ .x - .y),
-           field.meanAdjust=map2(field.anom,obsMean,~ .x + .y),
-           field.meanvarAdjust=pmap(list(anom=field.anom, 
-                                         mdl.sd=mdlClim.sd, 
-                                         obs.sd=obsSd, 
-                                         obs.mean=obsMean),
-                                    function(anom,mdl.sd,obs.sd,obs.mean) {
-                                      ( anom / mdl.sd)*obs.sd+obs.mean}))
+    mutate(calib.anomaly=map2(field.extr,mdlClim.mean,
+                           ~ .x - .y))
+  
+  #Do the mean adjustment if required
+  if(any(this.calib %in% c("MeanAdj","MeanVarAdj"))) {
+    rtn <-
+      rtn %>%
+      mutate(calib.meanAdj=map2(field.anomaly, this.target$targetMean,
+                                   ~ .x + .y))
+  }
+  
+  #And the variance adjustment
+  if(any(this.calib == "MeanVarAdj")) {
+    rtn <-
+      rtn %>%
+      mutate(calib.meanVarAdj=map2(field.anomaly, mdlClim.sd,
+                                      ~(.x/.y)*this.target$obsSd + this.target$targetMean))
+  }
+
   return(rtn)
 }
 
@@ -165,14 +181,15 @@ for(this.basket in basket.l) {
            month=month(date)) %>%
     rename(field.extr=field)
   
-  #Merge in climatological data  
+  #Merge in additional data  
   merged.dat <- 
     extr.dat %>%
     #Join in model climatological data
     left_join(y=clim.dat,
-              by=c("srcName","srcType","month","leadIdx")) 
-  
-  
+              by=c("srcName","srcType","month","leadIdx")) %>%
+    #Join in obseervations
+    left_join(y=obs.clim,by="month")
+
   #Split basket into chunks
   chunk.l <- 
     merged.dat %>%
@@ -186,26 +203,25 @@ for(this.basket in basket.l) {
   calib.dat <-
     future_map_dfr(chunk.l,
                    calibration.fn,
-                   this.clim=obs.clim,
+                   this.target=target.clim,
+                   this.calib=pcfg@calibrationMethods,
                    .options = furrr_options(stdout=FALSE,
                                             seed=TRUE))
   
   #Write results
   out.dat <- 
     calib.dat %>%
-    #Select columns and tidy
+    #Select columns 
     select(srcName,srcType,realization,startDate,date,leadIdx,
-           field.anom,field.meanAdjust,field.meanvarAdjust) %>% 
-    mutate(date=as.character(date)) %>%
-    rename("anomaly"=field.anom,
-           "MeanAdj"=field.meanAdjust,
-           "MeanVarAdj"=field.meanvarAdjust) %>%
+           starts_with("calib")) %>% 
     #Pivot
-    pivot_longer(-c(srcName,srcType,realization,startDate,date,leadIdx),
+    pivot_longer(starts_with("calib"),
                  names_to = "calibrationMethod",
                  values_to = "field") %>%
-    #Drop unsupported calibrationMethods
-    filter(calibrationMethod %in% pcfg@calibrationMethods)
+    #Tidy
+    mutate(calibrationMethod=gsub("calib\\.","",calibrationMethod),
+           date=as.character(date)) %>%
+    filter(calibrationMethod %in% pcfg@calibrationMethods)  #Don't store anomaly if not requested
   
   #Write results
   PE.db.appendTable(out.dat,pcfg,PE.cfg$db$calibration)

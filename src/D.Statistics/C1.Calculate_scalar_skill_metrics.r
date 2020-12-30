@@ -47,6 +47,10 @@ if(interactive()) {
 #'========================================================================
 # Setup ####
 #'========================================================================
+#ASSERTION: there is only one month of interest defined here. We may need to
+#extend this in the future
+assert_that(length(pcfg@MOI)==1,msg="Metric calculation currently one works with one MOI")
+
 #Setup databases
 this.db <- PE.db.connection(pcfg)
 stats.tbl <- tbl(this.db,PE.cfg$db$stats)
@@ -182,9 +186,6 @@ comp.dat <-
 RMSE <- function(x,y) { sqrt(mean((x-y)^2,na.rm=TRUE))}
 
 #Now calculate the skill over all start dates.
-#ASSERTION: there is only one month of interest defined here. We may need to
-#extend this in the future
-assert_that(length(pcfg@MOI)==1,msg="Only currently working with one MOI")
 g.vars <- c("srcType","srcName","realization","calibrationMethod",
             "spName","statName","resultName","lead")
 skill.wide <- 
