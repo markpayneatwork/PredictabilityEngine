@@ -285,6 +285,16 @@ set.configuration <- function(pcfg) {
   return(pcfg)
 }
 
+#' Import PredEng configuration
+#' 
+#' Loads the currently configured PredEng.config object from the default location
+#'
+#' @return PredEng.config object
+#' @export
+PE.load.config <- function() {
+  readRDS(PE.cfg$path$config)
+}
+
 
 
 
