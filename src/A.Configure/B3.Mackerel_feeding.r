@@ -114,9 +114,8 @@ statsum.l[[1]] <- threshold(name="JansenTreshold",
                             calibration = c("MeanAdj","MeanVarAdj"),
                             realizations=1:4,
                             threshold=8.5)  #Based on Jansen et al
-statsum.l[[2]] <- pass.through(name="TempAnomaly",
+statsum.l[[2]] <- spatial.mean(name="TempAnomaly",
                                desc="Temperature anomaly",
-                               realizations=1:4,
                                calibration="anomaly")
 
 #Setup habitat suitability functionality
