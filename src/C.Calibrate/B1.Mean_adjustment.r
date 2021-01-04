@@ -99,7 +99,8 @@ target.clim <-   #Climatological values which to do mean adjustment
   #Although we don't currently use it, we can nevertheless average over the months here
   summarise(targetMean=list(mean(brick(obsMean))),
             n=n(),
-            targetSd=list(1/n*sqrt(sum(brick(obsSd)^2))))
+            targetSd=list(1/n*sqrt(sum(brick(obsSd)^2)))) %>%
+  unlist()  #Put it into a list format
 
 #Import climatology data from both observations and model forecasts
 clim.dat <-
