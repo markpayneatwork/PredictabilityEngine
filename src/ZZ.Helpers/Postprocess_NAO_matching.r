@@ -206,8 +206,10 @@ rank.l$bracket <-
   select(-dates,-rmse)
 
 #Ranking based on NAO rmse to next date
+#Note that we require bracketing of the time interval of interest, so the last forecast
+#gets shaved off. This could be fixed if necessary.
 rank.l$todate <- 
-  lapply(0:9,function(i) seq(from=0,to=i+1)) %>%
+  lapply(0:8,function(i) seq(from=0,to=i+1)) %>%
   lapply(lead.rank,dat=real.err) %>%
   bind_rows() %>%
   #Tiday
@@ -224,7 +226,7 @@ rank.all <-
 #'========================================================================
 # Complete ####
 #'========================================================================
-saveRDS(rank.all,file="objects/NAO_matching_ranking.rds")
+saveRDS(rank.all,file=PE.cfg$path$NAOmatching)
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
 # .............

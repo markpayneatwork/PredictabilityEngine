@@ -134,7 +134,7 @@ calibration.fn <- function(this.dat,this.target,this.calib) {
                            ~ .x - .y))
   
   #Do the mean adjustment if required
-  if(any(this.calib %in% c("MeanAdj","MeanVarAdj"))) {
+  if(any(this.calib %in% c("MeanAdj","MeanVarAdj","NAOmatching"))) {
     rtn <-
       rtn %>%
       mutate(calib.meanAdj=map(calib.anomaly, 

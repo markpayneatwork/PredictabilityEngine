@@ -8,6 +8,7 @@ PE.cfg$dir <- list(objects="objects",
 #Configuration
 PE.cfg$path$config   <- file.path(PE.cfg$dir$objects,"configuration.rds")
 PE.cfg$path$datasrcs <- file.path(PE.cfg$dir$objects,"datasrcs.RData")
+PE.cfg$path$NAOmatching <- file.path(PE.cfg$dir$objects,"NAOmatching.rds")
 
 #Filenames
 PE.cfg$file <- list(analysis.grid="analysis.grid",
@@ -25,7 +26,7 @@ PE.cfg$db <- list(extract="extraction",
                   pt.extraction="ptExtraction")
 
 #Validity
-PE.cfg$validity <- list(calibrationMethods=c("anomaly","MeanAdj","MeanVarAdj"))
+PE.cfg$validity <- list(calibrationMethods=c("anomaly","MeanAdj","MeanVarAdj","NAOmatching"))
 
 # PE.cfg$PE.dirs <- list(Misc.meta="Z.Misc.meta",
 #                     statistics="Statistics",
