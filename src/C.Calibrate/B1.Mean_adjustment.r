@@ -48,7 +48,7 @@ if(interactive()) {
 }
 
 #Setup parallelism
-if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
+if(Sys.info()["nodename"]=="aqua-cb-mpay18" | interactive()) {
   n.cores <- availableCores()
 } else {
   n.cores <- as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))    
@@ -136,7 +136,7 @@ calibration.fn <- function(this.dat,this.target,this.calib) {
   if(any(this.calib %in% c("MeanAdj","MeanVarAdj"))) {
     rtn <-
       rtn %>%
-      mutate(calib.meanAdj=map2(field.anomaly, this.target$targetMean,
+      mutate(calib.meanAdj=map2(calib.anomaly, this.target$targetMean,
                                    ~ .x + .y))
   }
   
@@ -144,7 +144,7 @@ calibration.fn <- function(this.dat,this.target,this.calib) {
   if(any(this.calib == "MeanVarAdj")) {
     rtn <-
       rtn %>%
-      mutate(calib.meanVarAdj=map2(field.anomaly, mdlClim.sd,
+      mutate(calib.meanVarAdj=map2(calib.anomaly, mdlClim.sd,
                                       ~(.x/.y)*this.target$obsSd + this.target$targetMean))
   }
 
@@ -238,6 +238,7 @@ for(this.basket in basket.l) {
 dbDisconnect(this.db)
 
 #Turn off the lights
+if(length(warnings())!=0) print(warnings())
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
 # .............
