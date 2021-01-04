@@ -137,8 +137,8 @@ calibration.fn <- function(this.dat,this.target,this.calib) {
   if(any(this.calib %in% c("MeanAdj","MeanVarAdj"))) {
     rtn <-
       rtn %>%
-      mutate(calib.meanAdj=map2(calib.anomaly, this.target$targetMean,
-                                   ~ .x + .y))
+      mutate(calib.meanAdj=map(calib.anomaly, 
+                                   ~ .x + this.target$targetMean))
   }
   
   #And the variance adjustment
