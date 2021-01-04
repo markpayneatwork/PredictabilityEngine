@@ -41,8 +41,8 @@ load(PE.cfg$path$datasrcs)
 pcfg <- PredEng.config(project.name= "NAO_matching",
                MOI=c(12,1,2,3),  #December to March
                average.months=FALSE,
-               clim.years=1954:2005,  
-               comp.years=1954:2005,
+               clim.years=1965:2004,  
+               comp.years=1965:2004,
                Observations=SLP.obs$HadSLP2,
                calibrationMethods="anomaly")
 
