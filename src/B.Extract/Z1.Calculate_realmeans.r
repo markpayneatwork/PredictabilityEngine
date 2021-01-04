@@ -111,7 +111,7 @@ realMeans %>%
 # Complete ####
 #'========================================================================
 #Turn off the lights
-if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
+if(length(warnings())!=0) print(warnings())
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
 # .............

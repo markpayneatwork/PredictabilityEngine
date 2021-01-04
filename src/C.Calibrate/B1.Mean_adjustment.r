@@ -157,7 +157,7 @@ calibration.fn <- function(this.dat,this.target,this.calib) {
 #' To avoid conflicts with too many processes trying to write to the database
 #' at the same time, we batch the process up into chunks and then use a parallelised apply process
 #Loop over Source Files
-log_msg("Applying recalibration...\n")
+log_msg("Applying recalibration using %i cores...\n",n.cores)
 
 #Now loop over the chunks in a parallelised manner
 chunk.size <- 100  #pKeys
@@ -238,6 +238,7 @@ for(this.basket in basket.l) {
 dbDisconnect(this.db)
 
 #Turn off the lights
+plan(sequential)
 if(length(warnings())!=0) print(warnings())
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 

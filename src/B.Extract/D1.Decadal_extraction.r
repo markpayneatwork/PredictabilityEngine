@@ -55,7 +55,7 @@ if(interactive() ) {
 }
 
 #Setup parallelism
-if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
+if(Sys.info()["nodename"]=="aqua-cb-mpay18" | interactive()) {
   n.cores <- availableCores()
 } else {
   n.cores <- as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))    
@@ -193,7 +193,7 @@ extract.frags <- function(src.fname,tmp.stem,opts) {
 #' at the same time, we batch the process up into chunks of approximately 100
 #' files at a time, and then use a parallelised apply process
 #Loop over Source Files
-log_msg("Extracting fragments from source files...\n")
+log_msg("Extracting fragments from source files using %i cores...\n",n.cores)
 
 chunk.l <- 
   these.srcs %>%
@@ -244,6 +244,7 @@ for(this.chunk in chunk.l) {
 #'========================================================================
 #Turn off thte lights
 plan(sequential)
+if(length(warnings())!=0) print(warnings())
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
 #' -----------

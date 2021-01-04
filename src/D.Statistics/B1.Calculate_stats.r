@@ -53,7 +53,7 @@ if(interactive()) {
 }
 
 #Setup parallelisation
-if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
+if(Sys.info()["nodename"]=="aqua-cb-mpay18" | interactive()) {
   n.cores <- availableCores()
 } else {
   n.cores <- as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))    
@@ -213,7 +213,7 @@ calc.stat.fn <- function(this.pKey,debug=FALSE) {
 # Try doing the first evaluation as a sanity check. This will let us fail gracefully,
 # before getting medieval on their asses...
 dmp <- map(head(pKey.todos,1),calc.stat.fn)
-log_msg("Sanity check passed. Parallellising now...\n")
+log_msg("Sanity check passed. Parallellising using %i cores...\n",n.cores)
 
 # Chunking ------------------------------------------------------------------------
 n.todo <- length(pKey.todos)
@@ -248,6 +248,7 @@ for(this.chunk in chunk.l) {
 #'========================================================================
 #Turn off the lights
 plan(sequential)
+if(length(warnings())!=0) print(warnings())
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
 # .............
