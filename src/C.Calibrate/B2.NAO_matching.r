@@ -56,7 +56,7 @@ if(interactive()) {
 }
 
 #Number of realisations to consider
-n.reals <- c(5)
+n.reals <- c(5,10,15,20)
 
 #'========================================================================
 # Prepare data ####
@@ -105,6 +105,7 @@ NAOmatch.candidates <-
 #'========================================================================
 # Apply matching algorithm ####
 #'========================================================================
+log_msg("Select members...\n")
 #Merge in rankings
 #Note that we do the matching by year only, dropping the moth and day terms
 ranked.candidates <- 
@@ -140,10 +141,46 @@ for(n in n.reals) {
         filter(pKey %in% !!this$pKey[[1]]) %>%
         collect() %>%
         mutate(calibrationMethod=!!this$calibrationMethod)  %>%
-        select(-pKey)
+        select(-pKey) %>%
+        PE.db.unserialize()  #PE.db.append serialises it again, so need to revert this first
       PE.db.appendTable(this.sel,pcfg,PE.cfg$db$calibration)
     })
 }
+
+#'========================================================================
+# Calculate realmeans ####
+#'========================================================================
+log_msg("Calculate realisation means...\n")
+#Realisation means are normally calculated after extraction, and then 
+#calibrated from there. This is ok, as calibration is typically a linear
+#transformation. However, that wouldn't work for this approach, and so we
+#recalculate the realisation means as well
+#Extract data and perform averaging
+calib.dat<-
+  calib.tbl %>%
+  filter(substr(calibrationMethod,1,11) =="NAOmatching") %>%
+  collect() %>%
+  PE.db.unserialize() %>%
+  select(-pKey)
+
+#Calculate realmeans
+realMeans <- 
+  calib.dat %>%
+  group_by(srcType,srcName,calibrationMethod,startDate,date,leadIdx,.drop=TRUE) %>%
+  summarise(field=raster.list.mean(field),
+            duplicate.realizations=any(duplicated(realization)),
+            .groups="keep") %>% #Check for duplicated realization codes
+  ungroup()
+assert_that(!any(realMeans$duplicate.realizations),
+            msg="Duplicate realizations detected in database. Rebuild.")
+
+#Write to database 
+realMeans %>%
+  select(-duplicate.realizations) %>%
+  mutate(realization="realmean") %>%
+  PE.db.appendTable(pcfg, PE.cfg$db$calibration)
+
+
 
 #'========================================================================
 # Complete ####
