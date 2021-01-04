@@ -145,7 +145,7 @@ calibration.fn <- function(this.dat,this.target,this.calib) {
     rtn <-
       rtn %>%
       mutate(calib.meanVarAdj=map2(calib.anomaly, mdlClim.sd,
-                                      ~(.x/.y)*this.target$obsSd + this.target$targetMean))
+                                      ~(.x/.y)*this.target$targetSd + this.target$targetMean))
   }
 
   return(rtn)
