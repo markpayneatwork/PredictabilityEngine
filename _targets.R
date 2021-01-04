@@ -31,7 +31,7 @@ suppressPackageStartupMessages({
   library(PredEng)
   library(here)
 })
-pcfg <- readRDS(PE.cfg$path$config)
+pcfg <- PE.load.config()
 
 #'========================================================================
 # Configure ####
@@ -134,17 +134,15 @@ tar.l$clim <-
              climatology.fn(decadal.realmean, observations))
 
 #Calibration
-calibration.fn <- function(...) {
-    calib.scripts <- dir(here("src/C.Calibrate"),pattern="^B.*r$",full.names = TRUE)
-    for(scp in calib.scripts) {
-      ext.script(scp)}
-    return(Sys.time())
-}
-
 tar.l$calibratioon <-
   tar_target(calibration,
-             calibration.fn(clim))
+             ext.script(here("src/C.Calibrate/B1.Mean_adjustment.r"),clim))
 
+if(any(pcfg@calibrationMethods=="NAOmatching")) {
+  tar.l$NAOmatching <- 
+    tar_target(NAOmatching,
+             ext.script(here("src/C.Calibrate/B2.NAO_matching.r"),calibration))
+}
 
 #Ensemble means
 ensmean.fn <- function(...) {
@@ -154,7 +152,7 @@ ensmean.fn <- function(...) {
 
 tar.l$ensmean <-
   tar_target(ensmeans,
-             ensmean.fn(calibration))
+             ensmean.fn(calibration,NAOmatching))
 
 #'========================================================================
 # Stats ####
