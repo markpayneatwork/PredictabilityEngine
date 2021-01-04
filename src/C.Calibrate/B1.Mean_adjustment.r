@@ -137,7 +137,7 @@ calibration.fn <- function(this.dat,this.target,this.calib) {
   if(any(this.calib %in% c("MeanAdj","MeanVarAdj","NAOmatching"))) {
     rtn <-
       rtn %>%
-      mutate(calib.meanAdj=map(calib.anomaly, 
+      mutate(calib.MeanAdj=map(calib.anomaly, 
                                    ~ .x + this.target$targetMean))
   }
   
@@ -145,7 +145,7 @@ calibration.fn <- function(this.dat,this.target,this.calib) {
   if(any(this.calib == "MeanVarAdj")) {
     rtn <-
       rtn %>%
-      mutate(calib.meanVarAdj=map2(calib.anomaly, mdlClim.sd,
+      mutate(calib.MeanVarAdj=map2(calib.anomaly, mdlClim.sd,
                                       ~(.x/.y)*this.target$targetSd + this.target$targetMean))
   }
 
