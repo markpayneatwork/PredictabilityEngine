@@ -73,7 +73,7 @@ if(dbExistsTable(PE.db.connection(pcfg),PE.cfg$db$metrics)) {
 log_msg("Merging...\n")
 
 #Import stats
-obs.stats <-
+obs.dat <-
   stats.tbl %>%
   filter(srcType=="Observations") %>% 
   select(srcType,srcName,date,spName,statName,resultName,value) %>%
@@ -83,6 +83,30 @@ obs.stats <-
          ym=date_to_ym(date)) %>%
   #Drop NAs (which are probably field-only)
   filter(!is.na(value))
+
+#Simplified version for matching with forecasts
+obs.dat.bare <- 
+  obs.dat %>%
+  select(-srcType,-srcName,-date)
+
+#Create a data.frame with the observations and the corresponding mean and standard deviation
+#of each stat result over the entire comparison period. This is used in generating skill
+#scores of both the distributional and central tendency metrics
+obs.dat.stats <-
+  #Calculate statistics
+  obs.dat %>%
+  filter(year(date) %in% pcfg@comp.years,
+         month(date) %in% pcfg@MOI) %>%
+  group_by(srcType,srcName,spName,statName,resultName) %>%
+  summarise(mean=mean(value),
+            sd=sd(value),
+            .groups="drop") %>%
+  #Join back in 
+  left_join(x=obs.dat,by=c("srcType","srcName","spName","statName","resultName")) %>%
+  #Filter again to comparison years
+  filter(year(date) %in% pcfg@comp.years,
+         month(date) %in% pcfg@MOI) %>%
+  select(-ym)
 
 #'========================================================================
 # Setup persistence forecasts ####
@@ -95,7 +119,7 @@ obs.stats <-
 
 persis.stats.dat <- 
   #Setup grid
-  expand_grid(startDate=unique(obs.stats$date),
+  expand_grid(startDate=unique(obs.dat$date),
               lead=pcfg@persistence.leads) %>%
   mutate(forecastDate=startDate+months(lead)) %>%
   #Drop non-relevant forecasts
@@ -103,7 +127,7 @@ persis.stats.dat <-
          year(forecastDate) %in% pcfg@comp.years) %>%
   #Make the forecasts 
   mutate(startDate=date_to_ym(startDate)) %>%
-  left_join(y=obs.stats,
+  left_join(y=obs.dat,
             by=c(startDate="ym")) %>%
   #Tidy up to merge with rest
   transmute(srcType="Persistence",
@@ -112,7 +136,8 @@ persis.stats.dat <-
             realization=NA,
             startDate=date,
             date=forecastDate,
-            spName,statName,resultName,value)
+            spName,statName,resultName,value,
+            ym=date_to_ym(date))
 
 #'========================================================================
 # Extract other data sources ####
@@ -146,100 +171,128 @@ if(nrow(mdl.stats.df)!=0) {
     filter(!is.na(value)) %>%
     #Tweak
     mutate(startDate=ymd(startDate),
-           date=ymd(date))
+           date=ymd(date),
+           ym=date_to_ym(date))
   
   #Now combine with persistence forecasts
-  all.dat <- 
+  pred.dat <- 
     bind_rows(persis.stats.dat,
               mdl.stats.dat)
 
 } else { #Only process persistence data
-  all.dat <- persis.stats.dat
+  pred.dat <- persis.stats.dat
   
 }
 
 #'========================================================================
-# Join in observations ####
+# Calculate the metrics for central tendencies ####
 #'========================================================================
-#'Merge in observations
-obs.stats.bare <- 
-  obs.stats %>%
-  select(-srcType,-srcName,-date)
-comp.dat <-
-  all.dat %>%
-  mutate(ym=date_to_ym(date)) %>%
-  left_join(y=obs.stats.bare,
+#First setup the forecast data
+mean.pred <- 
+  pred.dat %>%
+  #Merge in the observations
+  left_join(y=obs.dat.bare,
             by=c("ym","spName","statName","resultName"),
-            suffix=c(".mdl",".obs")) %>%
+            suffix=c(".pred",".obs")) %>%
   #Tidy up
   select(-ym)
 
-#Calculate lead time.  I've been avoiding this forever, but now it's become unavoidable
-comp.dat <- 
-  comp.dat %>%
-  mutate(lead=month_diff(date,startDate))
-
-#'========================================================================
-# Calculate the metrics for scalar statistics ####
-#'========================================================================
-#Looking to calculate a set of metrics here. In particular, we want to have
-#the mean skill, but also the range across initialisation dates as well
-
 #Skill functions
-RMSE <- function(x,y) { sqrt(mean((x-y)^2,na.rm=TRUE))}
+MSE <- function(x,y) { mean((x-y)^2,na.rm=TRUE)}
+RMSE <- function(x,y) { sqrt(MSE(x,y,))}
 
 #Now calculate the skill over all start dates.
 g.vars <- c("srcType","srcName","realization","calibrationMethod",
             "spName","statName","resultName","lead")
 mean.metrics <- 
-  comp.dat %>%
+  #Customise observation metrics first
+  obs.dat.stats %>%
+  rename(value.pred=mean,  #Predicted by a reference model using climatology
+         value.obs=value) %>%
+  select(-sd) %>%
+  bind_rows(mean.pred) %>%
+  #Add lead
+  mutate(lead=month_diff(date,startDate))  %>%
+  #Group and calculate metrics
   group_by(across(all_of(g.vars)),.drop = TRUE) %>%
-  summarise(pearson.correlation=cor(value.mdl,value.obs,use="pairwise.complete"),
-            RMSE=RMSE(value.mdl,value.obs),
+  summarise(pearson.correlation=cor(value.pred,value.obs,use="pairwise.complete"),
+            MSE=MSE(value.pred,value.obs),
             n=n(),
             .groups="keep")  %>%
   pivot_longer(-group_vars(.),names_to = "metric") %>%
   ungroup()
 
 #'========================================================================
-# Probabilistic metrics ####
+# Distribution metrics ####
 #'========================================================================
+# Metrics of the probabilistic forecast distributions
 # The crps requires that the forecasts be expressed in terms of a probability
 # distribution, ie the mean and standard deviation. This requires calculation
 # of these quantities first
-prob.comp <- 
+dist.pred <- 
   #Convert to probabilistic forecasts
-  mdl.stats.dat %>%
+  mdl.stats.dat %>%  #Don't include persistence
   filter(!(realization %in% c("realmean","ensmean"))) %>%   #Individual ens members only
   group_by(srcType,srcName,calibrationMethod,startDate,date,spName,statName,resultName,.drop=TRUE) %>%
-  summarise(mean=mean(value),
-            sd=sd(value),
+  summarise(pred.mean=mean(value),
+            pred.sd=sd(value),
             .groups="drop") %>%
   #Merge in observations
   mutate(ym=date_to_ym(date)) %>%
-  left_join(y=obs.stats.bare,
+  left_join(y=obs.dat.bare,
             by=c("ym","spName","statName","resultName"),
             suffix=c(".mdl",".obs")) %>%
-  select(-ym) %>%
-  #Add lead
-  mutate(lead=month_diff(date,startDate))
+  select(-ym)
 
 #Now calculate statistics
-prob.metrics <- 
-  prob.comp %>%
+dist.metrics <- 
+  #Customise observation metrics first
+  obs.dat.stats %>%
+  rename(pred.mean=mean,pred.sd=sd) %>%
+  bind_rows(dist.pred) %>%
+  #Add lead
+  mutate(lead=month_diff(date,startDate))  %>%
+  #Group and calculate
   group_by(srcType,srcName,calibrationMethod,spName,statName,resultName,lead,.drop=TRUE) %>%
-  summarise(crps=crps(value,cbind(mean,sd))$CRPS,
+  summarise(crps=crps(value,cbind(pred.mean,pred.sd))$CRPS,
             .groups="keep") %>%
   pivot_longer(-group_vars(.),names_to = "metric") %>%
   ungroup() %>%
   mutate(realization="realmean")
 
 #'========================================================================
+# Skill scores ####
+#'========================================================================
+#Calculate skill scores where possible
+#First, extract the observation (climatology)-based metrics
+clim.metrics <-
+  bind_rows(mean.metrics,dist.metrics) %>%
+  filter(srcType=="Observations") %>%
+  select(-srcType,-srcName,-calibrationMethod,-lead,-realization)
+
+#Calculate skill scores by merging back into metrics
+skill.scores <- 
+  bind_rows(mean.metrics,dist.metrics) %>%
+  filter(metric %in% c("crps","MSE")) %>%
+  left_join(y=clim.metrics,
+            by=c("spName","statName","resultName","metric"),
+            suffix=c(".mdl",".ref")) %>%
+  mutate(value=1-value.mdl/value.ref) %>%
+  #Rename skill scores and tidy
+  mutate(metric=case_when(metric=="crps" ~"crpss",
+                          metric=="MSE" ~ "MSSS",
+                          TRUE~NA_character_)) %>%
+  select(-value.mdl,-value.ref)
+
+#'========================================================================
 # Complete ####
 #'========================================================================
 #Now write to database
-bind_rows(mean.metrics,prob.metrics) %>%
-  PE.db.appendTable(pcfg,PE.cfg$db$metrics)
+met.out <-
+  bind_rows(mean.metrics,dist.metrics,skill.scores)  %>%
+  filter(srcType!="Observations")
+
+PE.db.appendTable(met.out,pcfg,PE.cfg$db$metrics)
 
 #Turn off the lights
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
