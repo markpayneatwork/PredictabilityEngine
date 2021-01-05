@@ -121,14 +121,14 @@ log_msg("Getting list of calibrations to process...\n")
 #Processing frags
 cr.frags <-  #Calibrations x realisations frags
   expand_grid(calibration=if(is.na(this.stat@calibration)) pcfg@calibrationMethods else this.stat@calibration,
-  realizations=this.stat@realizations) %>%  
+              realizations=this.stat@realizations) %>%  
   mutate(real.SQL.sel=case_when(
     realizations==1 ~ "`srcType`='Observations'",
     realizations==2 ~ "NOT(`realization` IN ('realmean', 'ensmean')) AND NOT(`srcType`= 'Observations')",
     realizations==3 ~ "`realization` = 'realmean'",
     realizations==4 ~ "`realization` = 'ensmean'",
     TRUE~ as.character(NA))) %>%
-  mutate(SQL.sel=sprintf("SELECT pKey FROM %s WHERE `calibrationMethod` = '%s' AND %s",
+  mutate(SQL.sel=sprintf("SELECT pKey FROM %s WHERE `calibrationMethod` LIKE '%s%%' AND %s",
                          PE.cfg$db$calibration,
                          calibration,
                          real.SQL.sel))
@@ -138,7 +138,8 @@ this.query.time <-
   system.time({
     todo.frags <- 
       cr.frags%>%
-      mutate(pKeys=map(SQL.sel,~ PE.db.getQuery(pcfg,.x)))
+      mutate(pKeys=map(SQL.sel,~ PE.db.getQuery(pcfg,.x)),
+             nKeys=map_dbl(pKeys,nrow))
   })
 log_msg("Complete in %0.3fs.\n",this.query.time[3])
 

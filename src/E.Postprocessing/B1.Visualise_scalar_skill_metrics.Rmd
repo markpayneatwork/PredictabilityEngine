@@ -240,13 +240,13 @@ for(this.sp in sp.names) {
         mutate(date=as.Date(date),
                timeframe=ifelse(year(date)<min(year(stat.pred$date)),
                                 "Historical","Near-term predictions")) %>%
-        separate(calibrationMethod,c("calibration","matching","period"),
+        separate(calibrationMethod,c("calibration","matching","members"),
                  fill="right",remove=FALSE)
 
       #Plot timeseries
       g <- 
         ggplot(stat.plt.dat,
-               aes(x=date,y=value,colour=srcName))+
+               aes(x=date,y=value,colour=srcName,group=paste(srcType,srcName,matching,members)))+
         geom_line()+
         labs(x="Year",y=this.stat)+
         facet_grid(calibration~timeframe,scales="free_x")
@@ -297,7 +297,8 @@ for(this.sp in sp.names) {
         
         #Plot
         g <- ggplot(mapping=aes(x=lead/12,y=value,
-                                group=type.name,colour=type.name,size=highlight))+
+                                group=paste(type.name,matching,members),
+                                colour=type.name,size=highlight))+
           geom_line(data=met.persis.dat)+
           geom_line(data=met.dat)+
           facet_wrap(~calibration,scales = "free_y")+
