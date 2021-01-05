@@ -1,0 +1,255 @@
+---
+output:
+  html_document:
+    keep_md: false
+    toc: true
+    toc_float: true
+editor_options: 
+  chunk_output_type: console
+params:
+  set_title: NAO Matching skill
+---
+
+---
+title: `r params$set_title`
+---
+
+```{r setup, include="FALSE"}
+#'========================================================================
+# Visualise skill metrics
+#'========================================================================
+#
+# by Mark R Payne
+# DTU-Aqua, Kgs. Lyngby, Denmark
+# http://www.staff.dtu.dk/mpay
+#
+# Created Wed May  1 10:48:18 2019
+#
+# Makes a series of generic skill visualisations
+#
+# This work is subject to a Creative Commons "Attribution" "ShareALike" License.
+# You are largely free to do what you like with it, so long as you "attribute"
+# me for my contribution. See the fine print at the end for exact details.
+#
+# To do:
+#
+# Notes:
+#   Make sure when knitting that you have the Knit directory set to "project directory"
+#'========================================================================
+
+#Load packages
+library(tidyverse)
+library(PredEng)
+library(sf)
+library(here)
+#library(scales)
+
+#GGplot config
+theme_set(theme_bw(base_size = 14))
+
+#Configure Knitr
+knitr::opts_chunk$set(
+  echo=FALSE,
+	error = FALSE,
+	message = FALSE,
+	warning = FALSE,
+	include = TRUE,
+	results = "markup",
+	fig.width = 10,
+	fig.height=14/25*10,
+  fig.align="center")
+
+#Powerpoint needs 14 x 25cm figures
+
+#knitr::opts_knit$set(root.dir=getwd())
+#cat(sprintf("title: %s skill visualisation\n",pcfg@project.name))
+
+```
+
+by Mark R Payne  <br>
+DTU-Aqua, Kgs. Lyngby, Denmark  <br>
+http://www.staff.dtu.dk/mpay  <br>
+```{r results="asis"}
+cat(sprintf("Visualisations generated  %s\n",date()))
+```
+
+
+## Configuration
+
+```{r}
+#==========================================================================
+# Configure
+#==========================================================================
+pcfg <- readRDS(here(PE.cfg$path$config))
+show(pcfg)
+
+#'========================================================================
+# Setup ####
+#'========================================================================
+#Import data
+this.db <- PE.db.connection(pcfg,results.db = TRUE)
+stats.tbl <- tbl(this.db,PE.cfg$db$stats)
+mets.tbl <- tbl(this.db,PE.cfg$db$metrics)
+
+#Rescale time axis
+rescale.fn <- function(x,b) {  #Creates axes that change in linear timescale
+  ifelse(x>b[2],
+         rescale(x,from=b[2:3],to=c(1,2)),
+         rescale(x,from=b[1:2],to=c(0,1)))
+}
+
+
+# #Plot misc!
+# x.lbls <- tibble(months=c(seq(0,12,by=3),seq(24,120,by=24)),t=rescale.fn(months)) %>%
+#   mutate(lbl=ifelse(months<=12,sprintf("%g m",months),
+#                     sprintf("%g y",months/12)))
+# x.minor <- tibble(months=c(0:12,seq(24,120,by=12)),t=rescale.fn(months))
+
+
+```
+
+
+
+```{r results="asis"}
+#'========================================================================
+# Metrics skills ####
+#'========================================================================
+#Establish which metrics we have NAOmatching calculated for
+NAOmatch.methods <-
+  mets.tbl %>%
+  distinct(calibrationMethod) %>%
+  collect() %>%
+  filter(grepl("^NAOmatching",calibrationMethod)) %>%
+  pull() 
+
+#Import data
+NAO.matched <-
+  mets.tbl %>%
+  filter(calibrationMethod %in% NAOmatch.methods) %>%
+  collect() %>%
+  separate(calibrationMethod,c("calibration","matching","members"))
+
+#Get unique combinations
+uniq <-
+  NAO.matched %>%
+  distinct(spName,statName,resultName) %>%
+  split(.$spName)
+
+for(this.sp in names(uniq)) {
+  #Show title
+  cat(sprintf("\n\n## %s\n",gsub("_"," ",this.sp)))
+  
+  #Map of the Spatial region
+  #May need to handle global case here as well???
+  sp.obj <- 
+    pcfg@spatial.polygons %>%
+    filter(name==this.sp)
+  assert_that(nrow(sp.obj)==1,msg = "Must be one unique spatial object")
+  g <- ggplot()+
+    geom_sf(data=sp.obj) +
+    annotation_map(map_data("world"),fill="black",colour="grey")
+  print(g)
+  
+  #Now split it down further into Individual stats and results and loop
+  stat.result <-
+    uniq[[this.sp]] %>%
+    mutate(stat.res=paste(statName,resultName,sep=" / ")) %>%
+    pull(stat.res)
+
+    # Results -------------------------------------------------------------------------
+    for(this.statres in stat.result) {
+    
+      # Metrics -------------------------------------------------------------------------
+      metric.names <-
+        mets.tbl %>%
+        mutate(statres=paste(statName,resultName,sep=" / ")) %>%
+        filter(spName==this.sp,
+               statres==this.statres,
+               metric!="n") %>%   #Don't really need to see this
+        distinct(metric) %>%
+        collect() %>%
+        pull(metric)
+      
+      #Iterate over skill metrics
+      for(this.met in metric.names) {
+        #Get data
+        all.met.dat <- 
+          mets.tbl %>%
+          mutate(statres=paste(statName,resultName,sep=" / ")) %>%
+          filter(spName==this.sp,
+                 statres==this.statres,
+                 metric==this.met,
+                 realization %in% c("realmean","ensmean") | srcType=="Persistence") %>% 
+          collect() %>%
+          mutate(type.name=paste(srcType,srcName,sep="."),
+                 highlight=realization=="ensmean"|srcType=="Persistence") %>%
+          separate(calibrationMethod,c("calibration","matching","members"),fill="right") 
+
+        
+        met.dat <- 
+          all.met.dat %>%
+          filter(srcType!="Persistence",
+                 calibration=="NAOmatching")        
+        
+        met.persis.dat <-
+          all.met.dat %>%
+          filter(srcType=="Persistence") %>%
+          dplyr::select(-calibration,-members,-matching,-type.name)  #So that it is added to all facets
+        
+        
+        #Set y range accordingly
+        if(this.met=="pearson.correlation") {
+          y.rng <- c(0,1)
+        } else {
+          y.rng <- range(pretty(c(0,met.dat$value)))
+        }
+        
+        #Plot
+        g <- ggplot(mapping=aes(x=lead/12,y=value))+
+          geom_line(data=met.persis.dat)+
+          geom_line(data=met.dat,mapping=aes(colour=members))+
+          facet_grid(type.name~matching,scales = "free_y")+
+          coord_cartesian(ylim=y.rng)+
+          scale_size_manual(values=c(0.25,1))+
+          guides(size="none")+
+          labs(x="Lead (years)",y=this.met,colour="Number of members")
+        print(g)
+        
+        g <- ggplot(mapping=aes(x=lead/12,y=value))+
+          geom_line(data=met.persis.dat)+
+          geom_line(data=met.dat,mapping=aes(colour=matching))+
+          facet_grid(type.name~members,scales = "free_y")+
+          coord_cartesian(ylim=y.rng)+
+          scale_size_manual(values=c(0.25,1))+
+          guides(size="none")+
+          labs(x="Lead (years)",y=this.met,colour="Matching method")
+        print(g)
+
+      }  #Plot  
+    } 
+  }
+  
+
+
+
+```
+
+
+
+
+
+***
+*This work by Mark R Payne is licensed under a  Creative Commons
+Attribution-NonCommercial-ShareAlike 3.0 Unported License. 
+For details, see http://creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US
+Basically, this means that you are free to "share" and "remix" for 
+non-commerical purposes as you see fit, so long as you "attribute" me for my
+contribution. Derivatives can be distributed under the same or 
+similar license.*
+
+*This work comes with ABSOLUTELY NO WARRANTY or support.*
+
+***
+
+
+
