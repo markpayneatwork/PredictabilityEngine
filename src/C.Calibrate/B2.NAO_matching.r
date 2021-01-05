@@ -55,8 +55,11 @@ if(interactive()) {
   set.log_msg.silent(FALSE)
 }
 
-#Number of realisations to consider
-n.reals <- c(5,10,15,20)
+#Configuration
+n.members <- c(5,10,15,20,40)
+match.methods <- c("NextWinter","PreviousWinter","bracketing","todate")
+# n.members <- c(10)
+# match.methods <- c("bracketing")
 
 #'========================================================================
 # Prepare data ####
@@ -68,7 +71,8 @@ NAO.ranking <-
   readRDS(PE.cfg$path$NAOmatching) %>%
   select(-abserr,-lead.yrs) %>%
   mutate(date=year(date), #Only interested in the year part of the date
-         startDate=as.character(startDate)) 
+         startDate=as.character(startDate)) %>%
+  filter(match.method %in% match.methods)
 
 #Setup databases
 this.db <- PE.db.connection(pcfg)
@@ -118,7 +122,7 @@ ranked.candidates <-
   ungroup()
 
 #Now it's time to do it
-for(n in n.reals) {
+for(n in n.members) {
   #Select candidates
   these.sel <- 
     ranked.candidates %>%
@@ -130,7 +134,7 @@ for(n in n.reals) {
     group_by(match.method) %>%
     summarise(pKey=list(pKey),
               .groups="drop") %>%
-    mutate(calibrationMethod=paste("NAOmatching",match.method,n,sep="."))
+    mutate(calibrationMethod=sprintf("NAOmatching.%s.%02i",match.method,n))
   
   #Copy pKeys
   pKey.list %>%
