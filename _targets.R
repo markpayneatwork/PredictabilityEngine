@@ -207,7 +207,7 @@ if(!pcfg@obs.only) {
 #'========================================================================
 #Pointwise extraction
 pointwise.fn<- function(...){
-  ext.script(here("src/ZZ.Helpers/A1.Pointwise_extraction.r"))
+  ext.script(here("src/E.Postprocessing/A1.Pointwise_extraction.r"))
 }
 
 tar.l$pointwise <-
@@ -217,7 +217,7 @@ tar.l$pointwise <-
 
 #Simplified results table
 results.table <- function(...){
-  ext.script(here("src/ZZ.Helpers/Extract_results_from_SQlite.r"))
+  ext.script(here("src/E.Postprocessing/Extract_results_from_SQlite.r"))
 }
 
 tar.l$tbl <-
@@ -226,7 +226,7 @@ tar.l$tbl <-
 
 #Markdown report
 make.report <- function(...){
-  ext.script(here("src/D.Statistics/C2.Visualise_scalar_skill_metrics.r"))
+  ext.script(here("src/E.Postprocessing/B1.Visualise_scalar_skill_metrics.r"))
 }
 
 tar.l$report <-

@@ -38,7 +38,7 @@ pcfg <- readRDS(PE.cfg$path$config)
 #'========================================================================
 # Configure ####
 #'========================================================================
-Rmd.src <- here("src/D.Statistics/C2.Visualise_scalar_skill_metrics.Rmd")
+Rmd.src <- here("src/E.Postprocessing/B1.Visualise_scalar_skill_metrics.Rmd")
 
 #'========================================================================
 # Setup ####

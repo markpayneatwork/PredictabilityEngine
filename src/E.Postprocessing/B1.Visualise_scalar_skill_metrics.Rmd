@@ -239,7 +239,9 @@ for(this.sp in sp.names) {
         bind_rows(stat.obs,stat.pred) %>%
         mutate(date=as.Date(date),
                timeframe=ifelse(year(date)<min(year(stat.pred$date)),
-                                "Historical","Near-term predictions"))
+                                "Historical","Near-term predictions")) %>%
+        separate(calibrationMethod,c("calibration","matching","period"),
+                 fill="right",remove=FALSE)
 
       #Plot timeseries
       g <- 
@@ -247,7 +249,7 @@ for(this.sp in sp.names) {
                aes(x=date,y=value,colour=srcName))+
         geom_line()+
         labs(x="Year",y=this.stat)+
-        facet_grid(calibrationMethod~timeframe,scales="free_x")
+        facet_grid(calibration~timeframe,scales="free_x")
       print(g) 
       
       # Metrics -------------------------------------------------------------------------
@@ -273,7 +275,8 @@ for(this.sp in sp.names) {
                  realization %in% c("realmean","ensmean") | srcType=="Persistence") %>% 
           collect() %>%
           mutate(type.name=paste(srcType,srcName,sep="."),
-                 highlight=realization=="ensmean"|srcType=="Persistence") 
+                 highlight=realization=="ensmean"|srcType=="Persistence") %>%
+          separate(calibrationMethod,c("calibration","matching","members"),fill="right")
         
         met.dat <- 
           all.met.dat %>%
@@ -282,7 +285,7 @@ for(this.sp in sp.names) {
         met.persis.dat <-
           all.met.dat %>%
           filter(srcType=="Persistence") %>%
-          dplyr::select(-calibrationMethod)  #So that it is added to all facets
+          dplyr::select(-calibration)  #So that it is added to all facets
         
         
         #Set y range accordingly
@@ -293,10 +296,11 @@ for(this.sp in sp.names) {
         }
         
         #Plot
-        g <- ggplot(mapping=aes(x=lead/12,y=value,group=type.name,colour=type.name,size=highlight))+
+        g <- ggplot(mapping=aes(x=lead/12,y=value,
+                                group=type.name,colour=type.name,size=highlight))+
           geom_line(data=met.persis.dat)+
           geom_line(data=met.dat)+
-          facet_wrap(~calibrationMethod,scales = "free_y")+
+          facet_wrap(~calibration,scales = "free_y")+
           coord_cartesian(ylim=y.rng)+
           scale_size_manual(values=c(0.25,1))+
           guides(size="none")+
