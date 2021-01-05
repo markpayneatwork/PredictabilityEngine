@@ -46,7 +46,7 @@ pcfg <- PredEng.config(project.name= "Bluefin",
                comp.years=1970:2015,
                landmask="data_srcs/NMME/landmask.nc",
                Observations=SST_obs[[c("HadISST")]],
-               calibrationMethods=c("MeanAdj","MeanVarAdj","NAOmatching"),
+               calibrationMethods=c("MeanAdj","NAOmatching"),
                NMME=NMME.sst.l)
 
 #Setup scratch directory
@@ -69,17 +69,17 @@ pcfg@global.res  <- 0.5
 
 #Polygons
 sp.objs <- list()
-sp.objs$"IrmingerSea" <-
-  st_polygon(list(rbind(c(-45,58), c(-45,66), c(-20,66),
-                        c(-32,58),c(-45,58))))
+# sp.objs$"IrmingerSea" <-
+#   st_polygon(list(rbind(c(-45,58), c(-45,66), c(-20,66),
+#                         c(-32,58),c(-45,58))))
+# 
+# sp.objs$"IcelandBasin" <- 
+#   st_polygon(list(rbind(c(-20,66),c(-32,58),c(-15,58),
+#                         c(-15,66),c(-20,66))))
 
-sp.objs$"IcelandBasin" <- 
-  st_polygon(list(rbind(c(-20,66),c(-32,58),c(-15,58),
-                        c(-15,66),c(-20,66))))
-
-sp.objs$"NorwegianCoast" <-
-    st_polygon(list(rbind(c(-5,62),c(10,62),c(20,70),
-                          c(20,73),c(12,73),c(-5,62))))
+# sp.objs$"NorwegianCoast" <-
+#     st_polygon(list(rbind(c(-5,62),c(10,62),c(20,70),
+#                           c(20,73),c(12,73),c(-5,62))))
 
 sp.objs$"SouthOfIceland" <- sfpolygon.from.extent(extent(-50,-10,54,70))
 
@@ -114,7 +114,6 @@ stat.l$threshold <-
                          desc="11 degree threshold",
                          threshold=11,
                          above=TRUE,
-                         calibration = c("MeanAdj","MeanVarAdj"),
                          realizations=1:4)
 
 # Northward extent ----------------------------------------------------------------
@@ -137,13 +136,13 @@ ext.fn <-
 
 res.l <- list(threshold=11)
 
-stat.l$northern.extent <-
-  custom.stat(name="NorthExt",
-              desc="Northern extent of habitat",
-              fn=ext.fn,
-              resources=res.l,
-              skill.metrics = "correlation")
-
+# stat.l$northern.extent <-
+#   custom.stat(name="NorthExt",
+#               desc="Northern extent of habitat",
+#               fn=ext.fn,
+#               resources=res.l,
+#               skill.metrics = "correlation")
+# 
 
 #Merge it all in
 pcfg@statistics <- stat.l
