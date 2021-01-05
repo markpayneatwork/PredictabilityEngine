@@ -30,8 +30,11 @@ cat(sprintf("Analysis performed %s\n\n",base::date()))
 start.time <- proc.time()[3]; 
 
 #Helper functions, externals and libraries
-library(PredEng)
-pcfg <- readRDS(PE.cfg$path$config)
+suppressMessages({
+  library(verification)
+  library(PredEng)
+})
+pcfg <- PE.load.config()
 
 #'========================================================================
 # Configure ####
@@ -188,29 +191,57 @@ RMSE <- function(x,y) { sqrt(mean((x-y)^2,na.rm=TRUE))}
 #Now calculate the skill over all start dates.
 g.vars <- c("srcType","srcName","realization","calibrationMethod",
             "spName","statName","resultName","lead")
-skill.wide <- 
+mean.metrics <- 
   comp.dat %>%
   group_by(across(all_of(g.vars)),.drop = TRUE) %>%
   summarise(pearson.correlation=cor(value.mdl,value.obs,use="pairwise.complete"),
             RMSE=RMSE(value.mdl,value.obs),
             n=n(),
-            .groups="keep")  
+            .groups="keep")  %>%
+  pivot_longer(-group_vars(.),names_to = "metric") %>%
+  ungroup()
 
-#Now write to database
-skill.long <- 
-  skill.wide %>% 
-  pivot_longer(-all_of(g.vars),names_to = "metric") %>%
-  ungroup() 
+#'========================================================================
+# Probabilistic metrics ####
+#'========================================================================
+# The crps requires that the forecasts be expressed in terms of a probability
+# distribution, ie the mean and standard deviation. This requires calculation
+# of these quantities first
+prob.comp <- 
+  #Convert to probabilistic forecasts
+  mdl.stats.dat %>%
+  filter(!(realization %in% c("realmean","ensmean"))) %>%   #Individual ens members only
+  group_by(srcType,srcName,calibrationMethod,startDate,date,spName,statName,resultName,.drop=TRUE) %>%
+  summarise(mean=mean(value),
+            sd=sd(value),
+            .groups="drop") %>%
+  #Merge in observations
+  mutate(ym=date_to_ym(date)) %>%
+  left_join(y=obs.stats.bare,
+            by=c("ym","spName","statName","resultName"),
+            suffix=c(".mdl",".obs")) %>%
+  select(-ym) %>%
+  #Add lead
+  mutate(lead=month_diff(date,startDate))
 
-
-skill.long %>%
-  PE.db.appendTable(pcfg,PE.cfg$db$metrics)
+#Now calculate statistics
+prob.metrics <- 
+  prob.comp %>%
+  group_by(srcType,srcName,calibrationMethod,spName,statName,resultName,lead,.drop=TRUE) %>%
+  summarise(crps=crps(value,cbind(mean,sd))$CRPS,
+            .groups="keep") %>%
+  pivot_longer(-group_vars(.),names_to = "metric") %>%
+  ungroup() %>%
+  mutate(realization="realmean")
 
 #'========================================================================
 # Complete ####
 #'========================================================================
+#Now write to database
+bind_rows(mean.metrics,prob.metrics) %>%
+  PE.db.appendTable(pcfg,PE.cfg$db$metrics)
+
 #Turn off the lights
-if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
 # .............
