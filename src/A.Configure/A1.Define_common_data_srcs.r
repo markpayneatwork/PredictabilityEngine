@@ -178,10 +178,18 @@ NorCPM.SST.src.i2 <-
                           field=="tos",
                           initialization=="i2")$path)
 
-SST.Decadal <- c(SST.Decadal,NorCPM.SST.src.i1,NorCPM.SST.src.i2)
+NorCPM.SST.src <- 
+  new("data.source",
+      NorCPM.SST.src.i1,
+      name="NorCPM",
+      sources=filter(NorCPM.fnames,
+                     field=="tos")$path)
+
+SST.Decadal <- c(SST.Decadal,NorCPM.SST.src.i1,NorCPM.SST.src.i2,NorCPM.SST.src)
 
 #Set list names and ids
-SST.Decadal.production <- SST.Decadal[c("CESM.DPLE","MPI.ESM.LR","NorCPM.i1","NorCPM.i2")]
+#SST.Decadal.production <- SST.Decadal[c("CESM.DPLE","MPI.ESM.LR","NorCPM.i1","NorCPM.i2")]
+SST.Decadal.production <- SST.Decadal[c("CESM.DPLE","MPI.ESM.LR","NorCPM")]
 
 #'========================================================================
 # Salinity  ####
@@ -257,7 +265,16 @@ NorCPM.sal.src.i2 <-
                           grid=="gr",
                           initialization=="i2")$path)
 
-Sal.Decadal <- c(Sal.Decadal,NorCPM.sal.src.i1,NorCPM.sal.src.i2)
+NorCPM.sal.src <- 
+  new("data.source",
+      NorCPM.sal.src.i1,
+      name="NorCPM",
+      sources=filter(NorCPM.fnames,
+                     field=="so",
+                     grid=="gr")$path)
+
+#Sal.Decadal <- c(Sal.Decadal,NorCPM.sal.src.i1,NorCPM.sal.src.i2)
+Sal.Decadal <- c(Sal.Decadal,NorCPM.sal.src)
 
 #'========================================================================
 # Sea Level Pressure ####
