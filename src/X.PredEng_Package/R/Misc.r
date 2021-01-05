@@ -79,3 +79,5 @@ date_to_ym <- function(d) {
 month_diff <- function(t1,t2) {
   year(t1)*12+month(t1) - year(t2)*12-month(t2)
 }
+
+
