@@ -41,6 +41,7 @@ start.time <- proc.time()[3];
 suppressMessages({
   library(PredEng)
   library(lubridate)
+  library(furrr)
 })
 pcfg <- PE.load.config()
 
@@ -60,6 +61,16 @@ n.members <- c(5,10,15,20,40)
 match.methods <- c("NextWinter","PreviousWinter","bracketing","todate")
 # n.members <- c(10)
 # match.methods <- c("bracketing")
+
+#Setup parallelisation
+if(Sys.info()["nodename"]=="aqua-cb-mpay18" | interactive()) {
+  n.cores <- availableCores()
+} else {
+  n.cores <- as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))    
+  assert_that(!is.na(n.cores),msg = "Cannot detect number of allocated cores")
+}
+plan(multisession,workers = n.cores)
+
 
 #'========================================================================
 # Prepare data ####
@@ -154,35 +165,67 @@ for(n in n.members) {
 #'========================================================================
 # Calculate realmeans ####
 #'========================================================================
-log_msg("Calculate realisation means...\n")
+log_msg("Calculate realisation means using %i cores...\n",n.cores)
 #Realisation means are normally calculated after extraction, and then 
 #calibrated from there. This is ok, as calibration is typically a linear
 #transformation. However, that wouldn't work for this approach, and so we
 #recalculate the realisation means as well
 #Extract data and perform averaging
-calib.dat<-
+chunk.meta <-
   calib.tbl %>%
   filter(substr(calibrationMethod,1,11) =="NAOmatching") %>%
+  select(pKey,srcType,srcName,realization,calibrationMethod,startDate,date,leadIdx) %>%
   collect() %>%
-  PE.db.unserialize() %>%
-  select(-pKey)
+  group_by(across(-c(pKey,realization)),.drop=TRUE) %>%
+  mutate(grp.idx=cur_group_id())
 
-#Calculate realmeans
-realMeans <- 
-  calib.dat %>%
-  group_by(srcType,srcName,calibrationMethod,startDate,date,leadIdx,.drop=TRUE) %>%
-  summarise(field=raster.list.mean(field),
-            duplicate.realizations=any(duplicated(realization)),
-            .groups="keep") %>% #Check for duplicated realization codes
-  ungroup()
-assert_that(!any(realMeans$duplicate.realizations),
-            msg="Duplicate realizations detected in database. Rebuild.")
+#Divide into baskets
+n.chunks <- n_groups(chunk.meta)
+basket.size <- 10*n.cores
+n.baskets <- ceiling(n.chunks / basket.size)
+basket.l <- split(1:n.chunks,rep(1:n.baskets,
+                                each=basket.size,
+                                length.out=n.chunks))
+pb <- PE.progress(n.baskets)
+dmp <- pb$tick(0)
 
-#Write to database 
-realMeans %>%
-  select(-duplicate.realizations) %>%
-  mutate(realization="realmean") %>%
-  PE.db.appendTable(pcfg, PE.cfg$db$calibration)
+for(this.basket in basket.l) {
+  #Resolve chunks
+  these.pKeys <-
+    chunk.meta %>%
+    filter(grp.idx %in% this.basket) %>%
+    pull(pKey)
+  
+  #Setup data
+  these.chunks <-
+    #Import fields
+    calib.tbl %>%
+    filter(pKey %in% these.pKeys) %>%
+    collect() %>%
+    PE.db.unserialize() %>%
+    #Nest into chunks
+    select(-pKey,-realization) %>%
+    nest(field.tbl=c(field)) %>%
+    mutate(field.l=map(field.tbl,pull,"field")) 
+    
+  #Process in parallel
+  realMeans <-
+    these.chunks %>%
+    mutate(field=future_map(field.l,
+                            ~ mean(brick(.x)),
+                            .options = furrr_options(stdout=FALSE,
+                                                     seed=TRUE)),
+           
+           realization="realmean") %>%
+    select(-field.l,-field.tbl)
+  
+  #Write to database 
+  realMeans %>%
+    PE.db.appendTable(pcfg, PE.cfg$db$calibration)
+  
+  #Loop
+  pb$tick()
+}
 
 
 
@@ -190,6 +233,7 @@ realMeans %>%
 # Complete ####
 #'========================================================================
 #Turn off the lights
+plan(sequential)
 if(length(warnings())!=0) print(warnings())
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
