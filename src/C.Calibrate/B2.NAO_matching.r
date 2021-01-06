@@ -151,14 +151,16 @@ for(n in n.members) {
   pKey.list %>%
     rowwise() %>%
     group_walk(function(this,...) {
+      #Extract
       this.sel<-
         calib.tbl %>%
         filter(pKey %in% !!this$pKey[[1]]) %>%
         collect() %>%
         mutate(calibrationMethod=!!this$calibrationMethod)  %>%
-        select(-pKey) %>%
-        PE.db.unserialize()  #PE.db.append serialises it again, so need to revert this first
-      PE.db.appendTable(this.sel,pcfg,PE.cfg$db$calibration)
+        select(-pKey)  
+      #Then rewrite
+      #Note that we save a bit of time by skipping the unserialization step.
+      PE.db.appendTable(this.sel,pcfg,PE.cfg$db$calibration,serialize.first=FALSE)
     })
 }
 

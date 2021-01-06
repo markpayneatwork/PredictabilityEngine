@@ -189,14 +189,16 @@ PE.db.delete.by.datasource <- function(pcfg,tbl.name=PE.cfg$db$extract,datasrc,s
 #' @details PE.db.appendTable serialises the data column and writes the data to the specified table
 #' @export
 #' @rdname PE.db
-PE.db.appendTable <- function(dat,pcfg,tbl.name,silent=TRUE) {
+PE.db.appendTable <- function(dat,pcfg,tbl.name,silent=TRUE,serialize.first=TRUE) {
   #Serialise data
-  serial.dat <- 
-    dat %>%
-    mutate(across(where(is.list),function(cl) map(cl,serialize,NULL))) 
+  if(serialize.first) {
+    dat <- 
+      dat %>%
+      mutate(across(where(is.list),function(cl) map(cl,serialize,NULL))) 
+  }
   #Write
   db.con <- PE.db.connection(pcfg)
-  n <- PE.db.safe.try(dbWriteTable(conn=db.con, name=tbl.name, value=serial.dat, append = TRUE),silent=silent)  
+  n <- PE.db.safe.try(dbWriteTable(conn=db.con, name=tbl.name, value=dat, append = TRUE),silent=silent)  
   #Fin
   dbDisconnect(db.con)
   return(invisible(n))

@@ -24,7 +24,7 @@ PE.db.delete.by.datasource(
   silent = TRUE
 )
 
-PE.db.appendTable(dat, pcfg, tbl.name, silent = TRUE)
+PE.db.appendTable(dat, pcfg, tbl.name, silent = TRUE, serialize.first = TRUE)
 
 PE.db.unserialize(this.dat)
 
