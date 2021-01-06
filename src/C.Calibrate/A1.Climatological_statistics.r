@@ -82,18 +82,21 @@ dbDisconnect(this.db)
 clim.dat <-
   extr.dat %>%
   group_by(srcType,srcName,leadIdx,month,.drop=TRUE) %>%
-  summarise(mean=raster.list.mean(field),
-            sd=list(calc(brick(field),sd)),
+  summarise(clim.mean=raster.list.mean(field),
+            clim.sd=list(calc(brick(field),sd)),
             nYears=n(),
             .groups="keep")
 
-#Pivot longer and write results
+#Pivot longer 
 clim.out <- 
   clim.dat %>%
   ungroup() %>%
-  pivot_longer(!srcType & !srcName & !leadIdx & !month & !nYears,
+  pivot_longer(starts_with("clim."),
                names_to="statistic",
-               values_to="field") 
+               values_to="field") %>%
+  #Make sure everything is in memory
+  mutate(statistic=gsub("clim.","",statistic),
+         field=map_if(field,~!inMemory(.x),~readAll(.x)))
 
 #Write results
 #Reset the resutls table by deleting and reestablishing it
