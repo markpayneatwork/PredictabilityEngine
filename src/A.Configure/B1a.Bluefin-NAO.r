@@ -39,14 +39,14 @@ load(PE.cfg$path$datasrcs)
 # Project Configuration ####
 #'========================================================================
 #Global project configuration
-pcfg <- PredEng.config(project.name= "Bluefin",
+pcfg <- PredEng.config(project.name= "Bluefin_NAO",
                MOI=8,  #August
                average.months=FALSE,
                clim.years=1982:2005,  
                comp.years=1970:2015,
                landmask="data_srcs/NMME/landmask.nc",
                Observations=SST_obs[[c("HadISST")]],
-               calibrationMethods=c("MeanAdj","MeanVarAdj"),
+               calibrationMethods=c("MeanAdj","NAOmatching"),
                NMME=NMME.sst.l)
 
 #Setup scratch directory
@@ -77,9 +77,9 @@ sp.objs <- list()
 #   st_polygon(list(rbind(c(-20,66),c(-32,58),c(-15,58),
 #                         c(-15,66),c(-20,66))))
 
-sp.objs$"NorwegianCoast" <-
-    st_polygon(list(rbind(c(-5,62),c(10,62),c(20,70),
-                          c(20,73),c(12,73),c(-5,62))))
+# sp.objs$"NorwegianCoast" <-
+#     st_polygon(list(rbind(c(-5,62),c(10,62),c(20,70),
+#                           c(20,73),c(12,73),c(-5,62))))
 
 sp.objs$"SouthOfIceland" <- sfpolygon.from.extent(extent(-50,-10,54,70))
 
@@ -116,6 +116,10 @@ stat.l$threshold <-
                          above=TRUE,
                          realizations=1:4)
 
+stat.l$mean <- spatial.mean(name="MeanTemp",
+                               desc="Mean temperature")
+
+
 # Northward extent ----------------------------------------------------------------
 ext.fn <- 
   function(dat,resources) {
@@ -136,13 +140,13 @@ ext.fn <-
 
 res.l <- list(threshold=11)
 
-stat.l$northern.extent <-
-  custom.stat(name="NorthExt",
-              desc="Northern extent of habitat",
-              fn=ext.fn,
-              resources=res.l,
-              skill.metrics = "correlation")
-
+# stat.l$northern.extent <-
+#   custom.stat(name="NorthExt",
+#               desc="Northern extent of habitat",
+#               fn=ext.fn,
+#               resources=res.l,
+#               skill.metrics = "correlation")
+# 
 
 #Merge it all in
 pcfg@statistics <- stat.l
