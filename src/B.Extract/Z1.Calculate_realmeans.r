@@ -33,8 +33,9 @@ start.time <- proc.time()[3];
 #Helper functions, externals and libraries
 suppressPackageStartupMessages({
   library(PredEng)
+  library(furrr)
 })
-pcfg <- readRDS(PE.cfg$path$config)
+pcfg <- PE.load.config()
 
 #'========================================================================
 # Configure ####
@@ -57,6 +58,15 @@ if(interactive()) {
 
 PE.config.summary(pcfg,this.datasrc)
 
+#Setup parallelisation
+if(Sys.info()["nodename"]=="aqua-cb-mpay18" | interactive()) {
+  n.cores <- availableCores()
+} else {
+  n.cores <- as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))    
+  assert_that(!is.na(n.cores),msg = "Cannot detect number of allocated cores")
+}
+plan(multisession,workers = n.cores)
+
 #'========================================================================
 # Clear existing realmeans ####
 #'========================================================================
@@ -72,45 +82,78 @@ del.these <- PE.db.getQuery(pcfg,SQL.cmd,silent=FALSE)
 PE.db.delete.by.pKey(pcfg,PE.cfg$db$extract,del.these$pKey,silent=TRUE)
 
 #'========================================================================
-# Retrieve data ####
+# Calculate means ####
 #'========================================================================
-#Retrieve everything relevant at once. We might go chunkwise in the future, but this
-#will do to start with
+#Setup database
+this.db <- PE.db.connection(pcfg)
+extr.tbl <- tbl(this.db,PE.cfg$db$extract)
 
-#Extract data and perform averaging
-SQL.cmd <- sprintf("SELECT * FROM %s WHERE `srcType` = '%s' AND `srcName`= '%s'",
-                   PE.cfg$db$extract,
-                   this.datasrc@type,
-                   this.datasrc@name)
-frag.dat <- 
-  PE.db.getQuery(pcfg,SQL.cmd,silent=TRUE) %>%
-  PE.db.unserialize()
+#Get meta data
+chunk.meta <-
+  extr.tbl %>%
+  filter(srcType==!!this.datasrc@type,
+         srcName==!!this.datasrc@name) %>%
+  select(pKey,srcType,srcName,realization,startDate,date,leadIdx) %>%
+  collect() %>%
+  group_by(across(-c(pKey)),.drop=TRUE) %>%
+  mutate(grp.idx=cur_group_id())
 
-#'========================================================================
-# Calculate  ####
-#'========================================================================
-#Calculate realmeans
-realMeans <- 
-  frag.dat %>%
-  group_by(srcType,srcName,startDate,date,leadIdx,.drop=TRUE) %>%
-  summarise(field=raster.list.mean(field),
-            duplicate.realizations=any(duplicated(realization)),
-            .groups="keep") %>% #Check for duplicated realization codes
-  ungroup()
-assert_that(!any(realMeans$duplicate.realizations),
-            msg="Duplicate realizations detected in database. Rebuild.")
+#Divide into baskets
+log_msg("Calculate realisation means using %i coress...\n",n.cores)
+n.chunks <- n_groups(chunk.meta)
+basket.size <- 10*n.cores
+n.baskets <- ceiling(n.chunks / basket.size)
+basket.l <- split(1:n.chunks,rep(1:n.baskets,
+                                 each=basket.size,
+                                 length.out=n.chunks))
+pb <- PE.progress(n.baskets)
+dmp <- pb$tick(0)
 
-#Write to database 
-realMeans %>%
-  select(-duplicate.realizations) %>%
-  add_column(realization="realmean",.after="srcType") %>%
-  add_column(srcFname=as.character(NA),.before=1) %>%
-  PE.db.appendTable(pcfg, PE.cfg$db$extract)
+for(this.basket in basket.l) {
+  #Resolve chunks
+  these.pKeys <-
+    chunk.meta %>%
+    filter(grp.idx %in% this.basket) %>%
+    pull(pKey)
+  
+  #Setup data
+  these.chunks <-
+    #Import fields
+    extr.tbl %>%
+    filter(pKey %in% these.pKeys) %>%
+    collect() %>%
+    PE.db.unserialize() %>%
+    #Nest into chunks
+    select(-pKey,-realization) %>%
+    nest(field.tbl=c(field)) %>%
+    mutate(field.l=map(field.tbl,pull,"field")) 
+  
+  #Process in parallel
+  realMeans <-
+    these.chunks %>%
+    mutate(field=future_map(field.l,
+                            ~ mean(brick(.x)),
+                            .options = furrr_options(stdout=FALSE,
+                                                     seed=TRUE)),
+           
+           realization="realmean") %>%
+    mutate(srcFname=as.character(NA)) %>%
+    select(-field.l,-field.tbl)
+
+  #Write to database 
+  realMeans %>%
+    PE.db.appendTable(pcfg, PE.cfg$db$extract)
+
+  #Loop
+  pb$tick()
+}
 
 #'========================================================================
 # Complete ####
 #'========================================================================
 #Turn off the lights
+plan(sequential)
+dbDisconnect(this.db)
 if(length(warnings())!=0) print(warnings())
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
