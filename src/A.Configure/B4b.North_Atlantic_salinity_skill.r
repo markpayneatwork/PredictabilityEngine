@@ -57,8 +57,8 @@ pcfg@scratch.dir <- file.path(PE.cfg$dir$scratch,pcfg@project.name)
 # Spatial Configurations ####
 #'========================================================================
 #Set global variables
-pcfg@global.ROI <- extent(-80,15,40,80)
-pcfg@global.res  <- 1
+pcfg@global.ROI <- extent(-80,15,40,80) 
+pcfg@global.res  <- 0.5
 pcfg@vert.range <- c(250,600)
 
 #'========================================================================
@@ -72,10 +72,10 @@ pcfg@vert.range <- c(250,600)
 #Configure summary stats
 statsum.l <- list()
 statsum.l[[1]] <- pass.through(name="Anomaly",
-                               desc="SST anomaly",
+                               desc="Salinity anomaly",
                                skill.metrics = "correlation",
-                               calibration = c("anomaly","MeanVarAdj"),
-                               realizations=1:4)
+                               calibration = "anomaly",
+                               realizations=c(1,4))
 
 #'========================================================================
 # Finish

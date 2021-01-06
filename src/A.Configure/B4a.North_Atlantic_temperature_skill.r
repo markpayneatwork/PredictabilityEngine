@@ -53,8 +53,8 @@ pcfg@scratch.dir <- file.path(PE.cfg$dir$scratch,pcfg@project.name)
 # Spatial Configurations ####
 #'========================================================================
 #Set global variables
-pcfg@global.ROI <- extent(-70,0,40,80)
-pcfg@global.res  <- 1 #0.25
+pcfg@global.ROI <- extent(-80,15,40,80)
+pcfg@global.res  <- 0.5 #0.25
 pcfg@retain.realizations <- TRUE
 
 #'========================================================================
@@ -69,9 +69,8 @@ pcfg@retain.realizations <- TRUE
 statsum.l <- list()
 statsum.l[[1]] <- pass.through(name="Anomaly",
                                desc="SST anomaly field",
-                               skill.metrics = "correlation",
-                               calibration = c("anomaly","MeanVarAdj"),
-                               realizations=1:4)
+                               calibration = c("anomaly"),
+                               realizations=c(1,4))
 
 #'========================================================================
 # Finish

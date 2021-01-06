@@ -41,7 +41,7 @@ pcfg <- PredEng.config(project.name= "Blue_whiting_WGS2D",
                        MOI=3,  #March - ideally should be Feb-March-april average (??)
                        obs.only=TRUE,
                        average.months=FALSE,
-                       clim.years=1981:2009,  
+                       clim.years=1981:2010,  
                        comp.years=1970:2015,
                        Observations = Sal.obs$EN4,
                        calibrationMethods=c("MeanAdj"),
@@ -56,7 +56,7 @@ define_dir(pcfg@scratch.dir)
 #'========================================================================
 #Set global variables
 pcfg@global.ROI <- extent(-25,0,40,65)
-pcfg@global.res  <- 0.25
+pcfg@global.res  <- 0.5
 pcfg@vert.range <- c(250,600)
 
 #Polygons
