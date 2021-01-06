@@ -46,16 +46,15 @@ tar.l <- list()
 # Helper functions ####
 #'========================================================================
 # Helper functions
-ext.script <- function(this.scp,...) {
-  this.args <- unlist(list(...))
+ext.script <- function(this.scp,...,args=NULL) {
   log.fname <- 
     file.path(here("_targets","logs"),
               paste(substr(basename(dirname(this.scp)),1,1),
                     gsub("\\.r$","",basename(this.scp)),
-                    paste(this.args,collapse="."),
+                    paste(args,collapse="."),
                     sep="."))
   callr::rscript(this.scp,
-                 cmdargs=this.args,
+                 cmdargs=args,
                  stdout=log.fname,
                  stderr="2>&1",
                  show=FALSE)
@@ -74,7 +73,7 @@ extract.observations <-
                          "HadSLP2"="A3.HadSLP2.r",
                          stop("Cannot find observation script"))
     ext.script(here("src/B.Extract/",obs.script),
-               this.src@name)
+               args=this.src@name)
     return(this.src)
   }
 
@@ -92,13 +91,14 @@ tar.l$observations <-
 extract.decadal <- 
   function(this.src) {
     ext.script(here('src/B.Extract/D1.Decadal_extraction.r'),
-               this.src@name)
+               args=this.src@name)
     return(this.src)
   }
 
-calc.realmeans <- function(this.src) {
+calc.realmeans <- 
+  function(this.src) {
   ext.script(here("src/B.Extract/Z1.Calculate_realmeans.r"),
-             this.src@type,this.src@name)
+             args=c(this.src@type,this.src@name))
   return(this.src)}
 
 if(length(pcfg@Decadal)!=0 & !pcfg@obs.only){
@@ -125,34 +125,29 @@ if(length(pcfg@Decadal)!=0 & !pcfg@obs.only){
 # Calibration ####
 #'========================================================================
 #Climatology
-climatology.fn <- function(...) {
-  ext.script(here("src/C.Calibrate/A1.Climatological_statistics.r"))}
-
-
 tar.l$clim <-
   tar_target(clim,
-             climatology.fn(decadal.realmean, observations))
+             ext.script(here("src/C.Calibrate/A1.Climatological_statistics.r"),
+                        decadal.realmean, observations))
 
 #Calibration
 tar.l$calibratioon <-
   tar_target(calibration,
-             ext.script(here("src/C.Calibrate/B1.Mean_adjustment.r"),clim))
+             ext.script(here("src/C.Calibrate/B1.Mean_adjustment.r"),
+                        clim))
 
 if(any(pcfg@calibrationMethods=="NAOmatching")) {
   tar.l$NAOmatching <- 
     tar_target(NAOmatching,
-             ext.script(here("src/C.Calibrate/B2.NAO_matching.r"),calibration))
+             ext.script(here("src/C.Calibrate/B2.NAO_matching.r"),
+                        calibration))
 }
 
 #Ensemble means
-ensmean.fn <- function(...) {
-  ext.script(here("src/C.Calibrate/C1.Ensemble_means.r"))
-}
-
-
 tar.l$ensmean <-
   tar_target(ensmeans,
-             ensmean.fn(calibration,NAOmatching))
+             ext.script(here("src/C.Calibrate/C1.Ensemble_means.r"),
+                        calibration,NAOmatching))
 
 #'========================================================================
 # Stats ####
@@ -181,57 +176,43 @@ tar.l$stat.jobs <-
              stat.jobs.fn(pcfg))
 
 #Process stats
-process.stat <- function(this,...) {
-    ext.script(here("src/D.Statistics/B1.Calculate_stats.r"),
-                this$spName,this$statName)
-}
 tar.l$stats <-
   tar_target(stats,
-             process.stat(statJobs,ensmeans),
+             ext.script(here("src/D.Statistics/B1.Calculate_stats.r"),
+                        args=c(this$spName,this$statName),
+                        statJobs,ensmeans),
              pattern=map(statJobs))
 
 #Calculation verification metrics
 #But only if we have been running something other than observations
-process.metrics <- function(...){
-    ext.script(here("src/D.Statistics/C1.Calculate_scalar_skill_metrics.r"))
-}
-
 if(!pcfg@obs.only) {
   tar.l$metrics <-
     tar_target(metrics,
-               process.metrics(stats))
+               ext.script(here("src/D.Statistics/C1.Calculate_scalar_skill_metrics.r"),
+                          stats))
 }
 
 #'========================================================================
 # Outputs ####
 #'========================================================================
 #Pointwise extraction
-pointwise.fn<- function(...){
-  ext.script(here("src/E.Postprocessing/A1.Pointwise_extraction.r"))
-}
-
 tar.l$pointwise <-
   tar_target(pointwise,
-             pointwise.fn(metrics,stats))  #Stats is a included as a second dependency for cases when
-                                           #there are no metrics to calculate
+             ext.script(here("src/E.Postprocessing/A1.Pointwise_extraction.r"),
+                        metrics,stats))  #Stats is a included as a second dependency for cases when
+                                         #there are no metrics to calculate
 
 #Simplified results table
-results.table <- function(...){
-  ext.script(here("src/E.Postprocessing/Extract_results_from_SQlite.r"))
-}
-
 tar.l$tbl <-
   tar_target(results.table,
-             results.table(pointwise))
+             ext.script(here("src/E.Postprocessing/Extract_results_from_SQlite.r"),
+                        pointwise))
 
 #Markdown report
-make.report <- function(...){
-  ext.script(here("src/E.Postprocessing/B1.Visualise_scalar_skill_metrics.r"))
-}
-
 tar.l$report <-
   tar_target(report,
-             make.report(results.table))
+             ext.script(here("src/E.Postprocessing/B1.Visualise_scalar_skill_metrics.r"),
+                        results.table))
 
 #'========================================================================
 # Make a Plan! ####
