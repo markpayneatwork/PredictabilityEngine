@@ -69,6 +69,7 @@ pcfg@retain.realizations <- TRUE
 statsum.l <- PElst()
 statsum.l[[1]] <- pass.through(name="Anomaly",
                                desc="SST anomaly field",
+                               use.globalROI = TRUE,
                                calibration = c("anomaly"),
                                realizations=c(1,4))
 

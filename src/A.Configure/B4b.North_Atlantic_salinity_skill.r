@@ -73,7 +73,7 @@ pcfg@vert.range <- c(250,600)
 statsum.l <- PElst()
 statsum.l[[1]] <- pass.through(name="Anomaly",
                                desc="Salinity anomaly",
-                               skill.metrics = "correlation",
+                               use.globalROI = TRUE,
                                calibration = "anomaly",
                                realizations=c(1,4))
 pcfg@statistics <- statsum.l
