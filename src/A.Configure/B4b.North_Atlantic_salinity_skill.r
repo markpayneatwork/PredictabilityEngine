@@ -43,7 +43,7 @@ pcfg <- PredEng.config(project.name= "NA_Sal",
                        landmask="data_srcs/NMME/landmask.nc",
                        Observations=Sal.obs$EN4,
                        Decadal=Sal.Decadal,
-                       calibrationMethods=c("anomaly","MeanVarAdj"))
+                       calibrationMethods=c("anomaly"))
 
 
 #CMIP5 salinity

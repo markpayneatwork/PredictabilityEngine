@@ -44,7 +44,7 @@ pcfg <- PredEng.config(project.name= "NA_SST",
                        landmask="data_srcs/NMME/landmask.nc",
                        Observations=SST_obs[[c("HadISST")]],
                        Decadal=SST.Decadal.production,
-                       calibrationMethods=c("anomaly","MeanVarAdj"))
+                       calibrationMethods=c("anomaly"))
 
 #Setup scratch directory
 pcfg@scratch.dir <- file.path(PE.cfg$dir$scratch,pcfg@project.name)
