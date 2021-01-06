@@ -5,15 +5,15 @@
 ### -- set the job Name and array-- 
 #BSUB -J PE_make
 ### -- ask for number of cores (default: 1) -- 
-#BSUB -n 8 
+#BSUB -n 8
 ### -- specify that the cores must be on the same host -- 
 #BSUB -R "span[hosts=1]"
 ### -- specify that we need 2GB of memory per core/slot -- 
 #BSUB -R "rusage[mem=32GB]"
 ### -- specify that we want the job to get killed if it exceeds 3 GB per core/slot -- 
-##BSUB -M 3GB
+##BSUB -M 8GB
 ### -- set walltime limit: hh:mm -- 
-#BSUB -W 72:00 
+#BSUB -W 24:00 
 ### -- set the email address -- 
 # please uncomment the following line and put in your e-mail address,
 # if you want to receive e-mail notifications on a non-default address
@@ -42,7 +42,7 @@ module load gcc
 module load nco
 module load gdal/2.2.3
 
-/appl/R/4.0.2-mkl2020/bin/Rscript ./src/targets.r
+/appl/R/4.0.2-mkl2020/bin/Rscript ./src/ZZ.Helpers/targets.r
 
 #Error check
 if [ "$?" -eq 0 ]; 

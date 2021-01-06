@@ -47,7 +47,7 @@ cfg: FORCE
 	$(Rscript) this.cfg
 
 extract: 
-	$(Rscript) src/ZZ.Helpers/Extract_results_from_SQlite.r
+	$(Rscript) src/E.Postprocessing/Extract_results_from_SQlite.r
 
 NMME_sync:
 	bsub  < src/Y.HPC_scripts/bNMME_sync.sh

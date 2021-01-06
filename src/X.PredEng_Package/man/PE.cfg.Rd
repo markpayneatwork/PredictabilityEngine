@@ -5,15 +5,18 @@
 \alias{PE.cfg}
 \title{Default configuration options for PredEng package}
 \format{
-A data frame with 53940 rows and 10 variables:
+A list of configuration variables:
 \describe{
   \item{PE.cfg}{Options}
 }
+}
+\source{
+Self generated
 }
 \usage{
 PE.cfg
 }
 \description{
-Sets the configuration options for the PredEng package. The variables are as follows:
+Sets the configuration options for the PredEng package.
 }
 \keyword{datasets}

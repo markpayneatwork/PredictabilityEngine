@@ -37,9 +37,9 @@ suppressPackageStartupMessages({
 #'========================================================================
 decadal.dir <- here(PE.cfg$dir$datasrc,"Decadal")
 
-# ========================================================================
-# Setup SST.Decadal models
-# ========================================================================
+#'========================================================================
+# SST.Decadal models ####
+#'========================================================================
 #IPSL and MPI-MR have basically an identifical structure, both being produced
 #originally by SPECS
 SST.Decadal <- PElst()
@@ -178,13 +178,21 @@ NorCPM.SST.src.i2 <-
                           field=="tos",
                           initialization=="i2")$path)
 
-SST.Decadal <- c(SST.Decadal,NorCPM.SST.src.i1,NorCPM.SST.src.i2)
+NorCPM.SST.src <- 
+  new("data.source",
+      NorCPM.SST.src.i1,
+      name="NorCPM",
+      sources=filter(NorCPM.fnames,
+                     field=="tos")$path)
+
+SST.Decadal <- c(SST.Decadal,NorCPM.SST.src.i1,NorCPM.SST.src.i2,NorCPM.SST.src)
 
 #Set list names and ids
-SST.Decadal.production <- SST.Decadal[c("CESM.DPLE","MPI.ESM.LR","NorCPM.i1","NorCPM.i2")]
+#SST.Decadal.production <- SST.Decadal[c("CESM.DPLE","MPI.ESM.LR","NorCPM.i1","NorCPM.i2")]
+SST.Decadal.production <- SST.Decadal[c("CESM.DPLE","MPI.ESM.LR","NorCPM")]
 
 #'========================================================================
-# Salinity data sources ####
+# Salinity  ####
 #'========================================================================
 Sal.Decadal <- PElst()
 
@@ -257,12 +265,46 @@ NorCPM.sal.src.i2 <-
                           grid=="gr",
                           initialization=="i2")$path)
 
-Sal.Decadal <- c(Sal.Decadal,NorCPM.sal.src.i1,NorCPM.sal.src.i2)
+NorCPM.sal.src <- 
+  new("data.source",
+      NorCPM.sal.src.i1,
+      name="NorCPM",
+      sources=filter(NorCPM.fnames,
+                     field=="so",
+                     grid=="gr")$path)
 
-# ========================================================================
-# Setup uninitialised models
+#Sal.Decadal <- c(Sal.Decadal,NorCPM.sal.src.i1,NorCPM.sal.src.i2)
+Sal.Decadal <- c(Sal.Decadal,NorCPM.sal.src)
+
+#'========================================================================
+# Sea Level Pressure ####
+#'========================================================================
+SLP.Decadal <- PElst()
+
+#Add in the CESM DPLE
+SLP.Decadal$CESM.DPLE <-   
+  data.source(name="CESM.DPLE",
+              var="PSL",
+              type="Decadal",
+              fields.are.2D = TRUE,
+              sources=dir(file.path(PE.cfg$dir$datasrc,"Decadal","CESM-DPLE","PSL"),
+                          pattern="\\.nc$",full.names = TRUE),
+              use.timebounds=3,
+              realization.fn=function(f) {
+                val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,3]
+                return(val)},
+              start.date=function(f) {
+                val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,2]
+                init.date <- ymd(sprintf("%s-01",val))
+                return(ceiling_date(init.date,"year"))},  #Round November start up to 1 Jan
+              date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
+
+
+
+#'========================================================================
+# Uninitialised models ####
+#'========================================================================
 # These should largely be the same...
-# ========================================================================
 # uninit_mdls <- hindcast_mdls
 # 
 # #As these are uninitalised runs, the idea of a initialisation date doesn't
@@ -282,9 +324,9 @@ Sal.Decadal <- c(Sal.Decadal,NorCPM.sal.src.i1,NorCPM.sal.src.i2)
 #   uninit_mdls[[i]]@type <- "uninit"
 # }
 
-# ========================================================================
-# Setup observational data sets
-# ========================================================================
+#'========================================================================
+# Observations ####
+#'========================================================================
 SST_obs <- PElst()
 SST_obs$HadISST <- data.source(name="HadISST",
                                type="Observations",
@@ -320,10 +362,15 @@ Sal.obs$EN4  <- data.source(name="EN4",
                             sources=dir("data_srcs/Observations/EN4/",
                                              pattern="\\.nc$",full.names = TRUE,recursive=TRUE))
 
+#Sea level pressure
+SLP.obs <- PElst()
+SLP.obs$HadSLP2 <- data.source(name="HadSLP2",
+                               type="Observations",
+                               fields.are.2D = TRUE)
 
-# ========================================================================
-# Setup NMME models
-# ========================================================================
+#'========================================================================
+# NMME ####
+#'========================================================================
 library(readr)
 NMME.cfg <- 
   read_csv2(file.path(PE.cfg$dir$datasrc,"NMME","NMME_SST_urls.csv"),
@@ -386,7 +433,7 @@ make.CMIP5.srcs <- function(meta,var) {
 }
 
 #'========================================================================
-# Done
+# Done ####
 #'========================================================================
 # Save data sources
 save(SST_obs,
@@ -395,6 +442,8 @@ save(SST_obs,
      make.CMIP5.srcs,
      Sal.obs,
      Sal.Decadal,
+     SLP.Decadal,
+     SLP.obs,
      CMIP5.db,
      file=PE.cfg$path$datasrcs)
 

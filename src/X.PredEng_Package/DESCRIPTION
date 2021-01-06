@@ -26,13 +26,15 @@ RoxygenNote: 7.1.0
 Suggests:
     maps
 Collate: 
-    'Common_configuration.r'
     'PElst.r'
     'Data_class_and_methods.r'
     'Config_class_and_methods.r'
+    'Defaults.r'
+    'Field_functions.r'
+    'Misc.r'
     'PredEng.r'
     'Results_management.R'
     'Stats_class_and_methods.r'
     'Workload_management.r'
     'data.R'
-    'zzz_Common_elements.r'
+Encoding: UTF-8

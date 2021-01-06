@@ -44,7 +44,7 @@ pcfg <- readRDS(PE.cfg$path$config)
 if(interactive() ) {
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
-  sel.src <- names(pcfg@Decadal)[2]
+  sel.src <- names(pcfg@Decadal)[1]
 } else {  
   #Running as a terminal
   cmd.args <- commandArgs(TRUE)
@@ -55,7 +55,7 @@ if(interactive() ) {
 }
 
 #Setup parallelism
-if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
+if(Sys.info()["nodename"]=="aqua-cb-mpay18" | interactive()) {
   n.cores <- availableCores()
 } else {
   n.cores <- as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))    
@@ -64,7 +64,7 @@ if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
 plan(multisession,workers = n.cores)
 
 #Other configurations
-set.nco.defaults("--overwrite")
+set.nco.defaults("--quench --overwrite")
 
 #Display configuration
 this.datasrc <- pcfg@Decadal[[sel.src]]
@@ -95,7 +95,7 @@ PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,datasrc=this.datasrc)
 # Extract Fragments from Source Files ####
 #'========================================================================
 extract.frags <- function(src.fname,tmp.stem,opts) {
-  # src.fname <- these.srcs[1,]$fname
+  # src.fname <- these.srcs[1,]$src.fname
   # tmp.stem <- these.srcs[1,]$tmp.stem
   options(opts)
 
@@ -193,7 +193,7 @@ extract.frags <- function(src.fname,tmp.stem,opts) {
 #' at the same time, we batch the process up into chunks of approximately 100
 #' files at a time, and then use a parallelised apply process
 #Loop over Source Files
-log_msg("Extracting fragments from source files...\n")
+log_msg("Extracting fragments from source files using %i cores...\n",n.cores)
 
 chunk.l <- 
   these.srcs %>%
@@ -244,6 +244,7 @@ for(this.chunk in chunk.l) {
 #'========================================================================
 #Turn off thte lights
 plan(sequential)
+if(length(warnings())!=0) print(warnings())
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
 #' -----------

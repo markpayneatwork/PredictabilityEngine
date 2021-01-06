@@ -1,15 +1,14 @@
 #/*##########################################################################*/
-#' Bluefin Predictability Common Elements
+#' NAO Matching
 #' ==========================================================================
 #'
 #' by Mark R Payne
 #' DTU-Aqua, Charlottenlund, Denmark
 #' http://www.staff.dtu.dk/mpay
 #'
-#' Tue Jul 12 23:05:44 2016
+#' 2020-12-29 15:34:13 CET
 #'
-#' Defines a set of common-baseline elements for use across all pieces of code
-#' in this codebase
+#' Attempts to implement the NAO matching approach of Smith et al 2020 Nature
 #
 #  This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 #  You are largely free to do what you like with it, so long as you "attribute"
@@ -25,7 +24,7 @@
 #'========================================================================
 # Initialise system
 #'========================================================================
-cat(sprintf("\n%s\n","Bluefin Configuration"))
+cat(sprintf("\n%s\n","NAO Matching"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Source the common elements
@@ -39,22 +38,20 @@ load(PE.cfg$path$datasrcs)
 # Project Configuration ####
 #'========================================================================
 #Global project configuration
-pcfg <- PredEng.config(project.name= "Bluefin",
-               MOI=8,  #August
+pcfg <- PredEng.config(project.name= "NAO_matching",
+               MOI=c(12,1,2,3),  #December to March
                average.months=FALSE,
-               clim.years=1982:2005,  
-               comp.years=1970:2015,
-               landmask="data_srcs/NMME/landmask.nc",
-               Observations=SST_obs[[c("HadISST")]],
-               calibrationMethods=c("MeanAdj","MeanVarAdj"),
-               NMME=NMME.sst.l)
+               clim.years=1965:2004,  
+               comp.years=1965:2004,
+               Observations=SLP.obs$HadSLP2,
+               calibrationMethods="anomaly")
 
 #Setup scratch directory
 pcfg@scratch.dir <- file.path(PE.cfg$dir$scratch,pcfg@project.name)
 define_dir(pcfg@scratch.dir)
 
 #Select decadal models
-pcfg@Decadal <- SST.Decadal.production
+pcfg@Decadal <- SLP.Decadal
 
 #Select CMIP5 models
 #pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="tos")
@@ -64,85 +61,28 @@ pcfg@obs.only <- FALSE
 # Spatial Configurations ####
 #'========================================================================
 #Set global variables
-pcfg@global.ROI <- extent(-70,30,50,80)
-pcfg@global.res  <- 0.5
+pcfg@global.ROI <- extent(-30,-15,35,70)
+pcfg@global.res  <- 1
 
 #Polygons
 sp.objs <- list()
-# sp.objs$"IrmingerSea" <-
-#   st_polygon(list(rbind(c(-45,58), c(-45,66), c(-20,66),
-#                         c(-32,58),c(-45,58))))
-# 
-# sp.objs$"IcelandBasin" <- 
-#   st_polygon(list(rbind(c(-20,66),c(-32,58),c(-15,58),
-#                         c(-15,66),c(-20,66))))
-
-sp.objs$"NorwegianCoast" <-
-    st_polygon(list(rbind(c(-5,62),c(10,62),c(20,70),
-                          c(20,73),c(12,73),c(-5,62))))
-
-sp.objs$"SouthOfIceland" <- sfpolygon.from.extent(extent(-50,-10,54,70))
+sp.objs$"Azores" <- sfpolygon.from.extent(extent(-28,-20,36,40))
+sp.objs$"Iceland" <- sfpolygon.from.extent(extent(-25,-16,63,70))
 
 #Add to object
 pcfg@spatial.polygons <- 
-  sp.objs %>% enframe(value="geometry") %>% st_sf()
-
-
-#'========================================================================
-# Extraction configuration ####
-#'========================================================================
-# #A simple point-wise extraction point (corresponding to the point of capture)
-# pt <- data.frame(lat=65 +42/60,
-#                  lon=-(30+50/60),
-#                  date=as.Date(c("2012-08-22","2014-08-15")))
-# pt$ID <- seq(nrow(pt))
-# pcfg@pt.extraction <- 
-#   tibble(table=PE.cfg$db$stats,
-#          filter='srcType=="Observations" & srcName=="HadISST"',
-#          results.db=TRUE,
-#          points=list(st_as_sf(pt,coords=c("lon","lat"))))
-# 
-# pcfg@pt.extraction.from.results.db <- TRUE
+  sp.objs %>% 
+  enframe(value="geometry") %>% 
+  st_sf() 
 
 #'========================================================================
 # Statistics ####
 #'========================================================================
 #Configure stats
 stat.l <- PElst()
-stat.l$threshold <- 
-  threshold(name="threshold",
-                         desc="11 degree threshold",
-                         threshold=11,
-                         above=TRUE,
-                         realizations=1:4)
-
-# Northward extent ----------------------------------------------------------------
-ext.fn <- 
-  function(dat,resources) {
-    #Calculate the zonal averages - this has to be done
-    #by hand, as there is no direct support
-    zonal.mean <- 
-      raster::rowSums(dat,na.rm=TRUE)/raster::rowSums(!is.na(dat))
-    
-    #Apply temperature threshold
-    res <- try(approx(zonal.mean,yFromRow(dat),resources$threshold,rule=2,ties=min)$y)
-    if(is(res,"try-error")) {res <- NA}
-    
-    #Finish
-    return(tibble(resultName="latitude",
-           field=NA,
-           value=res))
-  }
-
-res.l <- list(threshold=11)
-
-stat.l$northern.extent <-
-  custom.stat(name="NorthExt",
-              desc="Northern extent of habitat",
-              fn=ext.fn,
-              resources=res.l,
-              skill.metrics = "correlation")
-
+stat.l$mean <-
+  spatial.mean(name="MeanSLP",
+               desc="Mean sea level pressure")
 
 #Merge it all in
 pcfg@statistics <- stat.l

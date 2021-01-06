@@ -53,7 +53,7 @@ if(interactive()) {
 }
 
 #Setup parallelisation
-if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
+if(Sys.info()["nodename"]=="aqua-cb-mpay18" | interactive()) {
   n.cores <- availableCores()
 } else {
   n.cores <- as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))    
@@ -121,14 +121,14 @@ log_msg("Getting list of calibrations to process...\n")
 #Processing frags
 cr.frags <-  #Calibrations x realisations frags
   expand_grid(calibration=if(is.na(this.stat@calibration)) pcfg@calibrationMethods else this.stat@calibration,
-  realizations=this.stat@realizations) %>%  
+              realizations=this.stat@realizations) %>%  
   mutate(real.SQL.sel=case_when(
     realizations==1 ~ "`srcType`='Observations'",
     realizations==2 ~ "NOT(`realization` IN ('realmean', 'ensmean')) AND NOT(`srcType`= 'Observations')",
     realizations==3 ~ "`realization` = 'realmean'",
     realizations==4 ~ "`realization` = 'ensmean'",
     TRUE~ as.character(NA))) %>%
-  mutate(SQL.sel=sprintf("SELECT pKey FROM %s WHERE `calibrationMethod` = '%s' AND %s",
+  mutate(SQL.sel=sprintf("SELECT pKey FROM %s WHERE `calibrationMethod` LIKE '%s%%' AND %s",
                          PE.cfg$db$calibration,
                          calibration,
                          real.SQL.sel))
@@ -138,7 +138,8 @@ this.query.time <-
   system.time({
     todo.frags <- 
       cr.frags%>%
-      mutate(pKeys=map(SQL.sel,~ PE.db.getQuery(pcfg,.x)))
+      mutate(pKeys=map(SQL.sel,~ PE.db.getQuery(pcfg,.x)),
+             nKeys=map_dbl(pKeys,nrow))
   })
 log_msg("Complete in %0.3fs.\n",this.query.time[3])
 
@@ -153,7 +154,21 @@ dmp <- assert_that(!any(duplicated(pKey.todos)),msg="Expecting unique set of pKe
 # Calculation of statistics ####
 #'========================================================================
 #Setup landmask 
-landmask <- raster(PE.scratch.path(pcfg,"landmask"))
+if(length(pcfg@landmask)==0) {
+  #Create a simple raster that includes everything
+  landmask <- raster(pcfg@global.ROI)
+  res(landmask) <- pcfg@global.res
+  landmask[] <- 0   #Include everything
+} else {
+  #Use the filename to specify and remap
+  landmask.cmd <- cdo("--silent -f nc",
+                      csl(" remapnn", PE.scratch.path(pcfg,"analysis.grid")),
+                      pcfg@landmask,
+                      PE.scratch.path(pcfg,"landmask"))
+  landmask <- raster(PE.scratch.path(pcfg,"landmask")) 
+}
+
+
 
 #Setup the mask for the corresponding spatial boundary
 #based on the combination of the landmask and the spatial boundary mask
@@ -199,7 +214,7 @@ calc.stat.fn <- function(this.pKey,debug=FALSE) {
 # Try doing the first evaluation as a sanity check. This will let us fail gracefully,
 # before getting medieval on their asses...
 dmp <- map(head(pKey.todos,1),calc.stat.fn)
-log_msg("Sanity check passed. Parallellising now...\n")
+log_msg("Sanity check passed. Parallellising using %i cores...\n",n.cores)
 
 # Chunking ------------------------------------------------------------------------
 n.todo <- length(pKey.todos)
@@ -234,6 +249,7 @@ for(this.chunk in chunk.l) {
 #'========================================================================
 #Turn off the lights
 plan(sequential)
+if(length(warnings())!=0) print(warnings())
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
 # .............

@@ -25,7 +25,7 @@
 #' @slot clim.years The years to include in the climatology and analysis of hindcast skill (vector of 
 #' integers)
 #' @slot comp.years The years over which to make comparisons between observations and models
-#' @slot landmask The file to use as the basis for masking out land [optional]
+#' @slot landmask The file to use as the basis for masking out land [optional]. If null, all pixels are used.
 #' @slot scratch.dir Directory in which processed files are to be stored
 #' @slot global.ROI  Extent object defining the global ROI to work with. 
 #' @slot global.res Resolution of the analysis to be applied globally
@@ -86,7 +86,8 @@ PredEng.config <-
                              msg="Dates are currently not handled correctly when averaging over multiple months"),
                validate_that(length(object@vert.range)==2 | all(is.na(object@vert.range)),
                              msg="Vertical range slot must be of length 2 if not NA"),
-               validate_that(length(object@MOI)==1,msg="Currently only support one month of interest"),
+               validate_that(length(object@MOI)==1 | identical(object@calibrationMethods,"anomaly"),
+                             msg="Multiple months of interest are currently not supported for calibrationMethods other than anomaly"),
                validate_that(all(object@MOI %in% 1:12),msg="Month(s) of interest must be in range 1-12"),
                validate_that(length(object@calibrationMethods)>0,msg="No calibration method defined"),
                validate_that(all(object@calibrationMethods %in% PE.cfg$validity$calibrationMethod),
@@ -113,9 +114,8 @@ PredEng.config <-
 setMethod("plot",signature(x="PredEng.config",y="missing"),
           function(x,y,...) {
             plt.sf <- 
-              st_sf(name="@globalROI",
-                          geometry=st_sfc(sfpolygon.from.extent(x@global.ROI)),
-                          crs=PE.cfg$misc$crs)
+              PE.global.sf(x) %>%
+              mutate(name=sprintf("@%s",name))
             if(nrow(x@spatial.polygons)!=0) {
               plt.sf <- 
                 x@spatial.polygons %>%
@@ -224,11 +224,6 @@ set.configuration <- function(pcfg) {
   griddes.txt <- griddes(pcfg@global.ROI,res=pcfg@global.res)
   writeLines(griddes.txt,PE.scratch.path(pcfg,"analysis.grid"))
 
-  #Write regridded landmask
-  landmask.cmd <- cdo("--silent -f nc",
-                      csl(" remapnn", PE.scratch.path(pcfg,"analysis.grid")),
-                      pcfg@landmask,
-                      PE.scratch.path(pcfg,"landmask"))
   #Output
   cfg.fname <- PE.scratch.path(pcfg,"config")
   cfg.linked <- PE.cfg$path$config
@@ -288,6 +283,16 @@ set.configuration <- function(pcfg) {
   validObject(pcfg,complete=TRUE)
 
   return(pcfg)
+}
+
+#' Import PredEng configuration
+#' 
+#' Loads the currently configured PredEng.config object from the default location
+#'
+#' @return PredEng.config object
+#' @export
+PE.load.config <- function() {
+  readRDS(PE.cfg$path$config)
 }
 
 

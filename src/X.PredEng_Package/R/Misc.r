@@ -51,7 +51,6 @@ sfpolygon.from.extent <- function(ext) {
 #' @return
 #' @export
 #'
-#' @examples
 PE.global.sf <- function(this.pcfg) {
   st_sf(geometry=st_sfc(sfpolygon.from.extent(this.pcfg@global.ROI)),
         name=PE.cfg$misc$globalROI,
@@ -80,3 +79,5 @@ date_to_ym <- function(d) {
 month_diff <- function(t1,t2) {
   year(t1)*12+month(t1) - year(t2)*12-month(t2)
 }
+
+

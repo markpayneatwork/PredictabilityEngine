@@ -189,14 +189,16 @@ PE.db.delete.by.datasource <- function(pcfg,tbl.name=PE.cfg$db$extract,datasrc,s
 #' @details PE.db.appendTable serialises the data column and writes the data to the specified table
 #' @export
 #' @rdname PE.db
-PE.db.appendTable <- function(dat,pcfg,tbl.name,silent=TRUE) {
+PE.db.appendTable <- function(dat,pcfg,tbl.name,silent=TRUE,serialize.first=TRUE) {
   #Serialise data
-  serial.dat <- 
-    dat %>%
-    mutate(across(where(is.list),function(cl) map(cl,serialize,NULL))) 
+  if(serialize.first) {
+    dat <- 
+      dat %>%
+      mutate(across(where(is.list),function(cl) map(cl,serialize,NULL))) 
+  }
   #Write
   db.con <- PE.db.connection(pcfg)
-  n <- PE.db.safe.try(dbWriteTable(conn=db.con, name=tbl.name, value=serial.dat, append = TRUE),silent=silent)  
+  n <- PE.db.safe.try(dbWriteTable(conn=db.con, name=tbl.name, value=dat, append = TRUE),silent=silent)  
   #Fin
   dbDisconnect(db.con)
   return(invisible(n))
@@ -225,29 +227,5 @@ PE.db.getQuery <- function(pcfg,this.sql,silent=TRUE) {
   #Fin
   dbDisconnect(db.con)
   return(rtn)
-}
-
-#' Raster List functions
-#' 
-#' Helper functions to work with lists of rasters
-#'
-#' @param l List of raster layers
-#'
-#' @return
-#' @name rasterList
-#' @export
-raster.list.mean <- function(l) {
-  l.stack <- raster::brick(l)
-  l.mean <- raster::mean(l.stack) #Dispatching can be a bit strange here sometimes
-  return(list(l.mean))
-}
-
-
-#' @export
-#' @rdname rasterList
-raster.list.sd <- function(l) {
-  l.stack <- raster::brick(l)
-  l.sd <- raster::calc(l.stack,sd) #Dispatching can be a bit strange here sometimes
-  return(list(l.sd))
 }
 

@@ -31,7 +31,7 @@ suppressPackageStartupMessages({
   library(PredEng)
   library(here)
 })
-pcfg <- readRDS(PE.cfg$path$config)
+pcfg <- PE.load.config()
 
 #'========================================================================
 # Configure ####
@@ -71,6 +71,7 @@ extract.observations <-
     obs.script <- switch(this.src@name,
                          "EN4"="A2.EN4_extraction.r",
                          "HadISST"="A1.HadISST_data.r",
+                         "HadSLP2"="A3.HadSLP2.r",
                          stop("Cannot find observation script"))
     ext.script(here("src/B.Extract/",obs.script),
                this.src@name)
@@ -133,17 +134,15 @@ tar.l$clim <-
              climatology.fn(decadal.realmean, observations))
 
 #Calibration
-calibration.fn <- function(...) {
-    calib.scripts <- dir(here("src/C.Calibrate"),pattern="^B.*r$",full.names = TRUE)
-    for(scp in calib.scripts) {
-      ext.script(scp)}
-    return(Sys.time())
-}
-
 tar.l$calibratioon <-
   tar_target(calibration,
-             calibration.fn(clim))
+             ext.script(here("src/C.Calibrate/B1.Mean_adjustment.r"),clim))
 
+if(any(pcfg@calibrationMethods=="NAOmatching")) {
+  tar.l$NAOmatching <- 
+    tar_target(NAOmatching,
+             ext.script(here("src/C.Calibrate/B2.NAO_matching.r"),calibration))
+}
 
 #Ensemble means
 ensmean.fn <- function(...) {
@@ -153,7 +152,7 @@ ensmean.fn <- function(...) {
 
 tar.l$ensmean <-
   tar_target(ensmeans,
-             ensmean.fn(calibration))
+             ensmean.fn(calibration,NAOmatching))
 
 #'========================================================================
 # Stats ####
@@ -179,16 +178,16 @@ stat.jobs.fn <- function(...){
 
 tar.l$stat.jobs <-
   tar_target(statJobs,
-             stat.jobs.fn(pcfg,ensmeans))
+             stat.jobs.fn(pcfg))
 
 #Process stats
-process.stat <- function(this) {
+process.stat <- function(this,...) {
     ext.script(here("src/D.Statistics/B1.Calculate_stats.r"),
                 this$spName,this$statName)
 }
 tar.l$stats <-
   tar_target(stats,
-             process.stat(statJobs),
+             process.stat(statJobs,ensmeans),
              pattern=map(statJobs))
 
 #Calculation verification metrics
@@ -208,7 +207,7 @@ if(!pcfg@obs.only) {
 #'========================================================================
 #Pointwise extraction
 pointwise.fn<- function(...){
-  ext.script(here("src/ZZ.Helpers/A1.Pointwise_extraction.r"))
+  ext.script(here("src/E.Postprocessing/A1.Pointwise_extraction.r"))
 }
 
 tar.l$pointwise <-
@@ -218,7 +217,7 @@ tar.l$pointwise <-
 
 #Simplified results table
 results.table <- function(...){
-  ext.script(here("src/ZZ.Helpers/Extract_results_from_SQlite.r"))
+  ext.script(here("src/E.Postprocessing/Extract_results_from_SQlite.r"))
 }
 
 tar.l$tbl <-
@@ -227,7 +226,7 @@ tar.l$tbl <-
 
 #Markdown report
 make.report <- function(...){
-  ext.script(here("src/D.Statistics/C2.Visualise_scalar_skill_metrics.r"))
+  ext.script(here("src/E.Postprocessing/B1.Visualise_scalar_skill_metrics.r"))
 }
 
 tar.l$report <-

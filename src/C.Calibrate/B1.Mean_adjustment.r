@@ -48,7 +48,7 @@ if(interactive()) {
 }
 
 #Setup parallelism
-if(Sys.info()["nodename"]=="aqua-cb-mpay18") {
+if(Sys.info()["nodename"]=="aqua-cb-mpay18" | interactive()) {
   n.cores <- availableCores()
 } else {
   n.cores <- as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))    
@@ -78,20 +78,29 @@ PE.db.delete.by.pKey(pcfg,tbl.name=PE.cfg$db$calibration,del.this)
 #Import observational climatology data for the month in question
 #Note that the extraction process has already ensured for all of the models
 #that the only thing in the extraction is the month of interest. However, for
-#the observations, we have all months present. However, in this case we want to
-#adjust the anomaly to the climatological observed value in the MOI. We therefore only
-#need one value here.
-#TODO: When implementing multiple MOIs, would extract relevant MOIs and average, I guess
+#the observations, we have all months present. In the case where we have only one MOI,
+#we can adjust the anomaly to the climatological observed value in the MOI to produce an
+#"anomaly persistence" type of forecast. However, this is very hard to interpret when we
+#are starting to think about multiple MOIs - it might work ok though if thinking about
+#averaged MOIs on the other hand. Anyway, it's a bit hard to handle at the moment, so we
+#do not allow meanAdjustment when there are multiple MOIs at the moment.
 obs.clim <-
   clim.tbl %>%
-  filter(srcType=="Observations",
-         month %in% !!pcfg@MOI) %>%
+  filter(srcType=="Observations") %>%
   select(-pKey) %>%
   collect() %>% 
   PE.db.unserialize() %>%
   pivot_wider(names_from=statistic,values_from=field) %>%
-  select(mean,sd)
-dmp <- assert_that(nrow(obs.clim)==1,msg = "Multiple rows detected in observational climatology.")
+  select(month,obsMean=mean,obsSd=sd)
+
+target.clim <-   #Climatological values which to do mean adjustment
+  obs.clim %>%
+  filter(month %in% pcfg@MOI) %>%
+  #Although we don't currently use it, we can nevertheless average over the months here
+  summarise(targetMean=list(mean(brick(obsMean))),
+            n=n(),
+            targetSd=list(1/n*sqrt(sum(brick(obsSd)^2)))) %>%
+  unlist()  #Put it into a list format
 
 #Import climatology data from both observations and model forecasts
 clim.dat <-
@@ -112,22 +121,34 @@ extr.pKey <-
 #'========================================================================
 # Calibration function####
 #'========================================================================
-calibration.fn <- function(this.dat,this.clim) {
+calibration.fn <- function(this.dat,this.target,this.calib) {
   #Debugging
   # this.dat <- chunk.l[[1]]
-  # this.clim <- obs.clim
-  suppressMessages({
-    library(raster)
-  })
-
-  #Apply recalibration
+  # this.target <- target.clim
+  # this.calib <- pcfg@calibrationMethods
+ 
+  #First calculate the anomaly - we always need this
   rtn <-
     this.dat %>%
-    #Calculate the anomaly and make the correction
-    mutate(field.anom=map2(field.extr,mdlClim.mean,~ .x - .y),
-           field.meanAdjust=map(field.anom,~ .x + this.clim$mean[[1]]),
-           field.meanvarAdjust=map2(field.anom,mdlClim.sd,~(.x/.y)*this.clim$sd[[1]]+this.clim$mean[[1]]))
+    mutate(calib.anomaly=map2(field.extr,mdlClim.mean,
+                           ~ .x - .y))
   
+  #Do the mean adjustment if required
+  if(any(this.calib %in% c("MeanAdj","MeanVarAdj","NAOmatching"))) {
+    rtn <-
+      rtn %>%
+      mutate(calib.MeanAdj=map(calib.anomaly, 
+                                   ~ .x + this.target$targetMean))
+  }
+  
+  #And the variance adjustment
+  if(any(this.calib == "MeanVarAdj")) {
+    rtn <-
+      rtn %>%
+      mutate(calib.MeanVarAdj=map2(calib.anomaly, mdlClim.sd,
+                                      ~(.x/.y)*this.target$targetSd + this.target$targetMean))
+  }
+
   return(rtn)
 }
 
@@ -137,7 +158,7 @@ calibration.fn <- function(this.dat,this.clim) {
 #' To avoid conflicts with too many processes trying to write to the database
 #' at the same time, we batch the process up into chunks and then use a parallelised apply process
 #Loop over Source Files
-log_msg("Applying recalibration...\n")
+log_msg("Applying recalibration using %i cores...\n",n.cores)
 
 #Now loop over the chunks in a parallelised manner
 chunk.size <- 100  #pKeys
@@ -161,14 +182,15 @@ for(this.basket in basket.l) {
            month=month(date)) %>%
     rename(field.extr=field)
   
-  #Merge in climatological data  
+  #Merge in additional data  
   merged.dat <- 
     extr.dat %>%
     #Join in model climatological data
     left_join(y=clim.dat,
-              by=c("srcName","srcType","month","leadIdx")) 
-  
-  
+              by=c("srcName","srcType","month","leadIdx")) %>%
+    #Join in obseervations
+    left_join(y=obs.clim,by="month")
+
   #Split basket into chunks
   chunk.l <- 
     merged.dat %>%
@@ -182,26 +204,25 @@ for(this.basket in basket.l) {
   calib.dat <-
     future_map_dfr(chunk.l,
                    calibration.fn,
-                   this.clim=obs.clim,
+                   this.target=target.clim,
+                   this.calib=pcfg@calibrationMethods,
                    .options = furrr_options(stdout=FALSE,
                                             seed=TRUE))
   
   #Write results
   out.dat <- 
     calib.dat %>%
-    #Select columns and tidy
+    #Select columns 
     select(srcName,srcType,realization,startDate,date,leadIdx,
-           field.anom,field.meanAdjust,field.meanvarAdjust) %>% 
-    mutate(date=as.character(date)) %>%
-    rename("anomaly"=field.anom,
-           "MeanAdj"=field.meanAdjust,
-           "MeanVarAdj"=field.meanvarAdjust) %>%
+           starts_with("calib")) %>% 
     #Pivot
-    pivot_longer(-c(srcName,srcType,realization,startDate,date,leadIdx),
+    pivot_longer(starts_with("calib"),
                  names_to = "calibrationMethod",
                  values_to = "field") %>%
-    #Drop unsupported calibrationMethods
-    filter(calibrationMethod %in% pcfg@calibrationMethods)
+    #Tidy
+    mutate(calibrationMethod=gsub("calib\\.","",calibrationMethod),
+           date=as.character(date)) %>%
+    filter(calibrationMethod %in% pcfg@calibrationMethods)  #Don't store anomaly if not requested
   
   #Write results
   PE.db.appendTable(out.dat,pcfg,PE.cfg$db$calibration)
@@ -218,6 +239,8 @@ for(this.basket in basket.l) {
 dbDisconnect(this.db)
 
 #Turn off the lights
+plan(sequential)
+if(length(warnings())!=0) print(warnings())
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
 # .............
