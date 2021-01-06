@@ -154,9 +154,15 @@ tar.l$ensmean <-
 #'========================================================================
 #Get stat jobs to process
 stat.jobs.fn <- function(...){
+    #Check that we have at least some statistics
+    assert_that(length(pcfg@statistics)>0,
+                msg="No statistics defined. Must be at least one.")
+  
     #Extract spatial regions
-    these.sp <- bind_rows(PE.global.sf(pcfg),
-                          pcfg@spatial.polygons)
+    these.sp <- PE.global.sf(pcfg)
+    if(nrow(pcfg@spatial.polygons)>0) {
+      these.sp <- bind_rows(these.sp,
+                            pcfg@spatial.polygons)}
     
     #Merge with statistics
     todo.stats <- 
