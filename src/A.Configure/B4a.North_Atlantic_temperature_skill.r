@@ -66,11 +66,13 @@ pcfg@retain.realizations <- TRUE
 # Summary statistics ####
 #'========================================================================
 #Configure summary stats
-statsum.l <- list()
+statsum.l <- PElst()
 statsum.l[[1]] <- pass.through(name="Anomaly",
                                desc="SST anomaly field",
                                calibration = c("anomaly"),
                                realizations=c(1,4))
+
+pcfg@statistics <- statsum.l
 
 #'========================================================================
 # Finish

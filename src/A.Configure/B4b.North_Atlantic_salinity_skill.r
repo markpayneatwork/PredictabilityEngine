@@ -70,12 +70,13 @@ pcfg@vert.range <- c(250,600)
 # Summary statistics ####
 #'========================================================================
 #Configure summary stats
-statsum.l <- list()
+statsum.l <- PElst()
 statsum.l[[1]] <- pass.through(name="Anomaly",
                                desc="Salinity anomaly",
                                skill.metrics = "correlation",
                                calibration = "anomaly",
                                realizations=c(1,4))
+pcfg@statistics <- statsum.l
 
 #'========================================================================
 # Finish
