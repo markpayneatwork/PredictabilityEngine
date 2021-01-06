@@ -132,8 +132,8 @@ persis.stats.dat <-
   #Tidy up to merge with rest
   transmute(srcType="Persistence",
             srcName,
-            calibrationMethod=NA,
-            realization=NA,
+            calibrationMethod=NA_character_,
+            realization=NA_character_,
             startDate=date,
             date=forecastDate,
             spName,statName,resultName,value,
