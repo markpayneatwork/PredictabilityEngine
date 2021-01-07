@@ -88,6 +88,16 @@ if(dbExistsTable(src.db,PE.cfg$db$metrics)) {
   dbWriteTable(conn=res.db, name=PE.cfg$db$metrics, value=dat.out, append = TRUE)
 }
 
+#Then the field metrics
+if(dbExistsTable(src.db,PE.cfg$db$metrics.field)) {
+  fldmets.tbl <- tbl(src.db,PE.cfg$db$metrics.field)
+  dat.out <-
+    fldmets.tbl %>%
+    collect()
+  dbWriteTable(conn=res.db, name=PE.cfg$db$metrics.field, value=dat.out, append = TRUE)
+}
+
+
 #And pointwise extraction 
 if(dbExistsTable(src.db,PE.cfg$db$pt.extraction)) {
   pt.tbl <- tbl(src.db,PE.cfg$db$pt.extraction)

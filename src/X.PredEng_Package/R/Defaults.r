@@ -23,6 +23,7 @@ PE.cfg$db <- list(extract="extraction",
                   calibration="calibration",
                   stats="statistics",
                   metrics="metrics",
+                  metrics.field="metricsField",
                   pt.extraction="ptExtraction")
 
 #Validity
