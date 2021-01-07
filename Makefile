@@ -15,16 +15,17 @@
 #   make status
 #
 # Additional targets
-#    help      ; Displays Makefile header with list of target
-#    clean     : Remove all log files from working directory
-#    install   : Installs support R packages
-#    cfg       : (Re-)runs the configuration file linked as this.cfg
-#    extract   : Extracts results into a separate SQLite database
+#    help         ; Displays Makefile header with list of target
+#    clean        : Remove all log files from working directory
+#    install      : Installs support R packages
+#    cfg          : (Re-)runs the configuration file linked as this.cfg
+#    extract      : Extracts results into a separate SQLite database
+#    extractflds  : Extracts results into a separate SQLite database, including fields
 #
-#    NMME_sync : Downloads NMME data via OpenDAP
+#    NMME_sync    : Downloads NMME data via OpenDAP
 #
-#    make      : Submit make script to cluster
-#    status    : Get status of make
+#    make         : Submit make script to cluster
+#    status       : Get status of make
 #
 # ----------------------------------------------------------------------
 
@@ -48,6 +49,9 @@ cfg: FORCE
 
 extract: 
 	$(Rscript) src/E.Postprocessing/Extract_results_from_SQlite.r
+
+extractflds: 
+	$(Rscript) src/E.Postprocessing/Extract_results_from_SQlite.r TRUE
 
 NMME_sync:
 	bsub  < src/Y.HPC_scripts/bNMME_sync.sh

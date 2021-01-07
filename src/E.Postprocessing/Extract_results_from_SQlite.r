@@ -40,14 +40,18 @@ pcfg <- readRDS(here(PE.cfg$path$config))
 # Configure ####
 #'========================================================================
 #Take input arguments, if any
-include.field.stats <- FALSE
+cmd.args <- commandArgs(TRUE)
+if(length(cmd.args)==0) {
+  include.field.stats <- FALSE
+} else {
+  include.field.stats <- as.logical(cmd.args[1])
+}
 
 #'========================================================================
 # Setup ####
 #'========================================================================
 #Open existing
 src.db <- PE.db.connection(pcfg)
-
 
 #Create new results db
 res.db.fname <- here(pcfg@scratch.dir,sprintf("%s_results.sqlite",pcfg@project.name))
