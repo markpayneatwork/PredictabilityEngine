@@ -90,12 +90,12 @@ obs.dat.bare <-
   select(-srcType,-srcName,-date)
 
 #Create a data.frame with the observations and the corresponding mean and standard deviation
-#of each stat result over the entire comparison period. This is used in generating skill
+#of each stat result over the climatological period. This is used in generating skill
 #scores of both the distributional and central tendency metrics
 obs.dat.stats <-
   #Calculate statistics
   obs.dat %>%
-  filter(year(date) %in% pcfg@comp.years,
+  filter(year(date) %in% pcfg@clim.years,
          month(date) %in% pcfg@MOI) %>%
   group_by(srcType,srcName,spName,statName,resultName) %>%
   summarise(mean=mean(value),
@@ -103,8 +103,8 @@ obs.dat.stats <-
             .groups="drop") %>%
   #Join back in 
   left_join(x=obs.dat,by=c("srcType","srcName","spName","statName","resultName")) %>%
-  #Filter again to comparison years
-  filter(year(date) %in% pcfg@comp.years,
+  #Filter again to climatology years
+  filter(year(date) %in% pcfg@clim.years,
          month(date) %in% pcfg@MOI) %>%
   select(-ym)
 
