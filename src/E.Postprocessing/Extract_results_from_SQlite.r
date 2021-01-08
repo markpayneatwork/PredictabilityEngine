@@ -65,6 +65,7 @@ res.db <- PE.db.connection(pcfg,results.db = TRUE)
 # Paste across to new DB ####
 #'========================================================================
 #First the stats
+log_msg("Copying stats...\n")
 if(include.field.stats) {
   stats.tbl <- 
     tbl(src.db,PE.cfg$db$stats)
@@ -80,6 +81,7 @@ dat.out <-
 dbWriteTable(conn=res.db, name=PE.cfg$db$stats, value=dat.out, append = TRUE)
 
 #Then the metrics
+log_msg("Copying metrics...\n")
 if(dbExistsTable(src.db,PE.cfg$db$metrics)) {
   mets.tbl <- tbl(src.db,PE.cfg$db$metrics)
   dat.out <-
@@ -89,6 +91,7 @@ if(dbExistsTable(src.db,PE.cfg$db$metrics)) {
 }
 
 #Then the field metrics
+log_msg("Copying field metrics...\n")
 if(dbExistsTable(src.db,PE.cfg$db$metrics.field)) {
   fldmets.tbl <- tbl(src.db,PE.cfg$db$metrics.field)
   dat.out <-
@@ -99,6 +102,7 @@ if(dbExistsTable(src.db,PE.cfg$db$metrics.field)) {
 
 
 #And pointwise extraction 
+log_msg("Copying pointwise extraction...\n")
 if(dbExistsTable(src.db,PE.cfg$db$pt.extraction)) {
   pt.tbl <- tbl(src.db,PE.cfg$db$pt.extraction)
   dat.out <-
