@@ -83,6 +83,15 @@ sp.objs$"NorwegianCoast" <-
 
 sp.objs$"SouthOfIceland" <- sfpolygon.from.extent(extent(-50,-10,54,70))
 
+sp.objs$"DenmarkStrait" <- sfpolygon.from.extent(extent(-35,-30,63,66))
+
+sp.objs$"IrmingerCurrent" <-
+  st_polygon(list(rbind(c(-35,63),
+                        c(-25,63),
+                        c(-25,65.5),
+                        c(-30,64.8),
+                        c(-35,63))))
+
 #Add to object
 pcfg@spatial.polygons <- 
   sp.objs %>% enframe(value="geometry") %>% st_sf()
