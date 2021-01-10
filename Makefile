@@ -21,6 +21,9 @@
 #    cfg          : (Re-)runs the configuration file linked as this.cfg
 #    extract      : Extracts results into a separate SQLite database
 #    extractflds  : Extracts results into a separate SQLite database, including fields
+#    watch        : Watch tail of the most recent LSF log
+#    less	  : View all of most recent LSF log using less
+#    tail 	  : View end of most recent target log file
 #
 #    NMME_sync    : Downloads NMME data via OpenDAP
 #
@@ -68,4 +71,10 @@ help:
 	@#Display help up to first empty line
 	@grep "^ *$$" Makefile -n -m1 |   sed "s/\(^.*\):.*/\1/" | xargs -I {} head -n{} Makefile
 
+watch:
+	watch 'ls _targets/*.out | tail -n 1 | xargs tail'
+less:
+	ls _targets/*.out | tail -n 1 | xargs less
+tail:
+	ls $$PWD/_targets/logs/* -trd | tail -n1 |xargs tail
 
