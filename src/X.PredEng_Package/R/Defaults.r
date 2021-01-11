@@ -34,7 +34,7 @@ PE.cfg$validity <- list(calibrationMethods=c("anomaly","MeanAdj","MeanVarAdj","N
 #                     results="Results",
 
 #Misc
-PE.cfg$misc <- list(globalROI="globalROI",
+PE.cfg$misc <- list(globalROI="global.ROI",
                     crs=CRS("+proj=longlat +datum=WGS84"))  #The analysis grid currently only
                                                             #capable of working on lon-lat
 

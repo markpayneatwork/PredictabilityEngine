@@ -246,8 +246,9 @@ set.configuration <- function(pcfg) {
   if(file.exists(targets.link)) {
     file.remove(targets.link)
   }
-  file.symlink(define_dir(here(pcfg@scratch.dir,"_targets")),targets.link)
-  define_dir(here("_targets","logs"))
+  scratch.tar <- define_dir(here(pcfg@scratch.dir,"_targets"))
+  define_dir(scratch.tar,"logs")
+  file.symlink(scratch.tar,targets.link)
   
   #Setup SQLite database to store results
   PE.db.setup(pcfg)
