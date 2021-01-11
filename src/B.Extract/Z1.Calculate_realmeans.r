@@ -95,7 +95,7 @@ chunk.meta <-
          srcName==!!this.datasrc@name) %>%
   select(pKey,srcType,srcName,realization,startDate,date,leadIdx) %>%
   collect() %>%
-  group_by(across(-c(pKey)),.drop=TRUE) %>%
+  group_by(across(-c(pKey,realization)),.drop=TRUE) %>%
   mutate(grp.idx=cur_group_id())
 
 #Divide into baskets
@@ -124,8 +124,7 @@ for(this.basket in basket.l) {
     collect() %>%
     PE.db.unserialize() %>%
     #Nest into chunks
-    select(-pKey,-realization) %>%
-    nest(field.tbl=c(field)) %>%
+    nest(field.tbl=c(pKey,srcFname,realization,field)) %>%
     mutate(field.l=map(field.tbl,pull,"field")) 
   
   #Process in parallel
