@@ -42,8 +42,8 @@ pcfg <- readRDS(PE.cfg$path$config)
 #Take input arguments, if any
 if(interactive()) {
   set.log_msg.silent()
-  stat.id <- names(pcfg@statistics)[1]
-  sp.id <- c(PE.cfg$misc$globalROI,pcfg@spatial.polygons$name)[3]
+  stat.id <- names(pcfg@statistics)[2]
+  sp.id <- c(PE.cfg$misc$globalROI,pcfg@spatial.polygons$name)[2]
 } else {
   set.log_msg.silent()
   cmd.args <- commandArgs(TRUE)
@@ -175,7 +175,10 @@ if(length(pcfg@landmask)==0) {
 combined.mask <- mask(landmask,as(this.sp,"Spatial"),updatevalue=1)
 
 # Stat calculation function -------------------------------------------------------
-calc.stat.fn <- function(this.pKey,debug=FALSE) {
+calc.stat.fn <- function(this.pKey) {
+  #Debugging
+  # this.pKey <- pKey.todos[1]
+
   #Import data
   this.dat <- 
     sprintf("SELECT * FROM %s WHERE `pKey` = %i",
@@ -188,8 +191,6 @@ calc.stat.fn <- function(this.pKey,debug=FALSE) {
   
   #Apply the masks to data
   masked.dat <- mask(this.dat$field[[1]],combined.mask,maskvalue=1)
-  
-  if(debug) return(masked.dat)
   
   #And we're ready. Lets calculate some statistics
   this.res <- eval.stat(st=this.stat,dat=masked.dat) 
@@ -204,11 +205,6 @@ calc.stat.fn <- function(this.pKey,debug=FALSE) {
   
   return(out.dat)
 }
-
-#Debugging
-# this.pKey <- pKey.todos[1]
-# dat <- calc.stat.fn(this.pKey,debug=TRUE)
-# stop()
 
 # Sanity check --------------------------------------------------------------------
 # Try doing the first evaluation as a sanity check. This will let us fail gracefully,
