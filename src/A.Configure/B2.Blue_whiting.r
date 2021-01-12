@@ -62,6 +62,19 @@ pcfg@Decadal <- Sal.Decadal
 #pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="so")
 
 #'========================================================================
+# Spatial Configurations ####
+#'========================================================================
+#Set global variables
+pcfg@global.ROI <- extent(-25,0,50,65)
+
+#Polygons
+sp.objs <- list()
+sp.objs$"NorthernComponent" <- sfpolygon.from.extent(extent(-25,-5,53,62))
+pcfg@spatial.polygons <- 
+  sp.objs %>% enframe(value="geometry") %>% st_sf()
+
+
+#'========================================================================
 # Statistics ####
 #'========================================================================
 #Duplicate what's in B9
