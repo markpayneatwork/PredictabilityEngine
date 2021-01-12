@@ -62,7 +62,8 @@ pcfg@vert.range <- c(250,600)
 #Polygons
 sp.objs <- list()
 #sp.objs$"Spawning area" <- sfpolygon.from.extent(extent(-20,-5,50,60))
-sp.objs$"Spawning area" <- sfpolygon.from.extent(pcfg@global.ROI)
+sp.objs$"SpawningArea" <- sfpolygon.from.extent(pcfg@global.ROI)
+
 pcfg@spatial.polygons <- 
   sp.objs %>% enframe(value="geometry") %>% st_sf()
 
@@ -152,12 +153,14 @@ GAM.sdm.resources$thresholds <-
        maximumProbability=0.208,
        meanProbability=0.113,
        larvae=GAM.sdm.resources$model$threshold)
+GAM.sdm.resources$N.Ext <-
+  extent(-25,-5,53,62)
 
 #Setup prediction function
 GAM.sdm.fn <- function(dat,resources) {
   require(mgcv)
   #Setup
-  grid.dt <- 1
+  grid.dt <- 3
   pred.consts <-
     tibble(doy=seq(105,135,by=grid.dt),
            sol.el=0)
@@ -184,21 +187,29 @@ GAM.sdm.fn <- function(dat,resources) {
   #15 April
   field.l$april15 <- pred.b[[which(pred.consts$doy==105)]]
   #We use 15th april as the larvae habitat value.
+  
 
   # Scalar values -------------------------------------------------------------------
   scalar.l <- vector()
-  pxl.area <- area(pred.b)
+  pxl.area <- 
+    area(pred.b) %>%
+    crop(resources$N.Ext)
+  
   scalar.l["areaMaxProbability"] <-
-    cellStats(pxl.area* (field.l$maximumProbability > resources$thresholds$maximumProbability),
+    cellStats(pxl.area* (crop(field.l$maximumProbability,resources$N.Ext) > 
+                           resources$thresholds$maximumProbability),
               sum,na.rm=TRUE)
   scalar.l["areaMeanProbability"] <-
-    cellStats(pxl.area* (field.l$meanProbability > resources$thresholds$meanProbability),
+    cellStats(pxl.area* (crop(field.l$meanProbability,resources$N.Ext) >
+                           resources$thresholds$meanProbability),
               sum,na.rm=TRUE)
   scalar.l["area15April"] <- 
-    cellStats(pxl.area* (field.l$april15 > resources$thresholds$april15),
+    cellStats(pxl.area* (crop(field.l$april15,resources$N.Ext) >
+                           resources$thresholds$april15),
               sum,na.rm=TRUE)
   scalar.l["areaLarvae"] <- 
-    cellStats(pxl.area* (field.l$april15 > resources$thresholds$larvae),
+    cellStats(pxl.area* (crop(field.l$april15,resources$N.Ext) > 
+                           resources$thresholds$larvae),
               sum,na.rm=TRUE)
   #Westward extent 
   west.ext <- function(r,this.threshold) {
@@ -209,7 +220,8 @@ GAM.sdm.fn <- function(dat,resources) {
       as_tibble() %>%
       filter(layer==1) %>%
       group_by(y) %>%
-      summarise(min.x=min(x)) 
+      summarise(min.x=min(x),
+                .groups="drop") 
     return(mean(west.ext.df$min.x,na.rm=TRUE))
   }
   scalar.l["westwardExtentMaxProb"] <- 
