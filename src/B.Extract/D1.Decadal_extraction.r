@@ -106,7 +106,7 @@ extract.frags <- function(src.fname,tmp.stem,opts) {
   file.symlink(this.src,tmp.stem)
   tmp.out <- tmp.stem
 
-    #Before selecting the months of interest, we may need to apply a time
+  #Before selecting the months of interest, we may need to apply a time
   #correction of the time axis. CESM-DPLE, for example, has the time axis
   #set to 2018-08-01 to represent the period 2018-07-01-2018-08-01, meaning
   #that is actually the average value for July, but is labelled as August. It's a trap!
@@ -195,7 +195,7 @@ san.chk <- system.time(extract.frags(these.srcs[1,]$src.fname,
                                      these.srcs[1,]$tmp.stem,
                                      opts=options("ClimateOperators")))
 log_msg("Complete in %2.2fs.\n",san.chk[3])
-stop()
+
 #'========================================================================
 # Apply extraction ####
 #'========================================================================

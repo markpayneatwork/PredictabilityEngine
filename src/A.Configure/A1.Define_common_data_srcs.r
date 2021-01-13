@@ -230,8 +230,14 @@ CESM.DPLE.SALT <-
               fields.are.2D = FALSE,
               z2idx = function(z,f) {
                 ncid <- nc_open(f)
-                z_w_top <- ncvar_get(ncid,"z_w_top")/100 #convert cm -> m
-                z_w_bot <- ncvar_get(ncid,"z_w_bot")/100 #convert cm -> m
+                #The original z_w_top and z_w_bot are dropped by cdo when
+                #preprocessing, so need to base it on z_w and dz instead, which
+                #are retained.
+                # z_w_top <- ncvar_get(ncid,"z_w_top")/100 #convert cm -> m
+                # z_w_bot <- ncvar_get(ncid,"z_w_bot")/100 #convert cm -> m
+                z_w_top <- ncvar_get(ncid,"z_w")/100
+                dz <- ncvar_get(ncid,"dz")/100
+                z_w_bot <- z_w_top +dz
                 nc_close(ncid)
                 idxs <- bounds.to.indices(z,z_w_top,z_w_bot)
                 return(idxs)},
