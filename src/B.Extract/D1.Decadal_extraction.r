@@ -190,11 +190,11 @@ extract.frags <- function(src.fname,tmp.stem,opts) {
 }
 
 #Sanity check
-log_msg("Sanity check... ")
+log_msg("Dry run...\n")
 san.chk <- system.time(extract.frags(these.srcs[1,]$src.fname,
                                      these.srcs[1,]$tmp.stem,
                                      opts=options("ClimateOperators")))
-log_msg("Complete in %2.2fs.\n",san.chk[3])
+log_msg("Passed in %2.2fs.\n",san.chk[3])
 
 #'========================================================================
 # Apply extraction ####
