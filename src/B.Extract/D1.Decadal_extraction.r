@@ -208,7 +208,7 @@ log_msg("Extracting fragments from source files using %i cores...\n",n.cores)
 chunk.l <- 
   these.srcs %>%
   mutate(batch.id=rep(seq(nrow(.)),
-                      each=n.cores*50,
+                      each=n.cores,
                       length.out=nrow(.))) %>%
   group_by(batch.id) %>%
   group_split(.keep=FALSE)
