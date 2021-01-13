@@ -42,15 +42,15 @@ pcfg <- readRDS(PE.cfg$path$config)
 #'========================================================================
 #Take input arguments, if any
 if(interactive() ) {
-  set.cdo.defaults("--silent --no_warnings -O")
+  set.cdo.defaults("--silent --no_warnings -O -f nc4")
   set.log_msg.silent()
-  sel.src <- names(pcfg@Decadal)[1]
+  sel.src <- names(pcfg@Decadal)[2]
 } else {  
   #Running as a terminal
   cmd.args <- commandArgs(TRUE)
   assert_that(length(cmd.args)==1,msg="Cannot get command args")
   sel.src <- cmd.args[1]
-  set.cdo.defaults("--silent --no_warnings -O")
+  set.cdo.defaults("--silent --no_warnings -O -f nc4 ")
   set.log_msg.silent()
 }
 
@@ -97,39 +97,16 @@ PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,datasrc=this.datasrc)
 extract.frags <- function(src.fname,tmp.stem,opts) {
   # src.fname <- these.srcs[1,]$src.fname
   # tmp.stem <- these.srcs[1,]$tmp.stem
+  #Get started
+  #The use of generic tmp.in and tmp.out filenames allows the order of 
+  #execution to be reshuffled as required
   options(opts)
+  this.src <- file.path(getwd(),src.fname)
+  if(file.exists(tmp.stem)) file.remove(tmp.stem)
+  file.symlink(this.src,tmp.stem)
+  tmp.out <- tmp.stem
 
-  #Subset out the layer(s) from the field of interest, if relevant
-  if(this.datasrc@fields.are.2D ) {
-    #Then don't need to do any select
-    sym.link <- file.path(getwd(),src.fname)
-    if(file.exists(tmp.stem)) file.remove(tmp.stem)
-    file.symlink(sym.link,tmp.stem)
-    tmp.out <- tmp.stem
-  } else { #Field is 3D and requires selection
-    tmp.out <- sprintf("%s_sellevel",tmp.stem)
-    if(length(pcfg@vert.range)==1 & all(is.na(pcfg@vert.range))) { 
-      #Then we are requesting the surface layer only
-      vert.idxs <- 1
-    } else {
-      #Need to work it out ourselves
-      vert.idxs <- this.datasrc@z2idx(pcfg@vert.range,src.fname)
-    }
-    sellev.cmd <- cdo(csl("sellevidx",vert.idxs),
-                      src.fname,tmp.out)
-  }
-  
-  #Average over the layers
-  tmp.in <- tmp.out
-  tmp.out <- sprintf("%s_vertmean",tmp.in)
-  levmean.cmd <- cdo("vertmean",tmp.in,tmp.out)
-  
-  #Select the field of interest, just to be sure
-  tmp.in <- tmp.out
-  tmp.out <- sprintf("%s_selname",tmp.in)
-  selname.cmd <- cdo(csl("selname",this.datasrc@var),tmp.in,tmp.out)
-  
-  #Before selecting the months of interest, we may need to apply a time
+    #Before selecting the months of interest, we may need to apply a time
   #correction of the time axis. CESM-DPLE, for example, has the time axis
   #set to 2018-08-01 to represent the period 2018-07-01-2018-08-01, meaning
   #that is actually the average value for July, but is labelled as August. It's a trap!
@@ -150,18 +127,44 @@ extract.frags <- function(src.fname,tmp.stem,opts) {
     tmp.out <- sprintf("%s_yearmean",tmp.in)
     yearmean.cmd <- cdo( "yearmean", tmp.in,tmp.out)
   }
+
+  #Subset out the layer(s) from the field of interest, if relevant
+  if(!this.datasrc@fields.are.2D ) { #Field is 3D and requires selection
+    tmp.in <- tmp.out
+    tmp.out <- sprintf("%s_sellevel",tmp.in)
+    if(length(pcfg@vert.range)==1 & all(is.na(pcfg@vert.range))) { 
+      #Then we are requesting the surface layer only
+      vert.idxs <- 1
+    } else {
+      #Need to work it out ourselves
+      vert.idxs <- this.datasrc@z2idx(pcfg@vert.range,tmp.in)
+    }
+    sellev.cmd <- cdo(csl("sellevidx",vert.idxs),
+                      tmp.in,tmp.out)
+  }
+
+  #Average over the layers
+  tmp.in <- tmp.out
+  tmp.out <- sprintf("%s_vertmean",tmp.in)
+  levmean.cmd <- cdo("vertmean",tmp.in,tmp.out)
+
+  #Select the field of interest, just to be sure
+  tmp.in <- tmp.out
+  tmp.out <- sprintf("%s_selname",tmp.in)
+  selname.cmd <- cdo(csl("selname",this.datasrc@var),tmp.in,tmp.out)
   
   #Remap recalculating weights every time
   analysis.grid.fname <- PE.scratch.path(pcfg,PE.cfg$file$analysis.grid)
   tmp.in <- tmp.out
-  regrid.fname <- sprintf("%s_regrid",tmp.in)
+  tmp.out <- sprintf("%s_regrid",tmp.in)
   regrid.cmd <- cdo("-f nc",
                     csl("remapbil", analysis.grid.fname),
-                    tmp.in, regrid.fname)
+                    tmp.in, tmp.out)
   
+
   #Import data into raster-land
-  dat.b <- readAll(brick(regrid.fname))
-  
+  dat.b <- readAll(brick(tmp.out))
+
   #Set CRS status
   #As everything is interpolated onto a common grid, it should also therefore
   #have a CRS reflecting that grid.
@@ -173,7 +176,7 @@ extract.frags <- function(src.fname,tmp.stem,opts) {
                       srcType=this.datasrc@type,
                       realization=this.datasrc@realization.fn(src.fname),
                       startDate=this.datasrc@start.date(src.fname),
-                      date=this.datasrc@date.fn(regrid.fname),
+                      date=this.datasrc@date.fn(tmp.out),
                       leadIdx=1:nlayers(dat.b),
                       field=as.list(dat.b))
 
@@ -186,6 +189,13 @@ extract.frags <- function(src.fname,tmp.stem,opts) {
   return(this.frag)
 }
 
+#Sanity check
+log_msg("Sanity check... ")
+san.chk <- system.time(extract.frags(these.srcs[1,]$src.fname,
+                                     these.srcs[1,]$tmp.stem,
+                                     opts=options("ClimateOperators")))
+log_msg("Complete in %2.2fs.\n",san.chk[3])
+stop()
 #'========================================================================
 # Apply extraction ####
 #'========================================================================
