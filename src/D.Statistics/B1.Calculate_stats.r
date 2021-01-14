@@ -75,10 +75,9 @@ dmp <- assert_that(all(sp.id %in% c(PE.cfg$misc$globalROI,pcfg@spatial.polygons$
 this.stat <- pcfg@statistics[[stat.id]]
 this.sp <- 
   if(sp.id == PE.cfg$misc$globalROI) {
-    assert_that(this.stat@use.globalROI,msg="Function requested globalROI, but stat doesn't use one.")
+    assert_that(this.stat@use.globalROI,msg="Spatial polygon is  globalROI, but stat doesn't use one.")
     PE.global.sf(pcfg) 
   } else {
-    assert_that(!this.stat@use.globalROI,msg="Function didn't request globalROI, but stat wants one.")
     pcfg@spatial.polygons %>% 
       filter(name==sp.id)
   }
@@ -209,6 +208,7 @@ calc.stat.fn <- function(this.pKey) {
 # Sanity check --------------------------------------------------------------------
 # Try doing the first evaluation as a sanity check. This will let us fail gracefully,
 # before getting medieval on their asses...
+log_msg("Dry run....\n")
 dmp <- map(head(pKey.todos,1),calc.stat.fn)
 log_msg("Sanity check passed. Parallellising using %i cores...\n",n.cores)
 
