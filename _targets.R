@@ -218,10 +218,12 @@ tar.l$tbl <-
                         pointwise))
 
 #Markdown report
-tar.l$report <-
-  tar_target(report,
-             ext.script(here("src/E.Postprocessing/B1.Visualise_scalar_skill_metrics.r"),
-                        results.table))
+if(!pcfg@obs.only) {
+  tar.l$report <-
+    tar_target(report,
+               ext.script(here("src/E.Postprocessing/B1.Visualise_scalar_skill_metrics.r"),
+                          results.table))
+}
 
 #'========================================================================
 # Make a Plan! ####
