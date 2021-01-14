@@ -12,8 +12,8 @@
 \item{realizations}{Tells what sort of data to be considered 1 = Observations 2 = Individual realisations 
 3 = Realization means 4 = Ensemble means}
 
-\item{calibration}{Choose the calibration method to base the statistic on. Defaults to 
-"Mean adjusted".}
+\item{calibration}{Choose the calibration method to base the statistic on. Defaults to NULL, indicating
+to use all available calibrations}
 
 \item{use.globalROI}{Indicates whether the stat should be calculated on a local or 
 global basis  ie. for each individual spatial polygon (FALSE) or once for the entire global 
