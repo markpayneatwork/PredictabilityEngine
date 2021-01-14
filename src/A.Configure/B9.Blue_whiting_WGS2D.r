@@ -61,8 +61,8 @@ pcfg@vert.range <- c(250,600)
 
 #Polygons
 sp.objs <- list()
-#sp.objs$"Spawning area" <- sfpolygon.from.extent(extent(-20,-5,50,60))
-sp.objs$"SpawningArea" <- sfpolygon.from.extent(pcfg@global.ROI)
+#sp.objs$"WestExtent" <- sfpolygon.from.extent(extent(-25,0,56,58))
+sp.objs$"NorthernComponent" <- sfpolygon.from.extent(extent(-20,-5,53,60))
 
 pcfg@spatial.polygons <- 
   sp.objs %>% enframe(value="geometry") %>% st_sf()
@@ -153,16 +153,14 @@ GAM.sdm.resources$thresholds <-
        maximumProbability=0.208,
        meanProbability=0.113,
        larvae=GAM.sdm.resources$model$threshold)
-GAM.sdm.resources$N.Ext <-
-  extent(-25,-5,53,62)
+GAM.sdm.resources$doys <-seq(105,135,by=3)
 
 #Setup prediction function
 GAM.sdm.fn <- function(dat,resources) {
   require(mgcv)
   #Setup
-  grid.dt <- 3
   pred.consts <-
-    tibble(doy=seq(105,135,by=grid.dt),
+    tibble(doy=resources$doys,
            sol.el=0)
   assert_that(nlayers(dat)==1,msg="Inputs with multiple layers not supported")
   pred.dat <- brick(c(resources$pred.l,EN4.salinity=dat))
@@ -187,7 +185,6 @@ GAM.sdm.fn <- function(dat,resources) {
   #15 April
   field.l$april15 <- pred.b[[which(pred.consts$doy==105)]]
   #We use 15th april as the larvae habitat value.
-  
 
   # Scalar values -------------------------------------------------------------------
   scalar.l <- vector()
@@ -196,24 +193,20 @@ GAM.sdm.fn <- function(dat,resources) {
     crop(resources$N.Ext)
   
   scalar.l["areaMaxProbability"] <-
-    cellStats(pxl.area* (crop(field.l$maximumProbability,resources$N.Ext) > 
-                           resources$thresholds$maximumProbability),
+    cellStats(pxl.area* (field.l$maximumProbability > resources$thresholds$maximumProbability),
               sum,na.rm=TRUE)
   scalar.l["areaMeanProbability"] <-
-    cellStats(pxl.area* (crop(field.l$meanProbability,resources$N.Ext) >
-                           resources$thresholds$meanProbability),
+    cellStats(pxl.area* (field.l$meanProbability >resources$thresholds$meanProbability),
               sum,na.rm=TRUE)
   scalar.l["area15April"] <- 
-    cellStats(pxl.area* (crop(field.l$april15,resources$N.Ext) >
-                           resources$thresholds$april15),
+    cellStats(pxl.area* (field.l$april15 > resources$thresholds$april15),
               sum,na.rm=TRUE)
   scalar.l["areaLarvae"] <- 
-    cellStats(pxl.area* (crop(field.l$april15,resources$N.Ext) > 
-                           resources$thresholds$larvae),
+    cellStats(pxl.area* (field.l$april15 > resources$thresholds$larvae),
               sum,na.rm=TRUE)
   #Westward extent 
   west.ext <- function(r,this.threshold) {
-    west.focus <- crop(r,extent(-25,0,54,58))
+    west.focus <- crop(r,extent(-25,0,56,58))
     west.ext.df <- 
       (west.focus > this.threshold ) %>%
       rasterToPoints() %>%
@@ -243,11 +236,12 @@ GAM.sdm.fn <- function(dat,resources) {
 
 #Setup to look across all days of year
 stat.l$SDM <- 
-  custom.stat(name="SDM",
-              desc="Apply Miesner and Payne 2018 habitat model",
+  custom.stat(name="SDMGlobal",
+              desc="Miesner and Payne 2018 habitat model applied to the GlobalROI",
               fn=GAM.sdm.fn,
               resources=GAM.sdm.resources,
               realizations=1,
+              use.globalROI = TRUE,
               calibration=c("MeanAdj","MeanVarAdj"))
 
 #Merge it all in

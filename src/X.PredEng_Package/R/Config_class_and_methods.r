@@ -103,6 +103,15 @@ PredEng.config <-
                validate_that(all(is.na(object@vert.range)) | all(!datsrc.meta$is.2D),
                              msg="If vertical range is specified, all data sources must be 3D")
              
+             #Check for consistency between spatial.polygons requested in the stats, and those available
+             stat.spNames <- 
+               map(object@statistics,slot,"spatial.polygons") %>% 
+               unlist() %>%
+               na.omit()
+             err.msg$spName <-
+               validate_that(length(stat.spNames)==0 | all(stat.spNames %in% object@spatial.polygons$name),
+                             msg="Unknown spatial polygons requested by one or more statistics.")
+             #
              err.idxs <- map_lgl(err.msg,is.character)
              if(all(!err.idxs)) return(TRUE) else unlist(err.msg[err.idxs])
            })

@@ -154,27 +154,27 @@ tar.l$ensmean <-
 #'========================================================================
 #Get stat jobs to process
 stat.jobs.fn <- function(...){
-    #Check that we have at least some statistics
-    assert_that(length(pcfg@statistics)>0,
-                msg="No statistics defined. Must be at least one.")
-  
-    #Extract spatial regions
-    these.sp <- PE.global.sf(pcfg)
-    if(nrow(pcfg@spatial.polygons)>0) {
-      these.sp <- bind_rows(these.sp,
-                            pcfg@spatial.polygons)}
-    
-    #Merge with statistics
-    todo.stats <- 
-      expand_grid(st=pcfg@statistics@.Data,
-                  sp=split(these.sp,these.sp$name)) %>%
-      mutate(statName=map_chr(st,slot,"name"),
-             st.uses.globalROI=map_lgl(st,slot,"use.globalROI"),
-             spName=map_chr(sp,~ .x$name)) %>%
-      #Remove any combinations that are asking for the global, but not using them
-      filter(!(spName==PE.cfg$misc$globalROI & !st.uses.globalROI))
-    
-    return(todo.stats)
+  #Check that we have at least some statistics
+  assert_that(length(pcfg@statistics)>0,
+              msg="No statistics defined. Must be at least one.")
+
+
+  #Extract statistics
+  todo.stats <- 
+    tibble(st=pcfg@statistics@.Data) %>%
+    mutate(statName=map_chr(st,slot,"name"),
+           st.request=map(st,slot,"spatial.polygons"),
+           st.uses.globalROI=map_lgl(st,slot,"use.globalROI"),
+           st.request.mt=map_lgl(st.request, ~length(.x)==0),
+           st.request.na=map_lgl(st.request, ~any(is.na(.x))),
+           #Merge in defaults
+           spName=map_if(st.request,st.request.mt, ~ pcfg@spatial.polygons$name),
+           spName=map_if(spName,st.request.na,~ NULL),
+           spName=map_if(spName,st.uses.globalROI, ~ c(.x,PE.cfg$misc$globalROI))) %>% 
+    unnest(spName) 
+
+
+  return(todo.stats)
 }
 
 tar.l$stat.jobs <-
