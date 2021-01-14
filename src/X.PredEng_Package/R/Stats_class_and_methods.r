@@ -25,7 +25,6 @@ stat <-
                       calibration="character",
                       retain.field="logical",
                       use.globalROI="logical",
-                      skill.metrics="character"),
            prototype = list(realizations=1:4,  #Default to all
                             retain.field=TRUE,
                             calibration=as.character(NA),

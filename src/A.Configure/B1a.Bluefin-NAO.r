@@ -144,8 +144,7 @@ res.l <- list(threshold=11)
 #   custom.stat(name="NorthExt",
 #               desc="Northern extent of habitat",
 #               fn=ext.fn,
-#               resources=res.l,
-#               skill.metrics = "correlation")
+#               resources=res.l)
 # 
 
 #Merge it all in

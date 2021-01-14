@@ -247,7 +247,6 @@ stat.l$SDM <-
               desc="Apply Miesner and Payne 2018 habitat model",
               fn=GAM.sdm.fn,
               resources=GAM.sdm.resources,
-              skill.metrics = "correlation",
               realizations=1,
               calibration=c("MeanAdj","MeanVarAdj"))
 
