@@ -82,6 +82,7 @@ pcfg@spatial.polygons <-
 for(i in seq(pcfg@statistics)) {
   this.stat <- pcfg@statistics[[i]] 
   this.stat@realizations <- 1:4
+  this.stat@use.globalROI <- FALSE
   pcfg@statistics[[i]] <- this.stat
 }
 
