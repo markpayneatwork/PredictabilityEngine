@@ -167,7 +167,8 @@ GAM.sdm.fn <- function(dat,resources) {
     tibble(doy=resources$doys,
            sol.el=0)
   assert_that(nlayers(dat)==1,msg="Inputs with multiple layers not supported")
-  pred.dat <- brick(c(resources$pred.l,EN4.salinity=dat))
+  pred.l <- lapply(resources$pred.l,crop,dat)
+  pred.dat <- brick(c(pred.l,EN4.salinity=dat))
   
   #Loop over rows in prediction constants
   p.l <- vector("list",nrow(pred.consts))
