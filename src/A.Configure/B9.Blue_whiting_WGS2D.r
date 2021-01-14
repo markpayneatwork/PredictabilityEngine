@@ -157,6 +157,10 @@ GAM.sdm.resources$doys <-seq(105,135,by=3)
 
 #Setup prediction function
 GAM.sdm.fn <- function(dat,resources) {
+  #Debug
+  # dat <- masked.dat
+  # resources <- this.stat@resources
+  
   require(mgcv)
   #Setup
   pred.consts <-
@@ -188,9 +192,7 @@ GAM.sdm.fn <- function(dat,resources) {
 
   # Scalar values -------------------------------------------------------------------
   scalar.l <- vector()
-  pxl.area <- 
-    area(pred.b) %>%
-    crop(resources$N.Ext)
+  pxl.area <- area(pred.b)
   
   scalar.l["areaMaxProbability"] <-
     cellStats(pxl.area* (field.l$maximumProbability > resources$thresholds$maximumProbability),
@@ -236,7 +238,7 @@ GAM.sdm.fn <- function(dat,resources) {
 
 #Setup to look across all days of year
 stat.l$SDM <- 
-  custom.stat(name="SDMGlobal",
+  custom.stat(name="SDM",
               desc="Miesner and Payne 2018 habitat model applied to the GlobalROI",
               fn=GAM.sdm.fn,
               resources=GAM.sdm.resources,
