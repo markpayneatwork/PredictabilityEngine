@@ -66,12 +66,7 @@ pcfg@Decadal <- Sal.Decadal
 #'========================================================================
 #Set global variables
 pcfg@global.ROI <- extent(-25,0,50,65)
-
-#Polygons
-sp.objs <- list()
-sp.objs$"NorthernComponent" <- sfpolygon.from.extent(extent(-25,-5,53,62))
-pcfg@spatial.polygons <- 
-  sp.objs %>% enframe(value="geometry") %>% st_sf()
+pcfg@global.res  <- 0.5
 
 
 #'========================================================================
