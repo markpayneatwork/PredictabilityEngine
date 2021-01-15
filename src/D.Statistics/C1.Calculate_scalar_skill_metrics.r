@@ -156,7 +156,8 @@ mdl.stats.df<-
   filter(year(date) %in% pcfg@comp.years) 
 
 #If the database hasn't been run with forecast models, then there is nothing to do here
-if(nrow(mdl.stats.df)!=0) {
+have.mdl.dat <- nrow(mdl.stats.df)!=0
+if(have.mdl.dat) {
   mdl.stats <-
     mdl.stats.df %>%
     pull(pKey)
@@ -222,78 +223,85 @@ mean.metrics <-
   pivot_longer(-group_vars(.),names_to = "metric") %>%
   ungroup()
 
+
+#Write these results
+mean.metrics %>%
+  filter(srcType!="Observations") %>%
+  PE.db.appendTable(pcfg,PE.cfg$db$metrics)
+
 #'========================================================================
 # Distribution metrics ####
 #'========================================================================
-# Metrics of the probabilistic forecast distributions
-# The crps requires that the forecasts be expressed in terms of a probability
-# distribution, ie the mean and standard deviation. This requires calculation
-# of these quantities first
-dist.pred <- 
-  #Convert to probabilistic forecasts
-  mdl.stats.dat %>%  #Don't include persistence
-  filter(!(realization %in% c("realmean","ensmean"))) %>%   #Individual ens members only
-  group_by(srcType,srcName,calibrationMethod,startDate,date,spName,statName,resultName,.drop=TRUE) %>%
-  summarise(pred.mean=mean(value),
-            pred.sd=sd(value),
-            .groups="drop") %>%
-  #Merge in observations
-  mutate(ym=date_to_ym(date)) %>%
-  left_join(y=obs.dat.bare,
-            by=c("ym","spName","statName","resultName"),
-            suffix=c(".mdl",".obs")) %>%
-  select(-ym)
+if(have.mdl.dat) {
+  # Metrics of the probabilistic forecast distributions
+  # The crps requires that the forecasts be expressed in terms of a probability
+  # distribution, ie the mean and standard deviation. This requires calculation
+  # of these quantities first
+  dist.pred <- 
+    #Convert to probabilistic forecasts
+    mdl.stats.dat %>%  #Don't include persistence
+    filter(!(realization %in% c("realmean","ensmean"))) %>%   #Individual ens members only
+    group_by(srcType,srcName,calibrationMethod,startDate,date,spName,statName,resultName,.drop=TRUE) %>%
+    summarise(pred.mean=mean(value),
+              pred.sd=sd(value),
+              .groups="drop") %>%
+    #Merge in observations
+    mutate(ym=date_to_ym(date)) %>%
+    left_join(y=obs.dat.bare,
+              by=c("ym","spName","statName","resultName"),
+              suffix=c(".mdl",".obs")) %>%
+    select(-ym)
+  
+  #Now calculate statistics
+  dist.metrics <- 
+    #Customise observation metrics first
+    obs.dat.stats %>%
+    rename(pred.mean=mean,pred.sd=sd) %>%
+    bind_rows(dist.pred) %>%
+    #Add lead
+    mutate(lead=month_diff(date,startDate))  %>%
+    #Group and calculate
+    group_by(srcType,srcName,calibrationMethod,spName,statName,resultName,lead,.drop=TRUE) %>%
+    summarise(crps=crps(value,cbind(pred.mean,pred.sd))$CRPS,
+              .groups="keep") %>%
+    pivot_longer(-group_vars(.),names_to = "metric") %>%
+    ungroup() %>%
+    mutate(realization="realmean")
+  
+  #'========================================================================
+  # Skill scores ####
+  #'========================================================================
+  #Calculate skill scores where possible
+  #First, extract the observation (climatology)-based metrics
+  clim.metrics <-
+    bind_rows(mean.metrics,dist.metrics) %>%
+    filter(srcType=="Observations") %>%
+    select(-srcType,-srcName,-calibrationMethod,-lead,-realization)
+  
+  #Calculate skill scores by merging back into metrics
+  skill.scores <- 
+    bind_rows(mean.metrics,dist.metrics) %>%
+    filter(metric %in% c("crps","MSE")) %>%
+    left_join(y=clim.metrics,
+              by=c("spName","statName","resultName","metric"),
+              suffix=c(".mdl",".ref")) %>%
+    mutate(value=1-value.mdl/value.ref) %>%
+    #Rename skill scores and tidy
+    mutate(metric=case_when(metric=="crps" ~"crpss",
+                            metric=="MSE" ~ "MSSS",
+                            TRUE~NA_character_)) %>%
+    select(-value.mdl,-value.ref)
+  
+  #'========================================================================
+  # Complete ####
+  #'========================================================================
+  #Now write to database
+  met.out <-
+    bind_rows(dist.metrics,skill.scores)  %>%
+    filter(srcType!="Observations")
 
-#Now calculate statistics
-dist.metrics <- 
-  #Customise observation metrics first
-  obs.dat.stats %>%
-  rename(pred.mean=mean,pred.sd=sd) %>%
-  bind_rows(dist.pred) %>%
-  #Add lead
-  mutate(lead=month_diff(date,startDate))  %>%
-  #Group and calculate
-  group_by(srcType,srcName,calibrationMethod,spName,statName,resultName,lead,.drop=TRUE) %>%
-  summarise(crps=crps(value,cbind(pred.mean,pred.sd))$CRPS,
-            .groups="keep") %>%
-  pivot_longer(-group_vars(.),names_to = "metric") %>%
-  ungroup() %>%
-  mutate(realization="realmean")
-
-#'========================================================================
-# Skill scores ####
-#'========================================================================
-#Calculate skill scores where possible
-#First, extract the observation (climatology)-based metrics
-clim.metrics <-
-  bind_rows(mean.metrics,dist.metrics) %>%
-  filter(srcType=="Observations") %>%
-  select(-srcType,-srcName,-calibrationMethod,-lead,-realization)
-
-#Calculate skill scores by merging back into metrics
-skill.scores <- 
-  bind_rows(mean.metrics,dist.metrics) %>%
-  filter(metric %in% c("crps","MSE")) %>%
-  left_join(y=clim.metrics,
-            by=c("spName","statName","resultName","metric"),
-            suffix=c(".mdl",".ref")) %>%
-  mutate(value=1-value.mdl/value.ref) %>%
-  #Rename skill scores and tidy
-  mutate(metric=case_when(metric=="crps" ~"crpss",
-                          metric=="MSE" ~ "MSSS",
-                          TRUE~NA_character_)) %>%
-  select(-value.mdl,-value.ref)
-
-#'========================================================================
-# Complete ####
-#'========================================================================
-#Now write to database
-met.out <-
-  bind_rows(mean.metrics,dist.metrics,skill.scores)  %>%
-  filter(srcType!="Observations")
-
-PE.db.appendTable(met.out,pcfg,PE.cfg$db$metrics)
-
+  PE.db.appendTable(met.out,pcfg,PE.cfg$db$metrics)
+}
 #Turn off the lights
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 

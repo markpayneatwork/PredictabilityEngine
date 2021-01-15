@@ -193,13 +193,10 @@ tar.l$stats <-
              pattern=map(statJobs))
 
 #Calculation verification metrics
-#But only if we have been running something other than observations
-if(!pcfg@obs.only) {
-  tar.l$metrics <-
-    tar_target(metrics,
-               ext.script(here("src/D.Statistics/C1.Calculate_scalar_skill_metrics.r"),
-                          stats))
-}
+tar.l$metrics <-
+  tar_target(metrics,
+             ext.script(here("src/D.Statistics/C1.Calculate_scalar_skill_metrics.r"),
+                        stats))
 
 #'========================================================================
 # Outputs ####
