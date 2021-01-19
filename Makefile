@@ -24,6 +24,7 @@
 #    watch        : Watch tail of the most recent LSF log
 #    less	  : View all of most recent LSF log using less
 #    tail 	  : View end of most recent target log file
+#    srcs         : Rebuild source database
 #
 #    NMME_sync    : Downloads NMME data via OpenDAP
 #
@@ -58,6 +59,9 @@ extractflds:
 
 NMME_sync:
 	bsub  < src/Y.HPC_scripts/bNMME_sync.sh
+
+srcs:
+	$(Rscript) src/A.Configure/A1.Define_common_data_srcs.r
 
 #-------------------------------------
 clean:
