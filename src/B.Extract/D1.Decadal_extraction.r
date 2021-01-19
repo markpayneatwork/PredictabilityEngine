@@ -94,14 +94,13 @@ PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,datasrc=this.datasrc)
 #'========================================================================
 # Extract Fragments from Source Files ####
 #'========================================================================
-extract.frags <- function(src.fname,tmp.stem,opts) {
-  # src.fname <- these.srcs[1,]$src.fname
+extract.frags <- function(this.src,tmp.stem,opts) {
+  # this.src <- these.srcs[1,]$src.fname
   # tmp.stem <- these.srcs[1,]$tmp.stem
   #Get started
   #The use of generic tmp.in and tmp.out filenames allows the order of 
   #execution to be reshuffled as required
   options(opts)
-  this.src <- file.path(getwd(),src.fname)
   if(file.exists(tmp.stem)) file.remove(tmp.stem)
   file.symlink(this.src,tmp.stem)
   tmp.out <- tmp.stem
