@@ -78,13 +78,13 @@ pcfg@Observations <- Sal.obs$EN4
 #'========================================================================
 #Extract the data used in creating the Blue Whiting SDM from the EN4 product.
 #Doing the comparison in this way lets us check whether it has worked
-BW.SDM.pts <- 
+CPR.pts <- 
   readRDS(here("resources/BlueWhiting/model_dat.rds")) %>%
   select(haulID,latitude,longitude,date=datetime,EN4.salinity) %>%
   mutate(date=as.Date(date)-months(1)) %>%  #Account for spawning one month before
   st_as_sf(coords=c("longitude","latitude")) %>%
   list() %>%
-  tibble(extrName="BW_SDM",
+  tibble(extrName="CPR",
          table=PE.cfg$db$extract,
          filter='srcType=="Observations" & srcName=="EN4"',
          points=.)
@@ -96,7 +96,7 @@ IBWSS.SA.pts <-
   list() %>%
   tibble(extrName="IBWSS_SA",
          table=PE.cfg$db$stat,
-         filter='statName =="SDM" & srcType=="Observations"',
+         filter='statName =="SDM" & srcType=="Observations" & spName=="global.ROI"',
          points=.)
 
 IBWSS.CTD.pts <-
@@ -110,7 +110,7 @@ IBWSS.CTD.pts <-
          points=.)
 
 pcfg@pt.extraction <- 
-  bind_rows(BW.SDM.pts,
+  bind_rows(CPR.pts,
             IBWSS.SA.pts,
             IBWSS.CTD.pts)
 
@@ -153,7 +153,7 @@ GAM.sdm.resources$thresholds <-
        maximumProbability=0.208,
        meanProbability=0.113,
        larvae=GAM.sdm.resources$model$threshold)
-GAM.sdm.resources$doys <-seq(105,135,by=3)
+GAM.sdm.resources$doys <-seq(30,180,by=3)
 
 #Setup prediction function
 GAM.sdm.fn <- function(dat,resources) {
