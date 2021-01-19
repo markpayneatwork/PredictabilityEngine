@@ -6,7 +6,7 @@
 #' DTU-Aqua, Charlottenlund, Denmark  
 #' http://www.staff.dtu.dk/mpay  
 #'
-#' TSun Sep  4 23:22:56 2016
+#' Sun Sep  4 23:22:56 2016
 #'
 #' Configures a blue whiting  object
 #
@@ -51,20 +51,16 @@ pcfg <- PredEng.config(WGS2D.pcfg,
 pcfg@scratch.dir <- file.path(PE.cfg$dir$scratch,pcfg@project.name)
 define_dir(pcfg@scratch.dir)
 
-
 #'========================================================================
 # Data Sources ####
 #'========================================================================
 #Decadal salinity models
 pcfg@Decadal <- Sal.Decadal
 
-#CMIP5 salinity
-#pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="so")
-
 #'========================================================================
 # Spatial Configurations ####
 #'========================================================================
-#Set global variables
+#Reduce size of global domain
 pcfg@global.ROI <- extent(-25,0,50,65)
 pcfg@global.res  <- 0.5
 
@@ -80,6 +76,9 @@ for(i in seq(pcfg@statistics)) {
   this.stat@use.globalROI <- FALSE
   pcfg@statistics[[i]] <- this.stat
 }
+
+#Switch off many of the WGS2D features
+pcfg@statistics[["SDM"]]@resources$WGS2D <- FALSE
 
 #'========================================================================
 # Output ####

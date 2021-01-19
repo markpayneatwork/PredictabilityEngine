@@ -154,6 +154,7 @@ GAM.sdm.resources$thresholds <-
        meanProbability=0.113,
        larvae=GAM.sdm.resources$model$threshold)
 GAM.sdm.resources$doys <-seq(30,180,by=3)
+GAM.sdm.resources$WGS2D <- TRUE
 
 #Setup prediction function
 GAM.sdm.fn <- function(dat,resources) {
@@ -163,9 +164,15 @@ GAM.sdm.fn <- function(dat,resources) {
   
   require(mgcv)
   #Setup
-  pred.consts <-
-    tibble(doy=resources$doys,
-           sol.el=0)
+  if(resources$WGS2D) {
+    pred.consts <-
+      tibble(doy=105,
+             sol.el=0)
+  } else {
+    pred.consts <-
+      tibble(doy=resources$doys,
+             sol.el=0)
+  }
   assert_that(nlayers(dat)==1,msg="Inputs with multiple layers not supported")
   pred.l <- lapply(resources$pred.l,crop,dat)
   pred.dat <- brick(c(pred.l,EN4.salinity=dat))
@@ -180,30 +187,35 @@ GAM.sdm.fn <- function(dat,resources) {
                                 type="response")
   }
   pred.b <- brick(p.l)#Compress into a brick
-  
-  # Field values --------------------------------------------------------------------
-  field.l <- list()  #Results storage
-  #Maximum probability
-  field.l$maximumProbability <- max(pred.b)
-  #Suitable habitat at some point
-  field.l$meanProbability <- mean(pred.b)
-  #15 April
-  field.l$april15 <- pred.b[[which(pred.consts$doy==105)]]
-  #We use 15th april as the larvae habitat value.
 
-  # Scalar values -------------------------------------------------------------------
+  #Results storage  
+  field.l <- list()  #Results storage
   scalar.l <- vector()
   pxl.area <- area(pred.b)
   
-  scalar.l["areaMaxProbability"] <-
-    cellStats(pxl.area* (field.l$maximumProbability > resources$thresholds$maximumProbability),
-              sum,na.rm=TRUE)
-  scalar.l["areaMeanProbability"] <-
-    cellStats(pxl.area* (field.l$meanProbability >resources$thresholds$meanProbability),
-              sum,na.rm=TRUE)
-  scalar.l["area15April"] <- 
-    cellStats(pxl.area* (field.l$april15 > resources$thresholds$april15),
-              sum,na.rm=TRUE)
+  # Field values --------------------------------------------------------------------
+  if(resources$WGS2D) {
+    #Maximum probability
+    field.l$maximumProbability <- max(pred.b)
+    #Suitable habitat at some point
+    field.l$meanProbability <- mean(pred.b)
+  }
+  #15 April
+  #We use 15th april as the larvae habitat value and in decadal runs
+  field.l$april15 <- pred.b[[which(pred.consts$doy==105)]]
+  
+  # Scalar values -------------------------------------------------------------------
+  if(resources$WGS2D) {
+    scalar.l["areaMaxProbability"] <-
+      cellStats(pxl.area* (field.l$maximumProbability > resources$thresholds$maximumProbability),
+                sum,na.rm=TRUE)
+    scalar.l["areaMeanProbability"] <-
+      cellStats(pxl.area* (field.l$meanProbability >resources$thresholds$meanProbability),
+                sum,na.rm=TRUE)
+    scalar.l["area15April"] <- 
+      cellStats(pxl.area* (field.l$april15 > resources$thresholds$april15),
+                sum,na.rm=TRUE)
+  }
   scalar.l["areaLarvae"] <- 
     cellStats(pxl.area* (field.l$april15 > resources$thresholds$larvae),
               sum,na.rm=TRUE)
@@ -220,12 +232,14 @@ GAM.sdm.fn <- function(dat,resources) {
                 .groups="drop") 
     return(mean(west.ext.df$min.x,na.rm=TRUE))
   }
-  scalar.l["westwardExtentMaxProb"] <- 
-    west.ext(field.l$maximumProbability,resources$thresholds$maximumProbability)
-  scalar.l["westwardExtentMeanProb"] <- 
-    west.ext(field.l$meanProbability,resources$thresholds$meanProbability)
-  scalar.l["westwardExtent15April"] <- 
-    west.ext(field.l$april15,resources$thresholds$april15)
+  if(resources$WGS2D) {
+    scalar.l["westwardExtentMaxProb"] <- 
+      west.ext(field.l$maximumProbability,resources$thresholds$maximumProbability)
+    scalar.l["westwardExtentMeanProb"] <- 
+      west.ext(field.l$meanProbability,resources$thresholds$meanProbability)
+    scalar.l["westwardExtent15April"] <- 
+      west.ext(field.l$april15,resources$thresholds$april15)
+  }
   scalar.l["westwardExtentLarvae"] <- 
     west.ext(field.l$april15,resources$thresholds$larvae)
   
