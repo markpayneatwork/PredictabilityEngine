@@ -33,11 +33,6 @@ suppressPackageStartupMessages({
 })
 
 #'========================================================================
-# Helper functions ####
-#'========================================================================
-decadal.dir <- here(PE.cfg$dir$datasrc,"Decadal")
-
-#'========================================================================
 # SST.Decadal models ####
 #'========================================================================
 #IPSL and MPI-MR have basically an identifical structure, both being produced
@@ -69,7 +64,7 @@ SST.Decadal <- PElst()
 #There is a problem with the date-time stamps in one of the files in this hindcast
 #ensemble. It could be corrected e.g. by copying the dates from a neighbouring
 #realisation, but to start with we just drop it
-MPI.LR.SST.srcs <- dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","thetao"),
+MPI.LR.SST.srcs <- dir(here(PE.cfg$dir$datasrc,"Decadal","MPI-ESM-LR_MiKlip-b1","thetao"),
                     pattern="\\.nc$",full.names = TRUE) %>%
                  subset(!grepl("thetao_Omon_MPI-ESM-LR_decs4e1964_r3i1p1_196501-197412.nc",.))
 
@@ -130,7 +125,7 @@ CESM.DPLE.src <-
               var="SST",
               type="Decadal",
               fields.are.2D = TRUE,
-              sources=dir(file.path(PE.cfg$dir$datasrc,"Decadal","CESM-DPLE","SST"),
+              sources=dir(here(PE.cfg$dir$datasrc,"Decadal","CESM-DPLE","SST"),
                           pattern="\\.nc$",full.names = TRUE),
               use.timebounds=3,
               realization.fn=function(f) {
@@ -148,7 +143,7 @@ SST.Decadal$CESM.DPLE <- CESM.DPLE.src
 #Note that there are two initialisations here, stored in the same directory - i1 and i2.
 #We treat them as different data sources for the purpose of this analysis
 NorCPM.fnames <- 
-  tibble(path=dir(file.path(PE.cfg$dir$datasrc,"Decadal","NorCPM"),
+  tibble(path=dir(here(PE.cfg$dir$datasrc,"Decadal","NorCPM"),
                   pattern="*.nc$",recursive = TRUE,full.names = TRUE),
          fname=basename(path)) %>%
   separate(fname,into=c("field","table","model","experiment","variant","grid","time"),sep="_") %>%
@@ -204,7 +199,7 @@ Sal.Decadal <- PElst()
 #                    pattern="\\.nc$",full.names = TRUE) %>%
 #                 subset(!grepl("r1i1p1",.))
 #Received the corrected files and the full 10 member ensemble, so this should work properly now
-MPI.LR.so.srcs <- dir(file.path(decadal.dir,"MPI-ESM-LR_MiKlip-b1","so_10member"),
+MPI.LR.so.srcs <- dir(here(PE.cfg$dir$datasrc,"Decadal","MPI-ESM-LR_MiKlip-b1","so_10member"),
                    pattern="\\.nc$",full.names = TRUE) 
 
 Sal.Decadal$"MPI-LR" <-  
@@ -225,7 +220,7 @@ Sal.Decadal$"MPI-LR" <-
 CESM.DPLE.SALT <- 
   data.source(CESM.DPLE.src,
               var="SALT",
-              sources=dir(file.path(PE.cfg$dir$datasrc,"Decadal","CESM-DPLE","SALT"),
+              sources=dir(here(PE.cfg$dir$datasrc,"Decadal","CESM-DPLE","SALT"),
                           pattern="\\.nc$",full.names = TRUE),
               fields.are.2D = FALSE,
               z2idx = function(z,f) {
@@ -293,7 +288,7 @@ SLP.Decadal$CESM.DPLE <-
               var="PSL",
               type="Decadal",
               fields.are.2D = TRUE,
-              sources=dir(file.path(PE.cfg$dir$datasrc,"Decadal","CESM-DPLE","PSL"),
+              sources=dir(here(PE.cfg$dir$datasrc,"Decadal","CESM-DPLE","PSL"),
                           pattern="\\.nc$",full.names = TRUE),
               use.timebounds=3,
               realization.fn=function(f) {
@@ -355,7 +350,7 @@ SST_obs$EN4  <- data.source(name="EN4",
                               nc_close(ncid)
                               return(time.var+ as.Date("1800-01-01"))
                             },
-                            sources=dir("data_srcs/Observations/EN4/",
+                            sources=dir(here(PE.cfg$dir$datasrc,"Observations","EN4"),
                                              pattern="\\.zip$",full.names = TRUE,recursive=TRUE))
 
 Sal.obs <- PElst()
@@ -365,7 +360,7 @@ Sal.obs$EN4  <- data.source(name="EN4",
                             fields.are.2D = FALSE,
                             z2idx=SST_obs$EN4@z2idx,
                             date.fn=SST_obs$EN@date.fn,
-                            sources=dir("data_srcs/Observations/EN4/",
+                            sources=dir(here(PE.cfg$dir$datasrc, "Observations","EN4"),
                                              pattern="\\.nc$",full.names = TRUE,recursive=TRUE))
 
 #Sea level pressure
@@ -379,7 +374,7 @@ SLP.obs$HadSLP2 <- data.source(name="HadSLP2",
 #'========================================================================
 library(readr)
 NMME.cfg <- 
-  read_csv2(file.path(PE.cfg$dir$datasrc,"NMME","NMME_SST_urls.csv"),
+  read_csv2(here(PE.cfg$dir$datasrc,"NMME","NMME_SST_urls.csv"),
                       col_types = cols()) %>%
   filter(active)
 NMME.mdls <- split(NMME.cfg,NMME.cfg$Model)
