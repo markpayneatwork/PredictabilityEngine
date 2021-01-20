@@ -80,6 +80,19 @@ for(i in seq(pcfg@statistics)) {
 #Switch off many of the WGS2D features
 pcfg@statistics[["SDM"]]@resources$WGS2D <- FALSE
 
+#Reestablish grids for different resolutions
+log10bath <- 
+  raster("resources/BlueWhiting/ETOPO1_Bed_c_gmt4.grd") %>%
+  crop(extent(pcfg@global.ROI)) %>%
+  raster::aggregate(fact=pcfg@global.res/res(.),fun=mean)
+log10bath <- log10(-log10bath)
+if(!identical(res(log10bath)[1],pcfg@global.res)) stop("Mismatch in bathymetric resolution")
+lat.rast <- log10bath    #Setup latitude raster
+lat.rast[] <- yFromCell(lat.rast,1:ncell(log10bath))
+pcfg@statistics[["SDM"]]@resources$pred.l <- 
+       list(latitude=lat.rast,
+            log10bath=log10bath)
+
 #'========================================================================
 # Output ####
 #'========================================================================
