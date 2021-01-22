@@ -192,11 +192,17 @@ tar.l$stats <-
              stat.fn(statJobs,ensmeans),
              pattern=map(statJobs))
 
+#Rolling means
+tar.l$rollmean <-
+  tar_target(rollmean,
+             ext.script("src/D.Statistics/B2.Rolling_means.r.r",
+                        stats))
+
 #Calculation verification metrics
 tar.l$metrics <-
   tar_target(metrics,
              ext.script(here("src/D.Statistics/C1.Calculate_scalar_skill_metrics.r"),
-                        stats))
+                        stats,rollmean))
 
 #'========================================================================
 # Outputs ####
