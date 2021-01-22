@@ -66,6 +66,12 @@ setMethod("[", signature(x="PElst",i="numeric"),
             return(x)})
 
 #' @export
+setMethod("[", signature(x="PElst",i="logical"),
+          function(x, i){
+            x@.Data <- x@.Data[i]
+            return(x)})
+
+#' @export
 setMethod("[[", signature(x="PElst",i="character"),
           function(x, i){
             lst <- x@.Data
@@ -78,7 +84,6 @@ setMethod("[[", signature(x="PElst",i="character"),
 setMethod("[[", signature(x="PElst",i="numeric"),
           function(x, i){
             return(x@.Data[[i]])})
-
 
 setGeneric("PElst",function(x,...) standardGeneric("PElst"))
 
