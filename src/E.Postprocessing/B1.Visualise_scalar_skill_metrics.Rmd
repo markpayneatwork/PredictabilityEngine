@@ -82,6 +82,7 @@ cat(sprintf("Visualisations generated  %s\n",date()))
 #==========================================================================
 pcfg <- readRDS(here(PE.cfg$path$config))
 show(pcfg)
+plot(pcfg)
 
 #'========================================================================
 # Setup ####
@@ -173,17 +174,6 @@ sp.names <-
 for(this.sp in sp.names) {
   #Show title
   cat(sprintf("\n\n## %s\n",gsub("_"," ",this.sp)))
-  
-  #Map of the Spatial region
-  #May need to handle global case here as well???
-  sp.obj <- 
-    pcfg@spatial.polygons %>%
-    filter(name==this.sp)
-  assert_that(nrow(sp.obj)==1,msg = "Must be one unique spatial object")
-  g <- ggplot()+
-    geom_sf(data=sp.obj) +
-    annotation_map(map_data("world"),fill="black",colour="grey")
-  print(g)
   
   #Now split it down further into Individual statistics and loop
   stat.names <-
