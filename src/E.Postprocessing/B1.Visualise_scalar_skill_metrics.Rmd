@@ -80,7 +80,7 @@ cat(sprintf("Visualisations generated  %s\n",date()))
 #==========================================================================
 # Configure
 #==========================================================================
-pcfg <- readRDS(here(PE.cfg$path$config))
+pcfg <- PE.load.config()
 show(pcfg)
 plot(pcfg)
 

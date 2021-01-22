@@ -36,7 +36,7 @@ suppressPackageStartupMessages({
 #'========================================================================
 # Configuration ####
 #'========================================================================
-pcfg <- readRDS(PE.cfg$path$config)
+pcfg <- PE.load.config()
 
 #Take input arguments, if any
 set.cdo.defaults("--silent --no_warnings -O")

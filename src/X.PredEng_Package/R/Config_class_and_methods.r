@@ -233,15 +233,15 @@ set.configuration <- function(pcfg) {
   griddes.txt <- griddes(pcfg@global.ROI,res=pcfg@global.res)
   writeLines(griddes.txt,PE.scratch.path(pcfg,"analysis.grid"))
 
-  #Output
+  #Output configuration file
   cfg.fname <- PE.scratch.path(pcfg,"config")
-  cfg.linked <- PE.cfg$path$config
+  #cfg.linked <- PE.cfg$path$config
   saveRDS(pcfg,file=cfg.fname)
-  cat(pcfg@project.name,file=file.path(PE.cfg$dir$objects,"configuration.name"))
-  if(file.exists(cfg.linked)) {
-    file.remove(cfg.linked)
-  }
-  file.symlink(file.path(getwd(),cfg.fname),PE.cfg$dir$objects)
+  # cat(pcfg@project.name,file=file.path(PE.cfg$dir$objects,"configuration.name"))
+  # if(file.exists(cfg.linked)) {
+  #   file.remove(cfg.linked)
+  # }
+  # file.symlink(file.path(getwd(),cfg.fname),PE.cfg$dir$objects)
   
   # #Setup drake directory
   # drake.link <- here(".drake")
@@ -297,12 +297,24 @@ set.configuration <- function(pcfg) {
 
 #' Import PredEng configuration
 #' 
-#' Loads the currently configured PredEng.config object from the default location
+#' Loads the currently configured PredEng.config object. Configuration is defined according to the
+#' configuration file linked into the project directory.
 #'
 #' @return PredEng.config object
 #' @export
 PE.load.config <- function() {
-  readRDS(PE.cfg$path$config)
+  #Find configuration file
+  rfnames <- dir(here(),pattern="*.r$",full.names = TRUE)
+  assert_that(length(rfnames)==1,msg="More than one configuration file found.")
+  #Load corresponding configuration from scratch
+  cfg.fname  <- 
+    rfnames %>%
+    gsub(".r$","",.) %>%
+    basename() %>%
+    here(PE.cfg$dir$scratch,.,PE.cfg$file$config) 
+  assert_that(file.exists(cfg.fname),
+              msg=sprintf("Cannot find configuration file, %s.",cfg.fname))
+  readRDS(cfg.fname)
 }
 
 

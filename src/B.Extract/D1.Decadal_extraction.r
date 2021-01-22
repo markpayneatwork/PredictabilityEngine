@@ -35,7 +35,7 @@ suppressPackageStartupMessages({
   library(furrr)
   #library(parallel)
 })
-pcfg <- readRDS(PE.cfg$path$config)
+pcfg <- PE.load.config()
 
 #'========================================================================
 # Configuration ####

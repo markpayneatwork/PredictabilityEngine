@@ -34,7 +34,7 @@ suppressMessages({
   library(furrr)
   library(forcats)
 })
-pcfg <- readRDS(PE.cfg$path$config)
+pcfg <- PE.load.config()
 
 #'========================================================================
 # Configuration ####

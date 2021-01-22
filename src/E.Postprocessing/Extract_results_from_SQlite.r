@@ -34,7 +34,7 @@ log.msg <- function(fmt,...) {cat(sprintf(fmt,...));
 
 library(tidyverse)
 library(PredEng)
-pcfg <- readRDS(here(PE.cfg$path$config))
+pcfg <- PE.load.config()
 
 #'========================================================================
 # Configure ####

@@ -35,8 +35,8 @@ suppressMessages({
   library(ncdf4)
   library(lubridate)
 })
-pcfg <- readRDS(PE.cfg$path$config)
-
+pcfg <- PE.load.config()
+  
 #'========================================================================
 # Configuration ####
 #'========================================================================

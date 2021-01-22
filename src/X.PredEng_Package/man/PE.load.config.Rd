@@ -10,5 +10,6 @@ PE.load.config()
 PredEng.config object
 }
 \description{
-Loads the currently configured PredEng.config object from the default location
+Loads the currently configured PredEng.config object. Configuration is defined according to the
+configuration file linked into the project directory.
 }

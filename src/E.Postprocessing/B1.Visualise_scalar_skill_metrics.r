@@ -33,7 +33,7 @@ start.time <- proc.time()[3];
 library(tidyverse)
 library(rmarkdown)
 library(PredEng)
-pcfg <- readRDS(PE.cfg$path$config)
+pcfg <- PE.load.config()
 
 #'========================================================================
 # Configure ####

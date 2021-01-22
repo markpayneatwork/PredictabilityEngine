@@ -25,7 +25,7 @@ setClass("PElst",
              # ALL elements in the list are validObjects themselves
              validate_that(all(purrr::map_lgl(object, validObject)),
                            msg="Components must be valid objects themselves (validObject == TRUE)"))
-           
+           #
            #Return
            err.idxs <- map_lgl(err.msg,is.character)
            if(all(!err.idxs)) return(TRUE) else unlist(err.msg[err.idxs])
