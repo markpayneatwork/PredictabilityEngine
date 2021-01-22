@@ -24,7 +24,7 @@
 # ========================================================================
 # Initialise system
 # ========================================================================
-cat(sprintf("\n%s\n","Blue Whiting Configuration"))
+cat(sprintf("\n%s\n","Blue Whiting NorCPM tests"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Source the common elements
@@ -41,7 +41,7 @@ WGS2D.pcfg <- readRDS("scratch/Blue_whiting_WGS2D/configuration.rds")
 
 #Global project configuration
 pcfg <- PredEng.config(WGS2D.pcfg,
-                       project.name= "Blue_whiting_decadal",
+                       project.name= "Blue_whiting_NorCPM_tests",
                        clim.years=1981:2010,  
                        comp.years=1970:2015,
                        calibrationMethods=c("MeanAdj","MeanVarAdj"),
@@ -55,43 +55,20 @@ define_dir(pcfg@scratch.dir)
 # Data Sources ####
 #'========================================================================
 #Decadal salinity models
-pcfg@Decadal <- Sal.Decadal[c("MPI.ESM.LR","CESM.DPLE","NorCPM")]
+pcfg@Decadal <- Sal.Decadal[grepl("^NorCPM",names(Sal.Decadal))]
 
 #'========================================================================
 # Spatial Configurations ####
 #'========================================================================
 #Reduce size of global domain
 pcfg@global.ROI <- extent(-25,0,50,65)
-pcfg@global.res  <- 0.5
-
+pcfg@global.res  <- 1 #Reduce resolution to increase speed
 
 #'========================================================================
 # Statistics ####
 #'========================================================================
-#Duplicate what's in B9
-#but update to run across all data, not just the observations
-for(i in seq(pcfg@statistics)) {
-  this.stat <- pcfg@statistics[[i]] 
-  this.stat@realizations <- 1:4
-  this.stat@use.globalROI <- FALSE
-  pcfg@statistics[[i]] <- this.stat
-}
-
-#Switch off many of the WGS2D features
-pcfg@statistics[["SDM"]]@resources$WGS2D <- FALSE
-
-#Reestablish grids for different resolutions
-log10bath <- 
-  raster("resources/BlueWhiting/ETOPO1_Bed_c_gmt4.grd") %>%
-  crop(extent(pcfg@global.ROI)) %>%
-  raster::aggregate(fact=pcfg@global.res/res(.),fun=mean)
-log10bath <- log10(-log10bath)
-if(!identical(res(log10bath)[1],pcfg@global.res)) stop("Mismatch in bathymetric resolution")
-lat.rast <- log10bath    #Setup latitude raster
-lat.rast[] <- yFromCell(lat.rast,1:ncell(log10bath))
-pcfg@statistics[["SDM"]]@resources$pred.l <- 
-       list(latitude=lat.rast,
-            log10bath=log10bath)
+#only run spatial averages
+pcfg@statistics <- pcfg@statistics["Mean-salinity"]
 
 #'========================================================================
 # Output ####

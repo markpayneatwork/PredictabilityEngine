@@ -274,8 +274,7 @@ NorCPM.sal.src <-
                      field=="so",
                      grid=="gr")$path)
 
-#Sal.Decadal <- c(Sal.Decadal,NorCPM.sal.src.i1,NorCPM.sal.src.i2)
-Sal.Decadal <- c(Sal.Decadal,NorCPM.sal.src)
+Sal.Decadal <- c(Sal.Decadal,NorCPM.sal.src,NorCPM.sal.src.i1,NorCPM.sal.src.i2)
 
 #'========================================================================
 # Sea Level Pressure ####
