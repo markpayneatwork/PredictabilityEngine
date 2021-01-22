@@ -75,6 +75,8 @@ dat.in <-
   tbl(PE.cfg$db$stats) %>%
   filter(!is.na(value)) %>%
   collect() %>%
+  mutate(date=ymd(date)) %>%
+  filter(month(date) %in% pcfg@MOI) %>%  #Drop unnecessary obs
   group_by(srcType,srcName,calibrationMethod,realization,startDate,
          spName,statName,resultName) %>%
   arrange(date) 
@@ -84,7 +86,7 @@ for(n in rm.windows) {
   #Calculate rolling means
   rm.stats <-
     dat.in  %>%
-    summarise(date=date,
+    summarise(date=as.character(date),
               value=roll_mean(value,n=n,fill=NA,align="center"),
               .groups="drop") %>%
     mutate(resultName=sprintf("%s/RollMean%i",resultName,n))
