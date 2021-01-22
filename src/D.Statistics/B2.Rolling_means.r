@@ -45,7 +45,6 @@ rm.windows <- c(3,5)
 #'========================================================================
 #Open database
 this.db <- PE.db.connection(pcfg)
-stats.tbl <- tbl(this.db,PE.cfg$db$stats)
 
 #Delete existing results 
 log_msg("Getting list of previous ids to clear...")
@@ -70,16 +69,21 @@ log_msg("Deleted %i rows in %0.3fs.\n\n",n,this.query.time[3])
 #'========================================================================
 # And Go ####
 #'========================================================================
+#'Load data
+dat.in <- 
+  this.db %>%
+  tbl(PE.cfg$db$stats) %>%
+  filter(!is.na(value)) %>%
+  collect() %>%
+  group_by(srcType,srcName,calibrationMethod,realization,startDate,
+         spName,statName,resultName) %>%
+  arrange(date) 
+  
 for(n in rm.windows) {
   log_msg("Rolling window %i...\n",n)
   #Calculate rolling means
   rm.stats <-
-    stats.tbl %>%
-    filter(!is.na(value)) %>%
-    collect() %>%
-    group_by(srcType,srcName,calibrationMethod,realization,startDate,
-             spName,statName,resultName) %>%
-    arrange(date) %>%
+    dat.in  %>%
     summarise(date=date,
               value=roll_mean(value,n=n,fill=NA,align="center"),
               .groups="drop") %>%

@@ -195,7 +195,7 @@ tar.l$stats <-
 #Rolling means
 tar.l$rollmean <-
   tar_target(rollmean,
-             ext.script("src/D.Statistics/B2.Rolling_means.r.r",
+             ext.script("src/D.Statistics/B2.Rolling_means.r",
                         stats))
 
 #Calculation verification metrics
