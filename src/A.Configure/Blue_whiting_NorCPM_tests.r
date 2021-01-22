@@ -68,7 +68,14 @@ pcfg@global.res  <- 1 #Reduce resolution to increase speed
 # Statistics ####
 #'========================================================================
 #only run spatial averages
-pcfg@statistics <- pcfg@statistics["Mean-salinity"]
+stat.l <- PElst()
+
+#Average salinity
+stat.l[["MeanSal"]]  <- spatial.mean(name="Mean-salinity",
+                                     desc="Mean salinity",
+                                     calibration=c("MeanAdj","MeanVarAdj"))
+
+pcfg@statistics <- stat.l
 
 #Drop point extractions
 pcfg@pt.extraction <- tibble()
