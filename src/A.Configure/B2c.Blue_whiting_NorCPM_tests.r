@@ -70,6 +70,9 @@ pcfg@global.res  <- 1 #Reduce resolution to increase speed
 #only run spatial averages
 pcfg@statistics <- pcfg@statistics["Mean-salinity"]
 
+#Drop point extractions
+pcfg@pt.extraction <- tibble()
+
 #'========================================================================
 # Output ####
 #'========================================================================
