@@ -128,7 +128,7 @@ setMethod("plot",signature(x="PredEng.config",y="missing"),
             if(nrow(x@spatial.polygons)!=0) {
               plt.sf <- 
                 x@spatial.polygons %>%
-                select(name,geometry) %>%
+                dplyr::select(name,geometry) %>%
                 rbind(plt.sf)
             }
 
