@@ -114,8 +114,8 @@ PE.db.setup <- function(pcfg,results.only=FALSE) {
         "spName TEXT",
         "statName TEXT",
         "resultName TEXT",
-        "field BLOB",
-        "value REAL")  
+        "value REAL",
+        "field BLOB")  
     tbl.cmd <- 
       sprintf("CREATE TABLE %s(%s)", 
               PE.cfg$db$stats,
