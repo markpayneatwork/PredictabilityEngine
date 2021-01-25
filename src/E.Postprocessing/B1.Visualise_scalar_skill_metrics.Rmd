@@ -262,6 +262,7 @@ for(this.sp in sp.names) {
                  statName==this.stat,
                  resultName==this.result,
                  metric==this.met,
+                 CI=="mean",
                  realization %in% c("realmean","ensmean") | srcType=="Persistence") %>% 
           collect() %>%
           mutate(type.name=paste(srcType,srcName,sep="."),

@@ -199,8 +199,36 @@ mean.pred <-
   select(-ym)
 
 #Skill functions
-MSE <- function(x,y) { mean((x-y)^2,na.rm=TRUE)}
-RMSE <- function(x,y) { sqrt(MSE(x,y,))}
+skill.fn <- function(x,y,n.samples=1000,probs=c(0.025,0.5,0.975)) { 
+  #Setup
+  xy <- 
+    cbind(x,y) %>%
+    na.omit() 
+  
+  err <-
+    (xy[,1]-xy[,2]) ^2
+
+  #RSE
+  resamp.mse <- 
+    tibble(samples=map(1:n.samples,~sample(err,length(err),replace=TRUE)),
+           mean=map_dbl(samples,mean)) %>%
+    summarise(enframe(quantile(mean,prob=probs),
+                      name="CI")) %>%
+    bind_rows(tibble(CI="mean",value=mean(err))) %>%
+    mutate(metric="MSE")
+  
+  #Correlation coefficent
+  resamp.cor <-
+    tibble(idxs=map(1:n.samples,~sample(1:nrow(xy),nrow(xy),replace=TRUE)),
+           xy=map(idxs,~ xy[.x,]),
+           cor=map_dbl(xy,~cor(.x[,1],.x[,2]))) %>%
+    filter(!is.na(cor)) %>%
+    summarise(enframe(quantile(cor,prob=probs),
+                      name="CI")) %>%
+    bind_rows(tibble(CI="mean",value=cor(xy[,1],xy[,2]))) %>%
+    mutate(metric="pearson.correlation")
+  
+  bind_rows(resamp.mse,resamp.cor)}
 
 #Now calculate the skill over all start dates.
 g.vars <- c("srcType","srcName","realization","calibrationMethod",
@@ -216,12 +244,8 @@ mean.metrics <-
   mutate(lead=month_diff(date,startDate))  %>%
   #Group and calculate metrics
   group_by(across(all_of(g.vars)),.drop = TRUE) %>%
-  summarise(pearson.correlation=cor(value.pred,value.obs,use="pairwise.complete"),
-            MSE=MSE(value.pred,value.obs),
-            n=n(),
-            .groups="keep")  %>%
-  pivot_longer(-group_vars(.),names_to = "metric") %>%
-  ungroup()
+  summarise(skill.fn(value.pred,value.obs),
+            .groups="keep")  
 
 
 #Write these results
