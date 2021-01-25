@@ -191,6 +191,8 @@ if(have.mdl.dat) {
 #First setup the forecast data
 mean.pred <- 
   pred.dat %>%
+  #Only want persistence, realmean or ensmean
+  filter(realization %in% c("realmean","ensmean") | srcType=="Persistence") %>%
   #Merge in the observations
   left_join(y=obs.dat.bare,
             by=c("ym","spName","statName","resultName"),
