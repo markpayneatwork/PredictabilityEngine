@@ -222,8 +222,14 @@ for(this.basket in basket.l) {
     #Tidy
     mutate(calibrationMethod=gsub("calib\\.","",calibrationMethod),
            date=as.character(date)) %>%
-    filter(calibrationMethod %in% pcfg@calibrationMethods)  #Don't store anomaly if not requested
-  
+    filter(calibrationMethod %in% pcfg@calibrationMethods) %>% #Don't store anomaly if not requested
+    #Make interpretation of calibrated observations clear - these are basically
+    #persistence fields that have a startDate but are yet to be associated with
+    #a forecast date.
+    mutate(startDate=ifelse(srcType=="Observations",date,startDate),
+           date=ifelse(srcType=="Observations",NA,date),
+           srcType=ifelse(srcType=="Observations","Persistence",srcType))
+    
   #Write results
   PE.db.appendTable(out.dat,pcfg,PE.cfg$db$calibration)
   

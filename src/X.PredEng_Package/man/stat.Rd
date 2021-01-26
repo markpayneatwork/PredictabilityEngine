@@ -9,7 +9,7 @@
 
 \item{desc}{Description of the statistics class.}
 
-\item{realizations}{Tells what sort of data to be considered 1 = Observations 2 = Individual realisations 
+\item{realizations}{Tells what sort of data to be considered 0= Observations, 1 = Observations for Persistence 2 = Individual realisations 
 3 = Realization means 4 = Ensemble means}
 
 \item{calibration}{Choose the calibration method to base the statistic on. Defaults to NULL, indicating

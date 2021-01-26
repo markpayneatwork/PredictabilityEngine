@@ -42,8 +42,8 @@ pcfg <- PE.load.config()
 #Take input arguments, if any
 if(interactive()) {
   set.log_msg.silent()
-  stat.id <- names(pcfg@statistics)[2]
-  sp.id <- c(PE.cfg$misc$globalROI,pcfg@spatial.polygons$name)[2]
+  stat.id <- names(pcfg@statistics)[1]
+  sp.id <- c(PE.cfg$misc$globalROI,pcfg@spatial.polygons$name)[4]
 } else {
   set.log_msg.silent()
   cmd.args <- commandArgs(TRUE)
@@ -75,7 +75,7 @@ dmp <- assert_that(all(sp.id %in% c(PE.cfg$misc$globalROI,pcfg@spatial.polygons$
 this.stat <- pcfg@statistics[[stat.id]]
 this.sp <- 
   if(sp.id == PE.cfg$misc$globalROI) {
-    assert_that(this.stat@use.globalROI,msg="Spatial polygon is  globalROI, but stat doesn't use one.")
+    assert_that(this.stat@use.globalROI,msg="Spatial polygon is globalROI, but stat doesn't use one.")
     PE.global.sf(pcfg) 
   } else {
     pcfg@spatial.polygons %>% 
@@ -114,21 +114,26 @@ this.query.time <-
 log_msg("Deleted %i rows in %0.3fs.\n\n",n,this.query.time[3])
 
 #'========================================================================
-# Get lists of fragments to process ####
+# Get lists of calibrated extracts to process ####
 #'========================================================================
 log_msg("Getting list of calibrations to process...\n")
-#Processing frags
-cr.frags <-  #Calibrations x realisations frags
+
+#Get calibration methods
+these.calibs <- 
   if(length(this.stat@calibration)==0) {
-    pcfg@calibrationMethods
-  }  else {
-    this.stat@calibration} %>%
-  expand_grid(calibration=.,
+  pcfg@calibrationMethods
+}  else {
+  this.stat@calibration} 
+  
+#SQL table
+cal.SQL <-  #Calibrations x realisations frags
+  expand_grid(calibration=these.calibs,
               realizations=this.stat@realizations) %>%  
+  filter(realizations!=0) %>% #Handled separately
   mutate(WHERE.real=
-           case_when(realizations==1 ~ "`srcType`='Observations'",
+           case_when(realizations==1 ~ "`srcType`='Persistence'",
                      realizations==2 ~ paste("NOT(`realization` IN ('realmean', 'ensmean')) AND",
-                                             "NOT(`srcType`= 'Observations')"),
+                                             "NOT(`srcType`= 'Persistence')"),
                      realizations==3 ~ "`realization` = 'realmean'",
                      realizations==4 ~ "`realization` = 'ensmean'",
                      TRUE~ as.character(NA))) %>%
@@ -140,19 +145,39 @@ cr.frags <-  #Calibrations x realisations frags
 #Now get list of pKeys to process
 this.query.time <- 
   system.time({
-    todo.frags <- 
-      cr.frags%>%
+    cal.SQL <- 
+      cal.SQL %>%
       mutate(pKeys=map(SQL.cmd,~ PE.db.getQuery(pcfg,.x)),
-             nKeys=map_dbl(pKeys,nrow))
+             nKeys=map_dbl(pKeys,nrow)) 
   })
 log_msg("Complete in %0.3fs.\n",this.query.time[3])
 
 #And generate a todo list
-pKey.todos <- 
-  todo.frags %>%
+cal.pKeys <- 
+  cal.SQL %>%
   unnest(pKeys) %>% 
   pull(pKey)
-dmp <- assert_that(!any(duplicated(pKey.todos)),msg="Expecting unique set of pKeys to process")
+dmp <- assert_that(!any(duplicated(cal.pKeys)),msg="Expecting unique set of pKeys to process")
+
+#'========================================================================
+# List of observations from extraction table ####
+#'========================================================================
+this.db <- PE.db.connection(pcfg)
+obs.sel <- 
+  tbl(this.db,"extraction") %>%
+  filter(srcType=="Observations") %>%
+  select(pKey,date) %>%
+  collect() %>%
+  #Filter by month of interest
+  mutate(date=ymd(date),
+         month=month(date)) %>%
+  filter(month %in% pcfg@MOI)
+dbDisconnect(this.db)
+
+obs.pKeys <- 
+  obs.sel %>%
+  pull(pKey)
+
 
 #'========================================================================
 # Calculation of statistics ####
@@ -179,18 +204,21 @@ if(length(pcfg@landmask)==0) {
 combined.mask <- mask(landmask,as(this.sp,"Spatial"),updatevalue=1)
 
 # Stat calculation function -------------------------------------------------------
-calc.stat.fn <- function(this.pKey) {
+calc.stat.fn <- function(this.pKey,this.table) {
   #Debugging
-  # this.pKey <- pKey.todos[1]
-
+  # this.pKey <- cal.pKeys[1]
+  # this.table <- PE.cfg$db$calibration
+  # this.pKey <- obs.pKeys[1]
+  # this.table <- PE.cfg$db$extract
+  
   #Import data
   this.dat <- 
     sprintf("SELECT * FROM %s WHERE `pKey` = %i",
-            PE.cfg$db$calibration,
+            this.table,
             this.pKey) %>%
     PE.db.getQuery(pcfg=pcfg) %>%
     as_tibble() %>%
-    select(-pKey) %>%
+    select(-any_of(c("pKey","srcFname"))) %>%
     PE.db.unserialize() 
   
   #Apply the masks to data
@@ -213,17 +241,23 @@ calc.stat.fn <- function(this.pKey) {
 # Sanity check --------------------------------------------------------------------
 # Try doing the first evaluation as a sanity check. This will let us fail gracefully,
 # before getting medieval on their asses...
-log_msg("Dry run....\n")
-dmp <- map(head(pKey.todos,1),calc.stat.fn)
+log_msg("Calibration table dry run....\n")
+dmp.cal <- map2(cal.pKeys[1],PE.cfg$db$calibration,calc.stat.fn)
+log_msg("Observations dry run....\n")
+dmp.obs <- map2(obs.pKeys[1],PE.cfg$db$extract,calc.stat.fn)
 log_msg("Sanity check passed. Parallellising using %i cores...\n",n.cores)
 
 # Chunking ------------------------------------------------------------------------
-n.todo <- length(pKey.todos)
-chunk.l <- 
-  split(pKey.todos,
-        rep(seq(n.todo),  
-            each=n.cores*20,
-            length.out=n.todo))
+chunk.l <-
+  bind_rows(tibble(pKey=cal.pKeys,
+                   tbl=PE.cfg$db$calibration),
+            tibble(pKey=obs.pKeys,
+                   tbl=PE.cfg$db$extract)) %>%
+  mutate(batch.id=rep(seq(nrow(.)),
+                    each=n.cores*5,
+                    length.out=nrow(.))) %>%
+  group_by(batch.id) %>%
+  group_split()
 
 #Progress bar
 pb <- PE.progress(length(chunk.l))
@@ -233,11 +267,11 @@ dmp <- pb$tick(0)
 for(this.chunk in chunk.l) {
   #Using furrr
   stat.dat <-
-    future_map_dfr(this.chunk,
-                   calc.stat.fn, 
-                   .options = furrr_options(stdout=FALSE,
-                                            seed=TRUE))
-  
+    future_map2_dfr(this.chunk$pKey,
+                    this.chunk$tbl,
+                    calc.stat.fn, 
+                    .options = furrr_options(stdout=FALSE,
+                                             seed=TRUE))
   #Write results
   PE.db.appendTable(stat.dat,pcfg,PE.cfg$db$stats)
   

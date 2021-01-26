@@ -10,3 +10,4 @@ PE_*
 _targets
 .drake
 this.cfg
+*.r
