@@ -1,1 +1,0 @@
-src/A.Configure/Blue_whiting_NorCPM_tests.r
