@@ -68,9 +68,9 @@ if(dbExistsTable(PE.db.connection(pcfg),PE.cfg$db$metrics)) {
 }
 
 #'========================================================================
-# Merge In  Observations ####
+# Extract  Observations ####
 #'========================================================================
-log_msg("Merging...\n")
+log_msg("Extract observations...\n")
 
 #Import stats
 obs.dat <-
@@ -117,6 +117,8 @@ obs.dat.stats <-
 #'method to the observations as well (especially giving us the basis for an 
 #'anomaly persistence forecast)
 
+log_msg("Persistence...\n")
+
 persis.stats.dat <- 
   #Setup grid
   expand_grid(startDate=unique(obs.dat$date),
@@ -146,7 +148,7 @@ persis.stats.dat <-
 #that we do the merging by yearmonth - this should generally be ok for most of the
 #situations where we envisage using PredEnd i.e. one data point per year - but
 #we need to be aware that this is not exactly the case 
-
+log_msg("Model data...\n")
 #To reduce the computational load, we first get a list of values that we actually want to include
 mdl.stats.df<- 
   stats.tbl %>%
@@ -188,6 +190,7 @@ if(have.mdl.dat) {
 #'========================================================================
 # Calculate the metrics for central tendencies ####
 #'========================================================================
+log_msg("Central tendency metrics...\n")
 #First setup the forecast data
 mean.pred <- 
   pred.dat %>%
@@ -216,7 +219,7 @@ skill.fn <- function(x,y,n.samples=1000,probs=c(0.025,0.5,0.975)) {
            mean=map_dbl(samples,mean)) %>%
     summarise(enframe(quantile(mean,prob=probs),
                       name="CI")) %>%
-    bind_rows(tibble(CI="mean",value=mean(err))) %>%
+    bind_rows(tibble(CI=NA,value=mean(err))) %>%
     mutate(metric="MSE")
   
   #Correlation coefficent
@@ -227,7 +230,7 @@ skill.fn <- function(x,y,n.samples=1000,probs=c(0.025,0.5,0.975)) {
     filter(!is.na(cor)) %>%
     summarise(enframe(quantile(cor,prob=probs),
                       name="CI")) %>%
-    bind_rows(tibble(CI="mean",value=cor(xy[,1],xy[,2]))) %>%
+    bind_rows(tibble(CI=NA,value=cor(xy[,1],xy[,2]))) %>%
     mutate(metric="pearson.correlation")
   
   bind_rows(resamp.mse,resamp.cor)}
@@ -252,13 +255,13 @@ mean.metrics <-
 
 #Write these results
 mean.metrics %>%
-  filter(srcType!="Observations") %>%
   PE.db.appendTable(pcfg,PE.cfg$db$metrics)
 
 #'========================================================================
 # Distribution metrics ####
 #'========================================================================
 if(have.mdl.dat) {
+  log_msg("Distributional metrics...\n")
   # Metrics of the probabilistic forecast distributions
   # The crps requires that the forecasts be expressed in terms of a probability
   # distribution, ie the mean and standard deviation. This requires calculation
@@ -297,11 +300,13 @@ if(have.mdl.dat) {
   #'========================================================================
   # Skill scores ####
   #'========================================================================
+  log_msg("Skill scores...\n")
   #Calculate skill scores where possible
   #First, extract the observation (climatology)-based metrics
   clim.metrics <-
     bind_rows(mean.metrics,dist.metrics) %>%
     filter(srcType=="Observations") %>%
+    ungroup() %>%
     select(-srcType,-srcName,-calibrationMethod,-lead,-realization)
   
   #Calculate skill scores by merging back into metrics
@@ -321,6 +326,7 @@ if(have.mdl.dat) {
   #'========================================================================
   # Complete ####
   #'========================================================================
+  log_msg("Output...\n")
   #Now write to database
   met.out <-
     bind_rows(dist.metrics,skill.scores)  %>%
