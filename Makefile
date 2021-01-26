@@ -79,9 +79,9 @@ help:
 	@grep "^ *$$" Makefile -n -m1 |   sed "s/\(^.*\):.*/\1/" | xargs -I {} head -n{} Makefile
 
 watch:
-	watch 'ls _targets/*.out | tail -n 1 | xargs tail'
+	watch 'ls _targets/*.out | tail -n 1 | xargs tail -n 50'
 less:
 	ls _targets/*.out | tail -n 1 | xargs less
 tail:
-	ls $$PWD/_targets/logs/* -trd | tail -n1 |xargs tail
+	watch 'ls $$PWD/_targets/logs/* -trd | tail -n1 |xargs tail -n 50'
 
