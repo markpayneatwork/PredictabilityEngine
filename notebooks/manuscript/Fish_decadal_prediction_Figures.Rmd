@@ -53,18 +53,19 @@ knitr::opts_chunk$set(
 # knitr::opts_knit$set(
 #    root.dir="..")
 
-library(tidyverse)
-library(ggplot2)
-library(tibble)
-library(scales)
-library(lubridate)
-library(here)
 library(PredEng)
+library(tidyverse)
+library(scales)
+library(here)
 library(sf)
 library(ggnewscale)
 library(RSQLite)
+library(RColorBrewer)
 
-theme_set(theme_bw(base_size = 14))
+theme_set(theme_bw())
+theme_replace(strip.text = element_text(hjust=0),
+              strip.background = element_blank())
+          
 ```
 
 by Mark R Payne  <br>
@@ -80,59 +81,100 @@ This notebook prepares figures for use in the manuscript "Skillful decadal-predi
 #'========================================================================
 # Spatial skill metrics for oceanographic variables ####
 #'========================================================================
-#Need to do special runs for SST and salinity (?)
+#Setup
 this.dir <- "notebooks/manuscript"
 
-Bluefin <- list(name="Bluefin",
-                spName=="SouthOfIceland",
-                statName=="threshold",
-                resultName=="area",
-                calibrationMethod=="MeanAdj",
-                lbl="a) Bluefin tuna") 
+cfgs <- list()
+cfgs$Bluefin <- 
+  tibble(tbl=PE.cfg$db$metrics,
+         spName="SouthOfIceland",
+         statName="NorthExt",
+         resultName="latitude",
+         calibrationMethod="MeanAdj",
+         lbl="a) Bluefin tuna",
+         var="SST",
+         fig="skill") 
 
-BW <- list(name="Blue_whiting_decadal",
-           spName=="Spawning area",
-           statName=="SDM",
-           resultName=="areaLarvae",
-           calibrationMethod=="MeanAdj",
-           lbl="b) Blue whiting")
-Mac <- list(name="Mackerel_summer",
-            spName=="East_Greenland",
-            statName=="JansenTreshold",
-            resultName=="area",
-            calibrationMethod=="MeanAdj",
-            lbl="c) Mackerel") 
+cfgs$Blue_whiting_decadal <- 
+  tibble(tbl=PE.cfg$db$metrics,
+         spName="NorthernComponent",
+         statName="SDM",
+         resultName="areaLarvae",
+         calibrationMethod="MeanAdj",
+         lbl="b) Blue whiting",
+         var="Sal",
+         fig="skill")
+cfgs$Mackerel_summer <-
+  tibble(tbl=PE.cfg$db$metrics,
+         spName="Greenland",
+         statName="HabitatModel",
+         resultName="carryingCapacity",
+         calibrationMethod="MeanAdj",
+         lbl="c) Mackerel",
+         var="SST",
+         fig="skill") 
+cfgs$NA_SST <-
+  tibble(tbl=PE.cfg$db$metrics.field,
+         spName="globalROI",
+         statName="Anomaly",
+         resultName="field",
+         calibrationMethod="anomaly",
+         var="SST",
+         fig="spMet")
+cfgs$NA_Sal <-
+  tibble(tbl=PE.cfg$db$metrics.field,
+         spName="globalROI",
+         statName="Anomaly",
+         resultName="field",
+         calibrationMethod="anomaly",
+        var="Sal",
+         fig="spMet")
 
-cfgs <- 
+#Import extermaæ pbkects
+these.cfg <-
+  bind_rows(cfgs,.id="name") %>%
+  mutate(pcfg=map(name,~readRDS(here(this.dir,sprintf("%s_configuration.rds",.x)))),
+         db=map(name,~dbConnect(SQLite(),here(this.dir,sprintf("%s_results.sqlite",.x))))) 
 
+#Calculate threshold cor following
+#https://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient
+#We use a one-tailed test at 5% CL
+#This can be done using either a Fisher transformation:
+#signif.cor <- tanh(qnorm(0.95)/sqrt(length(pcfg@clim.years)-3))
+#However, it's easy to do it exactly in R, so we prefer that instead
+cor.fn <- function(n) {
+  deg.freedom <- n -2
+  t.thresh <- qt(0.95,deg.freedom)
+  signif.thresh <- t.thresh / sqrt(deg.freedom+t.thresh^2)
+  return(signif.thresh)
+}area
+these.cfg <- 
+  # skill.dat %>%
+  # filter(metric=="n",
+  #        srcType!="Persistence") %>%
+  # distinct(species,value) %>%
+  # mutate(threshold=cor.fn(value)) 
+  these.cfg %>%
+  mutate(cor.thresh=map_dbl(pcfg,~ cor.fn(length(.x@comp.years))))
 
-
-BW.cfg <- readRDS(here(this.dir,"Blue_whiting_decadal_configuration.rds"))
-BW.db <- dbConnect(SQLite(),here(this.dir,"Blue_whiting_decadal_results.sqlite")) 
-
-Bluefin.cfg <- readRDS(here(this.dir,"Bluefin_configuration.rds"))
-Bluefin.db <- dbConnect(SQLite(),here(this.dir,"Bluefin_results.sqlite"))
-
-Mac.cfg <- readRDS(here(this.dir,"Mackerel_summer_configuration.rds"))
-Mac.db <- dbConnect(SQLite(),here(this.dir,"Mackerel_summer_results.sqlite")) 
-
-# sp <- 
-#   c("Blue whiting"=BW.cfg@spatial.subdomains$ROI,
-#         "Bluefina tuna"=Bluefin.cfg@spatial.subdomains$South.of.Iceland,
-#         "Mackerel"=Mac.cfg@spatial.subdomains$Iceland) %>%
-#   enframe(name="species",value="subdomain.obj")  %>%
-#   mutate(sp.subdomain=map_chr(subdomain.obj,slot,"name"),
-#          sp.obj=map(subdomain.obj,~ slot(.x,"boundary")),
-#          sf.obj=map(sp.obj,st_as_sf,
-#                     geometry=)) %>%
-#   split(,f=.$species)
-# 
-# %>%
-#   lapply(st_sf)
-
-
-
-
+#Import data and select skill metrics
+metrics.dat <-
+  these.cfg %>%
+  rowwise() %>%
+  group_split() %>%
+  map_dfr(function(this) {
+    this$dat <- 
+      this$db[[1]] %>%
+      tbl(this$tbl) %>%
+      filter(spName==!!this$spName,
+             statName==!!this$statName,
+             resultName==!!this$resultName) %>%
+      collect() %>%
+      filter(calibrationMethod==this$calibrationMethod | is.na(calibrationMethod)) %>%
+      PE.db.unserialize() %>%
+      list()
+    return(this)
+  })
 
 ```
 
@@ -146,40 +188,15 @@ Mac.db <- dbConnect(SQLite(),here(this.dir,"Mackerel_summer_results.sqlite"))
 ## * Add statistical significance
 ## * Correct time axis
 #'========================================================================
-#Import and select skill metrics
-Bluefin.skill <- 
-  Bluefin.db %>%
-  tbl(PE.cfg$db$metrics) %>%
-  filter(spName=="SouthOfIceland",
-         statName=="threshold",
-         resultName=="area") %>%
-  collect() %>%
-  filter(calibrationMethod=="MeanAdj" | is.na(calibrationMethod)) %>%
-  mutate(species="a) Bluefin tuna") 
-BW.skill <- 
-  BW.db %>%
-  tbl(PE.cfg$db$metrics) %>%
-  filter(spName=="Spawning area",
-         statName=="SDM",
-         resultName=="areaLarvae") %>%
-  collect() %>%
-  filter(calibrationMethod=="MeanAdj" | is.na(calibrationMethod)) %>%
-  mutate(species="b) Blue whiting")
-Mac.skill <- 
-  Mac.db %>%
-  tbl(PE.cfg$db$metrics) %>%
-  filter(spName=="East_Greenland",
-         statName=="JansenTreshold",
-         resultName=="area") %>%
-  collect() %>%
-  filter(calibrationMethod=="MeanAdj" | is.na(calibrationMethod)) %>%
-  mutate(species="c) Mackerel") 
+#Process skill data
+skill.cfgs <- 
+  metrics.dat %>%
+  filter(fig=="skill") 
 
-#Combine
 skill.dat <- 
-  bind_rows(Bluefin.skill,
-            BW.skill,
-            Mac.skill) %>%
+  skill.cfgs %>%
+  select(lbl,dat) %>%
+  unnest(dat) %>%
   filter(srcType %in% c("Decadal","Persistence"),
          realization %in% c("ensmean","realmean",NA))  %>%
   mutate(lead.yrs=lead/12,
@@ -192,15 +209,15 @@ skill.dat <-
 decadal.leads <- 
   skill.dat %>%
   filter(srcType=="Decadal") %>%
-  distinct(species,lead) %>%
-  unite(species.lead,species,lead) %>%
+  distinct(lbl,lead) %>%
+  unite(lbl.lead,lbl,lead) %>%
   pull()
 
 cleaned.dat <- 
   skill.dat %>%
   filter(metric=="pearson.correlation") %>%
-  unite(species.lead,species,lead,remove=FALSE) %>%
-  filter(species.lead %in% decadal.leads) 
+  unite(lbl.lead,lbl,lead,remove=FALSE) %>%
+  filter(lbl.lead %in% decadal.leads) 
 
 #Now split into individuals models
 models.dat <- 
@@ -219,36 +236,18 @@ highlight.dat <-
   cleaned.dat %>%
   filter(highlight) 
 
-#Calculate threshold cor following
-#https://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient
-#We use a one-tailed test at 5% CL
-#This can be done using either a Fisher transformation:
-#signif.cor <- tanh(qnorm(0.95)/sqrt(length(pcfg@clim.years)-3))
-#However, it's easy to do it exactly in R, so we prefer that instead
-cor.fn <- function(n) {
-  deg.freedom <- n -2
-  t.thresh <- qt(0.95,deg.freedom)
-  signif.thresh <- t.thresh / sqrt(deg.freedom+t.thresh^2)
-  return(signif.thresh)
-}
-cor.thresh <- 
-  skill.dat %>%
-  filter(metric=="n",
-         srcType!="Persistence") %>%
-  distinct(species,value) %>%
-  mutate(threshold=cor.fn(value)) 
 
 #Plot miscs
-colour.pal <- hue_pal()(6)
+colour.pal <- hue_pal()(7)
 
 
 g <- 
   #Setup baseline
   ggplot()+
-  facet_wrap(~species,ncol=1)+
-  geom_hline(data=cor.thresh,
+  facet_wrap(~lbl,ncol=1)+
+  geom_hline(data=skill.cfgs,
              mapping=aes(linetype="r > 0 (p=5%)",
-                         yintercept=threshold))+
+                         yintercept=cor.thresh))+
   scale_linetype_manual(values="dotted")+
   coord_cartesian(xlim=c(0,10),ylim=c(0,1),expand=FALSE)+
   scale_x_continuous(breaks=0:10)+
@@ -287,15 +286,47 @@ print(g)
 
 ## Ability to forecast given years
 ```{r}
+# Import data ---------------------------------------------------------------------
+sel.cfg <- 
+  these.cfg %>%
+  filter(name==this.stk) 
+
+sel.tbl <-
+  sel.cfg %>%
+  select(db,spName,statName,resultName,calibrationMethod) %>%
+  do.call(what=function(db,spName,statName,resultName,calibrationMethod) {
+    tbl(db[[1]],PE.cfg$db$stats) %>%
+      filter(spName==!!spName,
+             statName==!!statName,
+             resultName==!!resultName,
+             calibrationMethod==!!calibrationMethod)
+  }) 
+
+sel.obs <-
+  sel.tbl %>%
+  filter(srcType=="Observations") %>%
+  collect() %>%
+  filter(year(date)%in% yr.rng,
+         month(date) ==sel.cfg$pcfg[[1]]@MOI) %>%
+  mutate(value=value)
+
+sel.model <-
+  sel.tbl %>%
+  filter(srcType=="Decadal",
+         srcName=="CESM.DPLE") %>%
+  collect() %>%
+  filter(year(date) %in% yr.rng) %>%
+  mutate(value=value)
+
 # Helper functions ---------------------------------------------------------------------------
-fixed.lead.plot <- 
+fixed.lead.plot <-
   function(this.obs,this.model,lead.idx) {
-    this.realmean <- 
+    this.realmean <-
       this.model %>%
       filter(realization=="realmean",
              leadIdx==lead.idx)
-    
-    this.preds <- 
+
+    this.preds <-
       this.model %>%
       filter(realization!="realmean",
              leadIdx==lead.idx) %>%
@@ -304,118 +335,286 @@ fixed.lead.plot <-
       filter(year(date)%in% yr.rng) %>%
       group_by(date) %>%
       summarise(ptile=c("lower","upper"),
-                value=quantile(value,probs=c(0.05,0.95))) %>%
+                value=quantile(value,probs=c(0.25,0.75))) %>%
       pivot_wider(names_from=ptile,values_from = value)
-    
+
     ggplot()+
       geom_ribbon(data=this.preds,mapping=aes(x=year(date),ymax=upper,ymin=lower),fill="red",alpha=0.25)+
       geom_line(data=this.obs,mapping=aes(year(date),value))+
       geom_point(data=this.obs,mapping=aes(year(date),value))+
       geom_line(data=this.realmean,aes(year(date),value,colour=leadIdx))
-    
+
   }
 
 
 
-fixed.start.plot <- 
+fixed.start.plot <-
   function(this.obs,this.model,year.start,ylab) {
-    this.realmean <- 
+    this.model <- 
       this.model %>%
+      mutate(year=year(date),
+             startYear=factor(year(startDate)))
+    
+    this.realmean <-
+      this.model %>%
+      mutate(year) %>%
       filter(realization=="realmean",
-             year(startDate) %in% year.start)
-    
-    this.preds <- 
-      this.model %>%
-      filter(realization!="realmean",
-             year(startDate) %in% year.start) %>%
-      collect() %>%
-      filter(year(date)%in% yr.rng) %>%
-      group_by(startDate,date) %>%
-      summarise(ptile=c("lower","upper"),
-                value=quantile(value,probs=c(0.05,0.95))) %>%
-      pivot_wider(names_from=ptile,values_from = value)
-    
-    this.reals <- 
-      this.model %>%
-      filter(realization!="realmean",
              year(startDate) %in% year.start) 
     
-    
+    this.preds <-
+      this.model %>%
+      filter(realization!="realmean",
+             startYear %in% year.start,
+             year%in% yr.rng) %>%
+      group_by(startYear,year) %>%
+      summarise(ptile=c("lower","upper"),
+                value=quantile(value,probs=c(0.25,0.75))) %>%
+      pivot_wider(names_from=ptile,values_from = value)
+
+    this.reals <-
+      this.model %>%
+      filter(realization!="realmean",
+             year(startDate) %in% year.start)
+
+
     ggplot()+
-      geom_ribbon(data=this.preds,mapping=aes(x=year(date),ymax=upper,ymin=lower,fill=startDate),
+      geom_ribbon(data=this.preds,
+                  mapping=aes(x=year,ymax=upper,ymin=lower,fill=startYear),
                   alpha=0.25)+
       # geom_line(data=this.reals,mapping=aes(x=year(date),y=value,group=paste(realization,startDate)),
       #             colour="red",alpha=0.25)+
       geom_line(data=this.obs,mapping=aes(year(date),value))+
       geom_point(data=this.obs,mapping=aes(year(date),value))+
-      geom_line(data=this.realmean,aes(year(date),value,colour=startDate))  +
+      geom_line(data=this.realmean,aes(year,value,colour=startYear))  +
       labs(x="Year",y=ylab,fill="Forecast start",colour="Forecast start")
-    
-    
+
+
   }
 
 # Bluefin habitat expansion -------------------------------------------------------
 yr.rng <- 1980:2010
+this.stk <- "Bluefin"
 
-sel.stats <- 
-  Bluefin.db %>%
-  tbl(PE.cfg$db$stats) %>%
-  filter(srcType %in% c("Decadal","Observations"),
-         spName=="SouthOfIceland",
-         statName=="threshold",
-         resultName=="area",
-         calibrationMethod=="MeanAdj")
-sel.obs <- 
-  filter(sel.stats,
-         srcType=="Observations") %>%
+
+
+fixed.lead.plot(sel.obs,sel.model,5)
+fixed.start.plot(sel.obs,sel.model,c(1980,1992,2004,2014),"Bluefin Habitat Northward Extent (deg Lat)")
+
+```
+```{r}
+# Blue whiting  -------------------------------------------------------------------
+yr.rng <- 1990:2020
+this.stk <- "Blue_whiting_decadal"
+
+sel.cfg <- 
+  these.cfg %>%
+  filter(name==this.stk) 
+
+sel.tbl <-
+  sel.cfg %>%
+  select(db,spName,statName,resultName,calibrationMethod) %>%
+  do.call(what=function(db,spName,statName,resultName,calibrationMethod) {
+    tbl(db[[1]],PE.cfg$db$stats) %>%
+      filter(spName==!!spName,
+             statName==!!statName,
+             resultName==!!resultName,
+             calibrationMethod==!!calibrationMethod)
+  }) 
+
+sel.obs <-
+  sel.tbl %>%
+  filter(srcType=="Observations") %>%
   collect() %>%
   filter(year(date)%in% yr.rng,
-         month(date) ==Bluefin.cfg@MOI) %>%
+         month(date) ==sel.cfg$pcfg[[1]]@MOI) %>%
   mutate(value=value/1e6)
 
 sel.model <-
-  filter(sel.stats,
-         srcType=="Decadal",
+  sel.tbl %>%
+  filter(srcType=="Decadal",
          srcName=="CESM.DPLE") %>%
   collect() %>%
   filter(year(date) %in% yr.rng) %>%
   mutate(value=value/1e6)
 
-fixed.lead.plot(sel.obs,sel.model,1)
-fixed.start.plot(sel.obs,sel.model,c(1980,1992,2004),"Bluefin Tuna Habitat (Mkm²)")
+fixed.lead.plot(sel.obs,sel.model,3)
+fixed.start.plot(sel.obs,sel.model,c(2004,2012),"Bluefin Tuna Habitat (Mkm²)")
 
 ```
 ```{r}
-# Blue whiting  -------------------------------------------------------------------
+# Mackerel  -------------------------------------------------------------------
 yr.rng <- 1980:2020
+this.stk <- "Mackerel_summer"
 
-sel.stats <- 
-  BW.db%>%
-  tbl(PE.cfg$db$stats) %>%
-  filter(srcType %in% c("Decadal","Observations"),
-         spName=="SouthOfIceland",
-         statName=="threshold",
-         resultName=="area")
-sel.obs <- 
-  filter(sel.stats,
-         srcType=="Observations") %>%
+sel.cfg <- 
+  these.cfg %>%
+  filter(name==this.stk) 
+
+sel.tbl <-
+  sel.cfg %>%
+  select(db,spName,statName,resultName,calibrationMethod) %>%
+  do.call(what=function(db,spName,statName,resultName,calibrationMethod) {
+    tbl(db[[1]],PE.cfg$db$stats) %>%
+      filter(spName==!!spName,
+             statName==!!statName,
+             resultName==!!resultName,
+             calibrationMethod==!!calibrationMethod)
+  }) 
+
+sel.obs <-
+  sel.tbl %>%
+  filter(srcType=="Observations") %>%
   collect() %>%
   filter(year(date)%in% yr.rng,
-         month(date) ==Bluefin.cfg@MOI)
+         month(date) ==sel.cfg$pcfg[[1]]@MOI) %>%
+  mutate(value=value/1e6)
 
 sel.model <-
-  filter(sel.stats,
-         srcType=="Decadal",
-         srcName=="CESM.DPLE",
-         calibrationMethod=="MeanAdj") %>%
+  sel.tbl %>%
+  filter(srcType=="Decadal",
+         srcName=="CESM.DPLE") %>%
   collect() %>%
-  filter(year(date) %in% yr.rng)
+  filter(year(date) %in% yr.rng) %>%
+  mutate(value=value/1e6)
 
-fixed.lead.plot(sel.obs,sel.model,1)
-fixed.start.plot(sel.obs,sel.model,c(1980,1992,2004))
-
+fixed.lead.plot(sel.obs,sel.model,5)
+fixed.start.plot(sel.obs,sel.model,c(1990,2000,2010),"Bluefin Tuna Habitat (Mkm²)")
 
 ```
+
+#'========================================================================
+# Spatial Maps ####
+# Figure 1 in manuscript
+#'========================================================================
+
+```{r}
+#Configuration
+this.lead <- c(67,62)
+this.met <- "pearson.correlation"
+relabel <- c(SST="a) SST (August)",
+             Sal="b) Salinity (March, 250-600m)")
+
+#Setup data
+sp.met.cfg <- 
+  metrics.dat %>%
+  filter(fig == "spMet" ) 
+  
+sp.met <- 
+  sp.met.cfg %>%
+  select(lbl,var,dat) %>%
+  unnest(dat) %>%
+  mutate(dat=map(field,rasterToPoints),
+         dat=map(dat,as_tibble),
+         dat=map(dat,set_names,c("x","y","value"))) %>%
+  select(lbl,var,lead,metric,dat) %>%
+  unnest(dat) 
+
+cor.thresh <- 
+  sp.met.cfg %>%
+  distinct(cor.thresh) %>%
+  pull() %>%
+  round(2)
+
+#Extract polygons
+sp.polys <- 
+  skill.cfgs %>%
+  pmap_dfr(function(...) {
+    this <- list(...)
+    this$pcfg@spatial.polygons %>%
+      filter(name==this$spName) %>%
+      mutate(var=this$var,
+             lbl=gsub("^.*?)","",this$lbl))}) 
+
+#Make plots
+fill.breaks <- c(0.25,seq(0.4,0.8,by=0.2))
+fill.lims <- c(-1,1)
+fill.lbls <-  function(x) {sprintf("%02.2f",x)}
+fill.pal <- brewer.pal(4,"Reds")
+fill.ttl <- "Pearson\ncorrelation (r)"
+fill.even <- FALSE
+
+cor.map <- 
+  sp.met %>%
+  filter(metric=="pearson.correlation",
+         lead %in%this.lead) %>%
+  ggplot()+
+  theme(panel.background = element_rect(fill="grey70"),
+        panel.grid = element_blank(),
+        legend.position = "right")+
+  annotation_map(map_data("world"),fill="black")+
+  geom_raster(aes(x,y,fill=value))+
+  geom_sf(data=sp.polys,mapping=aes(linetype=lbl),fill=NA,colour="black")+
+  facet_wrap(~var,
+             as.table=FALSE,
+             ncol=1,
+             labeller = labeller(var=relabel))+
+  binned_scale("fill","foo",
+               ggplot2:::binned_pal(scales::manual_pal(c("white",fill.pal))),
+               guide="coloursteps",
+               breaks=fill.breaks,
+               labels=fill.lbls,
+               limits=fill.lims,
+               show.limits=TRUE)+
+  guides(fill=guide_colorsteps(even.steps = fill.even,
+                               show.limits = TRUE,
+                               title.position="top",
+                               title=fill.ttl,
+                               ticks=TRUE,
+                               frame.colour="black"),
+         linetype=guide_legend(title.position="top",
+                               title="Area" ))+
+  coord_sf(expand=FALSE)+
+  labs(x="",y="")
+
+print(cor.map)
+```
+
+```{r}
+#Duplicate with MSS
+fill.breaks <- seq(0,0.8,by=0.2)
+fill.lims <- c(-1e6,1)
+fill.lbls <-  function(x) {ifelse(x<0,expression(-infinity),sprintf("%02.2f",x))}
+fill.pal <- brewer.pal(5,"Blues")
+fill.ttl <- "MSSS"
+fill.even <- TRUE
+
+mss.map <- 
+  filter(sp.met,
+         metric=="MSSS",
+         lead %in%this.lead) %>% 
+    ggplot()+
+  theme(panel.background = element_rect(fill="grey70"),
+        panel.grid = element_blank(),
+        legend.position = "right")+
+  annotation_map(map_data("world"),fill="black")+
+  geom_raster(aes(x,y,fill=value))+
+  geom_sf(data=sp.polys,mapping=aes(linetype=lbl),fill=NA,colour="black")+
+  facet_wrap(~var,
+             as.table=FALSE,
+             ncol=1,
+             labeller = labeller(var=relabel))+
+  binned_scale("fill","foo",
+               ggplot2:::binned_pal(scales::manual_pal(c("white",fill.pal))),
+               guide="coloursteps",
+               breaks=fill.breaks,
+               labels=fill.lbls,
+               limits=fill.lims,
+               show.limits=TRUE)+
+  guides(fill=guide_colorsteps(even.steps = fill.even,
+                               show.limits = TRUE,
+                               title.position="top",
+                               title=fill.ttl,
+                               ticks=TRUE,
+                               frame.colour="black"),
+         linetype=guide_legend(title.position="top",
+                               title="Area" ))+
+  coord_sf(expand=FALSE)+
+  labs(x="",y="")
+
+print(mss.map)
+
+```
+
 
 
 ***
