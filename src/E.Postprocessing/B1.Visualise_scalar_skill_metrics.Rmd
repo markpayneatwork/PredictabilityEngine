@@ -206,7 +206,7 @@ for(this.sp in sp.names) {
                matching=NA,members=NA) %>%
         filter(year(date)>=min(pcfg@comp.years),
                month(date) %in% pcfg@MOI) %>%
-        select(-calibrationMethod) %>%
+        dplyr::select(-calibrationMethod) %>%
         mutate(timeframe=ifelse(year(date)<start.near.term,
                                 "Historical","Near-term predictions"))
         
