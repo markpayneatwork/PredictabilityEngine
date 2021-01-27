@@ -348,6 +348,8 @@ if(have.mdl.dat) {
   log_msg("Skill scores...\n")
   #Calculate skill scores where possible
   #First, extract the observation (climatology)-based metrics
+  #Note that we don't permit any error in the climatological metrics
+  #This is perhaps an oversight, but it is much simpler.
   clim.metrics <-
     bind_rows(cent.metrics,dist.metrics) %>%
     filter(srcType=="Climatology",

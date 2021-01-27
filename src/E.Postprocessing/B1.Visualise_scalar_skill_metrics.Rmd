@@ -38,8 +38,8 @@ title: `r params$set_title`
 #'========================================================================
 
 #Load packages
-library(tidyverse)
 library(PredEng)
+library(tidyverse)
 library(sf)
 library(here)
 #library(scales)
@@ -84,6 +84,8 @@ pcfg <- PE.load.config()
 show(pcfg)
 plot(pcfg)
 
+start.near.term <- 2015
+
 #'========================================================================
 # Setup ####
 #'========================================================================
@@ -91,14 +93,6 @@ plot(pcfg)
 this.db <- PE.db.connection(pcfg,results.db = TRUE)
 stats.tbl <- tbl(this.db,PE.cfg$db$stats)
 mets.tbl <- tbl(this.db,PE.cfg$db$metrics)
-
-#Rescale time axis
-rescale.fn <- function(x,b) {  #Creates axes that change in linear timescale
-  ifelse(x>b[2],
-         rescale(x,from=b[2:3],to=c(1,2)),
-         rescale(x,from=b[1:2],to=c(0,1)))
-}
-
 
 # #Plot misc!
 # x.lbls <- tibble(months=c(seq(0,12,by=3),seq(24,120,by=24)),t=rescale.fn(months)) %>%
@@ -208,9 +202,14 @@ for(this.sp in sp.names) {
                statName==this.stat,
                resultName==this.result) %>% 
         collect() %>%
+        mutate(date=ymd(date),
+               matching=NA,members=NA) %>%
         filter(year(date)>=min(pcfg@comp.years),
-               month(date) %in% pcfg@MOI) 
-      
+               month(date) %in% pcfg@MOI) %>%
+        select(-calibrationMethod) %>%
+        mutate(timeframe=ifelse(year(date)<start.near.term,
+                                "Historical","Near-term predictions"))
+        
       #Extract the most recent starts in each model
       stat.pred <- 
         stats.tbl %>%
@@ -222,22 +221,18 @@ for(this.sp in sp.names) {
         collect() %>% #Retrieve all
         group_by(srcType,srcName) %>%
         filter(startDate==max(startDate)) %>% #Select the most recent starts
-        mutate(type.name=paste(srcType,srcName,sep=".")) 
-      
-      #Combine data
-      stat.plt.dat <- 
-        bind_rows(stat.obs,stat.pred) %>%
-        mutate(date=as.Date(date),
-               timeframe=ifelse(year(date)<min(year(stat.pred$date)),
-                                "Historical","Near-term predictions")) %>%
+        mutate(type.name=paste(srcType,srcName,sep="."),
+               date=ymd(date)) %>%
         separate(calibrationMethod,c("calibration","matching","members"),
-                 fill="right",remove=FALSE)
-
+                 fill="right",remove=FALSE) %>%
+        mutate(timeframe=ifelse(year(date)<start.near.term,
+                                "Historical","Near-term predictions") )
+      
       #Plot timeseries
       g <- 
-        ggplot(stat.plt.dat,
-               aes(x=date,y=value,colour=srcName,group=paste(srcType,srcName,matching,members)))+
-        geom_line()+
+        ggplot(mapping=aes(x=date,y=value,colour=srcName,group=paste(srcType,srcName,matching,members)))+
+        geom_line(data=stat.obs)+
+        geom_line(data=stat.pred)+
         labs(x="Year",y=this.stat)+
         facet_grid(calibration~timeframe,scales="free_x")
       print(g) 
@@ -262,7 +257,7 @@ for(this.sp in sp.names) {
                  statName==this.stat,
                  resultName==this.result,
                  metric==this.met,
-                 CI=="mean",
+                 is.na(CI),
                  realization %in% c("realmean","ensmean") | srcType=="Persistence") %>% 
           collect() %>%
           mutate(type.name=paste(srcType,srcName,sep="."),
@@ -275,9 +270,7 @@ for(this.sp in sp.names) {
         
         met.persis.dat <-
           all.met.dat %>%
-          filter(srcType=="Persistence") %>%
-          dplyr::select(-calibration)  #So that it is added to all facets
-        
+          filter(srcType=="Persistence") 
         
         #Set y range accordingly
         if(this.met %in% c("pearson.correlation")) {
