@@ -42,8 +42,8 @@ pcfg <- PE.load.config()
 #Take input arguments, if any
 if(interactive()) {
   set.log_msg.silent()
-  stat.id <- names(pcfg@statistics)[1]
-  sp.id <- c(PE.cfg$misc$globalROI,pcfg@spatial.polygons$name)[4]
+  stat.id <- names(pcfg@statistics)[3]
+  sp.id <- c(pcfg@spatial.polygons$name,PE.cfg$misc$globalROI)[3]
 } else {
   set.log_msg.silent()
   cmd.args <- commandArgs(TRUE)

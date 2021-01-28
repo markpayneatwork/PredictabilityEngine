@@ -82,16 +82,19 @@ sp.objs$"NorwegianCoast" <-
     st_polygon(list(rbind(c(-5,62),c(10,62),c(20,70),
                           c(20,73),c(12,73),c(-5,62))))
 
-sp.objs$"SouthOfIceland" <- sfpolygon.from.extent(extent(-50,-10,54,70))
+sp.objs$"MacKenzieEtAl" <- sfpolygon.from.extent(extent(-50,-10,54,70))
 
-sp.objs$"DenmarkStrait" <- sfpolygon.from.extent(extent(-35,-30,63,66))
+sp.objs$"SouthOfIceland" <- sfpolygon.from.extent(extent(-50,-10,55,65))
 
-sp.objs$"IrmingerCurrent" <-
-  st_polygon(list(rbind(c(-35,63),
-                        c(-25,63),
-                        c(-25,65.5),
-                        c(-30,64.8),
-                        c(-35,63))))
+
+# sp.objs$"DenmarkStrait" <- sfpolygon.from.extent(extent(-35,-30,63,66))
+# 
+# sp.objs$"IrmingerCurrent" <-
+#   st_polygon(list(rbind(c(-35,63),
+#                         c(-25,63),
+#                         c(-25,65.5),
+#                         c(-30,64.8),
+#                         c(-35,63))))
 
 #Add to object
 pcfg@spatial.polygons <- 
@@ -127,8 +130,9 @@ stat.l$threshold <-
             above=TRUE)
 
 # Northward extent ----------------------------------------------------------------
-ext.fn <- 
+nor.ext <- 
   function(dat,resources) {
+    #dat <- masked.dat
     #Calculate the zonal averages - this has to be done
     #by hand, as there is no direct support
     zonal.mean <- 
@@ -149,7 +153,39 @@ res.l <- list(threshold=11)
 stat.l$northern.extent <-
   custom.stat(name="NorthExt",
               desc="Northern extent of habitat",
-              fn=ext.fn,
+              spatial.polygons = "NorwegianCoast",
+              retain.field = FALSE,
+              fn=nor.ext,
+              resources=res.l)
+
+# Westward extent ----------------------------------------------------------------
+west.ext <- 
+  function(dat,resources) {
+    #dat <- masked.dat
+    #Calculate the merid averages - this has to be done
+    #by hand, as there is no direct support
+    merid.mean <- 
+      raster::colSums(dat,na.rm=TRUE)/raster::colSums(!is.na(dat))
+    
+    #Apply temperature threshold
+    res <- try(approx(merid.mean,xFromCol(dat),resources$threshold,rule=2,ties=min)$y)
+    if(is(res,"try-error")) {res <- NA}
+    
+    #Finish
+    return(tibble(resultName="longitude",
+                  field=NA,
+                  value=res))
+
+  }
+
+res.l <- list(threshold=11)
+
+stat.l$west.ext <-
+  custom.stat(name="WestExt",
+              desc="Westward extent of habitat",
+              fn=west.ext,
+              retain.field = FALSE,
+              spatial.polygons = c("SouthOfIceland","MacKenzieEtAl"),
               resources=res.l)
 
 
