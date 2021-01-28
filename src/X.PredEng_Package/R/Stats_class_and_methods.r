@@ -256,7 +256,7 @@ setMethod("eval.stat",signature(st="custom.stat",dat="Raster"),
             
             #Drop fields forcibly
             if(!st@retain.field) {
-              this.res <- filter(!is.na(field))
+              this.res <- filter(this.res,is.na(field))
             }
             
             #Return
