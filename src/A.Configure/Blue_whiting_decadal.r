@@ -51,6 +51,9 @@ pcfg <- PredEng.config(WGS2D.pcfg,
 pcfg@scratch.dir <- file.path(PE.cfg$dir$scratch,pcfg@project.name)
 define_dir(pcfg@scratch.dir)
 
+#Setup persistence
+pcfg@persistence.leads <- seq(pcfg@MOI-1,120,by=12)
+
 #'========================================================================
 # Data Sources ####
 #'========================================================================

@@ -56,6 +56,9 @@ pcfg <- PredEng.config(project.name= "Mackerel_summer",
 pcfg@scratch.dir <- file.path("scratch",pcfg@project.name)
 define_dir(pcfg@scratch.dir)
 
+#Setup persistence
+pcfg@persistence.leads <- seq(pcfg@MOI-1,120,by=12)
+
 #Select decadal models
 pcfg@Decadal <- SST.Decadal.production
 
