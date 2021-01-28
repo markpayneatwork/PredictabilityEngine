@@ -112,6 +112,7 @@ statsum.l[[1]] <- threshold(name="JansenTreshold",
                             desc = "Area above 8.5 degrees",
                             above=TRUE,
                             calibration = c("MeanAdj","MeanVarAdj"),
+                            retain.field = FALSE,
                             realizations=1:4,
                             threshold=8.5)  #Based on Jansen et al
 statsum.l[[2]] <- spatial.mean(name="TempAnomaly",
@@ -149,6 +150,7 @@ statsum.l[[3]] <-  custom.stat(name="HabitatModel",
                            fn=habitat.fn,
                            resources=resource.l,
                            calibration = c("MeanAdj","MeanVarAdj"),
+                           retain.fields=FALSE,
                            realizations=1:4)
 
 #Merge it all in

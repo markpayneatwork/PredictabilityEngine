@@ -28,7 +28,7 @@ stat <-
                       retain.field="logical")
 ,
            prototype = list(realizations=0:4,  #Default to all
-                            retain.field=TRUE,
+                            retain.field=FALSE,
                             use.globalROI=FALSE),
            validity = function(object) {
              err.msg <- list(
@@ -138,7 +138,11 @@ setMethod("eval.stat",signature(st="threshold",dat="Raster"),
                                  value=area.filt)
             
             #Return
-            return(bind_rows(res.field,res.value)) 
+            if(st@retain.field) {
+              return(bind_rows(res.field,res.value)) 
+            } else {
+              return(res.value)
+            }
           })
 
 
@@ -249,6 +253,11 @@ setMethod("eval.stat",signature(st="custom.stat",dat="Raster"),
             assert_that(identical(names(this.res),ok.colnames),
                         msg=sprintf("Results from custom function must have column names `%s`",
                                     paste(ok.colnames,collapse=", ")))
+            
+            #Drop fields forcibly
+            if(!st@retain.field) {
+              this.res <- filter(!is.na(field))
+            }
             
             #Return
             return(this.res)})

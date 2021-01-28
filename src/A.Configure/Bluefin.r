@@ -121,9 +121,10 @@ pcfg@spatial.polygons <-
 stat.l <- PElst()
 stat.l$threshold <- 
   threshold(name="threshold",
-                         desc="11 degree threshold",
-                         threshold=11,
-                         above=TRUE)
+            desc="11 degree threshold",
+            threshold=11,
+            retain.field=FALSE,
+            above=TRUE)
 
 # Northward extent ----------------------------------------------------------------
 ext.fn <- 
