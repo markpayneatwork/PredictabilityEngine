@@ -204,7 +204,7 @@ mean.pred <-
   select(-ym)
 
 #Skill functions
-skill.fn <- function(x,y,n.samples=1000,probs=c(0.025,0.5,0.975)) { 
+skill.fn <- function(x,y,n.samples=1000,probs=c(0.025,0.05,0.25,0.5,0.75,0.95,0.975)) { 
   #Setup
   xy <- 
     cbind(x,y) %>%
