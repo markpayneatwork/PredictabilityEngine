@@ -92,6 +92,10 @@ PE.config.summary(pcfg,
                   "statName"=stat.id,
                   "calibrationMethod(s)"=paste0(this.stat@calibration,collapse=", "),
                   "realizations"=paste0(this.stat@realizations,collapse=", "))
+log_msg("\n\nSpatial domain--------------------------------------------\n")
+print(this.sp)
+log_msg("\n\nStatistic-------------------------------------------------\n")
+print(this.stat)
 
 #Delete existing results 
 log_msg("Getting list of previous ids to clear...")
