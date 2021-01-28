@@ -108,14 +108,14 @@ pcfg@spatial.polygons <-
 #'========================================================================
 #Configure summary stats
 statsum.l <- PElst()
-statsum.l[[1]] <- threshold(name="JansenTreshold",
+statsum.l$Jansen <- threshold(name="JansenTreshold",
                             desc = "Area above 8.5 degrees",
                             above=TRUE,
                             calibration = c("MeanAdj","MeanVarAdj"),
                             retain.field = FALSE,
                             realizations=1:4,
                             threshold=8.5)  #Based on Jansen et al
-# statsum.l[[2]] <- spatial.mean(name="TempAnomaly",
+# statsum.l$temp <- spatial.mean(name="TempAnomaly",
 #                                desc="Temperature anomaly",
 #                                calibration="anomaly")
 
@@ -145,12 +145,12 @@ habitat.fn <- function(dat,resources) {
   return(this.rtn)
 }
 
-statsum.l[[3]] <-  custom.stat(name="HabitatModel",
+statsum.l$HabitatModel <-  custom.stat(name="HabitatModel",
                            desc="Quantile regression habitat model",
                            fn=habitat.fn,
                            resources=resource.l,
                            calibration = c("MeanAdj","MeanVarAdj"),
-                           retain.fields=FALSE,
+                           retain.field=FALSE,
                            realizations=1:4)
 
 #Merge it all in
