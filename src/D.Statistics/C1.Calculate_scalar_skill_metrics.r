@@ -34,6 +34,7 @@ suppressMessages({
   library(verification)
   library(PredEng)
   library(furrr)
+  library(RcppRoll)
 })
 pcfg <- PE.load.config()
 
@@ -83,7 +84,7 @@ if(dbExistsTable(PE.db.connection(pcfg),PE.cfg$db$metrics)) {
 log_msg("Extract observations...\n")
 
 #Import observation stats
-obs.dat <-
+obs.dat.all <-
   stats.tbl %>%
   filter(srcType=="Observations") %>% 
   select(-field,-pKey) %>%
@@ -93,20 +94,22 @@ obs.dat <-
          ym=date_to_ym(date)) %>%
   #Drop NAs (which are probably field-only)
   filter(!is.na(value)) %>%
-  #Restrict to comparison years
-  filter(year(date) %in% pcfg@comp.years) %>%
   #Drop unused fields relating to forecasts
   select(-calibrationMethod,-realization,-startDate,-leadIdx)
+
+#Simplified versions 
+obs.dat <-
+  obs.dat.all %>%
+  filter(year(date) %in% pcfg@comp.years) 
+
+obs.dat.bare <- #Simplified version for matching with forecasts
+  obs.dat %>%
+  select(spName,statName,resultName,ym,value)
 
 #Some checks
 assert_that(length(unique(obs.dat$srcName))==1,msg="Multiple source names detected")
 assert_that(all(month(obs.dat$date) %in% pcfg@MOI),
             msg="Mismatch between months in database and MOI.")
-
-#Simplified version for matching with forecasts
-obs.dat.bare <- 
-  obs.dat %>%
-  select(spName,statName,resultName,ym,value)
 
 #Create a data.frame with the observations and the corresponding mean and standard deviation
 #of each stat result over the climatological period. This is used in generating skill
@@ -141,9 +144,36 @@ clim.as.forecast <-
 #'well, especially given that we now are applying the meanadjusted calibration
 #'method to the observations as well (especially giving us the basis for an 
 #'anomaly persistence forecast)
-
+#'
+#'Note that the definition of persistence that we use here is persisting the
+#'stat forward in time. We first need to work out what data is available on 
+#'a given date 
 log_msg("Persistence...\n")
 
+#Calculate running averages for persistence forecasts 
+#Note that we do this again ourselves, as we want
+#the right-aligned window (ie for the previous n years),
+#whereas all of the other running averages are based on
+#the centered window.
+#Also don't want any smoothed data
+persis.dat <-
+  obs.dat.all %>%
+  filter(!grepl("/.+$",resultName)) %>%   #Remove smoothed variables
+  group_by(srcType,srcName,spName,statName,resultName) %>%
+  arrange(date,.by_group=TRUE) %>%
+  
+  mutate(RollMean3=roll_meanr(value,n=3),
+         RollMean5=roll_meanr(value,n=5),
+         srcType="Persistence") %>%
+  ungroup() %>%
+  #Pivot longer and merge averages into value column
+  rename(rawValue=value)%>%
+  pivot_longer(c(rawValue,starts_with("RollMean")),
+               names_to = "averaging",values_to = "value") %>%
+  unite("resultName",c("resultName","averaging"),sep="/") %>%
+  mutate(resultName=gsub("/rawValue$","",resultName))  #Don't label raw value
+
+#Calculate the persistences that we want to include
 persis.grid <- 
   #Setup grid
   expand_grid(date=unique(obs.dat$date),
@@ -153,25 +183,40 @@ persis.grid <-
   mutate(startDate=date-months(lead),
          startDate.ym=date_to_ym(startDate))
 
-persis.dat <-
-  stats.tbl %>%
-  filter(srcType=="Persistence",
-         !is.na(value)) %>%
-  select(-field) %>%
-  mutate(startDate.ym=str_sub(startDate,1,7)) %>%
-  filter(startDate.ym %in% !!persis.grid$startDate.ym) %>%
-  collect() %>%
-  select(-pKey,-realization,-date,-leadIdx,-startDate)
+#Matching up the available data with the requested startDates
+#is done via a lookup table
+availability.tbl <-
+  expand_grid(request.startDates=unique(persis.grid$startDate),  #Generate combinations
+              available.dates=unique(persis.dat$date)) %>%
+  mutate(difference=month_diff(request.startDates,available.dates)) %>%  #Calculate difference
+  filter(difference>=0) %>%  #Remove all those in the future (but same month is ok)
+  group_by(request.startDates) %>%
+  filter(difference==min(difference)) %>%  #Retain closest match
+  mutate(n=n()) %>%
+  ungroup() %>%
+  mutate(request.ym=date_to_ym(request.startDates))
 
+assert_that(all(lookup.tbl$n==1),
+            msg="Failure in generation of lookup table.")
+
+#Combine the grid and the data to generate forecasts
 persis.forecasts <-
+  #Merge in availability table
   left_join(x=persis.grid,
-            y=persis.dat,
-            by=c("startDate.ym")) %>%
+            y=availability.tbl,
+            by=c(startDate.ym="request.ym")) %>%
+  select(date,lead,request.startDates,available.dates) %>%
+  mutate(available.ym=date_to_ym(available.dates)) %>%
+  #Join with data
+  left_join(y=persis.dat,
+            by=c(available.ym="ym"),
+            suffix=c("",".availDate")) %>%
   #Tidy up to merge with rest
   transmute(srcType,srcName,
-            calibrationMethod,
+            calibrationMethod=NA_character_,
             realization=NA_character_,
-            startDate,date,
+            startDate=request.startDates,
+            date=date,
             spName,statName,resultName,value,
             ym=date_to_ym(date))
 
@@ -275,7 +320,7 @@ cent.pred <-
          spName,statName,resultName,lead,
          .drop = TRUE) %>%
   group_nest() 
-
+stop()
 #Dry run
 log_msg("Dry run....")
 run.time <- system.time({dmp.cal <- skill.fn(cent.pred$data[[1]])})

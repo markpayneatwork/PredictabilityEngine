@@ -44,7 +44,6 @@ pcfg <- PredEng.config(project.name= "Bluefin",
                average.months=FALSE,
                clim.years=1981:2010,  
                comp.years=1970:2015,
-               persistence.leads = seq(7,120,by=12),
                landmask="data_srcs/NMME/landmask.nc",
                Observations=SST_obs[[c("HadISST")]],
                calibrationMethods=c("MeanAdj","MeanVarAdj"),
@@ -60,6 +59,9 @@ pcfg@Decadal <- SST.Decadal.production
 #Select CMIP5 models
 #pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="tos")
 pcfg@obs.only <- FALSE
+
+#Setup persistence
+pcfg@persistence.leads <- seq(pcfg@MOI-1,120,by=12)
 
 #'========================================================================
 # Spatial Configurations ####
