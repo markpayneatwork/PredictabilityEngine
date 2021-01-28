@@ -115,9 +115,9 @@ statsum.l[[1]] <- threshold(name="JansenTreshold",
                             retain.field = FALSE,
                             realizations=1:4,
                             threshold=8.5)  #Based on Jansen et al
-statsum.l[[2]] <- spatial.mean(name="TempAnomaly",
-                               desc="Temperature anomaly",
-                               calibration="anomaly")
+# statsum.l[[2]] <- spatial.mean(name="TempAnomaly",
+#                                desc="Temperature anomaly",
+#                                calibration="anomaly")
 
 #Setup habitat suitability functionality
 habitat.mdl.dat <- readRDS("resources/Mackerel_summer_QR_values.rds")
