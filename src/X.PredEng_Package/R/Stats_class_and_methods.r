@@ -4,8 +4,8 @@
 #'
 #' @param name Name of the statistics class. Cannot contain spaces, underscores or dots. Must be less than 20 char
 #' @param desc Description of the statistics class. 
-#' @param realizations Tells what sort of data to be considered 0= Observations, 1 = Observations for Persistence 2 = Individual realisations 
-#' 3 = Realization means 4 = Ensemble means
+#' @param realizations Tells what sort of data to be considered  1 = Observations for Persistence 
+#' 2 = Individual realisations  3 = Realization means 4 = Ensemble means. Observations are always calculated.
 #' @param calibration Choose the calibration method to base the statistic on. Defaults to NULL, indicating
 #' to use all available calibrations
 #' @param use.globalROI Indicates whether the stat should also be calculated on global basis, in addition
@@ -27,7 +27,7 @@ stat <-
                       spatial.polygons="character",
                       retain.field="logical")
 ,
-           prototype = list(realizations=0:4,  #Default to all
+           prototype = list(realizations=1:4,  #Default to all
                             retain.field=FALSE,
                             use.globalROI=FALSE),
            validity = function(object) {
@@ -42,8 +42,8 @@ stat <-
                              msg="Unsupported calibration method selected"),
                validate_that(!(any(is.na(object@spatial.polygons)) & !object@use.globalROI),
                              msg="No spatial polygons selected by this stat. Specify a polygon or use the global ROI."),
-               validate_that(all(object@realizations %in% 0:4),
-                             msg="Valid choices for realization are 0, 1, 2, 3 and 4"))
+               validate_that(all(object@realizations %in% 1:4),
+                             msg="Valid choices for realization are 1, 2, 3 and 4"))
              err.idxs <- map_lgl(err.msg,is.character)
              if(all(!err.idxs)) return(TRUE) else unlist(err.msg[err.idxs])
            })
