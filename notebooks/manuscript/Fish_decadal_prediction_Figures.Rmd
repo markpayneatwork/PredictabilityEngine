@@ -54,7 +54,6 @@ knitr::opts_chunk$set(
 #    root.dir="..")
 
 library(PredEng)
-library(tidyverse)
 library(scales)
 library(here)
 library(sf)
@@ -133,29 +132,8 @@ cfgs$NA_Sal <-
 #Import extermaæ pbkects
 these.cfg <-
   bind_rows(cfgs,.id="name") %>%
-  mutate(pcfg=map(name,~readRDS(here(this.dir,sprintf("%s_configuration.rds",.x)))),
-         db=map(name,~dbConnect(SQLite(),here(this.dir,sprintf("%s_results.sqlite",.x))))) 
-
-#Calculate threshold cor following
-#https://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient
-#We use a one-tailed test at 5% CL
-#This can be done using either a Fisher transformation:
-#signif.cor <- tanh(qnorm(0.95)/sqrt(length(pcfg@clim.years)-3))
-#However, it's easy to do it exactly in R, so we prefer that instead
-cor.fn <- function(n) {
-  deg.freedom <- n -2
-  t.thresh <- qt(0.95,deg.freedom)
-  signif.thresh <- t.thresh / sqrt(deg.freedom+t.thresh^2)
-  return(signif.thresh)
-}area
-these.cfg <- 
-  # skill.dat %>%
-  # filter(metric=="n",
-  #        srcType!="Persistence") %>%
-  # distinct(species,value) %>%
-  # mutate(threshold=cor.fn(value)) 
-  these.cfg %>%
-  mutate(cor.thresh=map_dbl(pcfg,~ cor.fn(length(.x@comp.years))))
+  mutate(pcfg=map(name,~readRDS(here(this.dir,.x,"configuration.rds"))),
+         db=map(name,~dbConnect(SQLite(),here(this.dir,.x,sprintf("%s_results.sqlite",.x))))) 
 
 #Import data and select skill metrics
 metrics.dat <-
@@ -222,15 +200,18 @@ cleaned.dat <-
 #Now split into individuals models
 models.dat <- 
   cleaned.dat %>%
-  filter(!highlight)
+  filter(!highlight,
+         is.na(CI))  #Use the best estimate 
 
 ensmean.dat <-
   cleaned.dat %>%
-  filter(dispName=="Ens. mean") 
+  filter(dispName=="Ens. mean",
+         is.na(CI))
 
 persis.dat <-
   cleaned.dat %>%
-  filter(dispName=="Persistence") 
+  filter(dispName=="Persistence",
+         is.na(CI)) 
 
 highlight.dat <-
   cleaned.dat %>%
@@ -245,9 +226,9 @@ g <-
   #Setup baseline
   ggplot()+
   facet_wrap(~lbl,ncol=1)+
-  geom_hline(data=skill.cfgs,
-             mapping=aes(linetype="r > 0 (p=5%)",
-                         yintercept=cor.thresh))+
+  # geom_hline(data=skill.cfgs,
+  #            mapping=aes(linetype="r > 0 (p=5%)",
+  #                        yintercept=cor.thresh))+
   scale_linetype_manual(values="dotted")+
   coord_cartesian(xlim=c(0,10),ylim=c(0,1),expand=FALSE)+
   scale_x_continuous(breaks=0:10)+
