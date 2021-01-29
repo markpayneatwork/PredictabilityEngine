@@ -269,7 +269,8 @@ for(this.sp in sp.names) {
         
         met.persis.dat <-
           all.met.dat %>%
-          filter(srcType=="Persistence") 
+          filter(srcType=="Persistence") %>%
+          dplyr::select(-calibration)
         
         #Set y range accordingly
         if(this.met %in% c("pearson.correlation")) {
