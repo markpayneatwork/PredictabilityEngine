@@ -4,8 +4,8 @@
 #'
 #' @param name Name of the statistics class. Cannot contain spaces, underscores or dots. Must be less than 20 char
 #' @param desc Description of the statistics class. 
-#' @param realizations Tells what sort of data to be considered 1 = Observations 2 = Individual realisations 
-#' 3 = Realization means 4 = Ensemble means
+#' @param realizations Tells what sort of data to be considered  1 = Observations for Persistence 
+#' 2 = Individual realisations  3 = Realization means 4 = Ensemble means. Observations are always calculated.
 #' @param calibration Choose the calibration method to base the statistic on. Defaults to NULL, indicating
 #' to use all available calibrations
 #' @param use.globalROI Indicates whether the stat should also be calculated on global basis, in addition
@@ -28,7 +28,7 @@ stat <-
                       retain.field="logical")
 ,
            prototype = list(realizations=1:4,  #Default to all
-                            retain.field=TRUE,
+                            retain.field=FALSE,
                             use.globalROI=FALSE),
            validity = function(object) {
              err.msg <- list(
@@ -138,7 +138,11 @@ setMethod("eval.stat",signature(st="threshold",dat="Raster"),
                                  value=area.filt)
             
             #Return
-            return(bind_rows(res.field,res.value)) 
+            if(st@retain.field) {
+              return(bind_rows(res.field,res.value)) 
+            } else {
+              return(res.value)
+            }
           })
 
 
@@ -249,6 +253,11 @@ setMethod("eval.stat",signature(st="custom.stat",dat="Raster"),
             assert_that(identical(names(this.res),ok.colnames),
                         msg=sprintf("Results from custom function must have column names `%s`",
                                     paste(ok.colnames,collapse=", ")))
+            
+            #Drop fields forcibly
+            if(!st@retain.field) {
+              this.res <- filter(this.res,is.na(field))
+            }
             
             #Return
             return(this.res)})

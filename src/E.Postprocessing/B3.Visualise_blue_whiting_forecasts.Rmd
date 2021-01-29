@@ -1,0 +1,228 @@
+---
+output:
+  html_document:
+    keep_md: false
+    toc: true
+    toc_float: true
+editor_options: 
+  chunk_output_type: console
+params:
+  set_title: Blue Whiting Forecasts
+---
+
+---
+title: `r params$set_title`
+---
+
+```{r setup, include="FALSE"}
+#'========================================================================
+# Visualise skill metrics
+#'========================================================================
+#
+# by Mark R Payne
+# DTU-Aqua, Kgs. Lyngby, Denmark
+# http://www.staff.dtu.dk/mpay
+#
+# Created Wed May  1 10:48:18 2019
+#
+# Makes a series of generic skill visualisations
+#
+# This work is subject to a Creative Commons "Attribution" "ShareALike" License.
+# You are largely free to do what you like with it, so long as you "attribute"
+# me for my contribution. See the fine print at the end for exact details.
+#
+# To do:
+#
+# Notes:
+#   Make sure when knitting that you have the Knit directory set to "project directory"
+#'========================================================================
+
+#Load packages
+library(PredEng)
+library(tidyverse)
+library(sf)
+library(here)
+library(ggnewscale)
+#library(scales)
+
+#GGplot config
+theme_set(theme_bw(base_size = 14))
+
+#Configure Knitr
+knitr::opts_chunk$set(
+  echo=FALSE,
+	error = FALSE,
+	message = FALSE,
+	warning = FALSE,
+	include = TRUE,
+	results = "markup",
+	fig.width = 10,
+	fig.height=14/25*10,
+  fig.align="center")
+
+#Powerpoint needs 14 x 25cm figures
+
+#knitr::opts_knit$set(root.dir=getwd())
+#cat(sprintf("title: %s skill visualisation\n",pcfg@project.name))
+
+```
+
+by Mark R Payne  <br>
+DTU-Aqua, Kgs. Lyngby, Denmark  <br>
+http://www.staff.dtu.dk/mpay  <br>
+```{r results="asis"}
+cat(sprintf("Visualisations generated  %s\n",date()))
+```
+
+
+## Configuration
+
+```{r}
+#==========================================================================
+# Configure
+#==========================================================================
+pcfg <- readRDS(here("scratch/Blue_whiting_decadal/configuration.rds"))
+pcfg <- readRDS(here("scratch/Blue_whiting_NorCPM_tests/configuration.rds"))
+show(pcfg)
+
+#'========================================================================
+# Setup ####
+#'========================================================================
+#Import data
+this.db <- PE.db.connection(pcfg,results.db = TRUE)
+stats.tbl <- tbl(this.db,PE.cfg$db$stats)
+
+
+```
+
+
+
+```{r results="asis"}
+#'========================================================================
+# Stat skills ####
+#'========================================================================
+this.sp <- "NorthernComponent"
+this.calib <- "MeanAdj"
+this.stat <- "SDM"
+this.result <- "areaLarvae"
+this.stat <- "Mean-salinity"
+this.result <- "average"
+
+
+
+#Extract the corresponding stat data observations 
+stat.obs <- 
+  stats.tbl %>%
+  filter(srcType=="Observations",
+         spName==this.sp,
+         statName==this.stat,
+         calibrationMethod==this.calib,
+         resultName==this.result) %>% 
+  collect() %>%
+  mutate(year=year(date)) %>%
+  filter(month(date) %in% pcfg@MOI) %>%
+  mutate(timeframe="Historical")
+
+#Extract the most recent starts in each model
+stat.pred <- 
+  stats.tbl %>%
+  filter(srcType %in% c("Decadal","NMME"),
+         spName==this.sp,
+         statName==this.stat,
+         calibrationMethod==this.calib,
+         resultName==this.result,
+         !realization %in% c("realmean","ensmean")) %>%
+  collect() %>% #Retrieve all
+  group_by(srcType,srcName) %>%
+  filter(startDate==max(startDate)) %>% #Select the most recent starts
+  mutate(type.name=paste(srcType,srcName,sep=".")) %>%
+  #Extract bands
+  group_by(srcType,srcName,date) %>%
+  summarise(tibble(qtile=c("LQ","Med","UQ"),value=quantile(value,probs=c(0.25,0.5,0.75))),
+            .groups="drop") %>%
+  pivot_wider(names_from="qtile",values_from="value") %>%
+  mutate(timeframe="Near-term predictions",
+         year=year(date))
+      
+#Plot timeseries
+#g <- 
+ggplot(mapping=aes(x=year))+
+  geom_ribbon(data=stat.pred,mapping=aes(ymin=LQ,ymax=UQ,fill=srcName),alpha=0.5)+
+  geom_line(data=stat.pred,mapping=aes(y=Med,colour=srcName),show.legend = FALSE)+
+  labs(fill="Forecast\nmodels")+
+  new_scale_colour()+
+  geom_line(data=stat.obs,aes(y=value,colour=srcName))+
+  labs(x="Year",y="Mean salinity (psu)",
+       colour="Historical",
+       fill="Forecast\nmodels")
+
+```
+
+
+## Comparison of lead 1 forecasts
+
+```{r}
+#Extract the most recent starts in each model
+stat.lead1 <- 
+  stats.tbl %>%
+  filter(srcType %in% c("Decadal","NMME"),
+         spName==this.sp,
+         statName==this.stat,
+         calibrationMethod==this.calib,
+         resultName==this.result,
+         realization %in% c("realmean")) %>%
+  collect() %>% #Retrieve all
+  group_by(srcType,srcName,startDate) %>%
+  filter(date==min(date)) %>% #Select the first forecast
+  mutate(type.name=paste(srcType,srcName,sep=".")) %>%
+  mutate(timeframe="Near-term predictions",
+         year=year(date)) %>%
+  ungroup()
+      
+#Plot timeseries
+#g <- 
+ggplot(mapping=aes(x=year))+
+  geom_line(data=stat.lead1,mapping=aes(y=value,colour=srcName,linetype=srcName))+
+  labs(fill="Forecast\nmodels")+
+  geom_line(data=stat.obs,aes(y=value,colour=srcName,linetype=srcName))+
+  labs(x="Year",y="Mean salinity (psu)",
+       colour="Data Source",
+       linetype="Data Source",
+       fill="Forecast\nmodels")
+
+#Check for biases
+left_join(y=select(stat.obs,year,value),
+          x=select(stat.lead1,year,value),
+          by="year") %>%
+  mutate(label=sprintf("%02i",year %%100)) %>%
+  ggplot(aes(value.x,value.y))+
+  geom_abline(slope=1,intercept=0,col="red")+
+  geom_path(col="grey90")+
+  geom_text(aes(label=label))+
+  coord_equal()+
+  labs(y="EN4 Observations",
+       x="NorCPM realisation mean, lead 3 months")
+  
+
+
+```
+
+
+
+
+
+***
+*This work by Mark R Payne is licensed under a  Creative Commons
+Attribution-NonCommercial-ShareAlike 3.0 Unported License. 
+For details, see http://creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US
+Basically, this means that you are free to "share" and "remix" for 
+non-commerical purposes as you see fit, so long as you "attribute" me for my
+contribution. Derivatives can be distributed under the same or 
+similar license.*
+
+*This work comes with ABSOLUTELY NO WARRANTY or support.*
+
+***
+
+
+

@@ -33,6 +33,8 @@ start.time <- proc.time()[3];
 suppressMessages({
   library(verification)
   library(PredEng)
+  library(furrr)
+  library(RcppRoll)
 })
 pcfg <- PE.load.config()
 
@@ -46,6 +48,15 @@ if(interactive()) {
 } else {
   debug.mode <- FALSE
 }
+
+#Setup parallelisation
+if(Sys.info()["nodename"]=="aqua-cb-mpay18" | interactive()) {
+  n.cores <- availableCores()
+} else {
+  n.cores <- as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))    
+  assert_that(!is.na(n.cores),msg = "Cannot detect number of allocated cores")
+}
+plan(multisession,workers = n.cores)
 
 #'========================================================================
 # Setup ####
@@ -72,41 +83,58 @@ if(dbExistsTable(PE.db.connection(pcfg),PE.cfg$db$metrics)) {
 #'========================================================================
 log_msg("Extract observations...\n")
 
-#Import stats
-obs.dat <-
+#Import observation stats
+obs.dat.all <-
   stats.tbl %>%
   filter(srcType=="Observations") %>% 
-  select(srcType,srcName,date,spName,statName,resultName,value) %>%
+  select(-field,-pKey) %>%
   collect() %>%
   #Setup year-month key
   mutate(date=ymd(date),
          ym=date_to_ym(date)) %>%
   #Drop NAs (which are probably field-only)
-  filter(!is.na(value))
+  filter(!is.na(value)) %>%
+  #Drop unused fields relating to forecasts
+  select(-calibrationMethod,-realization,-startDate,-leadIdx)
 
-#Simplified version for matching with forecasts
-obs.dat.bare <- 
+#Simplified versions 
+obs.dat <-
+  obs.dat.all %>%
+  filter(year(date) %in% pcfg@comp.years) 
+
+obs.dat.bare <- #Simplified version for matching with forecasts
   obs.dat %>%
-  select(-srcType,-srcName,-date)
+  select(spName,statName,resultName,ym,value)
+
+#Some checks
+assert_that(length(unique(obs.dat$srcName))==1,msg="Multiple source names detected")
+assert_that(all(month(obs.dat$date) %in% pcfg@MOI),
+            msg="Mismatch between months in database and MOI.")
 
 #Create a data.frame with the observations and the corresponding mean and standard deviation
 #of each stat result over the climatological period. This is used in generating skill
 #scores of both the distributional and central tendency metrics
-obs.dat.stats <-
+obs.clim <-
   #Calculate statistics
   obs.dat %>%
-  filter(year(date) %in% pcfg@clim.years,
-         month(date) %in% pcfg@MOI) %>%
-  group_by(srcType,srcName,spName,statName,resultName) %>%
-  summarise(mean=mean(value),
-            sd=sd(value),
-            .groups="drop") %>%
-  #Join back in 
-  left_join(x=obs.dat,by=c("srcType","srcName","spName","statName","resultName")) %>%
-  #Filter again to climatology years
-  filter(year(date) %in% pcfg@clim.years,
-         month(date) %in% pcfg@MOI) %>%
-  select(-ym)
+  filter(year(date) %in% pcfg@clim.years) %>%
+  group_by(spName,statName,resultName) %>%
+  summarise(clim.mean=mean(value),
+            clim.sd=sd(value),
+            clim.n=n(),
+            .groups="drop")
+
+assert_that(all(obs.clim$clim.n==length(pcfg@clim.years)),
+            msg="Mismatch between number of clim years and amount of data")
+
+#Setup forecasts using the climatology as the forecast as well.
+clim.as.forecast <- 
+  left_join(x=obs.dat,
+            y=obs.clim,
+            by=c("spName","statName","resultName")) %>%
+  mutate(value=clim.mean,
+         srcType="Climatology") %>%
+  filter(year(date) %in% pcfg@comp.years)
 
 #'========================================================================
 # Setup persistence forecasts ####
@@ -116,28 +144,79 @@ obs.dat.stats <-
 #'well, especially given that we now are applying the meanadjusted calibration
 #'method to the observations as well (especially giving us the basis for an 
 #'anomaly persistence forecast)
-
+#'
+#'Note that the definition of persistence that we use here is persisting the
+#'stat forward in time. We first need to work out what data is available on 
+#'a given date 
 log_msg("Persistence...\n")
 
-persis.stats.dat <- 
+#Calculate running averages for persistence forecasts 
+#Note that we do this again ourselves, as we want
+#the right-aligned window (ie for the previous n years),
+#whereas all of the other running averages are based on
+#the centered window.
+#Also don't want any smoothed data
+persis.dat <-
+  obs.dat.all %>%
+  filter(!grepl("/.+$",resultName)) %>%   #Remove smoothed variables
+  group_by(srcType,srcName,spName,statName,resultName) %>%
+  arrange(date,.by_group=TRUE) %>%
+  
+  mutate(RollMean3=roll_meanr(value,n=3),
+         RollMean5=roll_meanr(value,n=5),
+         srcType="Persistence") %>%
+  ungroup() %>%
+  #Pivot longer and merge averages into value column
+  rename(rawValue=value)%>%
+  pivot_longer(c(rawValue,starts_with("RollMean")),
+               names_to = "averaging",values_to = "value") %>%
+  unite("resultName",c("resultName","averaging"),sep="/") %>%
+  mutate(resultName=gsub("/rawValue$","",resultName))  #Don't label raw value
+
+#Calculate the persistences that we want to include
+persis.grid <- 
   #Setup grid
-  expand_grid(startDate=unique(obs.dat$date),
+  expand_grid(date=unique(obs.dat$date),
               lead=pcfg@persistence.leads) %>%
-  mutate(forecastDate=startDate+months(lead)) %>%
   #Drop non-relevant forecasts
-  filter(month(forecastDate) %in% pcfg@MOI,
-         year(forecastDate) %in% pcfg@comp.years) %>%
-  #Make the forecasts 
-  mutate(startDate=date_to_ym(startDate)) %>%
-  left_join(y=obs.dat,
-            by=c(startDate="ym")) %>%
+  filter(year(date) %in% pcfg@comp.years) %>%
+  mutate(startDate=date-months(lead),
+         startDate.ym=date_to_ym(startDate))
+
+#Matching up the available data with the requested startDates
+#is done via a lookup table
+availability.tbl <-
+  expand_grid(request.startDates=unique(persis.grid$startDate),  #Generate combinations
+              available.dates=unique(persis.dat$date)) %>%
+  mutate(difference=month_diff(request.startDates,available.dates)) %>%  #Calculate difference
+  filter(difference>=0) %>%  #Remove all those in the future (but same month is ok)
+  group_by(request.startDates) %>%
+  filter(difference==min(difference)) %>%  #Retain closest match
+  mutate(n=n()) %>%
+  ungroup() %>%
+  mutate(request.ym=date_to_ym(request.startDates))
+
+assert_that(all(availability.tbl$n==1),
+            msg="Failure in generation of lookup table.")
+
+#Combine the grid and the data to generate forecasts
+persis.forecasts <-
+  #Merge in availability table
+  left_join(x=persis.grid,
+            y=availability.tbl,
+            by=c(startDate.ym="request.ym")) %>%
+  select(date,lead,request.startDates,available.dates) %>%
+  mutate(available.ym=date_to_ym(available.dates)) %>%
+  #Join with data
+  left_join(y=persis.dat,
+            by=c(available.ym="ym"),
+            suffix=c("",".availDate")) %>%
   #Tidy up to merge with rest
-  transmute(srcType="Persistence",
-            srcName,
+  transmute(srcType,srcName,
             calibrationMethod=NA_character_,
             realization=NA_character_,
-            startDate=date,
-            date=forecastDate,
+            startDate=request.startDates,
+            date=date,
             spName,statName,resultName,value,
             ym=date_to_ym(date))
 
@@ -149,37 +228,35 @@ persis.stats.dat <-
 #situations where we envisage using PredEnd i.e. one data point per year - but
 #we need to be aware that this is not exactly the case 
 log_msg("Model data...\n")
-#To reduce the computational load, we first get a list of values that we actually want to include
-mdl.stats.df<- 
+#Check whether we have any data other than observations in the database
+n.mdl.stats <- 
   stats.tbl %>%
-  filter(srcType != "Observations") %>%
-  select(pKey,date) %>%
-  collect() %>%
-  filter(year(date) %in% pcfg@comp.years) 
+  filter(!srcType %in% c("Observations","Persistence")) %>%
+  summarise(n=n()) %>%
+  collect()  %>%
+  pull()
 
 #If the database hasn't been run with forecast models, then there is nothing to do here
-have.mdl.dat <- nrow(mdl.stats.df)!=0
+have.mdl.dat <- n.mdl.stats !=0
 if(have.mdl.dat) {
-  mdl.stats <-
-    mdl.stats.df %>%
-    pull(pKey)
-
   mdl.stats.dat <- 
     #Import relevant data first
     stats.tbl %>%
-    filter(pKey %in% mdl.stats) %>%
+    filter(!srcType %in% c("Observations","Persistence")) %>%
     select(-field,-pKey,-leadIdx) %>% 
-    collect() %>%
-    #Remove NAs
     filter(!is.na(value)) %>%
+    collect() %>%
     #Tweak
     mutate(startDate=ymd(startDate),
            date=ymd(date),
-           ym=date_to_ym(date))
+           ym=date_to_ym(date)) %>%
+    #Comparison years only
+    filter(year(date) %in% pcfg@comp.years)
   
   #Now combine with persistence forecasts
   pred.dat <- 
-    bind_rows(persis.stats.dat,
+    bind_rows(persis.forecasts,
+              select(clim.as.forecast,-starts_with("clim")),
               mdl.stats.dat)
 
 } else { #Only process persistence data
@@ -191,23 +268,14 @@ if(have.mdl.dat) {
 # Calculate the metrics for central tendencies ####
 #'========================================================================
 log_msg("Central tendency metrics...\n")
-#First setup the forecast data
-mean.pred <- 
-  pred.dat %>%
-  #Only want persistence, realmean or ensmean
-  filter(realization %in% c("realmean","ensmean") | srcType=="Persistence") %>%
-  #Merge in the observations
-  left_join(y=obs.dat.bare,
-            by=c("ym","spName","statName","resultName"),
-            suffix=c(".pred",".obs")) %>%
-  #Tidy up
-  select(-ym)
 
 #Skill functions
-skill.fn <- function(x,y,n.samples=1000,probs=c(0.025,0.5,0.975)) { 
+cent.skill.fn <- function(d,n.samples=1000) { 
+  #d <- cent.pred$data[[1]]
+
   #Setup
   xy <- 
-    cbind(x,y) %>%
+    cbind(d$value.obs,d$value.pred) %>%
     na.omit() 
   
   err <-
@@ -217,10 +285,9 @@ skill.fn <- function(x,y,n.samples=1000,probs=c(0.025,0.5,0.975)) {
   resamp.mse <- 
     tibble(samples=map(1:n.samples,~sample(err,length(err),replace=TRUE)),
            mean=map_dbl(samples,mean)) %>%
-    summarise(enframe(quantile(mean,prob=probs),
-                      name="CI")) %>%
-    bind_rows(tibble(CI=NA,value=mean(err))) %>%
-    mutate(metric="MSE")
+    summarise(metric="MSE",
+              draws=list(mean)) %>%
+    mutate(value=mean(err))
   
   #Correlation coefficent
   resamp.cor <-
@@ -228,33 +295,49 @@ skill.fn <- function(x,y,n.samples=1000,probs=c(0.025,0.5,0.975)) {
            xy=map(idxs,~ xy[.x,]),
            cor=map_dbl(xy,~cor(.x[,1],.x[,2]))) %>%
     filter(!is.na(cor)) %>%
-    summarise(enframe(quantile(cor,prob=probs),
-                      name="CI")) %>%
-    bind_rows(tibble(CI=NA,value=cor(xy[,1],xy[,2]))) %>%
-    mutate(metric="pearson.correlation")
-  
-  bind_rows(resamp.mse,resamp.cor)}
+    summarise(metric="pearson.correlation",
+              draws=list(cor)) %>%
+    mutate(value=cor(xy[,1],xy[,2],use="pairwise.complete.obs"))
 
-#Now calculate the skill over all start dates.
-g.vars <- c("srcType","srcName","realization","calibrationMethod",
-            "spName","statName","resultName","lead")
-mean.metrics <- 
-  #Customise observation metrics first
-  obs.dat.stats %>%
-  rename(value.pred=mean,  #Predicted by a reference model using climatology
-         value.obs=value) %>%
-  select(-sd) %>%
-  bind_rows(mean.pred) %>%
+  bind_rows(resamp.mse,resamp.cor)
+}
+
+#First setup the forecast data
+cent.pred <- 
+  pred.dat %>%
+  #Only want persistence, realmean or ensmean
+  filter(realization %in% c("realmean","ensmean") | 
+           srcType %in% c("Persistence","Climatology")) %>%
+  #Merge in the observations
+  left_join(y=obs.dat.bare,
+            by=c("ym","spName","statName","resultName"),
+            suffix=c(".pred",".obs")) %>%
   #Add lead
   mutate(lead=month_diff(date,startDate))  %>%
-  #Group and calculate metrics
-  group_by(across(all_of(g.vars)),.drop = TRUE) %>%
-  summarise(skill.fn(value.pred,value.obs),
-            .groups="keep")  
+  #Nest
+  group_by(srcType,srcName,calibrationMethod,realization,
+         spName,statName,resultName,lead,
+         .drop = TRUE) %>%
+  group_nest() 
 
+#Dry run
+log_msg("Dry run....")
+run.time <- system.time({dmp.cal <- cent.skill.fn(cent.pred$data[[1]])})
+log_msg("Complete in %0.3fs.\n",run.time[3])
+log_msg("Sanity check passed. Parallellising using %i cores...\n",n.cores)
+
+#Now calculate the skill in a parallelised manner
+cent.metrics <- 
+  cent.pred %>%
+  mutate(metrics=future_map(data,
+                            cent.skill.fn,
+                            .options = furrr_options(stdout=FALSE,
+                                                     seed=TRUE))) %>%
+  select(-data) %>% 
+  unnest(metrics)
 
 #Write these results
-mean.metrics %>%
+cent.metrics %>%
   PE.db.appendTable(pcfg,PE.cfg$db$metrics)
 
 #'========================================================================
@@ -273,29 +356,68 @@ if(have.mdl.dat) {
     group_by(srcType,srcName,calibrationMethod,startDate,date,spName,statName,resultName,.drop=TRUE) %>%
     summarise(pred.mean=mean(value),
               pred.sd=sd(value),
-              .groups="drop") %>%
-    #Merge in observations
+              pred.n=n(),
+              .groups="drop") 
+  
+  #Merge with observations and climatalogy
+  dist.dat <-
+    #Use climatology as a forecast
+    clim.as.forecast %>%
+      rename(pred.mean=clim.mean,
+             pred.sd=clim.sd,
+             pred.n=clim.n) %>%
+      select(-value) %>%
+    #Add in predictions
+    bind_rows(dist.pred) %>%
+    #Add in observations
     mutate(ym=date_to_ym(date)) %>%
     left_join(y=obs.dat.bare,
               by=c("ym","spName","statName","resultName"),
               suffix=c(".mdl",".obs")) %>%
-    select(-ym)
+    #Tidy
+    mutate(lead=month_diff(date,startDate)) %>%
+    group_by(srcType,srcName,calibrationMethod,spName,
+             statName,resultName,lead,.drop=TRUE) %>%
+    group_nest()
   
+  #Skill functions
+  dist.skill.fn <- function(d,n.samples=1000) { 
+    #d <- dist.dat$data[[1]]
+    
+    #Setup
+    xy <- 
+      d %>%
+      dplyr::select(value,pred.mean,pred.sd) %>%
+      na.omit() 
+    
+    #CRPS
+    resamp.CRPS <-
+      tibble(idxs=map(1:n.samples,~sample(1:nrow(xy),nrow(xy),replace=TRUE)),
+             xy=map(idxs,~ xy[.x,]),
+             crps=map_dbl(xy,~crps(.x$value,cbind(.x$pred.mean,.x$pred.sd))$CRPS)) %>%
+      filter(!is.na(crps)) %>%
+      summarise(metric="crps",
+                draws=list(crps)) %>%
+      mutate(value=crps(xy$value,cbind(xy$pred.mean,xy$pred.sd))$CRPS)
+    
+    return(resamp.CRPS)
+  }
+    
   #Now calculate statistics
   dist.metrics <- 
-    #Customise observation metrics first
-    obs.dat.stats %>%
-    rename(pred.mean=mean,pred.sd=sd) %>%
-    bind_rows(dist.pred) %>%
-    #Add lead
-    mutate(lead=month_diff(date,startDate))  %>%
-    #Group and calculate
-    group_by(srcType,srcName,calibrationMethod,spName,statName,resultName,lead,.drop=TRUE) %>%
-    summarise(crps=crps(value,cbind(pred.mean,pred.sd))$CRPS,
-              .groups="keep") %>%
-    pivot_longer(-group_vars(.),names_to = "metric") %>%
-    ungroup() %>%
+    dist.dat %>%
+    mutate(metrics=future_map(data,
+                              dist.skill.fn,
+                              .options = furrr_options(stdout=FALSE,
+                                                       seed=TRUE))) %>%
+    select(-data) %>% 
+    unnest(metrics) %>%
     mutate(realization="realmean")
+  
+  #Write these results
+  dist.metrics %>%
+    PE.db.appendTable(pcfg,PE.cfg$db$metrics)
+  
   
   #'========================================================================
   # Skill scores ####
@@ -303,37 +425,45 @@ if(have.mdl.dat) {
   log_msg("Skill scores...\n")
   #Calculate skill scores where possible
   #First, extract the observation (climatology)-based metrics
+  #Note that we don't permit any error in the climatological metrics
+  #This is perhaps an oversight, but it is much simpler.
   clim.metrics <-
-    bind_rows(mean.metrics,dist.metrics) %>%
-    filter(srcType=="Observations") %>%
-    ungroup() %>%
-    select(-srcType,-srcName,-calibrationMethod,-lead,-realization)
+    bind_rows(cent.metrics,dist.metrics) %>%
+    filter(srcType=="Climatology") %>%
+    ungroup()   %>%
+    select(spName,statName,resultName,metric,value,draws)
   
   #Calculate skill scores by merging back into metrics
   skill.scores <- 
-    bind_rows(mean.metrics,dist.metrics) %>%
+    bind_rows(cent.metrics,dist.metrics) %>%
     filter(metric %in% c("crps","MSE")) %>%
     left_join(y=clim.metrics,
               by=c("spName","statName","resultName","metric"),
               suffix=c(".mdl",".ref")) %>%
-    mutate(value=1-value.mdl/value.ref) %>%
+    mutate(value=1-value.mdl/value.ref,
+           draws=map2(draws.mdl,value.ref, ~ 1-.x/.y),
+           draws2=map2(draws.mdl,draws.ref,~1-.x/.y),
+           UL=map_dbl(draws,quantile,prob=0.05),
+           LL=map_dbl(draws,quantile,prob=0.95),
+           UL2=map_dbl(draws2,quantile,prob=0.05),
+           LL2=map_dbl(draws2,quantile,prob=0.95),
+           IQR.mdl=map_dbl(draws.mdl,IQR),
+           IQR.ref=map_dbl(draws.ref,IQR),
+           IQR.ratio=IQR.mdl/IQR.ref) %>%
     #Rename skill scores and tidy
     mutate(metric=case_when(metric=="crps" ~"crpss",
                             metric=="MSE" ~ "MSSS",
-                            TRUE~NA_character_)) %>%
-    select(-value.mdl,-value.ref)
+                            TRUE~NA_character_)) 
   
-  #'========================================================================
-  # Complete ####
-  #'========================================================================
-  log_msg("Output...\n")
-  #Now write to database
-  met.out <-
-    bind_rows(dist.metrics,skill.scores)  %>%
-    filter(srcType!="Observations")
-
-  PE.db.appendTable(met.out,pcfg,PE.cfg$db$metrics)
+  #Drop exploratory columns and write to database
+  skill.scores %>%
+    select(all_of(names(dist.metrics))) %>%
+    PE.db.appendTable(pcfg,PE.cfg$db$metrics)  
 }
+
+#'========================================================================
+# Complete ####
+#'========================================================================
 #Turn off the lights
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 

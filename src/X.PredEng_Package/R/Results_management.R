@@ -139,7 +139,7 @@ PE.db.setup <- function(pcfg,results.only=FALSE) {
   dbDisconnect(this.db)
 }
 
-PE.db.safe.try <- function(expr,silent=TRUE,n.max=100) {
+PE.db.safe.try <- function(expr,silent=TRUE,n.max=2) {
   i <- 0
   while(i<n.max) {
     rtn <- try(expr,silent=silent)  
