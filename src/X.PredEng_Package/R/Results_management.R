@@ -209,7 +209,7 @@ PE.db.appendTable <- function(object,table,dat,silent=TRUE,serialize.first=TRUE)
   if(serialize.first) {
     dat <- 
       dat %>%
-      mutate(across(where(is.list),function(cl) map(cl,serialize,NULL))) 
+      mutate(across(where(is.list),function(cl) map(cl,qserialize))) 
   }
   #Write
   db.con <- PE.db.connection(object,table)
@@ -226,7 +226,7 @@ PE.db.appendTable <- function(object,table,dat,silent=TRUE,serialize.first=TRUE)
 PE.db.unserialize <- function(dat) {
   dat %>%
     as_tibble() %>%
-  mutate(across(where(~is(.x,"blob")),function(cl) map(cl,unserialize)))
+  mutate(across(where(~is(.x,"blob")),function(cl) map(cl,qdeserialize)))
 }
 
 

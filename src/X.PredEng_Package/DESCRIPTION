@@ -21,7 +21,8 @@ Depends:
     assertthat,
     here,
     DBI,
-    RSQLite
+    RSQLite,
+    qs
 RoxygenNote: 7.1.0
 Suggests:
     maps
