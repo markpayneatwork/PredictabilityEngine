@@ -25,6 +25,9 @@ PE.config.summary<- function(...){
   }
   log_msg("---------------------\n")
   log_msg("%-20s : %s\n","R.version", R.version$version.string)
+  log_msg("%-20s : %s\n","Git branch",system2("git","branch --show-current",stdout = TRUE))
+  log_msg("%-20s : %s\n","Git commit",system2("git","log --pretty=format:'%h' -n 1",stdout = TRUE))
+  log_msg("%-20s : %s\n","Commit date",system2("git","log --pretty=format:'%cd' -n 1",stdout = TRUE))
   log_msg("---------------------\n")
 }
 
