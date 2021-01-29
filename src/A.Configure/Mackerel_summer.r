@@ -56,6 +56,9 @@ pcfg <- PredEng.config(project.name= "Mackerel_summer",
 pcfg@scratch.dir <- file.path("scratch",pcfg@project.name)
 define_dir(pcfg@scratch.dir)
 
+#Setup persistence
+pcfg@persistence.leads <- seq(pcfg@MOI-1,120,by=12)
+
 #Select decadal models
 pcfg@Decadal <- SST.Decadal.production
 
@@ -108,15 +111,16 @@ pcfg@spatial.polygons <-
 #'========================================================================
 #Configure summary stats
 statsum.l <- PElst()
-statsum.l[[1]] <- threshold(name="JansenTreshold",
+statsum.l$Jansen <- threshold(name="JansenTreshold",
                             desc = "Area above 8.5 degrees",
                             above=TRUE,
                             calibration = c("MeanAdj","MeanVarAdj"),
+                            retain.field = FALSE,
                             realizations=1:4,
                             threshold=8.5)  #Based on Jansen et al
-statsum.l[[2]] <- spatial.mean(name="TempAnomaly",
-                               desc="Temperature anomaly",
-                               calibration="anomaly")
+# statsum.l$temp <- spatial.mean(name="TempAnomaly",
+#                                desc="Temperature anomaly",
+#                                calibration="anomaly")
 
 #Setup habitat suitability functionality
 habitat.mdl.dat <- readRDS("resources/Mackerel_summer_QR_values.rds")
@@ -144,11 +148,12 @@ habitat.fn <- function(dat,resources) {
   return(this.rtn)
 }
 
-statsum.l[[3]] <-  custom.stat(name="HabitatModel",
+statsum.l$HabitatModel <-  custom.stat(name="HabitatModel",
                            desc="Quantile regression habitat model",
                            fn=habitat.fn,
                            resources=resource.l,
                            calibration = c("MeanAdj","MeanVarAdj"),
+                           retain.field=FALSE,
                            realizations=1:4)
 
 #Merge it all in

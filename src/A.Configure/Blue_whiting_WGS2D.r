@@ -259,7 +259,8 @@ stat.l$SDM <-
               resources=GAM.sdm.resources,
               realizations=1,
               use.globalROI = TRUE,
-              calibration=c("MeanAdj","MeanVarAdj"))
+              retain.fields=TRUE,
+              calibration=c("MeanAdj"))
 
 #Merge it all in
 pcfg@statistics <- stat.l
