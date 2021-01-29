@@ -131,7 +131,7 @@ frag.dat <- tibble(srcFname=NA,
 #Write to database
 frag.dat %>%
   mutate(date=as.character(date)) %>%
-  PE.db.appendTable(pcfg,PE.cfg$db$extract)
+  PE.db.appendTable(pcfg,PE.cfg$db$extract,dat=.)
 
 #'========================================================================
 # Complete ####

@@ -86,7 +86,7 @@ NAO.ranking <-
   filter(match.method %in% match.methods)
 
 #Setup databases
-this.db <- PE.db.connection(pcfg)
+this.db <- PE.db.connection(pcfg,PE.cfg$db$calibration)
 calib.tbl <- tbl(this.db,PE.cfg$db$calibration)
 
 #Clear all previous analyses that give these types of calibration methods
@@ -96,7 +96,7 @@ del.this <-
   select(pKey) %>%
   collect() %>%
   pull(pKey) 
-PE.db.delete.by.pKey(pcfg,tbl.name=PE.cfg$db$calibration,del.this)
+PE.db.delete.by.pKey(pcfg,PE.cfg$db$calibration,del.this)
 
 #Which data sets and start dates can we apply NAO matching to?
 extract.cols <- c("srcType","srcName","startDate")
@@ -160,7 +160,7 @@ for(n in n.members) {
         select(-pKey)  
       #Then rewrite
       #Note that we save a bit of time by skipping the unserialization step.
-      PE.db.appendTable(this.sel,pcfg,PE.cfg$db$calibration,serialize.first=FALSE)
+      PE.db.appendTable(pcfg,PE.cfg$db$calibration,this.sel,serialize.first=FALSE)
     })
 }
 
@@ -223,7 +223,7 @@ for(this.basket in basket.l) {
   
   #Write to database 
   realMeans %>%
-    PE.db.appendTable(pcfg, PE.cfg$db$calibration)
+    PE.db.appendTable(pcfg, PE.cfg$db$calibration,dat=.)
   
   #Loop
   pb$tick()
@@ -236,6 +236,7 @@ for(this.basket in basket.l) {
 #'========================================================================
 #Turn off the lights
 plan(sequential)
+dbDisconnect(this.db)
 if(length(warnings())!=0) print(warnings())
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 

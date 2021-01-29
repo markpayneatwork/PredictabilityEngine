@@ -128,7 +128,7 @@ frag.dat <- tibble(srcFname=basename(this.datasrc@sources),
 #Write to database
 frag.dat %>%
   mutate(date=as.character(date)) %>%
-  PE.db.appendTable(pcfg,PE.cfg$db$extract)
+  PE.db.appendTable(pcfg,PE.cfg$db$extract,dat=.)
 
 #Remove the temporary files to tidy up
 del.err <- unlink(regrid.fname)

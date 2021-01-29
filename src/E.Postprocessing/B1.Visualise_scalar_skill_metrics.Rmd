@@ -90,9 +90,10 @@ start.near.term <- 2015
 # Setup ####
 #'========================================================================
 #Import data
-this.db <- PE.db.connection(pcfg,results.db = TRUE)
-stats.tbl <- tbl(this.db,PE.cfg$db$stats)
-mets.tbl <- tbl(this.db,PE.cfg$db$metrics)
+db.stats <- PE.db.connection(pcfg,PE.cfg$db$stats)
+stats.tbl <- tbl(db.stats,PE.cfg$db$stats)
+db.mets <- PE.db.connection(pcfg,PE.cfg$db$metrics)
+mets.tbl <- tbl(db.mets,PE.cfg$db$metrics)
 
 # #Plot misc!
 # x.lbls <- tibble(months=c(seq(0,12,by=3),seq(24,120,by=24)),t=rescale.fn(months)) %>%
@@ -300,6 +301,9 @@ for(this.sp in sp.names) {
 
 }
 
+
+dbDisconnect(db.stats)
+dbDisconnect(db.mets)
 ```
 
 

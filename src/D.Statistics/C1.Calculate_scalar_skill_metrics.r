@@ -66,7 +66,7 @@ plan(multisession,workers = n.cores)
 assert_that(length(pcfg@MOI)==1,msg="Metric calculation currently one works with one MOI")
 
 #Setup databases
-this.db <- PE.db.connection(pcfg)
+this.db <- PE.db.connection(pcfg,PE.cfg$db$stats)
 stats.tbl <- tbl(this.db,PE.cfg$db$stats)
 
 # #Reset the resutls table by deleting and reestablishing it
@@ -74,8 +74,8 @@ stats.tbl <- tbl(this.db,PE.cfg$db$stats)
 # PE.db.setup(pcfg)
 
 #Clear existing metrics table
-if(dbExistsTable(PE.db.connection(pcfg),PE.cfg$db$metrics)) {
-  dbRemoveTable(PE.db.connection(pcfg),PE.cfg$db$metrics)  
+if(file.exists(PE.db.path(pcfg,PE.cfg$db$metrics))) {
+  file.remove(PE.db.path(pcfg,PE.cfg$db$metrics))
 }
 
 #'========================================================================
@@ -123,9 +123,6 @@ obs.clim <-
             clim.sd=sd(value),
             clim.n=n(),
             .groups="drop")
-
-assert_that(all(obs.clim$clim.n==length(pcfg@clim.years)),
-            msg="Mismatch between number of clim years and amount of data")
 
 #Setup forecasts using the climatology as the forecast as well.
 clim.as.forecast <- 
@@ -338,7 +335,7 @@ cent.metrics <-
 
 #Write these results
 cent.metrics %>%
-  PE.db.appendTable(pcfg,PE.cfg$db$metrics)
+  PE.db.appendTable(pcfg,PE.cfg$db$metrics,dat=.)
 
 #'========================================================================
 # Distribution metrics ####
@@ -416,7 +413,7 @@ if(have.mdl.dat) {
   
   #Write these results
   dist.metrics %>%
-    PE.db.appendTable(pcfg,PE.cfg$db$metrics)
+    PE.db.appendTable(pcfg,PE.cfg$db$metrics,dat=.)
   
   
   #'========================================================================
@@ -458,7 +455,7 @@ if(have.mdl.dat) {
   #Drop exploratory columns and write to database
   skill.scores %>%
     select(all_of(names(dist.metrics))) %>%
-    PE.db.appendTable(pcfg,PE.cfg$db$metrics)  
+    PE.db.appendTable(pcfg,PE.cfg$db$metrics,dat=.)  
 }
 
 #'========================================================================
