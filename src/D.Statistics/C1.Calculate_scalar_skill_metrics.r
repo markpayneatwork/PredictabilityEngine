@@ -196,7 +196,7 @@ availability.tbl <-
   ungroup() %>%
   mutate(request.ym=date_to_ym(request.startDates))
 
-assert_that(all(lookup.tbl$n==1),
+assert_that(all(availability.tbl$n==1),
             msg="Failure in generation of lookup table.")
 
 #Combine the grid and the data to generate forecasts
@@ -270,7 +270,8 @@ if(have.mdl.dat) {
 log_msg("Central tendency metrics...\n")
 
 #Skill functions
-skill.fn <- function(d,n.samples=1000,probs=c(0.025,0.05,0.25,0.5,0.75,0.95,0.975)) { 
+cent.skill.fn <- function(d,n.samples=1000) { 
+  #d <- cent.pred$data[[1]]
 
   #Setup
   xy <- 
@@ -284,10 +285,9 @@ skill.fn <- function(d,n.samples=1000,probs=c(0.025,0.05,0.25,0.5,0.75,0.95,0.97
   resamp.mse <- 
     tibble(samples=map(1:n.samples,~sample(err,length(err),replace=TRUE)),
            mean=map_dbl(samples,mean)) %>%
-    summarise(CI=probs,
-              value=quantile(mean,prob=probs,names=FALSE)) %>%
-    bind_rows(tibble(CI=NA,value=mean(err))) %>%
-    mutate(metric="MSE")
+    summarise(metric="MSE",
+              draws=list(mean)) %>%
+    mutate(value=mean(err))
   
   #Correlation coefficent
   resamp.cor <-
@@ -295,10 +295,9 @@ skill.fn <- function(d,n.samples=1000,probs=c(0.025,0.05,0.25,0.5,0.75,0.95,0.97
            xy=map(idxs,~ xy[.x,]),
            cor=map_dbl(xy,~cor(.x[,1],.x[,2]))) %>%
     filter(!is.na(cor)) %>%
-    summarise(CI=probs,
-              value=quantile(cor,prob=probs,names=FALSE)) %>%
-    bind_rows(tibble(CI=NA,value=cor(xy[,1],xy[,2]))) %>%
-    mutate(metric="pearson.correlation")
+    summarise(metric="pearson.correlation",
+              draws=list(cor)) %>%
+    mutate(value=cor(xy[,1],xy[,2],use="pairwise.complete.obs"))
 
   bind_rows(resamp.mse,resamp.cor)
 }
@@ -320,17 +319,20 @@ cent.pred <-
          spName,statName,resultName,lead,
          .drop = TRUE) %>%
   group_nest() 
-stop()
+
 #Dry run
 log_msg("Dry run....")
-run.time <- system.time({dmp.cal <- skill.fn(cent.pred$data[[1]])})
+run.time <- system.time({dmp.cal <- cent.skill.fn(cent.pred$data[[1]])})
 log_msg("Complete in %0.3fs.\n",run.time[3])
 log_msg("Sanity check passed. Parallellising using %i cores...\n",n.cores)
 
 #Now calculate the skill in a parallelised manner
 cent.metrics <- 
   cent.pred %>%
-  mutate(metrics=future_map(data,skill.fn)) %>%
+  mutate(metrics=future_map(data,
+                            cent.skill.fn,
+                            .options = furrr_options(stdout=FALSE,
+                                                     seed=TRUE))) %>%
   select(-data) %>% 
   unnest(metrics)
 
@@ -375,17 +377,47 @@ if(have.mdl.dat) {
     #Tidy
     mutate(lead=month_diff(date,startDate)) %>%
     group_by(srcType,srcName,calibrationMethod,spName,
-             statName,resultName,lead,.drop=TRUE)
+             statName,resultName,lead,.drop=TRUE) %>%
+    group_nest()
+  
+  #Skill functions
+  dist.skill.fn <- function(d,n.samples=1000) { 
+    #d <- dist.dat$data[[1]]
+    
+    #Setup
+    xy <- 
+      d %>%
+      dplyr::select(value,pred.mean,pred.sd) %>%
+      na.omit() 
+    
+    #CRPS
+    resamp.CRPS <-
+      tibble(idxs=map(1:n.samples,~sample(1:nrow(xy),nrow(xy),replace=TRUE)),
+             xy=map(idxs,~ xy[.x,]),
+             crps=map_dbl(xy,~crps(.x$value,cbind(.x$pred.mean,.x$pred.sd))$CRPS)) %>%
+      filter(!is.na(crps)) %>%
+      summarise(metric="crps",
+                draws=list(crps)) %>%
+      mutate(value=crps(xy$value,cbind(xy$pred.mean,xy$pred.sd))$CRPS)
+    
+    return(resamp.CRPS)
+  }
     
   #Now calculate statistics
   dist.metrics <- 
     dist.dat %>%
-    summarise(crps=crps(value,cbind(pred.mean,pred.sd))$CRPS,
-              .groups="keep") %>%
-    pivot_longer(-group_vars(.),names_to = "metric") %>%
-    ungroup() %>%
-    mutate(realization="realmean",
-           CI=NA)
+    mutate(metrics=future_map(data,
+                              dist.skill.fn,
+                              .options = furrr_options(stdout=FALSE,
+                                                       seed=TRUE))) %>%
+    select(-data) %>% 
+    unnest(metrics) %>%
+    mutate(realization="realmean")
+  
+  #Write these results
+  dist.metrics %>%
+    PE.db.appendTable(pcfg,PE.cfg$db$metrics)
+  
   
   #'========================================================================
   # Skill scores ####
@@ -397,10 +429,9 @@ if(have.mdl.dat) {
   #This is perhaps an oversight, but it is much simpler.
   clim.metrics <-
     bind_rows(cent.metrics,dist.metrics) %>%
-    filter(srcType=="Climatology",
-           is.na(CI)) %>%
+    filter(srcType=="Climatology") %>%
     ungroup()   %>%
-    select(spName,statName,resultName,metric,value)
+    select(spName,statName,resultName,metric,value,draws)
   
   #Calculate skill scores by merging back into metrics
   skill.scores <- 
@@ -409,23 +440,30 @@ if(have.mdl.dat) {
     left_join(y=clim.metrics,
               by=c("spName","statName","resultName","metric"),
               suffix=c(".mdl",".ref")) %>%
-    mutate(value=1-value.mdl/value.ref) %>%
+    mutate(value=1-value.mdl/value.ref,
+           draws=map2(draws.mdl,value.ref, ~ 1-.x/.y),
+           draws2=map2(draws.mdl,draws.ref,~1-.x/.y),
+           UL=map_dbl(draws,quantile,prob=0.05),
+           LL=map_dbl(draws,quantile,prob=0.95),
+           UL2=map_dbl(draws2,quantile,prob=0.05),
+           LL2=map_dbl(draws2,quantile,prob=0.95),
+           IQR.mdl=map_dbl(draws.mdl,IQR),
+           IQR.ref=map_dbl(draws.ref,IQR),
+           IQR.ratio=IQR.mdl/IQR.ref) %>%
     #Rename skill scores and tidy
     mutate(metric=case_when(metric=="crps" ~"crpss",
                             metric=="MSE" ~ "MSSS",
-                            TRUE~NA_character_)) %>%
-    select(-value.mdl,-value.ref)
+                            TRUE~NA_character_)) 
   
-  #'========================================================================
-  # Complete ####
-  #'========================================================================
-  log_msg("Output...\n")
-  #Now write to database
-  met.out <-
-    bind_rows(dist.metrics,skill.scores)
-
-  PE.db.appendTable(met.out,pcfg,PE.cfg$db$metrics)
+  #Drop exploratory columns and write to database
+  skill.scores %>%
+    select(all_of(names(dist.metrics))) %>%
+    PE.db.appendTable(pcfg,PE.cfg$db$metrics)  
 }
+
+#'========================================================================
+# Complete ####
+#'========================================================================
 #Turn off the lights
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
