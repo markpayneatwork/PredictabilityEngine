@@ -105,15 +105,15 @@ cfgs$Bluefin <-
 #          lbl="b) Blue whiting",
 #          var="Sal",
 #          fig="skill")
-# cfgs$Mackerel_summer <-
-#   tibble(tbl=PE.cfg$db$metrics,
-#          spName="Greenland",
-#          statName="HabitatModel",
-#          resultName="carryingCapacity",
-#          calibrationMethod="MeanAdj",
-#          lbl="c) Mackerel",
-#          var="SST",
-#          fig="skill") 
+cfgs$Mackerel_summer <-
+  tibble(tbl=PE.cfg$db$metrics,
+         spName="Greenland",
+         statName="JansenTreshold",
+         resultName="area",
+         calibrationMethod="MeanAdj",
+         lbl="c) Mackerel",
+         var="SST",
+         fig="skill")
 # cfgs$NA_SST <-
 #   tibble(tbl=PE.cfg$db$metrics.field,
 #          spName="globalROI",
@@ -138,25 +138,6 @@ these.cfg <-
          stats.db=map(name,~dbConnect(SQLite(),here(this.dir,.x,sprintf("%s_statistics.sqlite",.x)))), 
          mets.db=map(name,~dbConnect(SQLite(),here(this.dir,.x,sprintf("%s_metrics.sqlite",.x))))) 
 
-#Import data and select skill metrics
-metrics.dat <-
-  these.cfg %>%
-  rowwise() %>%
-  group_split() %>%
-  map_dfr(function(this) {
-    this$mets.dat <- 
-      this$mets.db[[1]] %>%
-      tbl("metrics") %>%
-      filter(spName==!!this$spName,
-             statName==!!this$statName,
-             resultName==!!this$resultName) %>%
-      collect() %>%
-      filter(calibrationMethod==this$calibrationMethod | is.na(calibrationMethod)) %>%
-      PE.db.unserialize() %>%
-      list()
-    return(this)
-  })
-
 ```
 
 
@@ -169,6 +150,25 @@ metrics.dat <-
 ## * Add statistical significance
 ## * Correct time axis
 #'========================================================================
+#Import data and select skill metrics
+metrics.dat <-
+  these.cfg %>%
+  rowwise() %>%
+  group_split() %>%
+  map_dfr(function(this) {
+    this$mets.dat <- 
+      this$mets.db[[1]] %>%
+      tbl(PE.cfg$db$metrics) %>%
+      filter(spName==!!this$spName,
+             statName==!!this$statName,
+             resultName==!!this$resultName) %>%
+      collect() %>%
+      filter(calibrationMethod==this$calibrationMethod | is.na(calibrationMethod)) %>%
+      PE.db.unserialize() %>%
+      list()
+    return(this)
+  })
+
 #Process skill data
 skill.cfgs <- 
   metrics.dat %>%
@@ -194,102 +194,202 @@ decadal.leads <-
   unite(lbl.lead,lbl,lead) %>%
   pull()
 
-cleaned.dat <- 
-  skill.dat %>%
-  filter(metric=="pearson.correlation") %>%
-  unite(lbl.lead,lbl,lead,remove=FALSE) %>%
-  filter(lbl.lead %in% decadal.leads) 
+plt.cfgs <-
+  list(list(metric="pearson.correlation",
+            ylab="Pearson correlation coefficient (r)",
+            ylim=c(0,1.1)),
+       list(metric="MSSS",
+            ylab="Mean squared error skill score (MSESS)",
+            ylim=c(-1,1.2)))
 
-#Now split into individuals models
-models.dat <- 
-  cleaned.dat %>%
-  filter(!highlight)  #Use the best estimate 
-
-ensmean.dat <-
-  cleaned.dat %>%
-  filter(dispName=="Ens. mean")
-
-persis.dat <-
-  cleaned.dat %>%
-  filter(dispName=="Persistence") 
-
-highlight.dat <-
-  cleaned.dat %>%
-  filter(highlight) %>%
-  mutate(upperCI=map_dbl(draws,quantile,probs=0.95),
-         lowerCI=map_dbl(draws,quantile,probs=0.05))
-
-signif.dat <- 
-  highlight.dat %>%
-  select(lbl,lead.yrs,draws,dispName) %>%
-  pivot_wider(names_from="dispName",values_from = "draws") %>%
-  mutate(p.value=map2_dbl(`Ens. mean`,Persistence, ~ mean(.x < .y)),
-         p.txt=cut(p.value,breaks=c(-1,0.001,0.01,0.05,1),
-                   labels=c("p < 0.001","p < 0.01", "p < 0.05", "ns")))
-
-#Plot miscs
-colour.pal <- hue_pal()(7)
-
-
-g <- 
-  #Setup baseline
-  ggplot()+
-  facet_wrap(~lbl,ncol=1)+
-  annotate("rect",xmin=0,xmax=10,ymin=1,ymax=1.1,fill="white",colour="black")+
-  scale_linetype_manual(values="dotted")+
-  coord_cartesian(xlim=c(0,10),ylim=c(0,1.1),expand=FALSE)+
-  scale_x_continuous(breaks=0:10)+
-  theme(legend.position="bottom")+
-  labs(x="Lead time (years)",
-       y="Pearson correlation coefficient (r)")+
-  #Highlight bands
-  geom_ribbon(mapping=aes(x=lead.yrs,
-                          ymin=lowerCI,
-                          ymax=upperCI,
-                          fill=dispName),
-              data=highlight.dat,
-              alpha=0.25,
-              show.legend = FALSE)+
-  scale_fill_manual(values=colour.pal[1:2])+
-  #Individual model plots
-  geom_line(data=models.dat,
-            mapping=aes(x=lead.yrs,
-                        y=value,
-                        colour=dispName),
-            size=0.2)+
-  scale_colour_manual(values=colour.pal[-c(1:2)],
-                      guide=guide_legend(order=2,ncol=1,
-                                         title="Individual Models",title.position = "top"))+
-  guides(linetype=guide_legend(title.position = "top"))+
-
-  #Highlight plots
-  new_scale_colour()+
-  geom_line(data=highlight.dat,
-            mapping=aes(x=lead.yrs,
-                        y=value,
-                        colour=dispName),
-            size=2)+
-  scale_colour_manual(values=colour.pal[1:2],
-                      guide=guide_legend(order=1,ncol=1,
-                                         title="Key Metrics",
-                                         title.position = "top"))+
-  geom_point(data=signif.dat,
-             mapping=aes(x=lead.yrs,y=1.05,shape=p.txt,size=p.txt))+
-  scale_shape_manual(values=c(17,24,3,1),
-                     drop=FALSE,
-                     guide=guide_legend(order=3,ncol=1,
-                                         title="Signif. test",
-                                         title.position = "top"))+
-  scale_size_manual(values=c(4,4,2,0.1),
-                     drop=FALSE,
-                     guide=guide_legend(order=3,ncol=1,
+for(this.cfg in plt.cfgs) {
+  
+  cleaned.dat <- 
+    skill.dat %>%
+    filter(metric==this.cfg$metric) %>%
+    unite(lbl.lead,lbl,lead,remove=FALSE) %>%
+    filter(lbl.lead %in% decadal.leads) 
+  
+  #Now split into individuals models
+  models.dat <- 
+    cleaned.dat %>%
+    filter(!highlight)  #Use the best estimate 
+  
+  ensmean.dat <-
+    cleaned.dat %>%
+    filter(dispName=="Ens. mean")
+  
+  persis.dat <-
+    cleaned.dat %>%
+    filter(dispName=="Persistence") 
+  
+  highlight.dat <-
+    cleaned.dat %>%
+    filter(highlight) %>%
+    mutate(upperCI=map_dbl(draws,quantile,probs=0.95),
+           lowerCI=map_dbl(draws,quantile,probs=0.05))
+  
+  signif.breaks <- c(-1,0.005,0.01,0.05,1)
+  signif.lbls <- c("p < 0.005","p < 0.01", "p < 0.05", "ns")
+  
+  signif.dat <- 
+    highlight.dat %>%
+    select(lbl,lead.yrs,draws,dispName) %>%
+    pivot_wider(names_from="dispName",values_from = "draws") %>%
+    mutate(p.value=map2_dbl(`Ens. mean`,Persistence, ~ mean(.x < .y)),
+           p.txt=cut(p.value,breaks=signif.breaks,
+                     labels=signif.lbls))
+  
+  #Plot miscs
+  colour.pal <- hue_pal()(7)
+  
+  
+  g <- 
+    #Setup baseline
+    ggplot()+
+    facet_wrap(~lbl,ncol=1)+
+    annotate("rect",xmin=0,xmax=10,ymin=1,ymax=max(this.cfg$ylim),fill="white",colour="black")+
+    scale_linetype_manual(values="dotted")+
+    coord_cartesian(xlim=c(0,10),
+                    ylim=this.cfg$ylim,
+                    expand=FALSE)+
+    scale_x_continuous(breaks=0:10)+
+    theme(legend.position="bottom")+
+    labs(x="Lead time (years)",
+         y=this.cfg$ylab)+
+    #Highlight bands
+    geom_ribbon(mapping=aes(x=lead.yrs,
+                            ymin=lowerCI,
+                            ymax=upperCI,
+                            fill=dispName),
+                data=highlight.dat,
+                alpha=0.25,
+                show.legend = FALSE)+
+    scale_fill_manual(values=colour.pal[1:2])+
+    #Individual model plots
+    geom_line(data=models.dat,
+              mapping=aes(x=lead.yrs,
+                          y=value,
+                          colour=dispName),
+              size=0.2)+
+    scale_colour_manual(values=colour.pal[-c(1:2)],
+                        guide=guide_legend(order=2,ncol=1,
+                                           title="Individual Models",title.position = "top"))+
+    guides(linetype=guide_legend(title.position = "top"))+
+    
+    #Highlight plots
+    new_scale_colour()+
+    geom_line(data=highlight.dat,
+              mapping=aes(x=lead.yrs,
+                          y=value,
+                          colour=dispName),
+              size=2)+
+    scale_colour_manual(values=colour.pal[1:2],
+                        guide=guide_legend(order=1,ncol=1,
+                                           title="Key Metrics",
+                                           title.position = "top"))+
+    #Significance band
+    geom_point(data=signif.dat,
+               mapping=aes(x=lead.yrs,y=mean(c(1,max(this.cfg$ylim))),shape=p.txt,size=p.txt))+
+    scale_shape_manual(values=c(16,8,3,16),
+                       drop=FALSE,
+                       guide=guide_legend(order=3,ncol=1,
+                                          title="Signif. test",
+                                          title.position = "top"))+
+    scale_size_manual(values=c(4,2,1,0.1),
+                      drop=FALSE,
+                      guide=guide_legend(order=3,ncol=1,
                                          title="Signif. test",
                                          title.position = "top"))
+  
+  print(g)
+}
 
-print(g)
+```
+
+## Effect of smoothing
+
+```{r}
+#Import data and select skill metrics
+smooth.dat <-
+  these.cfg %>%
+  filter(fig=="skill") %>%
+  rowwise() %>%
+  group_split() %>%
+  map_dfr(function(this) {
+    this$dat <- 
+      this$mets.db[[1]] %>%
+      tbl(PE.cfg$db$metrics) %>%
+      filter(srcName=="ensmean" | srcType=="Persistence",
+             spName==!!this$spName,
+             statName==!!this$statName) %>%
+      collect() %>%
+      filter(calibrationMethod==this$calibrationMethod | is.na(calibrationMethod)) %>%
+      filter(grepl(this$resultName,resultName))%>%
+      PE.db.unserialize() %>%
+      list()
+    return(this)
+  }) %>%
+  select(lbl,dat) %>%
+  unnest(dat) %>%
+  mutate(lead.yr=lead/12) %>%
+  filter(metric %in% c("MSSS","pearson.correlation")) %>%
+  separate(resultName,c("resultName","smoothing"),sep="/",fill="right") %>%
+  mutate(smoothing=case_when(is.na(smoothing) ~ "1 year",
+                             smoothing=="RollMean3" ~ "3 years",
+                             smoothing=="RollMean5" ~ "5 years"),
+         dispName=ifelse(srcType=="Decadal","Ens. mean",srcType),
+         ylbl=case_when(metric=="pearson.correlation"~ "Pearson correlation (r)",
+                        metric=="MSSS"~ "MSESS"),
+         ylbl=fct_relevel(ylbl,"Pearson correlation (r)"),
+         lbl=factor(lbl),
+         lbl=fct_relabel(lbl,function(x) gsub("^[a-c]) ","",x)))
+  
+  facet.lbls <-
+    expand_grid(ylbl=levels(smooth.dat$ylbl),
+                lbl=levels(smooth.dat$lbl)) %>%
+    mutate(this.lbl=sprintf("%s)",letters[1:nrow(.)]),
+           x=0.1,y=0.99,
+           ylbl=factor(ylbl,levels(smooth.dat$ylbl)),
+           lbl=factor(lbl,levels(smooth.dat$lbl)))
+
+  g <- 
+    #Setup baseline
+    ggplot()+
+    facet_grid(ylbl~lbl,switch = "y")+
+    geom_text(data=facet.lbls, mapping=aes(x,y,label=this.lbl),
+               hjust="left",vjust="top")+
+    # #annotate("rect",xmin=0,xmax=10,ymin=1,ymax=c(1,1.2),fill="white",colour="black")+
+    coord_cartesian(xlim=c(0,10),
+                    ylim=c(-1,1),
+                    expand=FALSE)+
+    scale_x_continuous(breaks=0:10)+
+    geom_hline(yintercept=0)+
+    theme(legend.position="bottom",
+          strip.placement = "outside",
+          strip.text.y = element_text(hjust=0.5),
+          strip.text.x= element_text(hjust=0.5))+
+    labs(x="Lead time (years)",
+         y="")+
+    #Lines
+    geom_line(data=smooth.dat,
+              mapping=aes(x=lead.yr,
+                          y=value,
+                          colour=dispName,
+                          linetype=smoothing))+
+    scale_linetype_manual(values=c(1,2,3))+
+    guides(colour=guide_legend(title="Metrics",
+                               title.position = "left",
+                               order=1),
+           linetype=guide_legend(title="Rolling mean",
+                                 title.position = "left")) 
+
+  print(g)
+
 
 
 ```
+
 
 
 ## Ability to forecast given years
