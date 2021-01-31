@@ -49,7 +49,7 @@ pcfg <- PredEng.config(project.name= "Mackerel_summer",
                        comp.years=1970:2015,
                        landmask="data_srcs/NMME/landmask.nc",
                        Observations=SST_obs[[c("HadISST")]],#,
-                       calibrationMethods=c("anomaly","MeanAdj","MeanVarAdj"),
+                       calibrationMethods=c("MeanAdj","MeanVarAdj"),
                        NMME=NMME.sst.l)
 
 #Setup scratch directory
