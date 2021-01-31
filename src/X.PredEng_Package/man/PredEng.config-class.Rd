@@ -46,8 +46,6 @@ the extraction from 2) filter - a character string defining a dplyr::filter comm
 in the table - extraction only tables place from these 3) points - a st_sf data frame defining the points at which
 to extract and the date time ("date" column). Other metadata is carried forward into the output database}
 
-\item{\code{pt.extraction.from.results.db}}{Extract the points from a results database, rather than the full}
-
 \item{\code{calibrationMethods}}{A vector listing the calibration methods to use. The full list of supported values is 
 stored in PE.cfg$validity$calibrationMethods}
 
