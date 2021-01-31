@@ -24,7 +24,7 @@
 # ========================================================================
 # Initialise system
 # ========================================================================
-cat(sprintf("\n%s\n","Blue Whiting Configuration"))
+cat(sprintf("\n%s\n","Blue Whiting Decadal"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 
 #Source the common elements
@@ -67,7 +67,6 @@ pcfg@Decadal <- Sal.Decadal[c("MPI.ESM.LR","CESM.DPLE","NorCPM")]
 pcfg@global.ROI <- extent(-25,0,50,65)
 pcfg@global.res  <- 0.5
 
-
 #'========================================================================
 # Statistics ####
 #'========================================================================
@@ -82,6 +81,8 @@ for(i in seq(pcfg@statistics)) {
 
 #Switch off many of the WGS2D features
 pcfg@statistics[["SDM"]]@resources$WGS2D <- FALSE
+pcfg@statistics[["SDM"]]@retain.field <- FALSE
+
 
 #Reestablish grids for different resolutions
 log10bath <- 

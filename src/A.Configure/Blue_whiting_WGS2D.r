@@ -186,7 +186,7 @@ GAM.sdm.fn <- function(dat,resources) {
                                 const=pred.consts[i,], 
                                 type="response")
   }
-  pred.b <- brick(p.l)#Compress into a brick
+  pred.b <- brick(p.l) #Compress into a brick
 
   #Results storage  
   field.l <- list()  #Results storage
@@ -259,7 +259,7 @@ stat.l$SDM <-
               resources=GAM.sdm.resources,
               realizations=1,
               use.globalROI = TRUE,
-              retain.fields=TRUE,
+              retain.field=TRUE,
               calibration=c("MeanAdj"))
 
 #Merge it all in
