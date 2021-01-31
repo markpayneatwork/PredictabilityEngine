@@ -2,6 +2,8 @@
 title: "Fish_decadal_prediction_Figures"
 output:
   html_document: default
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include="FALSE"}
@@ -87,53 +89,54 @@ cfgs <- list()
 cfgs$Bluefin <- 
   tibble(tbl=PE.cfg$db$metrics,
          spName="SouthOfIceland",
-         statName="NorthExt",
-         resultName="latitude",
+         statName="WestExt",
+         resultName="longitude",
          calibrationMethod="MeanAdj",
          lbl="a) Bluefin tuna",
          var="SST",
          fig="skill") 
 
-cfgs$Blue_whiting_decadal <- 
-  tibble(tbl=PE.cfg$db$metrics,
-         spName="NorthernComponent",
-         statName="SDM",
-         resultName="areaLarvae",
-         calibrationMethod="MeanAdj",
-         lbl="b) Blue whiting",
-         var="Sal",
-         fig="skill")
-cfgs$Mackerel_summer <-
-  tibble(tbl=PE.cfg$db$metrics,
-         spName="Greenland",
-         statName="HabitatModel",
-         resultName="carryingCapacity",
-         calibrationMethod="MeanAdj",
-         lbl="c) Mackerel",
-         var="SST",
-         fig="skill") 
-cfgs$NA_SST <-
-  tibble(tbl=PE.cfg$db$metrics.field,
-         spName="globalROI",
-         statName="Anomaly",
-         resultName="field",
-         calibrationMethod="anomaly",
-         var="SST",
-         fig="spMet")
-cfgs$NA_Sal <-
-  tibble(tbl=PE.cfg$db$metrics.field,
-         spName="globalROI",
-         statName="Anomaly",
-         resultName="field",
-         calibrationMethod="anomaly",
-        var="Sal",
-         fig="spMet")
+# cfgs$Blue_whiting_decadal <- 
+#   tibble(tbl=PE.cfg$db$metrics,
+#          spName="NorthernComponent",
+#          statName="SDM",
+#          resultName="areaLarvae",
+#          calibrationMethod="MeanAdj",
+#          lbl="b) Blue whiting",
+#          var="Sal",
+#          fig="skill")
+# cfgs$Mackerel_summer <-
+#   tibble(tbl=PE.cfg$db$metrics,
+#          spName="Greenland",
+#          statName="HabitatModel",
+#          resultName="carryingCapacity",
+#          calibrationMethod="MeanAdj",
+#          lbl="c) Mackerel",
+#          var="SST",
+#          fig="skill") 
+# cfgs$NA_SST <-
+#   tibble(tbl=PE.cfg$db$metrics.field,
+#          spName="globalROI",
+#          statName="Anomaly",
+#          resultName="field",
+#          calibrationMethod="anomaly",
+#          var="SST",
+#          fig="spMet")
+# cfgs$NA_Sal <-
+#   tibble(tbl=PE.cfg$db$metrics.field,
+#          spName="globalROI",
+#          statName="Anomaly",
+#          resultName="field",
+#          calibrationMethod="anomaly",
+#         var="Sal",
+#          fig="spMet")
 
 #Import extermaæ pbkects
 these.cfg <-
   bind_rows(cfgs,.id="name") %>%
   mutate(pcfg=map(name,~readRDS(here(this.dir,.x,"configuration.rds"))),
-         db=map(name,~dbConnect(SQLite(),here(this.dir,.x,sprintf("%s_results.sqlite",.x))))) 
+         stats.db=map(name,~dbConnect(SQLite(),here(this.dir,.x,sprintf("%s_statistics.sqlite",.x)))), 
+         mets.db=map(name,~dbConnect(SQLite(),here(this.dir,.x,sprintf("%s_metrics.sqlite",.x))))) 
 
 #Import data and select skill metrics
 metrics.dat <-
@@ -141,9 +144,9 @@ metrics.dat <-
   rowwise() %>%
   group_split() %>%
   map_dfr(function(this) {
-    this$dat <- 
-      this$db[[1]] %>%
-      tbl(this$tbl) %>%
+    this$mets.dat <- 
+      this$mets.db[[1]] %>%
+      tbl("metrics") %>%
       filter(spName==!!this$spName,
              statName==!!this$statName,
              resultName==!!this$resultName) %>%
@@ -173,8 +176,8 @@ skill.cfgs <-
 
 skill.dat <- 
   skill.cfgs %>%
-  select(lbl,dat) %>%
-  unnest(dat) %>%
+  select(lbl,mets.dat) %>%
+  unnest(mets.dat) %>%
   filter(srcType %in% c("Decadal","Persistence"),
          realization %in% c("ensmean","realmean",NA))  %>%
   mutate(lead.yrs=lead/12,
@@ -200,23 +203,29 @@ cleaned.dat <-
 #Now split into individuals models
 models.dat <- 
   cleaned.dat %>%
-  filter(!highlight,
-         is.na(CI))  #Use the best estimate 
+  filter(!highlight)  #Use the best estimate 
 
 ensmean.dat <-
   cleaned.dat %>%
-  filter(dispName=="Ens. mean",
-         is.na(CI))
+  filter(dispName=="Ens. mean")
 
 persis.dat <-
   cleaned.dat %>%
-  filter(dispName=="Persistence",
-         is.na(CI)) 
+  filter(dispName=="Persistence") 
 
 highlight.dat <-
   cleaned.dat %>%
-  filter(highlight) 
+  filter(highlight) %>%
+  mutate(upperCI=map_dbl(draws,quantile,probs=0.95),
+         lowerCI=map_dbl(draws,quantile,probs=0.05))
 
+signif.dat <- 
+  highlight.dat %>%
+  select(lbl,lead.yrs,draws,dispName) %>%
+  pivot_wider(names_from="dispName",values_from = "draws") %>%
+  mutate(p.value=map2_dbl(`Ens. mean`,Persistence, ~ mean(.x < .y)),
+         p.txt=cut(p.value,breaks=c(-1,0.001,0.01,0.05,1),
+                   labels=c("p < 0.001","p < 0.01", "p < 0.05", "ns")))
 
 #Plot miscs
 colour.pal <- hue_pal()(7)
@@ -226,16 +235,22 @@ g <-
   #Setup baseline
   ggplot()+
   facet_wrap(~lbl,ncol=1)+
-  # geom_hline(data=skill.cfgs,
-  #            mapping=aes(linetype="r > 0 (p=5%)",
-  #                        yintercept=cor.thresh))+
+  annotate("rect",xmin=0,xmax=10,ymin=1,ymax=1.1,fill="white",colour="black")+
   scale_linetype_manual(values="dotted")+
-  coord_cartesian(xlim=c(0,10),ylim=c(0,1),expand=FALSE)+
+  coord_cartesian(xlim=c(0,10),ylim=c(0,1.1),expand=FALSE)+
   scale_x_continuous(breaks=0:10)+
   theme(legend.position="bottom")+
   labs(x="Lead time (years)",
-       y="Pearson correlation coefficient (r)",
-       linetype="Significance test")+
+       y="Pearson correlation coefficient (r)")+
+  #Highlight bands
+  geom_ribbon(mapping=aes(x=lead.yrs,
+                          ymin=lowerCI,
+                          ymax=upperCI,
+                          fill=dispName),
+              data=highlight.dat,
+              alpha=0.25,
+              show.legend = FALSE)+
+  scale_fill_manual(values=colour.pal[1:2])+
   #Individual model plots
   geom_line(data=models.dat,
             mapping=aes(x=lead.yrs,
@@ -256,12 +271,24 @@ g <-
             size=2)+
   scale_colour_manual(values=colour.pal[1:2],
                       guide=guide_legend(order=1,ncol=1,
-                                         title="Key Metrics",title.position = "top"))
+                                         title="Key Metrics",
+                                         title.position = "top"))+
+  geom_point(data=signif.dat,
+             mapping=aes(x=lead.yrs,y=1.05,shape=p.txt,size=p.txt))+
+  scale_shape_manual(values=c(17,24,3,1),
+                     drop=FALSE,
+                     guide=guide_legend(order=3,ncol=1,
+                                         title="Signif. test",
+                                         title.position = "top"))+
+  scale_size_manual(values=c(4,4,2,0.1),
+                     drop=FALSE,
+                     guide=guide_legend(order=3,ncol=1,
+                                         title="Signif. test",
+                                         title.position = "top"))
+
 print(g)
 
 
-
-    
 ```
 
 

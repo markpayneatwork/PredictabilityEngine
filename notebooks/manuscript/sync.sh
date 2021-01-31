@@ -12,7 +12,8 @@ rm $FILES_FROM
 for CFG in "${CFGS[@]}"
 do
   echo "$CFG/configuration.rds" >> $FILES_FROM
-  echo "$CFG/${CFG}_results.sqlite" >> $FILES_FROM
+  echo "$CFG/${CFG}_statistics.sqlite" >> $FILES_FROM
+  echo "$CFG/${CFG}_metrics.sqlite" >> $FILES_FROM
 done
 
 rsync -av --files-from=$FILES_FROM $SRV . --progress 
