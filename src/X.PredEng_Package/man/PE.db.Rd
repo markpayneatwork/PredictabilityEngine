@@ -3,6 +3,8 @@
 \name{PE.db}
 \alias{PE.db}
 \alias{PE.db.connection}
+\alias{PE.db.tbl}
+\alias{dbDisconnect,tbl_SQLiteConnection-method}
 \alias{PE.db.path}
 \alias{PE.db.setup}
 \alias{PE.db.delete.by.pKey}
@@ -13,6 +15,10 @@
 \title{Setup results databases}
 \usage{
 PE.db.connection(object, table)
+
+PE.db.tbl(object, table)
+
+\S4method{dbDisconnect}{tbl_SQLiteConnection}(conn, ...)
 
 PE.db.path(object, table)
 

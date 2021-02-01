@@ -13,6 +13,22 @@ PE.db.connection <- function(object,table) {
   return(this.db)
 }
 
+
+#' @export
+#' @rdname PE.db
+PE.db.tbl <- function(object,table) {
+  this.db <- PE.db.connection(object,table)
+  this.tbl <- tbl(this.db,table)
+  return(this.tbl)
+}
+
+#' @export
+#' @rdname PE.db
+setMethod("dbDisconnect","tbl_SQLiteConnection", function(conn,...) {
+  dbDisconnect(conn$src$con)
+})
+
+
 #' @export
 #' @rdname PE.db
 PE.db.path <- function(object,table) {
