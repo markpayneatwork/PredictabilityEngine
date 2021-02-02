@@ -38,6 +38,14 @@ PE.cfg$misc <- list(globalROI="global.ROI",
                     crs=CRS("+proj=longlat +datum=WGS84"))  #The analysis grid currently only
                                                             #capable of working on lon-lat
 
+
+#Store versions that this package is built with
+PE.cfg$version <- 
+  list(branch=system2("git","branch --show-current",stdout = TRUE),
+       commit=system2("git","log --pretty=format:'%h' -n 1",stdout = TRUE),
+       comment=paste(system2("git","log --pretty='%B' -n 1",stdout = TRUE),collapse=" "),
+       date=system2("git","log --pretty=format:'%cd' -n 1",stdout = TRUE))
+
 #File names
 # PE.cfg$PE.files <- list(Obs.monthly.anom.metadata=file.path(PE.cfg$PE.dir$Misc.meta,"Monthly_anom_metadata.rds"),
 #                      Obs.climatology.metadata=file.path(PE.cfg$PE.dir$Misc.meta,"Climatology_metadata.rds"),

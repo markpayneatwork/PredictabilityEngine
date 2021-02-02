@@ -31,6 +31,7 @@
 #' @slot retain.realizations Is there interest in retaining the individual realisations from each model, or
 #' should we go straight to the realisation means (as a way of saving disk space and simiplifying the
 #' processing)?
+#' @slot package.version Details of the package version that this object was built with. Written automatically by the set.configuration() function
 #'
 #' @include Data_class_and_methods.r
 #' @include PElst.r
@@ -69,7 +70,8 @@ PredEng.config <-
                       landmask="character",
                       scratch.dir="character",
                       retain.realizations="logical",
-                      average.months="logical"),
+                      average.months="logical",
+                      package.version="character"),
            prototype = list(global.ROI=extent(as.numeric(rep(NA,4))),
                             obs.only=FALSE,
                             persistence.leads=0:120,  #1-10 years
@@ -225,6 +227,9 @@ set.configuration <- function(pcfg) {
 
   #Set output directories
   define_dir(pcfg@scratch.dir)
+  
+  #Storage package version
+  pcfg@package.version <- PE.current.version()
 
   #Write CDO grid descriptors
   griddes.txt <- griddes(pcfg@global.ROI,res=pcfg@global.res)
@@ -234,18 +239,6 @@ set.configuration <- function(pcfg) {
   cfg.fname <- PE.scratch.path(pcfg,"config")
   #cfg.linked <- PE.cfg$path$config
   saveRDS(pcfg,file=cfg.fname)
-  # cat(pcfg@project.name,file=file.path(PE.cfg$dir$objects,"configuration.name"))
-  # if(file.exists(cfg.linked)) {
-  #   file.remove(cfg.linked)
-  # }
-  # file.symlink(file.path(getwd(),cfg.fname),PE.cfg$dir$objects)
-  
-  # #Setup drake directory
-  # drake.link <- here(".drake")
-  # if(file.exists(drake.link)) {
-  #   file.remove(drake.link)
-  # }
-  # file.symlink(define_dir(here(pcfg@scratch.dir,".drake")),drake.link)
 
   #Setup targets cache directory
   targets.link <- here("_targets")
@@ -258,36 +251,10 @@ set.configuration <- function(pcfg) {
   
   #Setup SQLite database to store results
   PE.db.setup(pcfg)
-  
-  # HPC  Configuration ####
-  # #Setup soft linking
-  # project.cfg <- define_dir(pcfg@scratch.dir,basename(PE.cfg$dirs$job.cfg))
-  # unlink(PE.cfg$dirs$job.cfg)
-  # file.symlink(file.path(getwd(),project.cfg),PE.cfg$dirs$job.cfg)
-  # 
-  # #Need a TODO directory as well
-  # TODO.dir <- define_dir(PE.cfg$dirs$job.cfg,"TODO")
-  # 
-  # #Write configurations
-  # list(NMME=c("Sources","Ensmean"),
-  #      Decadal=c("Chunks","Sources","Ensmean"),
-  #      CMIP5=c("Sources"),
-  #      Observations=NA) %>%
-  #   enframe("src.slot","data.partition.type") %>%
-  #   unnest() %>%
-  #   pwalk(partition.workload,obj=pcfg)
-
-  # cfgs <- partition.workload(pcfg,"NMME","Sources")
-  # cfgs <- partition.workload(pcfg,"NMME","Ensmean")
-  # cfgs <- partition.workload(pcfg,"Decadal","Chunks")
-  # cfgs <- partition.workload(pcfg,"Decadal","Sources")
-  # cfgs <- partition.workload(pcfg,"Decadal","Ensmean")
-  # cfgs <- partition.workload(pcfg,"CMIP5","Sources")
-  # cfgs <- partition.workload(pcfg,"CMIP5","Ensmean")
-  # cfgs <- partition.workload(pcfg,"Observations")
-
+ 
   #Final check
   validObject(pcfg,complete=TRUE)
+  show(pcfg)
 
   return(pcfg)
 }

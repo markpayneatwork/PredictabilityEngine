@@ -74,5 +74,7 @@ integers)}
 \item{\code{retain.realizations}}{Is there interest in retaining the individual realisations from each model, or
 should we go straight to the realisation means (as a way of saving disk space and simiplifying the
 processing)?}
+
+\item{\code{package.version}}{Details of the package version that this object was built with. Written automatically by the set.configuration() function}
 }}
 
