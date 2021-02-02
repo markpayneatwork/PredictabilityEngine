@@ -242,7 +242,7 @@ for(this.chunk in chunk.l) {
   frag.dat %>%
     mutate(startDate=as.character(startDate),
            date=as.character(date)) %>%
-    PE.db.appendTable(pcfg,PE.cfg$db$extract)
+    PE.db.appendTable(pcfg,PE.cfg$db$extract,dat=.)
   
   #Loop
   pb$tick()

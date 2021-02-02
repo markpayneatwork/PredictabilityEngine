@@ -3,41 +3,52 @@
 \name{PE.db}
 \alias{PE.db}
 \alias{PE.db.connection}
+\alias{PE.db.tbl}
+\alias{dbDisconnect,tbl_SQLiteConnection-method}
+\alias{PE.db.path}
 \alias{PE.db.setup}
 \alias{PE.db.delete.by.pKey}
 \alias{PE.db.delete.by.datasource}
 \alias{PE.db.appendTable}
 \alias{PE.db.unserialize}
 \alias{PE.db.getQuery}
-\title{Setup results database}
+\title{Setup results databases}
 \usage{
-PE.db.connection(pcfg, results.db = FALSE)
+PE.db.connection(object, table)
 
-PE.db.setup(pcfg, results.only = FALSE)
+PE.db.tbl(object, table)
 
-PE.db.delete.by.pKey(pcfg, tbl.name, pKeys, silent = TRUE)
+\S4method{dbDisconnect}{tbl_SQLiteConnection}(conn, ...)
+
+PE.db.path(object, table)
+
+PE.db.setup(object)
+
+PE.db.delete.by.pKey(object, table, pKeys, silent = TRUE)
 
 PE.db.delete.by.datasource(
-  pcfg,
-  tbl.name = PE.cfg$db$extract,
+  object,
+  table = PE.cfg$db$extract,
   datasrc,
   silent = TRUE
 )
 
-PE.db.appendTable(dat, pcfg, tbl.name, silent = TRUE, serialize.first = TRUE)
+PE.db.appendTable(object, table, dat, silent = TRUE, serialize.first = TRUE)
 
-PE.db.unserialize(this.dat)
+PE.db.unserialize(dat)
 
-PE.db.getQuery(pcfg, this.sql, silent = TRUE)
+PE.db.getQuery(object, table, this.sql, silent = TRUE)
 }
 \arguments{
-\item{pcfg}{}
+\item{object}{PredEng configuration object}
+
+\item{table}{Name of the table to connect to. Each table is stored in a separate file}
 }
 \value{
 
 }
 \description{
-Setup results database
+Setup results databases
 }
 \details{
 PE.db.appendTable serialises the data column and writes the data to the specified table

@@ -214,18 +214,12 @@ tar.l$pointwise <-
                         metrics,stats))  #Stats is a included as a second dependency for cases when
                                          #there are no metrics to calculate
 
-#Simplified results table
-tar.l$tbl <-
-  tar_target(results.table,
-             ext.script(here("src/E.Postprocessing/Extract_results_from_SQlite.r"),
-                        pointwise))
-
 #Markdown report
 if(!pcfg@obs.only) {
   tar.l$report <-
     tar_target(report,
                ext.script(here("src/E.Postprocessing/B1.Visualise_scalar_skill_metrics.r"),
-                          results.table))
+                          metrics,stats))
 }
 
 #'========================================================================

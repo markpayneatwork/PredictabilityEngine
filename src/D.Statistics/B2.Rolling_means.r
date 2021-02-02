@@ -44,7 +44,7 @@ rm.windows <- c(3,5)
 # Setup ####
 #'========================================================================
 #Open database
-this.db <- PE.db.connection(pcfg)
+this.db <- PE.db.connection(pcfg,PE.cfg$db$stats)
 
 #Delete existing results 
 log_msg("Getting list of previous ids to clear...")
@@ -54,14 +54,14 @@ existing.rm.SQL <-
 this.query.time <- 
   system.time({
     del.these.pKeys <- 
-      PE.db.getQuery(pcfg,existing.rm.SQL) %>%
+      PE.db.getQuery(pcfg,PE.cfg$db$stats,existing.rm.SQL) %>%
       pull()
   })
 log_msg("Complete in %0.3fs. \nDeleting...",this.query.time[3])
 this.query.time <- 
   system.time({
-    n <- PE.db.delete.by.pKey(pcfg=pcfg,
-                              tbl.name=PE.cfg$db$stats,
+    n <- PE.db.delete.by.pKey(object=pcfg,
+                              table=PE.cfg$db$stats,
                               pKeys = del.these.pKeys)
   })
 log_msg("Deleted %i rows in %0.3fs.\n\n",n,this.query.time[3])
@@ -92,7 +92,7 @@ for(n in rm.windows) {
     mutate(resultName=sprintf("%s/RollMean%i",resultName,n))
   
   #Write back to table
-  PE.db.appendTable(rm.stats,pcfg,PE.cfg$db$stats)
+  PE.db.appendTable(pcfg,PE.cfg$db$stats,rm.stats)
 }
 
 #'========================================================================

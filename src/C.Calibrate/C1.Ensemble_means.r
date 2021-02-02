@@ -51,7 +51,7 @@ if(interactive()) {
 #'========================================================================
 log_msg("Import data..\n")
 #Setup databases
-this.db <- PE.db.connection(pcfg)
+this.db <- PE.db.connection(pcfg,PE.cfg$db$calibration)
 calib.tbl <- tbl(this.db,PE.cfg$db$calibration)
 
 #Get list of realisation means
@@ -69,7 +69,7 @@ prev.ensmeans <-
   collect() %>%
   pull() 
 dbDisconnect(this.db)  #Finished with database
-PE.db.delete.by.pKey(pcfg,tbl.name=PE.cfg$db$calibration,pKeys = prev.ensmeans,silent=FALSE)
+PE.db.delete.by.pKey(pcfg,PE.cfg$db$calibration,pKeys = prev.ensmeans,silent=FALSE)
 
 #'========================================================================
 # Process ####
@@ -97,7 +97,7 @@ if(!pcfg@obs.only) {
   ensmeans %>%
     select(-n) %>%
     mutate(realization="ensmean") %>%
-    PE.db.appendTable(pcfg,tbl.name = PE.cfg$db$calibration)
+    PE.db.appendTable(pcfg,PE.cfg$db$calibration,dat=.)
 }
 
 

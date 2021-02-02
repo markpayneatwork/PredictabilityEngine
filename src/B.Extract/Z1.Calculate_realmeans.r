@@ -76,7 +76,7 @@ SQL.cmd <- sprintf("SELECT pKey FROM %s WHERE `srcType` = '%s' AND `srcName` = '
                    this.datasrc@type,
                    this.datasrc@name)
 #Fetch list to delete
-del.these <- PE.db.getQuery(pcfg,SQL.cmd,silent=FALSE)
+del.these <- PE.db.getQuery(pcfg,PE.cfg$db$extract,SQL.cmd,silent=FALSE)
 
 #Delete
 PE.db.delete.by.pKey(pcfg,PE.cfg$db$extract,del.these$pKey,silent=TRUE)
@@ -85,7 +85,7 @@ PE.db.delete.by.pKey(pcfg,PE.cfg$db$extract,del.these$pKey,silent=TRUE)
 # Calculate means ####
 #'========================================================================
 #Setup database
-this.db <- PE.db.connection(pcfg)
+this.db <- PE.db.connection(pcfg,PE.cfg$db$extract)
 extr.tbl <- tbl(this.db,PE.cfg$db$extract)
 
 #Get meta data
@@ -141,7 +141,7 @@ for(this.basket in basket.l) {
 
   #Write to database 
   realMeans %>%
-    PE.db.appendTable(pcfg, PE.cfg$db$extract)
+    PE.db.appendTable(pcfg, PE.cfg$db$extract,dat=.)
 
   #Loop
   pb$tick()

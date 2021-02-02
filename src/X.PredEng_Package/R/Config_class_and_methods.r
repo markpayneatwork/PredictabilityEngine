@@ -13,7 +13,6 @@
 #' the extraction from 2) filter - a character string defining a dplyr::filter command to subset the set of fields
 #' in the table - extraction only tables place from these 3) points - a st_sf data frame defining the points at which
 #' to extract and the date time ("date" column). Other metadata is carried forward into the output database
-#' @slot pt.extraction.from.results.db Extract the points from a results database, rather than the full
 #' @slot calibrationMethods A vector listing the calibration methods to use. The full list of supported values is 
 #' stored in PE.cfg$validity$calibrationMethods
 #' @slot MOI The months of interest (a vector of integers between 1 and 12 inclusive). Currently only support one month
@@ -60,7 +59,6 @@ PredEng.config <-
                       spatial.polygons="sf",
                       statistics="PElst",
                       pt.extraction="data.frame",
-                      pt.extraction.from.results.db="logical",
                       calibrationMethods="character",
                       global.ROI="Extent",
                       global.res="numeric",
@@ -74,7 +72,6 @@ PredEng.config <-
                       average.months="logical"),
            prototype = list(global.ROI=extent(as.numeric(rep(NA,4))),
                             obs.only=FALSE,
-                            pt.extraction.from.results.db=FALSE,
                             persistence.leads=0:120,  #1-10 years
                             retain.realizations=TRUE,
                             vert.range=as.numeric(NA),  #Use surface unless specified

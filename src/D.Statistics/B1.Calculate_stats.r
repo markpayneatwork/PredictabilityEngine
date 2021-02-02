@@ -42,8 +42,8 @@ pcfg <- PE.load.config()
 #Take input arguments, if any
 if(interactive()) {
   set.log_msg.silent()
-  stat.id <- names(pcfg@statistics)[3]
-  sp.id <- c(pcfg@spatial.polygons$name,PE.cfg$misc$globalROI)[3]
+  stat.id <- names(pcfg@statistics)[1]
+  sp.id <- c(pcfg@spatial.polygons$name,PE.cfg$misc$globalROI)[1]
 } else {
   set.log_msg.silent()
   cmd.args <- commandArgs(TRUE)
@@ -107,13 +107,13 @@ existing.stats.sel <-
 this.query.time <- 
   system.time({
     del.these.pKeys <- 
-      PE.db.getQuery(pcfg,existing.stats.sel) %>%
+      PE.db.getQuery(pcfg,PE.cfg$db$stats,existing.stats.sel) %>%
       pull()
   })
 log_msg("Complete in %0.3fs. \nDeleting...",this.query.time[3])
 this.query.time <- 
   system.time({
-    n <- PE.db.delete.by.pKey(pcfg=pcfg,tbl.name=PE.cfg$db$stats,pKeys = del.these.pKeys)
+    n <- PE.db.delete.by.pKey(pcfg,PE.cfg$db$stats,pKeys = del.these.pKeys)
   })
 log_msg("Deleted %i rows in %0.3fs.\n\n",n,this.query.time[3])
 
@@ -151,7 +151,7 @@ this.query.time <-
   system.time({
     cal.SQL <- 
       cal.SQL %>%
-      mutate(pKeys=map(SQL.cmd,~ PE.db.getQuery(pcfg,.x)),
+      mutate(pKeys=map(SQL.cmd,~ PE.db.getQuery(pcfg,PE.cfg$db$calibration,.x)),
              nKeys=map_dbl(pKeys,nrow)) 
   })
 log_msg("Complete in %0.3fs.\n",this.query.time[3])
@@ -166,9 +166,9 @@ dmp <- assert_that(!any(duplicated(cal.pKeys)),msg="Expecting unique set of pKey
 #'========================================================================
 # List of observations from extraction table ####
 #'========================================================================
-this.db <- PE.db.connection(pcfg)
+db.extr <- PE.db.connection(pcfg,PE.cfg$db$extr)
 obs.sel <- 
-  tbl(this.db,"extraction") %>%
+  tbl(db.extr,"extraction") %>%
   filter(srcType=="Observations") %>%
   select(pKey,date) %>%
   collect() %>%
@@ -176,7 +176,7 @@ obs.sel <-
   mutate(date=ymd(date),
          month=month(date)) %>%
   filter(month %in% pcfg@MOI)
-dbDisconnect(this.db)
+dbDisconnect(db.extr)
 
 obs.pKeys <- 
   obs.sel %>%
@@ -220,7 +220,7 @@ calc.stat.fn <- function(this.pKey,this.table) {
     sprintf("SELECT * FROM %s WHERE `pKey` = %i",
             this.table,
             this.pKey) %>%
-    PE.db.getQuery(pcfg=pcfg) %>%
+    PE.db.getQuery(pcfg,this.table,this.sql = .) %>%
     as_tibble() %>%
     select(-any_of(c("pKey","srcFname"))) %>%
     PE.db.unserialize() 
@@ -277,7 +277,7 @@ for(this.chunk in chunk.l) {
                     .options = furrr_options(stdout=FALSE,
                                              seed=TRUE))
   #Write results
-  PE.db.appendTable(stat.dat,pcfg,PE.cfg$db$stats)
+  PE.db.appendTable(pcfg,PE.cfg$db$stats,stat.dat)
   
   #Loop
   pb$tick()

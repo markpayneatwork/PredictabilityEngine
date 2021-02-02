@@ -62,18 +62,21 @@ options(future.globals.onReference = "error")
 #'========================================================================
 log_msg("Import data..\n")
 #Setup databases
-this.db <- PE.db.connection(pcfg)
-extr.tbl <- tbl(this.db,PE.cfg$db$extract)
-clim.tbl <- tbl(this.db,PE.cfg$db$climatology)
+this.db.extr <- PE.db.connection(pcfg,PE.cfg$db$extract)
+extr.tbl <- tbl(this.db.extr,PE.cfg$db$extract)
+this.db.clim <- PE.db.connection(pcfg,PE.cfg$db$climatology)
+clim.tbl <- tbl(this.db.clim,PE.cfg$db$climatology)
+this.db.calib <- PE.db.connection(pcfg,PE.cfg$db$calibration)
+calib.tbl <- tbl(this.db.calib,PE.cfg$db$calibration)
 
 #Clear all previous analyses that give these types of calibration methods
 del.this <-
-  tbl(this.db,PE.cfg$db$calibration) %>%
+  calib.tbl %>%
   filter(calibrationMethod %in% c("anomaly","MeanAdj","MeanVarAdj")) %>%
   select(pKey) %>%
   collect() %>%
   pull(pKey) 
-PE.db.delete.by.pKey(pcfg,tbl.name=PE.cfg$db$calibration,del.this)
+PE.db.delete.by.pKey(pcfg,PE.cfg$db$calibration,del.this)
 
 #Import observational climatology data for the month in question
 #Note that the extraction process has already ensured for all of the models
@@ -231,7 +234,7 @@ for(this.basket in basket.l) {
            srcType=ifelse(srcType=="Observations","Persistence",srcType))
     
   #Write results
-  PE.db.appendTable(out.dat,pcfg,PE.cfg$db$calibration)
+  PE.db.appendTable(pcfg,PE.cfg$db$calibration,out.dat)
   
   #Loop
   pb$tick()
@@ -242,7 +245,9 @@ for(this.basket in basket.l) {
 # Complete ####
 #'========================================================================
 #Finished 
-dbDisconnect(this.db)
+dbDisconnect(this.db.calib)
+dbDisconnect(this.db.clim)
+dbDisconnect(this.db.extr)
 
 #Turn off the lights
 plan(sequential)

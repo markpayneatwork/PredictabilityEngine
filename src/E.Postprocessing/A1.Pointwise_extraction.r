@@ -63,7 +63,7 @@ if(nrow(pcfg@pt.extraction)!=0) {
     log_msg("Extracting point sets %i of %i...\n",i, nrow(pcfg@pt.extraction))
     #Setup data extraction
     this.row <- pcfg@pt.extraction[i,]
-    this.db <- PE.db.connection(pcfg,results.db = pcfg@pt.extraction.from.results.db)
+    this.db <- PE.db.connection(pcfg,this.row$table)
     this.tb <- 
       tbl(this.db,this.row$table) 
     this.meta <- 
@@ -124,13 +124,15 @@ if(nrow(pcfg@pt.extraction)!=0) {
     }
     
     #Apply function
-    pt.st.l <- group_split(pt.sf)
     extr.res.l[[i]] <- pblapply(group_split(pt.sf),
                                 pt.extractor,
                                 cl = 1)
     # extr.res.l <-
     #   group_map(pt.sf,~pt.extractor(.x,.y))
-  }
+
+    #Turn off the lights
+    dbDisconnect(this.db)
+}
   
   extr.res <-
     extr.res.l %>%
@@ -141,18 +143,16 @@ if(nrow(pcfg@pt.extraction)!=0) {
   # Output ####
   #'========================================================================
   #Clear existing extractions table
-  if(dbExistsTable(PE.db.connection(pcfg),PE.cfg$db$pt.extraction)) {
-    dbRemoveTable(PE.db.connection(pcfg),PE.cfg$db$pt.extraction)  
+  if(file.exists(PE.db.path(pcfg,PE.cfg$db$pt.extraction))) {
+    file.remove(PE.db.path(pcfg,PE.cfg$db$pt.extraction))
   }
   
   extr.res %>%
-    PE.db.appendTable(pcfg,PE.cfg$db$pt.extraction)
+    PE.db.appendTable(pcfg,PE.cfg$db$pt.extraction,dat=.)
   
   #'========================================================================
   # Complete ####
   #'========================================================================
-  #Turn off the lights
-  dbDisconnect(this.db)
   
 }  #if no rows, don't do anything
 

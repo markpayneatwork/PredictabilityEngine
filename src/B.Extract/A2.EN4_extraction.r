@@ -120,7 +120,7 @@ for(f in this.datasrc@sources) {
   #Write to database
   frag.data %>%
     mutate(date=as.character(date)) %>%
-    PE.db.appendTable(pcfg,PE.cfg$db$extract)
+    PE.db.appendTable(pcfg,PE.cfg$db$extract,dat=.)
   
   #Tidy up
   tmp.fnames <- dir(dirname(f.tmpstem),pattern=basename(f.tmpstem),full.names = TRUE)

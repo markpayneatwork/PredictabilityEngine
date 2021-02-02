@@ -47,7 +47,7 @@ set.log_msg.silent()
 # Setup ####
 #'========================================================================
 #Setup databases
-this.db <- PE.db.connection(pcfg)
+this.db <- PE.db.connection(pcfg,PE.cfg$db$extract)
 extr.tbl <- tbl(this.db,PE.cfg$db$extract)
 
 #'========================================================================
@@ -99,11 +99,10 @@ clim.out <-
          field=map_if(field,~!inMemory(.x),~readAll(.x)))
 
 #Write results
-#Reset the resutls table by deleting and reestablishing it
-this.db <- PE.db.connection(pcfg)
-dbRemoveTable(this.db,PE.cfg$db$climatology)
+#Reset the resutls table by deleting the file and reestablishing it
+file.remove(PE.db.path(pcfg,PE.cfg$db$climatology))
 PE.db.setup(pcfg)
-PE.db.appendTable(clim.out,pcfg,PE.cfg$db$climatology)
+PE.db.appendTable(pcfg,PE.cfg$db$climatology,clim.out)
 
 #'========================================================================
 # Complete ####
