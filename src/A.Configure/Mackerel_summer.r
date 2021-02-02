@@ -163,7 +163,7 @@ pcfg@statistics <- statsum.l
 # Done
 #'========================================================================
 #Output
-set.configuration(pcfg)
+pcfg <- set.configuration(pcfg)
 
 #Turn off thte lights
 if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
