@@ -81,7 +81,7 @@ cat(sprintf("Visualisations generated  %s\n",date()))
 # Configure
 #==========================================================================
 pcfg <- PE.load.config()
-show(pcfg)
+PE.config.summary(pcfg)
 plot(pcfg)
 
 start.near.term <- 2015
