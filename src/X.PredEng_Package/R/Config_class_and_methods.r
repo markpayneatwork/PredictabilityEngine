@@ -189,7 +189,9 @@ setMethod("show","PredEng.config", function(object) {
       cat(paste(obj,collapse=", "),"\n")
     }
   }
-  for(i in slotNames("PredEng.config")) {show.slot(object,i)}
+  log_msg("%-20s : %s\n","Current Package",PE.current.version())
+  for(i in setdiff(slotNames("PredEng.config"),"package.version")) {show.slot(object,i)}
+  log_msg("%-20s : %s\n","Current Package",object@package.version)
 
 })
 

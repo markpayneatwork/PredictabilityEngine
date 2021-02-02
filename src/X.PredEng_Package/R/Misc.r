@@ -50,12 +50,13 @@ sfpolygon.from.extent <- function(ext) {
 #' @return String detailing the current version of the git repository
 #' @export
 PE.current.version <- function() {
-  sprintf("%s / %s / %s (%s)",
-          system2("git","log --pretty=format:'%cd' -n 1",stdout = TRUE),
+  sprintf("%-8s: %s",
+  c("Date","Commit","Comment"),
+  c(system2("git","log --pretty=format:'%cd' -n 1",stdout = TRUE),
+    sprintf("%s / %s",
           system2("git","branch --show-current",stdout = TRUE),
-          system2("git","log --pretty=format:'%h' -n 1",stdout = TRUE),
-          paste(system2("git","log --pretty='%B' -n 1",stdout = TRUE),collapse=" "))
-  
+          system2("git","log --pretty=format:'%h' -n 1",stdout = TRUE)),
+    paste(system2("git","log --pretty='%B' -n 1",stdout = TRUE),collapse=" ")))
 }
 
 
