@@ -161,6 +161,8 @@ persis.dat <-
   arrange(date,.by_group=TRUE) %>%
   mutate(RollMean3=roll_meanr(value,n=3),
          RollMean5=roll_meanr(value,n=5),
+         RollMean7=roll_meanr(value,n=7),
+         RollMean9=roll_meanr(value,n=9),
          srcType="Persistence") %>%
   ungroup() %>%
   #Pivot longer and merge averages into value column
@@ -464,6 +466,7 @@ if(have.mdl.dat) {
 #'========================================================================
 #Turn off the lights
 dbDisconnect(stats.tbl)
+plan(sequential)
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
 # .............
