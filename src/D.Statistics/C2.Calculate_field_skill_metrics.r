@@ -67,18 +67,19 @@ if(file.exists(PE.db.path(pcfg,PE.cfg$db$metrics.field))) {
 #'========================================================================
 log_msg("Merging...\n")
 
-#Import stats that have field data with them
+#Import uncalibrated observations that have field data with them
 obs.dat <-
   stats.tbl %>%
-  filter(srcType=="Observations") %>% 
+  filter(srcType=="Observations",
+         is.na(calibrationMethod),
+         !is.na(field)) %>% 
   select(srcType,srcName,date,spName,statName,resultName,field) %>%
   collect() %>%
   PE.db.unserialize() %>%
   #Setup year-month key
   mutate(date=ymd(date),
          ym=date_to_ym(date)) %>%
-  #Drop NAs (which are probably value-only)
-  filter(!is.na(field))
+  filter(month(date) %in% pcfg@MOI) 
 
 #Strip back to bare bones
 obs.dat.bare <-
@@ -181,6 +182,7 @@ obs.clim.mets <-
          month(date) %in% pcfg@MOI)%>%
   left_join(y=obs.stat.clim,
             by=c("srcType","srcName","spName","statName","resultName")) %>%
+  #Calculate climatology metrics
   group_by(srcType,srcName,spName,statName,resultName) %>%
   summarise(MSE.clim=list(mean((brick(field)-brick(clim))^2)),
             .groups="drop")

@@ -83,15 +83,14 @@ log_msg("Extract observations...\n")
 obs.dat.all <-
   stats.tbl %>%
   filter(srcType=="Observations",
-         is.na(calibrationMethod)) %>% 
+         is.na(calibrationMethod),  #Only uncalibrated observations
+         is.na(field)) %>% #Don't return fields
   select(-field,-pKey) %>%
   collect() %>%
   #Setup year-month key
   mutate(date=ymd(date),
          ym=date_to_ym(date)) %>%
   filter(month(date) %in% pcfg@MOI) %>%
-  #Drop NAs (which are probably field-only)
-  filter(!is.na(value)) %>%
   #Drop unused fields relating to forecasts
   select(-calibrationMethod,-realization,-startDate,-leadIdx)
 
