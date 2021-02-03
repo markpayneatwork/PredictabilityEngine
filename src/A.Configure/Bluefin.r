@@ -46,7 +46,7 @@ pcfg <- PredEng.config(project.name= "Bluefin",
                comp.years=1970:2015,
                landmask="data_srcs/NMME/landmask.nc",
                Observations=SST_obs[[c("HadISST")]],
-               calibrationMethods=c("MeanAdj","MeanVarAdj"),
+               calibrationMethods=c("MeanAdj"),
                NMME=NMME.sst.l)
 
 #Setup scratch directory
