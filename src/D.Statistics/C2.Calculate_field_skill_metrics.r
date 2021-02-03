@@ -55,16 +55,11 @@ if(interactive()) {
 assert_that(length(pcfg@MOI)==1,msg="Metric calculation currently one works with one MOI")
 
 #Setup databases
-this.db <- PE.db.connection(pcfg)
-stats.tbl <- tbl(this.db,PE.cfg$db$stats)
-
-# #Reset the resutls table by deleting and reestablishing it
-# dbRemoveTable(this.db,PE.cfg$db$stats)
-# PE.db.setup(pcfg)
+stats.tbl <- PE.db.tbl(pcfg,PE.cfg$db$stats)
 
 #Clear existing metrics table
-if(dbExistsTable(PE.db.connection(pcfg),PE.cfg$db$metrics.field)) {
-  dbRemoveTable(PE.db.connection(pcfg),PE.cfg$db$metrics.field)  
+if(file.exists(PE.db.path(pcfg,PE.cfg$db$metrics.field))) {
+  file.remove(PE.db.path(pcfg,PE.cfg$db$metrics.field))
 }
 
 #'========================================================================
@@ -207,9 +202,10 @@ these.mets <-
   select(-MSE.clim) %>%
   pivot_longer(-group_vars(.),names_to = "metric",values_to = "field") %>%
   ungroup()
-PE.db.appendTable(these.mets,pcfg,PE.cfg$db$metrics.field)
+PE.db.appendTable(pcfg,PE.cfg$db$metrics.field,dat=these.mets)
 
 #Turn off the lights
+dbDisconnect(stats.tbl)
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
 # .............
