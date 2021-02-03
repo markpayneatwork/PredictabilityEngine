@@ -195,7 +195,8 @@ setMethod("show","PredEng.config", function(object) {
     show.slot(object,i)}
   cat(paste(rep("-",nchar(hdr.str)),collapse="",sep=""),"\n")
   log_msg("%-20s : %s\n","Configured on",object@config.date)
-  log_msg("%-20s : %s\n","Git configuration",object@package.version)
+  log_msg("%-20s :\n","Git configuration")
+  log_msg("%s\n",object@package.version)
 })
 
 #' #' Get vertical layers
@@ -260,7 +261,7 @@ set.configuration <- function(object) {
  
   #Final check
   validObject(object,complete=TRUE)
-  PE.config.summary(object)
+  show(object)
 
   return(object)
 }

@@ -25,10 +25,9 @@ PE.config.summary<- function(...){
   }
   log_msg("---------------------\n")
   log_msg("%-20s : %s\n","R.version", R.version$version.string)
-  log_msg("%-20s : %s\n","Current git",PE.current.version())
   log_msg("---------------------\n")
-  log_msg("%-20s : \n","Outstanding modifications")
-  log_msg("%s\n",system2("git","status --porcelain",stdout = TRUE))
+  log_msg("%-20s : \n","Current Repository status")
+  log_msg("%s\n",PE.current.version())
   log_msg("---------------------\n")
 }
 
@@ -53,14 +52,18 @@ sfpolygon.from.extent <- function(ext) {
 #' @return String detailing the current version of the git repository
 #' @export
 PE.current.version <- function() {
-  sprintf("%-8s: %s",
-  c("Date","Commit","Comment"),
-  c(system2("git","log --pretty=format:'%cd' -n 1",stdout = TRUE),
-    sprintf("%s / %s",
-          system2("git","branch --show-current",stdout = TRUE),
-          system2("git","log --pretty=format:'%h' -n 1",stdout = TRUE)),
-    paste(system2("git","log --pretty='%B' -n 1",stdout = TRUE),collapse=" ")))
-}
+  fmt.str <- sprintf("%-20s : %s",
+                     c("Date","Commit","Comment"),
+                     c(system2("git","log --pretty=format:'%cd' -n 1",stdout = TRUE),
+                       sprintf("%s / %s",
+                               system2("git","branch --show-current",stdout = TRUE),
+                               system2("git","log --pretty=format:'%h' -n 1",stdout = TRUE)),
+                       paste(system2("git","log --pretty='%B' -n 1",stdout = TRUE),collapse=" ")))
+  status.list <- system2("git","status --porcelain",stdout = TRUE)
+  rtn <- c(fmt.str,
+           sprintf("%-20s : %i items","Status", length(status.list)),
+           status.list)
+  return(rtn)}
 
 
 #' Get a global ROI as simple features object
