@@ -42,8 +42,8 @@ load(PE.cfg$path$datasrcs)
 pcfg <- PredEng.config(project.name= "TestSuite",
                MOI=8,  #August
                average.months=FALSE,
-               clim.years=1990:2100,   #Take in everything
-               comp.years=1990:2100,
+               clim.years=1990:2000,   #Take in everything
+               comp.years=1990:2000,
                landmask="data_srcs/NMME/landmask.nc",
                Observations=SST_obs$HadISST,
                calibrationMethods=c("anomaly","MeanAdj"),

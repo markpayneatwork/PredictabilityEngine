@@ -83,16 +83,15 @@ log_msg("Extract observations...\n")
 obs.dat.all <-
   stats.tbl %>%
   filter(srcType=="Observations",
-         is.na(calibrationMethod),  #Only uncalibrated observations
-         is.na(field)) %>% #Don't return fields
-  select(-field,-pKey) %>%
+         is.na(calibrationMethod),# Only uncalibrated observations
+         is.na(field)) %>%  #Only values. No fields
   collect() %>%
   #Setup year-month key
   mutate(date=ymd(date),
          ym=date_to_ym(date)) %>%
   filter(month(date) %in% pcfg@MOI) %>%
   #Drop unused fields relating to forecasts
-  select(-calibrationMethod,-realization,-startDate,-leadIdx)
+  dplyr::select(-calibrationMethod,-realization,-startDate,-leadIdx,-field)
 
 #Simplified versions 
 obs.dat <-
@@ -101,7 +100,7 @@ obs.dat <-
 
 obs.dat.bare <- #Simplified version for matching with forecasts
   obs.dat %>%
-  select(spName,statName,resultName,ym,value)
+  dplyr::select(spName,statName,resultName,ym,value)
 
 #Some checks
 assert_that(length(unique(obs.dat$srcName))==1,msg="Multiple source names detected")
@@ -120,6 +119,10 @@ obs.clim <-
             clim.sd=sd(value),
             clim.n=n(),
             .groups="drop")
+
+assert_that(all(!is.na(obs.clim$clim.mean)),
+            all(!is.na(obs.clim$clim.sd)),
+            msg="NAs detected in climatology")
 
 #Setup forecasts using the climatology as the forecast as well.
 clim.as.forecast <- 
@@ -199,7 +202,7 @@ persis.forecasts <-
   left_join(x=persis.grid,
             y=availability.tbl,
             by=c(startDate.ym="request.ym")) %>%
-  select(date,lead,request.startDates,available.dates) %>%
+  dplyr::select(date,lead,request.startDates,available.dates) %>%
   mutate(available.ym=date_to_ym(available.dates)) %>%
   #Join with data
   left_join(y=persis.dat,
@@ -237,7 +240,7 @@ if(have.mdl.dat) {
     #Import relevant data first
     stats.tbl %>%
     filter(srcType != "Observations") %>%
-    select(-field,-pKey,-leadIdx) %>% 
+    dplyr::select(-field,-pKey,-leadIdx) %>% 
     filter(!is.na(value)) %>%
     collect() %>%
     #Tweak
@@ -250,7 +253,7 @@ if(have.mdl.dat) {
   #Now combine with persistence forecasts
   pred.dat <- 
     bind_rows(persis.forecasts,
-              select(clim.as.forecast,-starts_with("clim")),
+              dplyr::select(clim.as.forecast,-starts_with("clim")),
               mdl.stats.dat)
 
 } else { #Only process persistence data
@@ -327,7 +330,7 @@ cent.metrics <-
                             cent.skill.fn,
                             .options = furrr_options(stdout=FALSE,
                                                      seed=TRUE))) %>%
-  select(-data) %>% 
+  dplyr::select(-data) %>% 
   unnest(metrics)
 
 #Write these results
@@ -361,7 +364,7 @@ if(have.mdl.dat) {
       rename(pred.mean=clim.mean,
              pred.sd=clim.sd,
              pred.n=clim.n) %>%
-      select(-value) %>%
+      dplyr::select(-value) %>%
     #Add in predictions
     bind_rows(dist.pred) %>%
     #Add in observations
@@ -405,7 +408,7 @@ if(have.mdl.dat) {
                               dist.skill.fn,
                               .options = furrr_options(stdout=FALSE,
                                                        seed=TRUE))) %>%
-    select(-data) %>% 
+    dplyr::select(-data) %>% 
     unnest(metrics) %>%
     mutate(realization="realmean")
   
@@ -426,7 +429,7 @@ if(have.mdl.dat) {
     bind_rows(cent.metrics,dist.metrics) %>%
     filter(srcType=="Climatology") %>%
     ungroup()   %>%
-    select(spName,statName,resultName,metric,value,draws)
+    dplyr::select(spName,statName,resultName,metric,value,draws)
   
   #Calculate skill scores by merging back into metrics
   skill.scores <- 
@@ -452,7 +455,7 @@ if(have.mdl.dat) {
   
   #Drop exploratory columns and write to database
   skill.scores %>%
-    select(all_of(names(dist.metrics))) %>%
+    dplyr::select(all_of(names(dist.metrics))) %>%
     PE.db.appendTable(pcfg,PE.cfg$db$metrics,dat=.)  
 }
 

@@ -38,13 +38,11 @@ pcfg <- PE.load.config()
 #'========================================================================
 # Configure ####
 #'========================================================================
-rm.windows <- c(3,5)
+rm.windows <- c(3,5,7,9)
 
 #'========================================================================
 # Setup ####
 #'========================================================================
-#Open database
-this.db <- PE.db.connection(pcfg,PE.cfg$db$stats)
 
 #Delete existing results 
 log_msg("Getting list of previous ids to clear...")
@@ -69,27 +67,30 @@ log_msg("Deleted %i rows in %0.3fs.\n\n",n,this.query.time[3])
 #'========================================================================
 # And Go ####
 #'========================================================================
+#'#Open database
+stats.tbl <- PE.db.tbl(pcfg,PE.cfg$db$stats)
+
 #'Load data
 dat.in <- 
-  this.db %>%
-  tbl(PE.cfg$db$stats) %>%
+  stats.tbl  %>%
   filter(!is.na(value)) %>%
   collect() %>%
   mutate(date=ymd(date)) %>%
   filter(month(date) %in% pcfg@MOI) %>%  #Drop unnecessary obs
   group_by(srcType,srcName,calibrationMethod,realization,startDate,
          spName,statName,resultName) %>%
-  arrange(date) 
+  arrange(date) %>%
+  ungroup() %>%
+  select(-pKey,-leadIdx)
   
 for(n in rm.windows) {
   log_msg("Rolling window %i...\n",n)
   #Calculate rolling means
   rm.stats <-
     dat.in  %>%
-    summarise(date=as.character(date),
-              value=roll_mean(value,n=n,fill=NA,align="center"),
-              .groups="drop") %>%
-    mutate(resultName=sprintf("%s/RollMean%i",resultName,n))
+    mutate(date=as.character(date),
+           value=roll_mean(value,n=n,fill=NA,align="center"),
+           resultName=sprintf("%s/RollMean%i",resultName,n))
   
   #Write back to table
   PE.db.appendTable(pcfg,PE.cfg$db$stats,rm.stats)
@@ -99,7 +100,7 @@ for(n in rm.windows) {
 # Complete ####
 #'========================================================================
 #Turn off the lights
-dbDisconnect(this.db)
+dbDisconnect(stats.tbl)
 if(length(warnings())!=0) print(warnings())
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
