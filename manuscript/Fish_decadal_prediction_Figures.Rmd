@@ -77,14 +77,12 @@ Wed Jul  3 11:16:32 2019
 
 This notebook prepares figures for use in the manuscript "Skillful decadal-prediction of distributional shifts in North Atlantic pelagic fish".
 
-## Skill Metrics for oceanographic variables
-
 ```{r}
 #'========================================================================
 # Spatial skill metrics for oceanographic variables ####
 #'========================================================================
 #Setup
-this.dir <- "notebooks/manuscript"
+this.dir <- "manuscript"
 
 cfgs <- list()
 cfgs$Mackerel_summer <-
@@ -114,14 +112,16 @@ cfgs$Bluefin <-
 #          lbl="c) Blue whiting",
 #          var="Sal",
 #          fig="skill")
-# cfgs$NA_SST <-
-#   tibble(tbl=PE.cfg$db$metrics.field,
-#          spName="globalROI",
-#          statName="Anomaly",
-#          resultName="field",
-#          calibrationMethod="anomaly",
-#          var="SST",
-#          fig="spMet")
+cfgs$NA_SST <-
+  tibble(tbl=PE.cfg$db$metrics.field,
+         spName="global.ROI",
+         statName="Anomaly",
+         resultName="field",
+         calibrationMethod="anomaly",
+         var="SST",
+         fig="spMet",
+         lbl="a) SST (August)")
+
 # cfgs$NA_Sal <-
 #   tibble(tbl=PE.cfg$db$metrics.field,
 #          spName="globalROI",
@@ -129,14 +129,25 @@ cfgs$Bluefin <-
 #          resultName="field",
 #          calibrationMethod="anomaly",
 #         var="Sal",
-#          fig="spMet")
+#          fig="spMet",
+             # lbl="b) Salinity (March, 250-600m)")
 
 #Import extermaæ pbkects
 these.cfg <-
   bind_rows(cfgs,.id="name") %>%
   mutate(pcfg=map(name,~readRDS(here(this.dir,.x,"configuration.rds"))),
-         stats.db=map(name,~dbConnect(SQLite(),here(this.dir,.x,sprintf("%s_statistics.sqlite",.x)))), 
-         mets.db=map(name,~dbConnect(SQLite(),here(this.dir,.x,sprintf("%s_metrics.sqlite",.x))))) 
+         stats.db=map(name,
+                      ~dbConnect(SQLite(), 
+                                      here(this.dir, .x, 
+                                           sprintf("%s_statistics.sqlite",.x)))), 
+         mets.db=map(name,
+                     ~dbConnect(SQLite(),
+                                here(this.dir,.x,
+                                     sprintf("%s_metrics.sqlite",.x)))),
+         met.field.db=map(name,
+                     ~dbConnect(SQLite(),
+                                here(this.dir,.x,
+                                     sprintf("%s_metricsField.sqlite",.x))))) 
 
 ```
 
@@ -153,6 +164,7 @@ these.cfg <-
 #Import data and select skill metrics
 metrics.dat <-
   these.cfg %>%
+  filter(fig=="skill") %>%
   rowwise() %>%
   group_split() %>%
   map_dfr(function(this) {
@@ -436,7 +448,7 @@ for(this.cfg in forecast.cfg) {
     filter(spName==!!this.cfg$spName,
            statName==!!this.cfg$statName,
            resultName==!!this.cfg$resultName,
-           calibrationMethod==!!this.cfg$calibrationMethod | is.na(calibrationMethod)) %>%
+           calibrationMethod==!!this.cfg$calibrationMethod | is.na(calibrationMethod))%>%
     select(-field) %>%
     collect() %>%
     mutate(year=year(date),
@@ -569,154 +581,162 @@ wrap_plots(fixed.lead.plt,ncol=1)+
   plot_annotation(tag_levels = "a",tag_suffix = ")")
 ```
 
-<!-- #'======================================================================== -->
-<!-- # Spatial Maps #### -->
-<!-- # Figure 1 in manuscript -->
-<!-- #'======================================================================== -->
+#'========================================================================
+# Spatial Maps ####
+# Figure 1 in manuscript
+#'========================================================================
 
-<!-- ```{r} -->
-<!-- #Configuration -->
-<!-- this.lead <- c(67,62) -->
-<!-- this.met <- "pearson.correlation" -->
-<!-- relabel <- c(SST="a) SST (August)", -->
-<!--              Sal="b) Salinity (March, 250-600m)") -->
+```{r}
+#Configuration
+this.lead <- c(67,62)
+this.met <- "pearson.correlation"
+relabel <- c(SST="a) SST (August)",
+             Sal="b) Salinity (March, 250-600m)")
 
-<!-- #Setup data -->
-<!-- sp.dat <- -->
-<!--   these.cfg %>% -->
-<!--   filter(fig == "spMet" ) %>% -->
-<!--   rowwise() %>% -->
-<!--   group_split() %>% -->
-<!--   map_dfr(function(this) { -->
-<!--     this$mets.dat <-  -->
-<!--       this$mets.db[[1]] %>% -->
-<!--       tbl(PE.cfg$db$metrics.field) %>% -->
-<!--       filter(spName==!!this$spName, -->
-<!--              statName==!!this$statName, -->
-<!--              resultName==!!this$resultName) %>% -->
-<!--       collect() %>% -->
-<!--       filter(calibrationMethod==this$calibrationMethod | is.na(calibrationMethod)) %>% -->
-<!--       PE.db.unserialize() %>% -->
-<!--       list() -->
-<!--     return(this) -->
-<!--   }) -->
+#Setup data
+sp.dat <-
+  these.cfg %>%
+  filter(fig == "spMet" ) %>%
+  rowwise() %>%
+  group_split() %>%
+  map_dfr(function(this) {
+    this$dat <-
+      this$met.field.db[[1]] %>%
+      tbl(PE.cfg$db$metrics.field) %>%
+      filter(spName==!!this$spName,
+             statName==!!this$statName,
+             resultName==!!this$resultName) %>%
+      collect() %>%
+      filter(calibrationMethod==this$calibrationMethod | is.na(calibrationMethod)) %>%
+      PE.db.unserialize() %>%
+      list()
+    return(this)
+  })
 
 
-<!-- sp.met <-  -->
-<!--   sp.met.cfg %>% -->
-<!--   select(lbl,var,dat) %>% -->
-<!--   unnest(dat) %>% -->
-<!--   mutate(dat=map(field,rasterToPoints), -->
-<!--          dat=map(dat,as_tibble), -->
-<!--          dat=map(dat,set_names,c("x","y","value"))) %>% -->
-<!--   select(lbl,var,lead,metric,dat) %>% -->
-<!--   unnest(dat)  -->
+sp.met <-
+  sp.dat %>%
+  select(lbl,var,dat) %>%
+  unnest(dat) %>%
+  mutate(dat=map(field,rasterToPoints),
+         dat=map(dat,as_tibble),
+         dat=map(dat,set_names,c("x","y","value"))) %>%
+  select(lbl,var,lead,metric,dat) %>%
+  unnest(dat)
 
-<!-- cor.thresh <-  -->
-<!--   sp.met.cfg %>% -->
-<!--   distinct(cor.thresh) %>% -->
-<!--   pull() %>% -->
-<!--   round(2) -->
+#Extract polygons
+sp.polys <-
+  skill.cfgs %>%
+  pmap_dfr(function(...) {
+    this <- list(...)
+    this$pcfg@spatial.polygons %>%
+      filter(name==this$spName) %>%
+      mutate(var=this$var,
+             lbl=gsub("^.*?)","",this$lbl))})
 
-<!-- #Extract polygons -->
-<!-- sp.polys <-  -->
-<!--   skill.cfgs %>% -->
-<!--   pmap_dfr(function(...) { -->
-<!--     this <- list(...) -->
-<!--     this$pcfg@spatial.polygons %>% -->
-<!--       filter(name==this$spName) %>% -->
-<!--       mutate(var=this$var, -->
-<!--              lbl=gsub("^.*?)","",this$lbl))})  -->
+#Make plots
+sp.plt.cfg <- list()
+sp.plt.cfg$cor <- 
+  list(metric="pearson.correlation",
+    fill.breaks= c(0.25,seq(0.4,0.8,by=0.2)),
+       fill.lims = c(-1,1),
+       fill.lbls =  function(x) {sprintf("%02.2f",x)},
+       fill.pal = brewer.pal(4,"Reds"),
+       fill.ttl = "Pearson\ncorrelation (r)",
+       fill.even = FALSE)
 
-<!-- #Make plots -->
-<!-- fill.breaks <- c(0.25,seq(0.4,0.8,by=0.2)) -->
-<!-- fill.lims <- c(-1,1) -->
-<!-- fill.lbls <-  function(x) {sprintf("%02.2f",x)} -->
-<!-- fill.pal <- brewer.pal(4,"Reds") -->
-<!-- fill.ttl <- "Pearson\ncorrelation (r)" -->
-<!-- fill.even <- FALSE -->
+sp.plt.cfg$msss <-
+  list(metric="MSSS",
+       fill.breaks = seq(0,0.8,by=0.2),
+       fill.lims = c(-1e6,1),
+       fill.lbls =  function(x) {ifelse(x<0,expression(-infinity),sprintf("%02.2f",x))},
+       fill.pal = brewer.pal(5,"Blues"),
+       fill.ttl = "MSSS",
+       fill.even = TRUE)
 
-<!-- cor.map <-  -->
-<!--   sp.met %>% -->
-<!--   filter(metric=="pearson.correlation", -->
-<!--          lead %in%this.lead) %>% -->
-<!--   ggplot()+ -->
-<!--   theme(panel.background = element_rect(fill="grey70"), -->
-<!--         panel.grid = element_blank(), -->
-<!--         legend.position = "right")+ -->
-<!--   annotation_map(map_data("world"),fill="black")+ -->
-<!--   geom_raster(aes(x,y,fill=value))+ -->
-<!--   geom_sf(data=sp.polys,mapping=aes(linetype=lbl),fill=NA,colour="black")+ -->
-<!--   facet_wrap(~var, -->
-<!--              as.table=FALSE, -->
-<!--              ncol=1, -->
-<!--              labeller = labeller(var=relabel))+ -->
-<!--   binned_scale("fill","foo", -->
-<!--                ggplot2:::binned_pal(scales::manual_pal(c("white",fill.pal))), -->
-<!--                guide="coloursteps", -->
-<!--                breaks=fill.breaks, -->
-<!--                labels=fill.lbls, -->
-<!--                limits=fill.lims, -->
-<!--                show.limits=TRUE)+ -->
-<!--   guides(fill=guide_colorsteps(even.steps = fill.even, -->
-<!--                                show.limits = TRUE, -->
-<!--                                title.position="top", -->
-<!--                                title=fill.ttl, -->
-<!--                                ticks=TRUE, -->
-<!--                                frame.colour="black"), -->
-<!--          linetype=guide_legend(title.position="top", -->
-<!--                                title="Area" ))+ -->
-<!--   coord_sf(expand=FALSE)+ -->
-<!--   labs(x="",y="") -->
+sp.plots <- list()
 
-<!-- print(cor.map) -->
-<!-- ``` -->
+for(plt.cfg in sp.plt.cfg) {
 
-<!-- ```{r} -->
-<!-- #Duplicate with MSS -->
-<!-- fill.breaks <- seq(0,0.8,by=0.2) -->
-<!-- fill.lims <- c(-1e6,1) -->
-<!-- fill.lbls <-  function(x) {ifelse(x<0,expression(-infinity),sprintf("%02.2f",x))} -->
-<!-- fill.pal <- brewer.pal(5,"Blues") -->
-<!-- fill.ttl <- "MSSS" -->
-<!-- fill.even <- TRUE -->
+  #sp.plots[[length(sp.plots)+1]] <-
+    sp.met %>%
+    filter(metric==plt.cfg$metric,
+           lead %in%this.lead) %>%
+    ggplot()+
+    theme(panel.background = element_rect(fill="grey70"),
+          panel.grid = element_blank(),
+          legend.position = "right")+
+    annotation_map(map_data("world"),fill="black")+
+    geom_raster(aes(x,y,fill=value))+
+    geom_sf(data=sp.polys,mapping=aes(linetype=lbl),fill=NA,colour="black")+
+    facet_wrap(~var,
+               as.table=FALSE,
+               ncol=1,
+               labeller = labeller(var=relabel))+
+    # binned_scale("fill","foo",
+    #              ggplot2:::binned_pal(scales::manual_pal(c("white",plt.cfg$fill.pal))),
+    #              guide="coloursteps",
+    #              breaks=plt.cfg$fill.breaks,
+    #              labels=plt.cfg$fill.lbls,
+    #              limits=plt.cfg$fill.lims,
+    #              show.limits=TRUE)+
+    # guides(fill=guide_colorsteps(even.steps = plt.cfg$fill.even,
+    #                              show.limits = TRUE,
+    #                              title.position="top",
+    #                              title=plt.cfg$fill.ttl,
+    #                              ticks=TRUE,
+    #                              order=1,
+    #                              frame.colour="black"),
+    #        linetype=guide_legend(title.position="top",
+    #                              title="Area" ))+
+    coord_sf(expand=FALSE)+
+    labs(x="",y="")
+  
+}
 
-<!-- mss.map <-  -->
-<!--   filter(sp.met, -->
-<!--          metric=="MSSS", -->
-<!--          lead %in%this.lead) %>%  -->
-<!--     ggplot()+ -->
-<!--   theme(panel.background = element_rect(fill="grey70"), -->
-<!--         panel.grid = element_blank(), -->
-<!--         legend.position = "right")+ -->
-<!--   annotation_map(map_data("world"),fill="black")+ -->
-<!--   geom_raster(aes(x,y,fill=value))+ -->
-<!--   geom_sf(data=sp.polys,mapping=aes(linetype=lbl),fill=NA,colour="black")+ -->
-<!--   facet_wrap(~var, -->
-<!--              as.table=FALSE, -->
-<!--              ncol=1, -->
-<!--              labeller = labeller(var=relabel))+ -->
-<!--   binned_scale("fill","foo", -->
-<!--                ggplot2:::binned_pal(scales::manual_pal(c("white",fill.pal))), -->
-<!--                guide="coloursteps", -->
-<!--                breaks=fill.breaks, -->
-<!--                labels=fill.lbls, -->
-<!--                limits=fill.lims, -->
-<!--                show.limits=TRUE)+ -->
-<!--   guides(fill=guide_colorsteps(even.steps = fill.even, -->
-<!--                                show.limits = TRUE, -->
-<!--                                title.position="top", -->
-<!--                                title=fill.ttl, -->
-<!--                                ticks=TRUE, -->
-<!--                                frame.colour="black"), -->
-<!--          linetype=guide_legend(title.position="top", -->
-<!--                                title="Area" ))+ -->
-<!--   coord_sf(expand=FALSE)+ -->
-<!--   labs(x="",y="") -->
+wrap_plots(sp.plots,ncol=2)
 
-<!-- print(mss.map) -->
+```
 
-<!-- ``` -->
+```{r}
+
+
+# mss.map <-
+#   filter(sp.met,
+#          metric=="MSSS",
+#          lead %in%this.lead) %>%
+#     ggplot()+
+#   theme(panel.background = element_rect(fill="grey70"),
+#         panel.grid = element_blank(),
+#         legend.position = "right")+
+#   annotation_map(map_data("world"),fill="black")+
+#   geom_raster(aes(x,y,fill=value))+
+#   geom_sf(data=sp.polys,mapping=aes(linetype=lbl),fill=NA,colour="black")+
+#   facet_wrap(~var,
+#              as.table=FALSE,
+#              ncol=1,
+#              labeller = labeller(var=relabel))+
+#   binned_scale("fill","foo",
+#                ggplot2:::binned_pal(scales::manual_pal(c("white",fill.pal))),
+#                guide="coloursteps",
+#                breaks=fill.breaks,
+#                labels=fill.lbls,
+#                limits=fill.lims,
+#                show.limits=TRUE)+
+#   guides(fill=guide_colorsteps(even.steps = fill.even,
+#                                show.limits = TRUE,
+#                                title.position="top",
+#                                title=fill.ttl,
+#                                ticks=TRUE,
+#                                frame.colour="black"),
+#          linetype=guide_legend(title.position="top",
+#                                title="Area" ))+
+#   coord_sf(expand=FALSE)+
+#   labs(x="",y="")
+# 
+# print(mss.map)
+
+```
 
 
 
