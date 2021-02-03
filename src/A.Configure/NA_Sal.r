@@ -43,7 +43,7 @@ pcfg <- PredEng.config(project.name= "NA_Sal",
                        landmask="data_srcs/NMME/landmask.nc",
                        Observations=Sal.obs$EN4,
                        Decadal=Sal.Decadal,
-                       calibrationMethods=c("anomaly"))
+                       calibrationMethods=c("MeanAdj"))
 
 
 #CMIP5 salinity
@@ -71,11 +71,12 @@ pcfg@vert.range <- c(250,600)
 #'========================================================================
 #Configure summary stats
 statsum.l <- PElst()
-statsum.l[[1]] <- pass.through(name="Anomaly",
+statsum.l[[1]] <- pass.through(name="Field",
                                desc="Salinity anomaly",
                                use.globalROI = TRUE,
-                               calibration = "anomaly",
-                               realizations=c(1,4))
+                               calibration = c("MeanAdj"),
+                               sources=c(0,4))
+
 pcfg@statistics <- statsum.l
 
 #'========================================================================

@@ -116,7 +116,6 @@ statsum.l$Jansen <- threshold(name="JansenTreshold",
                             above=TRUE,
                             calibration = c("MeanAdj","MeanVarAdj"),
                             retain.field = FALSE,
-                            realizations=1:4,
                             threshold=8.5)  #Based on Jansen et al
 # statsum.l$temp <- spatial.mean(name="TempAnomaly",
 #                                desc="Temperature anomaly",
@@ -153,8 +152,7 @@ statsum.l$HabitatModel <-  custom.stat(name="HabitatModel",
                            fn=habitat.fn,
                            resources=resource.l,
                            calibration = c("MeanAdj","MeanVarAdj"),
-                           retain.field=FALSE,
-                           realizations=1:4)
+                           retain.field=FALSE)
 
 #Merge it all in
 pcfg@statistics <- statsum.l

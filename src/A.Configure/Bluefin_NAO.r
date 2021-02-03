@@ -113,8 +113,7 @@ stat.l$threshold <-
   threshold(name="threshold",
                          desc="11 degree threshold",
                          threshold=11,
-                         above=TRUE,
-                         realizations=1:4)
+                         above=TRUE)
 
 stat.l$mean <- spatial.mean(name="MeanTemp",
                                desc="Mean temperature")

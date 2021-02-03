@@ -123,8 +123,8 @@ stat.l <- PElst()
 #Average salinity
 stat.l[["MeanSal"]]  <- spatial.mean(name="Mean-salinity",
                                      desc="Mean salinity",
-                                     realizations = 1,
-                                     calibration=c("MeanAdj","MeanVarAdj"))
+                                     sources = 0:1,
+                                     calibration = "MeanAdj")
 
 #Setup Miesner & Payne habitat model
 require(mgcv)
@@ -257,7 +257,7 @@ stat.l$SDM <-
               desc="Miesner and Payne 2018 habitat model applied to the GlobalROI",
               fn=GAM.sdm.fn,
               resources=GAM.sdm.resources,
-              realizations=1,
+              sources = 1,
               use.globalROI = TRUE,
               retain.field=TRUE,
               calibration=c("MeanAdj"))

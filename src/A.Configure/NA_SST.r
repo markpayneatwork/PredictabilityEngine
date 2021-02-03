@@ -44,7 +44,7 @@ pcfg <- PredEng.config(project.name= "NA_SST",
                        landmask="data_srcs/NMME/landmask.nc",
                        Observations=SST_obs[[c("HadISST")]],
                        Decadal=SST.Decadal.production,
-                       calibrationMethods=c("anomaly"))
+                       calibrationMethods=c("MeanAdj"))
 
 #Setup scratch directory
 pcfg@scratch.dir <- file.path(PE.cfg$dir$scratch,pcfg@project.name)
@@ -67,11 +67,11 @@ pcfg@retain.realizations <- TRUE
 #'========================================================================
 #Configure summary stats
 statsum.l <- PElst()
-statsum.l[[1]] <- pass.through(name="Anomaly",
-                               desc="SST anomaly field",
+statsum.l[[1]] <- pass.through(name="Field",
+                               desc="SST field",
                                use.globalROI = TRUE,
-                               calibration = c("anomaly"),
-                               realizations=c(1,4))
+                               calibration = c("MeanAdj"),
+                               sources=c(0,4))
 
 pcfg@statistics <- statsum.l
 

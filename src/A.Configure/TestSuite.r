@@ -46,7 +46,7 @@ pcfg <- PredEng.config(project.name= "TestSuite",
                comp.years=1990:2100,
                landmask="data_srcs/NMME/landmask.nc",
                Observations=SST_obs[[c("HadISST")]],
-               calibrationMethods="MeanAdj",
+               calibrationMethods=c("anomaly","MeanAdj"),
                persistence.leads = seq(7,120,by=12),
                NMME=NMME.sst.l)
 
