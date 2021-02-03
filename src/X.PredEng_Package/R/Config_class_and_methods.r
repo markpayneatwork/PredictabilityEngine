@@ -195,7 +195,7 @@ setMethod("show","PredEng.config", function(object) {
     show.slot(object,i)}
   cat(paste(rep("-",nchar(hdr.str)),collapse="",sep=""),"\n")
   log_msg("%-20s : %s\n","Configured on",object@config.date)
-  log_msg("%-20s : %s\n","Package version",object@package.version)
+  log_msg("%-20s : %s\n","Git configuration",object@package.version)
 })
 
 #' #' Get vertical layers
@@ -222,47 +222,47 @@ setMethod("show","PredEng.config", function(object) {
 
 #' Set the configuration
 #'
-#' @param pcfg 
+#' @param object  A PredEng.config object
 #'
-#' @return
+#' @return The supplied object, with tweaks.
 #' @export
-set.configuration <- function(pcfg) {
+set.configuration <- function(object) {
   #Check object is initially valid
-  validObject(pcfg)
+  validObject(object)
 
   #Set output directories
-  define_dir(pcfg@scratch.dir)
+  define_dir(object@scratch.dir)
   
   #Storage package version
-  pcfg@config.date <- date()
-  pcfg@package.version <- PE.current.version()
+  object@config.date <- date()
+  object@package.version <- PE.current.version()
 
   #Write CDO grid descriptors
-  griddes.txt <- griddes(pcfg@global.ROI,res=pcfg@global.res)
-  writeLines(griddes.txt,PE.scratch.path(pcfg,"analysis.grid"))
+  griddes.txt <- griddes(object@global.ROI,res=object@global.res)
+  writeLines(griddes.txt,PE.scratch.path(object,"analysis.grid"))
 
   #Output configuration file
-  cfg.fname <- PE.scratch.path(pcfg,"config")
+  cfg.fname <- PE.scratch.path(object,"config")
   #cfg.linked <- PE.cfg$path$config
-  saveRDS(pcfg,file=cfg.fname)
+  saveRDS(object,file=cfg.fname)
 
   #Setup targets cache directory
   targets.link <- here("_targets")
   if(file.exists(targets.link)) {
     file.remove(targets.link)
   }
-  scratch.tar <- define_dir(here(pcfg@scratch.dir,"_targets"))
+  scratch.tar <- define_dir(here(object@scratch.dir,"_targets"))
   define_dir(scratch.tar,"logs")
   file.symlink(scratch.tar,targets.link)
   
   #Setup SQLite database to store results
-  PE.db.setup(pcfg)
+  PE.db.setup(object)
  
   #Final check
-  validObject(pcfg,complete=TRUE)
-  show(pcfg)
+  validObject(object,complete=TRUE)
+  PE.config.summary(object)
 
-  return(pcfg)
+  return(object)
 }
 
 #' Import PredEng configuration

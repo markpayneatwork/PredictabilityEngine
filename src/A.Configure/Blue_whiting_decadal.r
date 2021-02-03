@@ -74,7 +74,7 @@ pcfg@global.res  <- 0.5
 #but update to run across all data, not just the observations
 for(i in seq(pcfg@statistics)) {
   this.stat <- pcfg@statistics[[i]] 
-  this.stat@realizations <- c(0,2:4)
+  this.stat@sources <- c(0,2:4)
   this.stat@use.globalROI <- FALSE
   pcfg@statistics[[i]] <- this.stat
 }

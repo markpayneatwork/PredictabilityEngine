@@ -25,7 +25,10 @@ PE.config.summary<- function(...){
   }
   log_msg("---------------------\n")
   log_msg("%-20s : %s\n","R.version", R.version$version.string)
-  log_msg("%-20s : %s\n","Current Package",PE.current.version())
+  log_msg("%-20s : %s\n","Current git",PE.current.version())
+  log_msg("---------------------\n")
+  log_msg("%-20s : \n","Outstanding modifications")
+  log_msg("%s\n",system2("git","status --porcelain",stdout = TRUE))
   log_msg("---------------------\n")
 }
 

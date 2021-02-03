@@ -83,7 +83,7 @@ cat(sprintf("Visualisations generated  %s\n",date()))
 #==========================================================================
 pcfg <- readRDS(here("scratch/Blue_whiting_decadal/configuration.rds"))
 pcfg <- readRDS(here("scratch/Blue_whiting_NorCPM_tests/configuration.rds"))
-show(pcfg)
+PE.config.summary(pcfg)
 
 #'========================================================================
 # Setup ####

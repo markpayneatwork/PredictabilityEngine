@@ -16,13 +16,13 @@
 #'
 setGeneric("verticalLayers",function(cfg,src,...) standardGeneric("verticalLayers"))}
 \usage{
-set.configuration(pcfg)
+set.configuration(object)
 }
 \arguments{
-\item{pcfg}{}
+\item{object}{A PredEng.config object}
 }
 \value{
-
+The supplied object, with tweaks.
 }
 \description{
 setMethod("verticalLayers",signature = c("PredEng.config","data.source"),function(cfg,src,f){
