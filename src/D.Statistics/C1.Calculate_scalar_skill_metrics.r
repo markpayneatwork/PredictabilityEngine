@@ -78,7 +78,8 @@ if(file.exists(PE.db.path(pcfg,PE.cfg$db$metrics))) {
 #'========================================================================
 log_msg("Extract observations...\n")
 
-#Import uncalibrated observation stats
+#Import uncalibrated observation stats for the target months
+#These are the references against which everything else is compared.
 obs.dat.all <-
   stats.tbl %>%
   filter(srcType=="Observations",
@@ -88,6 +89,7 @@ obs.dat.all <-
   #Setup year-month key
   mutate(date=ymd(date),
          ym=date_to_ym(date)) %>%
+  filter(month(date) %in% pcfg@MOI) %>%
   #Drop NAs (which are probably field-only)
   filter(!is.na(value)) %>%
   #Drop unused fields relating to forecasts

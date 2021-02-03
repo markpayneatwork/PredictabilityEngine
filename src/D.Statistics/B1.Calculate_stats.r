@@ -170,11 +170,7 @@ if(any(this.stat@sources==0)) {  #Have to explicitly ask for it
     tb.extr %>%
     filter(srcType=="Observations") %>%
     select(pKey,date) %>%
-    collect() %>%
-    #Filter by month of interest
-    mutate(date=ymd(date),
-           month=month(date)) %>%
-    filter(month %in% pcfg@MOI)
+    collect() 
   dbDisconnect(tb.extr)
   
   obs.pKeys <- 
