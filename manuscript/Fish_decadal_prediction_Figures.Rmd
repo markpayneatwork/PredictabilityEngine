@@ -63,6 +63,8 @@ library(ggnewscale)
 library(RSQLite)
 library(RColorBrewer)
 library(RcppRoll)
+library(patchwork)
+library(ggsci)
 
 theme_set(theme_bw())
 theme_replace(strip.text = element_text(hjust=0),
@@ -87,7 +89,7 @@ this.dir <- "manuscript"
 cfgs <- list()
 cfgs$Mackerel_summer <-
   tibble(tbl=PE.cfg$db$metrics,
-         spName="Greenland",
+         spName="West_Greenland",
          statName="JansenTreshold",
          resultName="area",
          calibrationMethod="MeanAdj",
@@ -115,9 +117,9 @@ cfgs$Bluefin <-
 cfgs$NA_SST <-
   tibble(tbl=PE.cfg$db$metrics.field,
          spName="global.ROI",
-         statName="Anomaly",
+         statName="Field",
          resultName="field",
-         calibrationMethod="anomaly",
+         calibrationMethod="MeanAdj",
          var="SST",
          fig="spMet",
          lbl="a) SST (August)")
@@ -149,10 +151,13 @@ these.cfg <-
                                 here(this.dir,.x,
                                      sprintf("%s_metricsField.sqlite",.x))))) 
 
+these.cfg %>%
+  select(-(pcfg:met.field.db)) %>%
+  print()
 ```
 
 
-## Skill Metrics for each fish stock
+# Skill Metrics for each fish stock
 
 ```{r, fig.height=10,fig.width=5.6}
 #'========================================================================
@@ -206,16 +211,22 @@ decadal.leads <-
   unite(lbl.lead,lbl,lead) %>%
   pull()
 
+base.pal <- c("#e41a1c","#377eb8","#4daf4a","#984ea3","#ff7f00") #Set1
+base.pal <- pal_npg()(5)
 plt.cfgs <-
   list(list(metric="pearson.correlation",
             ylab="Pearson correlation coefficient (r)",
-            ylim=c(0,1.1)),
+            ylim=c(0,1.1),
+            signif.y =1.05,
+            colour.pal=c(base.pal[1],"grey",base.pal[3:5])),
        list(metric="MSSS",
             ylab="Mean squared error skill score (MSESS)",
-            ylim=c(-1,1.2)))
+            signif.y =1.1,
+            ylim=c(-1,1.2),
+            colour.pal=c(base.pal[2],"grey",base.pal[3:5])))
 
+met.plots <- list()
 for(this.cfg in plt.cfgs) {
-  
   cleaned.dat <- 
     skill.dat %>%
     filter(metric==this.cfg$metric) %>%
@@ -252,15 +263,11 @@ for(this.cfg in plt.cfgs) {
            p.txt=cut(p.value,breaks=signif.breaks,
                      labels=signif.lbls))
   
-  #Plot miscs
-  colour.pal <- hue_pal()(7)
-  
-  
-  g <- 
+  met.plots[[this.cfg$metric]] <- 
     #Setup baseline
     ggplot()+
     facet_wrap(~lbl,ncol=1)+
-    annotate("rect",xmin=0,xmax=10,ymin=1,ymax=max(this.cfg$ylim),fill="white",colour="black")+
+    annotate("rect",xmin=0,xmax=10,ymin=1,ymax=this.cfg$ylim[2],fill="white",colour="black")+
     geom_hline(yintercept = 0)+
     scale_linetype_manual(values="dotted")+
     coord_cartesian(xlim=c(0,10),
@@ -278,14 +285,14 @@ for(this.cfg in plt.cfgs) {
                 data=highlight.dat,
                 alpha=0.25,
                 show.legend = FALSE)+
-    scale_fill_manual(values=colour.pal[1:2])+
+    scale_fill_manual(values=this.cfg$colour.pal[1:2])+
     #Individual model plots
     geom_line(data=models.dat,
               mapping=aes(x=lead.yrs,
                           y=value,
                           colour=dispName),
-              size=0.2)+
-    scale_colour_manual(values=colour.pal[-c(1:2)],
+              size=0.5)+
+    scale_colour_manual(values=this.cfg$colour.pal[-c(1:2)],
                         guide=guide_legend(order=2,ncol=1,
                                            title="Individual Models",title.position = "top"))+
     guides(linetype=guide_legend(title.position = "top"))+
@@ -296,14 +303,15 @@ for(this.cfg in plt.cfgs) {
               mapping=aes(x=lead.yrs,
                           y=value,
                           colour=dispName),
-              size=2)+
-    scale_colour_manual(values=colour.pal[1:2],
+              size=1.5)+
+    scale_colour_manual(values=this.cfg$colour.pal[1:2],
                         guide=guide_legend(order=1,ncol=1,
                                            title="Key Metrics",
                                            title.position = "top"))+
     #Significance band
     geom_point(data=signif.dat,
-               mapping=aes(x=lead.yrs,y=mean(c(1,max(this.cfg$ylim))),shape=p.txt,size=p.txt))+
+               mapping=aes(x=lead.yrs,shape=p.txt,size=p.txt),
+               y=this.cfg$signif.y)+
     scale_shape_manual(values=c(16,8,3,16),
                        drop=FALSE,
                        guide=guide_legend(order=3,ncol=1,
@@ -315,12 +323,13 @@ for(this.cfg in plt.cfgs) {
                                          title="Signif. test",
                                          title.position = "top"))
   
-  print(g)
 }
 
+wrap_plots(met.plots,ncol=2)
+print(met.plots)
 ```
 
-## Effect of smoothing
+# Effect of smoothing
 
 ```{r}
 #Import data and select skill metrics
@@ -400,18 +409,21 @@ smooth.dat <-
   print(g)
 
 
-
 ```
 
-
-
-## Ability to forecast given years
+# Ability to forecast given years
 ```{r}
 # Setup configuration -------------------------------------------------------------
 forecast.cfg.l <- list()
+forecast.cfg.l$Mackerel_summer <- 
+  tibble(yr.rng=list(1980:2020),
+         starts=list(c(1990,2000,2011)),
+         scalar=1/1e6,
+         lbl2="Area of Mackerel habitat (Mkm²)")
+
 forecast.cfg.l$Bluefin <- 
-  tibble(yr.rng=list(1980:2010),
-         starts=list(c(1982,1992,2002)),
+  tibble(yr.rng=list(1980:2020),
+         starts=list(c(1982,1992,2002,2011)),
          scalar=-1,
          lbl2="Bluefin Habitat Extent (deg Lat W)")
 
@@ -422,11 +434,6 @@ forecast.cfg.l$Bluefin <-
 #          scalar=1,
 #          lbl2="Blue whiting spawning habitat (km²)")
 
-forecast.cfg.l$Mackerel_summer <- 
-  tibble(yr.rng=list(1980:2010),
-         starts=list(c(1990,2000,2010)),
-         scalar=1/1e6,
-         lbl2="Mackerel habitat (Mkm²)")
 
 forecast.cfg <-
   bind_rows(forecast.cfg.l,.id="name") %>%
@@ -496,6 +503,8 @@ for(this.cfg in forecast.cfg) {
                 alpha=0.25)+
     geom_line(data=forecast.realmean,
               mapping=aes(year,value,col=startYear),show.legend = FALSE)  +
+    scale_fill_npg()+
+    scale_colour_npg()+
     new_scale_color()+
     #Observations
     geom_line(data=this.obs,
@@ -573,7 +582,6 @@ for(this.cfg in forecast.cfg) {
 }
 
 #Merge together with patchwork
-library(patchwork)
 wrap_plots(forecast.plt,ncol=1)+
   plot_annotation(tag_levels = "a",tag_suffix = ")")
 
@@ -581,10 +589,7 @@ wrap_plots(fixed.lead.plt,ncol=1)+
   plot_annotation(tag_levels = "a",tag_suffix = ")")
 ```
 
-#'========================================================================
-# Spatial Maps ####
-# Figure 1 in manuscript
-#'========================================================================
+# Spatial Skill Maps ####
 
 ```{r}
 #Configuration
@@ -641,7 +646,7 @@ sp.plt.cfg$cor <-
     fill.breaks= c(0.25,seq(0.4,0.8,by=0.2)),
        fill.lims = c(-1,1),
        fill.lbls =  function(x) {sprintf("%02.2f",x)},
-       fill.pal = brewer.pal(4,"Reds"),
+       fill.pal = ggplot2:::binned_pal(scales::manual_pal(c("white",brewer.pal(4,"Reds")))),
        fill.ttl = "Pearson\ncorrelation (r)",
        fill.even = FALSE)
 
@@ -650,15 +655,14 @@ sp.plt.cfg$msss <-
        fill.breaks = seq(0,0.8,by=0.2),
        fill.lims = c(-1e6,1),
        fill.lbls =  function(x) {ifelse(x<0,expression(-infinity),sprintf("%02.2f",x))},
-       fill.pal = brewer.pal(5,"Blues"),
+       fill.pal = ggplot2:::binned_pal(scales::manual_pal(c("white",brewer.pal(5,"Blues")))),
        fill.ttl = "MSSS",
        fill.even = TRUE)
 
 sp.plots <- list()
 
 for(plt.cfg in sp.plt.cfg) {
-
-  #sp.plots[[length(sp.plots)+1]] <-
+  sp.plots[[plt.cfg$metric]] <-
     sp.met %>%
     filter(metric==plt.cfg$metric,
            lead %in%this.lead) %>%
@@ -673,68 +677,29 @@ for(plt.cfg in sp.plt.cfg) {
                as.table=FALSE,
                ncol=1,
                labeller = labeller(var=relabel))+
-    # binned_scale("fill","foo",
-    #              ggplot2:::binned_pal(scales::manual_pal(c("white",plt.cfg$fill.pal))),
-    #              guide="coloursteps",
-    #              breaks=plt.cfg$fill.breaks,
-    #              labels=plt.cfg$fill.lbls,
-    #              limits=plt.cfg$fill.lims,
-    #              show.limits=TRUE)+
-    # guides(fill=guide_colorsteps(even.steps = plt.cfg$fill.even,
-    #                              show.limits = TRUE,
-    #                              title.position="top",
-    #                              title=plt.cfg$fill.ttl,
-    #                              ticks=TRUE,
-    #                              order=1,
-    #                              frame.colour="black"),
-    #        linetype=guide_legend(title.position="top",
-    #                              title="Area" ))+
+    binned_scale("fill","foo",
+                 palette=plt.cfg$fill.pal,
+                 guide="coloursteps",
+                 breaks=plt.cfg$fill.breaks,
+                 labels=plt.cfg$fill.lbls,
+                 limits=plt.cfg$fill.lims,
+                 show.limits=TRUE)+
+    guides(fill=guide_colorsteps(even.steps = plt.cfg$fill.even,
+                                 show.limits = TRUE,
+                                 title.position="top",
+                                 title=plt.cfg$fill.ttl,
+                                 ticks=TRUE,
+                                 order=1,
+                                 frame.colour="black"),
+           linetype=guide_legend(title.position="top",
+                                 title="Area" ))+
     coord_sf(expand=FALSE)+
     labs(x="",y="")
   
 }
 
-wrap_plots(sp.plots,ncol=2)
-
-```
-
-```{r}
-
-
-# mss.map <-
-#   filter(sp.met,
-#          metric=="MSSS",
-#          lead %in%this.lead) %>%
-#     ggplot()+
-#   theme(panel.background = element_rect(fill="grey70"),
-#         panel.grid = element_blank(),
-#         legend.position = "right")+
-#   annotation_map(map_data("world"),fill="black")+
-#   geom_raster(aes(x,y,fill=value))+
-#   geom_sf(data=sp.polys,mapping=aes(linetype=lbl),fill=NA,colour="black")+
-#   facet_wrap(~var,
-#              as.table=FALSE,
-#              ncol=1,
-#              labeller = labeller(var=relabel))+
-#   binned_scale("fill","foo",
-#                ggplot2:::binned_pal(scales::manual_pal(c("white",fill.pal))),
-#                guide="coloursteps",
-#                breaks=fill.breaks,
-#                labels=fill.lbls,
-#                limits=fill.lims,
-#                show.limits=TRUE)+
-#   guides(fill=guide_colorsteps(even.steps = fill.even,
-#                                show.limits = TRUE,
-#                                title.position="top",
-#                                title=fill.ttl,
-#                                ticks=TRUE,
-#                                frame.colour="black"),
-#          linetype=guide_legend(title.position="top",
-#                                title="Area" ))+
-#   coord_sf(expand=FALSE)+
-#   labs(x="",y="")
-# 
-# print(mss.map)
+#wrap_plots(sp.plots,ncol=2)
+print(sp.plots)
 
 ```
 
