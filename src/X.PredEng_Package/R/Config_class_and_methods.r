@@ -32,6 +32,7 @@
 #' should we go straight to the realisation means (as a way of saving disk space and simiplifying the
 #' processing)?
 #' @slot package.version Details of the package version that this object was built with. Written automatically by the set.configuration() function
+#' @slot config.date Date/time when the configuration was finalised
 #'
 #' @include Data_class_and_methods.r
 #' @include PElst.r
@@ -71,6 +72,7 @@ PredEng.config <-
                       scratch.dir="character",
                       retain.realizations="logical",
                       average.months="logical",
+                      config.date="character",
                       package.version="character"),
            prototype = list(global.ROI=extent(as.numeric(rep(NA,4))),
                             obs.only=FALSE,
@@ -189,10 +191,11 @@ setMethod("show","PredEng.config", function(object) {
       cat(paste(obj,collapse=", "),"\n")
     }
   }
-  log_msg("%-20s : %s\n","Current Package",PE.current.version())
-  for(i in setdiff(slotNames("PredEng.config"),"package.version")) {show.slot(object,i)}
-  log_msg("%-20s : %s\n","Current Package",object@package.version)
-
+  for(i in setdiff(slotNames("PredEng.config"),c("package.version","config.date"))) {
+    show.slot(object,i)}
+  cat(paste(rep("-",nchar(hdr.str)),collapse="",sep=""),"\n")
+  log_msg("%-20s : %s\n","Configured on",object@config.date)
+  log_msg("%-20s : %s\n","Package version",object@package.version)
 })
 
 #' #' Get vertical layers
@@ -231,6 +234,7 @@ set.configuration <- function(pcfg) {
   define_dir(pcfg@scratch.dir)
   
   #Storage package version
+  pcfg@config.date <- date()
   pcfg@package.version <- PE.current.version()
 
   #Write CDO grid descriptors
