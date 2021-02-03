@@ -74,7 +74,8 @@ extract.observations <-
                          stop("Cannot find observation script"))
     ext.script(here("src/B.Extract/",obs.script),
                args=this.src@name)
-    return(this.src)
+    return(list(srcName=this.src@name,
+                datetime=Sys.time()))
   }
 
 tar.l$obs.src <-
@@ -92,14 +93,18 @@ extract.decadal <-
   function(this.src) {
     ext.script(here('src/B.Extract/D1.Decadal_extraction.r'),
                args=this.src@name)
-    return(this.src)
+    return(tibble(srcType=this.src@type,
+                  srcName=this.src@name,
+                  datetime=Sys.time()))
   }
 
 calc.realmeans <- 
   function(this.src) {
   ext.script(here("src/B.Extract/Z1.Calculate_realmeans.r"),
-             args=c(this.src@type,this.src@name))
-  return(this.src)}
+             args=c(this.src$srcType,this.src$srcName))
+  this.src[["datetime"]] <- Sys.time()
+  return(this.src)
+}
 
 if(length(pcfg@Decadal)!=0 & !pcfg@obs.only){
   tar.l$decadal.srcs <-

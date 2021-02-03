@@ -45,7 +45,7 @@ pcfg <- PredEng.config(project.name= "TestSuite",
                clim.years=1990:2100,   #Take in everything
                comp.years=1990:2100,
                landmask="data_srcs/NMME/landmask.nc",
-               Observations=SST_obs[[c("HadISST")]],
+               Observations=SST_obs$HadISST,
                calibrationMethods=c("anomaly","MeanAdj"),
                persistence.leads = seq(7,120,by=12),
                NMME=NMME.sst.l)
@@ -138,9 +138,10 @@ pcfg@pt.extraction <-
 stat.l <- PElst()
 stat.l$threshold <- 
   threshold(name="threshold",
-                         desc="11 degree threshold",
-                         threshold=11,
-                         above=TRUE)
+            desc="11 degree threshold",
+            threshold=11,
+            retain.field = TRUE,
+            above=TRUE)
 
 #Merge it all in
 pcfg@statistics <- stat.l
