@@ -62,12 +62,9 @@ options(future.globals.onReference = "error")
 #'========================================================================
 log_msg("Import data..\n")
 #Setup databases
-this.db.extr <- PE.db.connection(pcfg,PE.cfg$db$extract)
-extr.tbl <- tbl(this.db.extr,PE.cfg$db$extract)
-this.db.clim <- PE.db.connection(pcfg,PE.cfg$db$climatology)
-clim.tbl <- tbl(this.db.clim,PE.cfg$db$climatology)
-this.db.calib <- PE.db.connection(pcfg,PE.cfg$db$calibration)
-calib.tbl <- tbl(this.db.calib,PE.cfg$db$calibration)
+extr.tbl <- PE.db.tbl(pcfg,PE.cfg$db$extract)
+clim.tbl <- PE.db.tbl(pcfg,PE.cfg$db$climatology)
+calib.tbl <- PE.db.tbl(pcfg,PE.cfg$db$calibration)
 
 #Clear all previous analyses that give these types of calibration methods
 del.this <-
@@ -225,13 +222,7 @@ for(this.basket in basket.l) {
     #Tidy
     mutate(calibrationMethod=gsub("calib\\.","",calibrationMethod),
            date=as.character(date)) %>%
-    filter(calibrationMethod %in% pcfg@calibrationMethods) %>% #Don't store anomaly if not requested
-    #Make interpretation of calibrated observations clear - these are basically
-    #persistence fields that have a startDate but are yet to be associated with
-    #a forecast date.
-    mutate(startDate=ifelse(srcType=="Observations",date,startDate),
-           date=ifelse(srcType=="Observations",NA,date),
-           srcType=ifelse(srcType=="Observations","Persistence",srcType))
+    filter(calibrationMethod %in% pcfg@calibrationMethods) 
     
   #Write results
   PE.db.appendTable(pcfg,PE.cfg$db$calibration,out.dat)
@@ -245,9 +236,9 @@ for(this.basket in basket.l) {
 # Complete ####
 #'========================================================================
 #Finished 
-dbDisconnect(this.db.calib)
-dbDisconnect(this.db.clim)
-dbDisconnect(this.db.extr)
+dbDisconnect(calib.tbl)
+dbDisconnect(clim.tbl)
+dbDisconnect(extr.tbl)
 
 #Turn off the lights
 plan(sequential)

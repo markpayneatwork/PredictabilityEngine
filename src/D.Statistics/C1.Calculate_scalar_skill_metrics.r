@@ -66,12 +66,7 @@ plan(multisession,workers = n.cores)
 assert_that(length(pcfg@MOI)==1,msg="Metric calculation currently one works with one MOI")
 
 #Setup databases
-this.db <- PE.db.connection(pcfg,PE.cfg$db$stats)
-stats.tbl <- tbl(this.db,PE.cfg$db$stats)
-
-# #Reset the resutls table by deleting and reestablishing it
-# dbRemoveTable(this.db,PE.cfg$db$stats)
-# PE.db.setup(pcfg)
+stats.tbl <- PE.db.tbl(pcfg,PE.cfg$db$stats)
 
 #Clear existing metrics table
 if(file.exists(PE.db.path(pcfg,PE.cfg$db$metrics))) {
@@ -83,10 +78,11 @@ if(file.exists(PE.db.path(pcfg,PE.cfg$db$metrics))) {
 #'========================================================================
 log_msg("Extract observations...\n")
 
-#Import observation stats
+#Import uncalibrated observation stats
 obs.dat.all <-
   stats.tbl %>%
-  filter(srcType=="Observations") %>% 
+  filter(srcType=="Observations",
+         is.na(calibrationMethod)) %>% 
   select(-field,-pKey) %>%
   collect() %>%
   #Setup year-month key
@@ -155,10 +151,10 @@ log_msg("Persistence...\n")
 #Also don't want any smoothed data
 persis.dat <-
   obs.dat.all %>%
+  #Apply smoothing self
   filter(!grepl("/.+$",resultName)) %>%   #Remove smoothed variables
   group_by(srcType,srcName,spName,statName,resultName) %>%
   arrange(date,.by_group=TRUE) %>%
-  
   mutate(RollMean3=roll_meanr(value,n=3),
          RollMean5=roll_meanr(value,n=5),
          srcType="Persistence") %>%
@@ -228,7 +224,7 @@ log_msg("Model data...\n")
 #Check whether we have any data other than observations in the database
 n.mdl.stats <- 
   stats.tbl %>%
-  filter(!srcType %in% c("Observations","Persistence")) %>%
+  filter(srcType != "Observations") %>%
   summarise(n=n()) %>%
   collect()  %>%
   pull()
@@ -239,7 +235,7 @@ if(have.mdl.dat) {
   mdl.stats.dat <- 
     #Import relevant data first
     stats.tbl %>%
-    filter(!srcType %in% c("Observations","Persistence")) %>%
+    filter(srcType != "Observations") %>%
     select(-field,-pKey,-leadIdx) %>% 
     filter(!is.na(value)) %>%
     collect() %>%
@@ -350,7 +346,8 @@ if(have.mdl.dat) {
     #Convert to probabilistic forecasts
     mdl.stats.dat %>%  #Don't include persistence
     filter(!(realization %in% c("realmean","ensmean"))) %>%   #Individual ens members only
-    group_by(srcType,srcName,calibrationMethod,startDate,date,spName,statName,resultName,.drop=TRUE) %>%
+    group_by(srcType,srcName,calibrationMethod,startDate,date,
+             spName,statName,resultName,.drop=TRUE) %>%
     summarise(pred.mean=mean(value),
               pred.sd=sd(value),
               pred.n=n(),
@@ -462,6 +459,7 @@ if(have.mdl.dat) {
 # Complete ####
 #'========================================================================
 #Turn off the lights
+dbDisconnect(stats.tbl)
 log_msg("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date())
 
 # .............

@@ -47,6 +47,7 @@ pcfg <- PredEng.config(project.name= "TestSuite",
                landmask="data_srcs/NMME/landmask.nc",
                Observations=SST_obs[[c("HadISST")]],
                calibrationMethods="MeanAdj",
+               persistence.leads = seq(7,120,by=12),
                NMME=NMME.sst.l)
 
 #Setup scratch directory
@@ -139,8 +140,7 @@ stat.l$threshold <-
   threshold(name="threshold",
                          desc="11 degree threshold",
                          threshold=11,
-                         above=TRUE,
-                         realizations=1:4)
+                         above=TRUE)
 
 #Merge it all in
 pcfg@statistics <- stat.l

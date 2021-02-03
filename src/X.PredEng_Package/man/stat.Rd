@@ -9,14 +9,15 @@
 
 \item{desc}{Description of the statistics class.}
 
-\item{realizations}{Tells what sort of data to be considered  1 = Observations for Persistence 
-2 = Individual realisations  3 = Realization means 4 = Ensemble means. Observations are always calculated.}
+\item{sources}{Tells what sort of data source to apply the statistics to. 0 = Uncalibrated
+observations  1 = Calibrated observations  2 = Individual realisations  
+3 = Realization means 4 = Ensemble means.}
 
-\item{calibration}{Choose the calibration method to base the statistic on. Defaults to NULL, indicating
-to use all available calibrations}
+\item{calibration}{Choose the calibration method to base the statistic on. Defaults to NULL,
+indicating to use all available calibrations}
 
-\item{use.globalROI}{Indicates whether the stat should also be calculated on global basis, in addition
-to those specified by this.stat@spatial.polygons slot.}
+\item{use.globalROI}{Indicates whether the stat should also be calculated on
+global basis, in addition to those specified by this.stat@spatial.polygons slot.}
 
 \item{spatial.polygons}{The names of spatial polygons to run this metric with. Setting this to 
 NULL (the default) will use all available polygons. NA will use none.}

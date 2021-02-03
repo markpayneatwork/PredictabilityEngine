@@ -68,8 +68,9 @@ plan(multisession,workers = n.cores)
 #Fail gracefully
 dmp <- assert_that(all(stat.id %in% names(pcfg@statistics)) & length(stat.id)==1,
             msg="Unknown stat(s) requested")
-dmp <- assert_that(all(sp.id %in% c(PE.cfg$misc$globalROI,pcfg@spatial.polygons$name)) & length(sp.id)==1,
-            msg="Unknown spatial polygon(s) requested")
+dmp <- assert_that(all(sp.id %in% c(PE.cfg$misc$globalROI,pcfg@spatial.polygons$name)) & 
+                     length(sp.id)==1,
+                   msg="Unknown spatial polygon(s) requested")
 
 #Extract elements to process
 this.stat <- pcfg@statistics[[stat.id]]
@@ -83,15 +84,12 @@ this.sp <-
   }
 dmp <- assert_that(nrow(this.sp)==1,msg="Failed to select only one spatial polygon")
 
-#TODO:
-# Parallelise, reduce write frequency
-
 #Display Configuration
 PE.config.summary(pcfg,
                   "spName"=sp.id,
                   "statName"=stat.id,
                   "calibrationMethod(s)"=paste0(this.stat@calibration,collapse=", "),
-                  "realizations"=paste0(this.stat@realizations,collapse=", "))
+                  "sources"=paste0(this.stat@sources,collapse=", "))
 log_msg("\n\nSpatial domain--------------------------------------------\n")
 print(this.sp)
 log_msg("\n\nStatistic-------------------------------------------------\n")
@@ -118,9 +116,11 @@ this.query.time <-
 log_msg("Deleted %i rows in %0.3fs.\n\n",n,this.query.time[3])
 
 #'========================================================================
-# Get lists of calibrated extracts to process ####
+# Get lists of data to process ####
 #'========================================================================
-log_msg("Getting list of calibrations to process...\n")
+log_msg("Getting list of data to process...\n")
+
+# Calibrated data -----------------------------------------------------------------
 
 #Get calibration methods
 these.calibs <- 
@@ -132,14 +132,14 @@ these.calibs <-
 #SQL table
 cal.SQL <-  #Calibrations x realisations frags
   expand_grid(calibration=these.calibs,
-              realizations=this.stat@realizations) %>%  
-  filter(realizations!=0) %>% #Handled separately
+              sources=this.stat@sources) %>%  
+  filter(sources!=0) %>% #Handled 0 separately
   mutate(WHERE.real=
-           case_when(realizations==1 ~ "`srcType`='Persistence'",
-                     realizations==2 ~ paste("NOT(`realization` IN ('realmean', 'ensmean')) AND",
-                                             "NOT(`srcType`= 'Persistence')"),
-                     realizations==3 ~ "`realization` = 'realmean'",
-                     realizations==4 ~ "`realization` = 'ensmean'",
+           case_when(sources==1 ~ "`srcType`='Observations'",
+                     sources==2 ~ paste("NOT(`realization` IN ('realmean', 'ensmean')) AND",
+                                             "NOT(`srcType`= 'Observations')"),
+                     sources==3 ~ "`realization` = 'realmean'",
+                     sources==4 ~ "`realization` = 'ensmean'",
                      TRUE~ as.character(NA))) %>%
   mutate(SQL.cmd=sprintf("SELECT pKey FROM %s WHERE `calibrationMethod` LIKE '%s%%' AND %s",
                          PE.cfg$db$calibration,
@@ -163,25 +163,35 @@ cal.pKeys <-
   pull(pKey)
 dmp <- assert_that(!any(duplicated(cal.pKeys)),msg="Expecting unique set of pKeys to process")
 
-#'========================================================================
-# List of observations from extraction table ####
-#'========================================================================
-db.extr <- PE.db.connection(pcfg,PE.cfg$db$extr)
-obs.sel <- 
-  tbl(db.extr,"extraction") %>%
-  filter(srcType=="Observations") %>%
-  select(pKey,date) %>%
-  collect() %>%
-  #Filter by month of interest
-  mutate(date=ymd(date),
-         month=month(date)) %>%
-  filter(month %in% pcfg@MOI)
-dbDisconnect(db.extr)
+# Uncalibrated observations -------------------------------------------------------
+if(any(this.stat@sources==0)) {  #Have to explicitly ask for it
+  tb.extr <- PE.db.tbl(pcfg,PE.cfg$db$extr)
+  obs.sel <- 
+    tb.extr %>%
+    filter(srcType=="Observations") %>%
+    select(pKey,date) %>%
+    collect() %>%
+    #Filter by month of interest
+    mutate(date=ymd(date),
+           month=month(date)) %>%
+    filter(month %in% pcfg@MOI)
+  dbDisconnect(tb.extr)
+  
+  obs.pKeys <- 
+    obs.sel %>%
+    pull(pKey)
+} else  {
+  obs.pKeys <- NULL
+}
 
-obs.pKeys <- 
-  obs.sel %>%
-  pull(pKey)
-
+# Combine into a todo list --------------------------------------------------------
+todo.tbl <- 
+  bind_rows(tibble(pKey=cal.pKeys,
+                   tbl=PE.cfg$db$calibration),
+            tibble(pKey=obs.pKeys,
+                   tbl=PE.cfg$db$extract))
+dmp <- assert_that(nrow(todo.tbl)!=0,
+                   msg="Nothing to do!")
 
 #'========================================================================
 # Calculation of statistics ####
@@ -200,8 +210,6 @@ if(length(pcfg@landmask)==0) {
                       PE.scratch.path(pcfg,"landmask"))
   landmask <- raster(PE.scratch.path(pcfg,"landmask")) 
 }
-
-
 
 #Setup the mask for the corresponding spatial boundary
 #based on the combination of the landmask and the spatial boundary mask
@@ -245,18 +253,17 @@ calc.stat.fn <- function(this.pKey,this.table) {
 # Sanity check --------------------------------------------------------------------
 # Try doing the first evaluation as a sanity check. This will let us fail gracefully,
 # before getting medieval on their asses...
-log_msg("Calibration table dry run....\n")
-dmp.cal <- map2(cal.pKeys[1],PE.cfg$db$calibration,calc.stat.fn)
-log_msg("Observations dry run....\n")
-dmp.obs <- map2(obs.pKeys[1],PE.cfg$db$extract,calc.stat.fn)
+log_msg("Dry run....\n")
+dmp.cal <- 
+  todo.tbl %>%
+  head(1) %>%
+  mutate(map2(pKey,tbl,calc.stat.fn))
 log_msg("Sanity check passed. Parallellising using %i cores...\n",n.cores)
+
 
 # Chunking ------------------------------------------------------------------------
 chunk.l <-
-  bind_rows(tibble(pKey=cal.pKeys,
-                   tbl=PE.cfg$db$calibration),
-            tibble(pKey=obs.pKeys,
-                   tbl=PE.cfg$db$extract)) %>%
+  todo.tbl %>%
   mutate(batch.id=rep(seq(nrow(.)),
                     each=n.cores*5,
                     length.out=nrow(.))) %>%
