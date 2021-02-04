@@ -42,7 +42,7 @@ load(PE.cfg$path$datasrcs)
 pcfg <- PredEng.config(project.name= "TestSuite",
                MOI=8,  #August
                average.months=FALSE,
-               clim.years=1990:1995,   #Take in everything
+               clim.years=1991:2000,   #Take in everything
                comp.years=1990:2100,
                landmask="data_srcs/NMME/landmask.nc",
                Observations=SST_obs$HadISST,
@@ -59,7 +59,7 @@ define_dir(pcfg@scratch.dir)
 #'========================================================================
 #Select a very limited set of decadal models
 # - Two realisations per model
-# - Start dates 1991-1995
+# - Start dates 1991-2005
 # - Only two models - chosen here to be fast!
 lim.dec <- 
   #Setup list of files that we have
@@ -71,8 +71,8 @@ lim.dec <-
          startDate=map2(data.srcs,fnames,~.x@start.date(.y))) %>%
   unnest(startDate) %>%
   #Restrict
-  filter(year(startDate) %in% 1991:1995,
-         srcName %in% c("CESM.DPLE","NorCPM")) %>%
+  filter(year(startDate) %in% 1991:1992,
+         srcName %in% c("NorCPM","CESM.DPLE")) %>%
   arrange(srcName,startDate,realization) %>%
   group_by(srcName,startDate) %>%
   slice_head(n=2) 
