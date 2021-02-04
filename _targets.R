@@ -58,7 +58,9 @@ ext.script <- function(this.scp,...,args=NULL) {
                  stdout=log.fname,
                  stderr="2>&1",
                  show=FALSE)
-  return(Sys.time())
+  return(list(datetime=Sys.time(),
+              script=this.scp,
+              args))
 }
 
 #'========================================================================
