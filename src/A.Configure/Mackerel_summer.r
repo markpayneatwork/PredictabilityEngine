@@ -123,7 +123,7 @@ statsum.l$Jansen <- threshold(name="JansenTreshold",
 #Setup habitat suitability functionality
 habitat.mdl.dat <- readRDS("resources/Mackerel_summer_QR_values.rds")
 resource.l <-  list(fun=approxfun(habitat.mdl.dat$temp,habitat.mdl.dat$value,rule=2))
-habitat.fn <- function(dat,resources) {
+habitat.fn <- function(dat,resources,retain) {
   #Evaluate habitat suitability function
   hab.suit <- dat
   hab.suit[] <- exp(resources$fun(dat[]))
@@ -139,10 +139,13 @@ habitat.fn <- function(dat,resources) {
     cellStats(pxl.area* hab.suit,sum,na.rm=TRUE)
 
   #Return results
-  this.rtn <- 
-    bind_rows(enframe(field.l,"resultName","field"),
-              enframe(scalar.l,"resultName","value"))
-
+  if(retain.field) {
+    this.rtn <- 
+      bind_rows(enframe(field.l,"resultName","field"),
+                enframe(scalar.l,"resultName","value"))
+  } else {
+    this.rtn <- enframe(scalar.l,"resultName","value")
+  }
   return(this.rtn)
 }
 

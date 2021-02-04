@@ -133,7 +133,7 @@ stat.l$threshold <-
 
 # Northward extent ----------------------------------------------------------------
 nor.ext <- 
-  function(dat,resources) {
+  function(dat,resources,retain) {
     #dat <- masked.dat
     #Calculate the zonal averages - this has to be done
     #by hand, as there is no direct support
@@ -146,9 +146,9 @@ nor.ext <-
     
     #Finish
     return(tibble(resultName="latitude",
-           field=NA,
-           value=res))
-  }
+                  field=NA,
+                  value=res))
+}
 
 res.l <- list(threshold=11)
 
@@ -162,7 +162,7 @@ stat.l$northern.extent <-
 
 # Westward extent ----------------------------------------------------------------
 west.ext <- 
-  function(dat,resources) {
+  function(dat,resources,retain) {
     #dat <- masked.dat
     #Calculate the merid averages - this has to be done
     #by hand, as there is no direct support

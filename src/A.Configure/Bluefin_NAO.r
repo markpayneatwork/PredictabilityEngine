@@ -121,7 +121,7 @@ stat.l$mean <- spatial.mean(name="MeanTemp",
 
 # Northward extent ----------------------------------------------------------------
 ext.fn <- 
-  function(dat,resources) {
+  function(dat,resources,retain) {
     #Calculate the zonal averages - this has to be done
     #by hand, as there is no direct support
     zonal.mean <- 

@@ -235,8 +235,8 @@ custom.stat<-
            contains="stat",
            validity = function(object) {
              err.msg <- list(
-               validate_that(identical(names(formals(object@fn)),c("dat","resources")),
-                             msg='Function in fn slot must have exactly two arguments: "dat" and "resources"'))
+               validate_that(identical(names(formals(object@fn)),c("dat","resources","retain")),
+                             msg='Function in fn slot must have exactly three arguments: "dat", "resources" and "retain'))
              err.idxs <- map_lgl(err.msg,is.character)
              if(all(!err.idxs)) return(TRUE) else unlist(err.msg[err.idxs])
            })
@@ -245,7 +245,7 @@ setMethod("eval.stat",signature(st="custom.stat",dat="Raster"),
           function(st,dat){
             
             #Apply the custom model
-            this.res <- st@fn(dat,st@resources)
+            this.res <- st@fn(dat,st@resources,st@retain.field)
             
             #Check results are valid
             assert_that(is.data.frame(this.res),
@@ -254,14 +254,6 @@ setMethod("eval.stat",signature(st="custom.stat",dat="Raster"),
             assert_that(identical(names(this.res),ok.colnames),
                         msg=sprintf("Results from custom function must have column names `%s`",
                                     paste(ok.colnames,collapse=", ")))
-            
-            #Drop fields forcibly
-            if(!st@retain.field) {
-              this.res <- 
-                this.res %>%
-                filter(map_lgl(field,is.null))
-            }
-            
             #Return
             return(this.res)})
 

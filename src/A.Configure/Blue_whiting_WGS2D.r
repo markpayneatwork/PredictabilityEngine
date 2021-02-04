@@ -156,7 +156,7 @@ GAM.sdm.resources$doys <-seq(30,180,by=3)
 GAM.sdm.resources$WGS2D <- TRUE
 
 #Setup prediction function
-GAM.sdm.fn <- function(dat,resources) {
+GAM.sdm.fn <- function(dat,resources,retain) {
   #Debug
   # dat <- masked.dat
   # resources <- this.stat@resources
@@ -243,10 +243,14 @@ GAM.sdm.fn <- function(dat,resources) {
     west.ext(field.l$april15,resources$thresholds$larvae)
   
   #Return results
-  this.rtn <- 
-    bind_rows(enframe(field.l,"resultName","field"),
-              enframe(scalar.l,"resultName","value"))
-  
+  if(retain.field) {
+    this.rtn <- 
+      bind_rows(enframe(field.l,"resultName","field"),
+                enframe(scalar.l,"resultName","value"))
+  } else {
+    this.rtn <- enframe(scalar.l,"resultName","value")
+  }
+
   return(this.rtn)
 }
 
