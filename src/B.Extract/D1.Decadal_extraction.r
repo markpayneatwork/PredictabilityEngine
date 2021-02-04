@@ -48,8 +48,8 @@ if(interactive() ) {
 } else {  
   #Running as a terminal
   cmd.args <- commandArgs(TRUE)
-  assert_that(length(cmd.args)==1,msg="Cannot get command args")
-  sel.src <- cmd.args[1]
+  assert_that(length(cmd.args)==2,msg="Cannot get command args")
+  sel.src <- cmd.args[2]
   set.cdo.defaults("--silent --no_warnings -O -f nc4 ")
   set.log_msg.silent()
 }

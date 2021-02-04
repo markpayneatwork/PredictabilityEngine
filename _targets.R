@@ -30,6 +30,7 @@ suppressPackageStartupMessages({
   library(callr)
   library(PredEng)
   library(here)
+  library(assertthat)
 })
 pcfg <- PE.load.config()
 
@@ -37,7 +38,7 @@ pcfg <- PE.load.config()
 # Configure ####
 #'========================================================================
 #Take input arguments, if any
-print(pcfg)
+PE.config.summary(pcfg)
 
 tar_option_set(error = "workspace")
 tar.l <- list()
@@ -47,6 +48,7 @@ tar.l <- list()
 #'========================================================================
 # Helper functions
 ext.script <- function(this.scp,...,args=NULL) {
+  assert_that(!is.null(names(args)) | is.null(args),msg="args variable must be a named vector")
   log.fname <- 
     file.path(here("_targets","logs"),
               paste(substr(basename(dirname(this.scp)),1,1),
@@ -58,56 +60,30 @@ ext.script <- function(this.scp,...,args=NULL) {
                  stdout=log.fname,
                  stderr="2>&1",
                  show=FALSE)
-  return(list(datetime=Sys.time(),
-              script=this.scp,
-              args))
+  return(bind_cols(tibble(datetime=Sys.time(),
+                          script=this.scp),
+                   as.list(args)))
 }
 
 #'========================================================================
 # Data Extraction ####
 #'========================================================================
 #Observations
-extract.observations <-
-  function(this.src) {
-    obs.script <- switch(this.src@name,
-                         "EN4"="A2.EN4_extraction.r",
-                         "HadISST"="A1.HadISST_data.r",
-                         "HadSLP2"="A3.HadSLP2.r",
-                         stop("Cannot find observation script"))
-    ext.script(here("src/B.Extract/",obs.script),
-               args=this.src@name)
-    return(list(srcName=this.src@name,
-                datetime=Sys.time()))
-  }
-
 tar.l$obs.src <-
   tar_target(obs.src,
              pcfg@Observations)
 
 tar.l$observations <-
   tar_target(observations,
-             extract.observations(obs.src))
+             {obs.script <- switch(obs.src@name,
+                                   "EN4"="A2.EN4_extraction.r",
+                                   "HadISST"="A1.HadISST_data.r",
+                                   "HadSLP2"="A3.HadSLP2.r",
+                                   stop("Cannot find observation script"))
+             ext.script(here("src/B.Extract/",obs.script),
+                        args=c(srcName=obs.src@name))})
 
 #Decadal sources
-#But only process them if they are defined. The lazy evaluation approach that is
-#being employed here seems to handle this ok.
-extract.decadal <- 
-  function(this.src) {
-    ext.script(here('src/B.Extract/D1.Decadal_extraction.r'),
-               args=this.src@name)
-    return(tibble(srcType=this.src@type,
-                  srcName=this.src@name,
-                  datetime=Sys.time()))
-  }
-
-calc.realmeans <- 
-  function(this.src) {
-  ext.script(here("src/B.Extract/Z1.Calculate_realmeans.r"),
-             args=c(this.src$srcType,this.src$srcName))
-  this.src[["datetime"]] <- Sys.time()
-  return(this.src)
-}
-
 if(length(pcfg@Decadal)!=0 & !pcfg@obs.only){
   tar.l$decadal.srcs <-
     tar_target(decadal.srcs,
@@ -116,13 +92,19 @@ if(length(pcfg@Decadal)!=0 & !pcfg@obs.only){
   
   tar.l$extract.decadal <-
     tar_target(decadal.extr,
-               extract.decadal(decadal.srcs),
+               ext.script(here('src/B.Extract/D1.Decadal_extraction.r'),
+                          decadal.srcs,
+                          args=c(srcType=decadal.srcs@type,
+                                 srcName=decadal.srcs@name)),
                pattern=map(decadal.srcs),
                iteration="list")
-
+  
   tar.l$realmean.decadal <-
     tar_target(decadal.realmean,
-               calc.realmeans(decadal.extr),
+               ext.script(here("src/B.Extract/Z1.Calculate_realmeans.r"),
+                          decadal.extr,
+                          args=c(srcType=decadal.extr$srcType,
+                                 srcName=decadal.extr$srcName)),
                pattern=map(decadal.extr),
                iteration="list")
 } 
@@ -146,8 +128,8 @@ tar.l$calibratioon <-
 if(any(pcfg@calibrationMethods=="NAOmatching")) {
   tar.l$NAOmatching <- 
     tar_target(NAOmatching,
-             ext.script(here("src/C.Calibrate/B2.NAO_matching.r"),
-                        calibration))
+               ext.script(here("src/C.Calibrate/B2.NAO_matching.r"),
+                          calibration))
 }
 
 #Ensemble means
@@ -164,8 +146,7 @@ stat.jobs.fn <- function(...){
   #Check that we have at least some statistics
   assert_that(length(pcfg@statistics)>0,
               msg="No statistics defined. Must be at least one.")
-
-
+  
   #Extract statistics
   todo.stats <- 
     tibble(st=pcfg@statistics@.Data) %>%
@@ -179,8 +160,7 @@ stat.jobs.fn <- function(...){
            spName=map_if(spName,st.request.na,~ NULL),
            spName=map_if(spName,st.uses.globalROI, ~ c(.x,PE.cfg$misc$globalROI))) %>% 
     unnest(spName) 
-
-
+  
   return(todo.stats)
 }
 
@@ -189,14 +169,12 @@ tar.l$stat.jobs <-
              stat.jobs.fn(pcfg))
 
 #Process stats
-stat.fn <- function(this.stat,...) {
-  ext.script(here("src/D.Statistics/B1.Calculate_stats.r"),
-             args=c(this.stat$spName,this.stat$statName))
-}
-
 tar.l$stats <-
   tar_target(stats,
-             stat.fn(statJobs,ensmeans),
+             ext.script(here("src/D.Statistics/B1.Calculate_stats.r"),
+                        statJobs,ensmeans,
+                        args=c(spName=statJobs$spName,
+                               statName=statJobs$statName)),
              pattern=map(statJobs))
 
 #Rolling means
@@ -219,7 +197,7 @@ tar.l$pointwise <-
   tar_target(pointwise,
              ext.script(here("src/E.Postprocessing/A1.Pointwise_extraction.r"),
                         metrics,stats))  #Stats is a included as a second dependency for cases when
-                                         #there are no metrics to calculate
+#there are no metrics to calculate
 
 #Markdown report
 if(!pcfg@obs.only) {
@@ -232,11 +210,7 @@ if(!pcfg@obs.only) {
 #'========================================================================
 # Make a Plan! ####
 #'========================================================================
-
-#Make it all into a plan
-pline <- tar_pipeline(tar.l)
-rm(tar.l)
-pline
+tar.l
 
 
 # .............
