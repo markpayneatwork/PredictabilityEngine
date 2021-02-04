@@ -102,6 +102,9 @@ pcfg@Decadal <-
 #pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="tos")
 pcfg@obs.only <- FALSE
 
+#Set short version of HadISST data
+pcfg@Observations@sources <- here("data_srcs/Observations/HadISST/HadISST_sst_short.nc")
+
 #'========================================================================
 # Spatial Configurations ####
 #'========================================================================
