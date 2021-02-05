@@ -447,11 +447,25 @@ print(g)
 ### Table of skills
 
 ```{r}
-smooth.plt %>%
-  select(lbl,dispName,smoothing,lead.yr,value) %>%
-  group_by(lbl,dispName,smoothing) %>%
-  summarise(max=max(value),
-            mean=mean(value)) 
+tbl.dat <-
+  smooth.plt %>%
+  select(lbl,dispName,lead.yr,draws,value,smoothing) %>%
+  pivot_wider(names_from=c("dispName"),values_from=c("draws","value")) %>%
+  filter(!is.na(smoothing)) %>%
+  mutate(p.value=map2_dbl(`draws_Ens. mean`,draws_Persistence,~ mean(.x[[1]] <.y[[1]])),
+         "Ens.mean"=map_dbl(`value_Ens. mean`,~.x),
+         Persistence=map_dbl(value_Persistence,~.x)) %>%
+  select(-starts_with("draws"),-starts_with("value")) %>%
+  filter(round(lead.yr)==5)
+
+  knitr::kable(
+    tbl.dat %>%
+      select(Species=lbl,
+             Smoothing=smoothing,
+             "Ens. mean"=Ens.mean,
+             Persistence,
+             "p value"=p.value),
+    digits=3)
 ```
 
 
@@ -466,7 +480,7 @@ forecast.cfg.l$Mackerel_summer <-
          lbl2="Area of Mackerel habitat (Mkm²)")
 
 forecast.cfg.l$Bluefin <- 
-  tibble(yr.rng=list(1980:2020),
+  tibble(yr.rng=list(1960:2020),
          starts=list(c(1982,1992,2002,2011)),
          scalar=-1,
          lbl2="Bluefin Habitat Extent (deg Lat W)")
