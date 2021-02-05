@@ -38,15 +38,15 @@ rm(list=ls())
 #Configure Knitr
 knitr::opts_chunk$set(
   echo=FALSE,
-	error = FALSE,
-	message = FALSE,
-	warning = FALSE,
-	include = TRUE,
-	results = "markup",
-	fig.width = 10,         #Old 4:3
-	fig.height=14/25*10,
-	fig.width = 10,         #New 16:9
-	fig.height=15/32*10,
+  error = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  include = TRUE,
+  results = "markup",
+  fig.width = 10,         #Old 4:3
+  fig.height=14/25*10,
+  fig.width = 10,         #New 16:9
+  fig.height=15/32*10,
   fig.align="center",
   fig.path=file.path(".","figures","Fish_decadal_prediction_Figures_"))
 
@@ -69,7 +69,7 @@ library(ggsci)
 theme_set(theme_bw())
 theme_replace(strip.text = element_text(hjust=0),
               strip.background = element_blank())
-          
+
 ```
 
 by Mark R Payne  <br>
@@ -132,7 +132,7 @@ cfgs$NA_SST <-
 #          calibrationMethod="anomaly",
 #         var="Sal",
 #          fig="spMet",
-             # lbl="b) Salinity (March, 250-600m)")
+# lbl="b) Salinity (March, 250-600m)")
 
 #Import extermaæ pbkects
 these.cfg <-
@@ -140,16 +140,16 @@ these.cfg <-
   mutate(pcfg=map(name,~readRDS(here(this.dir,.x,"configuration.rds"))),
          stats.db=map(name,
                       ~dbConnect(SQLite(), 
-                                      here(this.dir, .x, 
-                                           sprintf("%s_statistics.sqlite",.x)))), 
+                                 here(this.dir, .x, 
+                                      sprintf("%s_statistics.sqlite",.x)))), 
          mets.db=map(name,
                      ~dbConnect(SQLite(),
                                 here(this.dir,.x,
                                      sprintf("%s_metrics.sqlite",.x)))),
          met.field.db=map(name,
-                     ~dbConnect(SQLite(),
-                                here(this.dir,.x,
-                                     sprintf("%s_metricsField.sqlite",.x))))) 
+                          ~dbConnect(SQLite(),
+                                     here(this.dir,.x,
+                                          sprintf("%s_metricsField.sqlite",.x))))) 
 
 these.cfg %>%
   select(-(pcfg:met.field.db)) %>%
@@ -218,12 +218,14 @@ plt.cfgs <-
             ylab="Pearson correlation coefficient (r)",
             ylim=c(0,1.1),
             signif.y =1.05,
-            colour.pal=c(base.pal[1],"grey",base.pal[3:5])),
+            colour.pal=base.pal),
+#            colour.pal=c(base.pal[1],"grey",base.pal[3:5])),
        list(metric="MSSS",
             ylab="Mean squared error skill score (MSESS)",
             signif.y =1.1,
             ylim=c(-1,1.2),
-            colour.pal=c(base.pal[2],"grey",base.pal[3:5])))
+            colour.pal=base.pal))
+#            colour.pal=c(base.pal[2],"grey",base.pal[3:5])))
 
 met.plots <- list()
 for(this.cfg in plt.cfgs) {
@@ -283,9 +285,11 @@ for(this.cfg in plt.cfgs) {
                             ymax=upperCI,
                             fill=dispName),
                 data=highlight.dat,
-                alpha=0.25,
-                show.legend = FALSE)+
-    scale_fill_manual(values=this.cfg$colour.pal[1:2])+
+                alpha=0.25)+
+    scale_fill_manual(values=this.cfg$colour.pal[1:2],
+                      guide=guide_legend(title="Key Metrics",
+                                         order=1,ncol=1,
+                                         title.position = "top"))+
     #Individual model plots
     geom_line(data=models.dat,
               mapping=aes(x=lead.yrs,
@@ -355,7 +359,8 @@ smooth.dat <-
   select(lbl,dat) %>%
   unnest(dat) %>%
   mutate(lead.yr=lead/12) %>%
-  filter(metric %in% c("MSSS","pearson.correlation")) %>%
+#  filter(metric %in% c("MSSS","pearson.correlation")) %>%
+  filter(metric %in% c("pearson.correlation")) %>%
   separate(resultName,c("resultName","smoothing"),sep="/",fill="right") %>%
   mutate(smoothing=case_when(is.na(smoothing) ~ "1 year",
                              smoothing=="RollMean3" ~ "3 years",
@@ -366,50 +371,89 @@ smooth.dat <-
          ylbl=fct_relevel(ylbl,"Pearson correlation (r)"),
          lbl=factor(lbl),
          lbl=fct_relabel(lbl,function(x) gsub("^[a-c]) ","",x)))
-  
-  facet.lbls <-
-    expand_grid(ylbl=levels(smooth.dat$ylbl),
-                lbl=levels(smooth.dat$lbl)) %>%
-    mutate(this.lbl=sprintf("%s)",letters[1:nrow(.)]),
-           x=0.1,y=0.99,
-           ylbl=factor(ylbl,levels(smooth.dat$ylbl)),
-           lbl=factor(lbl,levels(smooth.dat$lbl)))
 
-  g <- 
-    #Setup baseline
-    ggplot()+
-    facet_grid(ylbl~lbl,switch = "y")+
-    geom_text(data=facet.lbls, mapping=aes(x,y,label=this.lbl),
-               hjust="left",vjust="top")+
-    # #annotate("rect",xmin=0,xmax=10,ymin=1,ymax=c(1,1.2),fill="white",colour="black")+
-    coord_cartesian(xlim=c(0,10),
-                    ylim=c(-1,1),
-                    expand=FALSE)+
-    scale_x_continuous(breaks=0:10)+
-    geom_hline(yintercept=0)+
-    theme(legend.position="bottom",
-          strip.placement = "outside",
-          strip.text.y = element_text(hjust=0.5),
-          strip.text.x= element_text(hjust=0.5))+
-    labs(x="Lead time (years)",
-         y="")+
-    #Lines
-    geom_line(data=smooth.dat,
+#Only show persistences that are also in the Ens.mean
+ensmean.metrics <- 
+  smooth.dat %>%
+  filter(dispName=="Ens. mean",
+         !is.na(value)) %>%
+  select(lbl,ylbl,smoothing,lead) %>%
+  mutate(have.Ensmean=TRUE)
+
+smooth.plt <- 
+  smooth.dat %>%
+  left_join(y=ensmean.metrics) %>%
+  filter(have.Ensmean)
+
+#Points at end of lines
+end.points <-
+  smooth.plt %>%
+  group_by(lbl,ylbl,dispName,smoothing) %>%
+  filter(lead==min(lead)| lead==max(lead)) %>%
+  ungroup()
+
+facet.lbls <-
+  expand_grid(ylbl=levels(smooth.plt$ylbl),
+              lbl=levels(smooth.plt$lbl)) %>%
+  mutate(this.lbl=sprintf("%s)",letters[1:nrow(.)]),
+         x=0.1,y=0.99,
+         ylbl=factor(ylbl,levels(smooth.plt$ylbl)),
+         lbl=factor(lbl,levels(smooth.plt$lbl)))
+
+g <- 
+  #Setup baseline
+  ggplot()+
+  facet_grid(ylbl~lbl,switch = "y")+
+  geom_text(data=facet.lbls, mapping=aes(x,y,label=this.lbl),
+            hjust="left",vjust="top")+
+  # #annotate("rect",xmin=0,xmax=10,ymin=1,ymax=c(1,1.2),fill="white",colour="black")+
+  coord_cartesian(xlim=c(0,10),
+                  ylim=c(0,1),
+                  expand=FALSE)+
+  scale_x_continuous(breaks=0:10)+
+  geom_hline(yintercept=0)+
+  theme(legend.position="bottom",
+        strip.placement = "outside",
+        strip.text.y = element_text(hjust=0.5),
+        strip.text.x= element_text(hjust=0.5))+
+  labs(x="Lead time (years)",
+       y="")+
+  #Lines
+  geom_line(data=smooth.plt,
+            mapping=aes(x=lead.yr,
+                        y=value,
+                        colour=dispName,
+                        linetype=smoothing))+
+  geom_point(data=end.points,
               mapping=aes(x=lead.yr,
                           y=value,
                           colour=dispName,
-                          linetype=smoothing))+
-    scale_linetype_manual(values=c(1,2,3))+
-    guides(colour=guide_legend(title="Metrics",
-                               title.position = "left",
-                               order=1),
-           linetype=guide_legend(title="Rolling mean",
-                                 title.position = "left")) 
+                          shape=smoothing),
+             size=2)+
+  scale_linetype_manual(values=c(1,2,3))+
+  scale_shape_manual(values=c(NA,1:5))+
+  guides(shape=guide_legend(title="Mean window"),
+         colour=guide_legend(title="Metrics",
+                             title.position = "left",
+                             order=1),
+         linetype=guide_legend(title="Mean window",
+                               title.position = "left")) 
 
-  print(g)
+print(g)
 
 
 ```
+
+### Table of skills
+
+```{r}
+smooth.plt %>%
+  select(lbl,dispName,smoothing,lead.yr,value) %>%
+  group_by(lbl,dispName,smoothing) %>%
+  summarise(max=max(value),
+            mean=mean(value)) 
+```
+
 
 # Ability to forecast given years
 ```{r}
@@ -502,9 +546,11 @@ for(this.cfg in forecast.cfg) {
                 mapping=aes(x=year,ymax=upper,ymin=lower,fill=startYear),
                 alpha=0.25)+
     geom_line(data=forecast.realmean,
-              mapping=aes(year,value,col=startYear),show.legend = FALSE)  +
+              mapping=aes(year,value,col=startYear))  +
     scale_fill_npg()+
     scale_colour_npg()+
+    labs(colour="Forecast start",
+         fill="Forecast start")+
     new_scale_color()+
     #Observations
     geom_line(data=this.obs,
@@ -521,13 +567,8 @@ for(this.cfg in forecast.cfg) {
          colour="Observations",
          linetype="Observations",
          shape="Observations",
-         size="Observations",
-         fill="Forecast start")+
-    scale_x_continuous(limits=range(this.cfg$yr.rng[[1]]))+
-    guides(size=guide_legend(name="Observations",order=1),
-           shape=guide_legend(name="Observations",order=1),
-           linetype=guide_legend(name="Observations",order=1),
-           colour=guide_legend(name="Observations",order=1))
+         size="Observations")+
+    scale_x_continuous(limits=range(this.cfg$yr.rng[[1]]))
   
 
   # Fixed lead plot -----------------------------------------------------------------
@@ -549,9 +590,9 @@ for(this.cfg in forecast.cfg) {
               value=quantile(value,probs=c(0.25,0.75)),
               .groups="drop") %>%
     pivot_wider(names_from=ptile,values_from = value)
-
-   fixed.lead.plt[[this.cfg$name]] <- 
-     ggplot()+
+  
+  fixed.lead.plt[[this.cfg$name]] <- 
+    ggplot()+
     #Ribbon
     geom_ribbon(data=fixed.preds,
                 mapping=aes(x=year(date),ymax=upper,ymin=lower,
@@ -566,19 +607,22 @@ for(this.cfg in forecast.cfg) {
     scale_shape_manual(values=c(16,NA))+
     scale_size_manual(values=c(0.5,1.5))+
     scale_linetype_manual(values=c("dotted","solid"))+
+    labs(col="Observations",
+         linetype="Observations",
+         size="Observations",
+         shape="Observations",
+         alpha="Observations")+
     #Forecast line
+    new_scale_color()+
     geom_line(data=fixed.realmean,
-              aes(year,value),colour="red")+
+              aes(year,value,colour=sprintf("%i year lead",this.lead.idx)))+
+    scale_color_manual(values=c("red"))+
     #Annotations
     scale_x_continuous(limits=range(this.cfg$yr.rng[[1]])) +
     labs(x="Year",
          y=this.cfg$lbl2,
-         linetype="Observations",
-         size="Observations",
-         shape="Observations",
-         col="Observations",
+         col="Forecast",
          fill="Forecast")
-
 }
 
 #Merge together with patchwork
@@ -643,10 +687,10 @@ sp.polys <-
 sp.plt.cfg <- list()
 sp.plt.cfg$cor <- 
   list(metric="pearson.correlation",
-    fill.breaks= c(0.25,seq(0.4,0.8,by=0.2)),
+       fill.breaks= c(0,seq(0.2,0.8,by=0.2)),
        fill.lims = c(-1,1),
        fill.lbls =  function(x) {sprintf("%02.2f",x)},
-       fill.pal = ggplot2:::binned_pal(scales::manual_pal(c("white",brewer.pal(4,"Reds")))),
+       fill.pal = ggplot2:::binned_pal(scales::manual_pal(c("white",brewer.pal(5,"Reds")))),
        fill.ttl = "Pearson\ncorrelation (r)",
        fill.even = FALSE)
 
