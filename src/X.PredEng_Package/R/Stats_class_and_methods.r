@@ -251,7 +251,7 @@ setMethod("eval.stat",signature(st="custom.stat",dat="Raster"),
             assert_that(is.data.frame(this.res),
                         msg="Result from custom function must be a data.frame or tibble")
             ok.colnames <- c("resultName","field","value")
-            assert_that(identical(names(this.res),ok.colnames),
+            assert_that(all(names(this.res) %in% ok.colnames),
                         msg=sprintf("Results from custom function must have column names `%s`",
                                     paste(ok.colnames,collapse=", ")))
             #Return

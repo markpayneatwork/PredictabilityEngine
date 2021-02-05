@@ -139,7 +139,7 @@ habitat.fn <- function(dat,resources,retain) {
     cellStats(pxl.area* hab.suit,sum,na.rm=TRUE)
 
   #Return results
-  if(retain.field) {
+  if(retain) {
     this.rtn <- 
       bind_rows(enframe(field.l,"resultName","field"),
                 enframe(scalar.l,"resultName","value"))
