@@ -73,15 +73,14 @@ stats.tbl <- PE.db.tbl(pcfg,PE.cfg$db$stats)
 #'Load data
 dat.in <- 
   stats.tbl  %>%
-  filter(!is.na(value)) %>%
+  filter(is.na(field)) %>%
   collect() %>%
   mutate(date=ymd(date)) %>%
   filter(month(date) %in% pcfg@MOI) %>%  #Drop unnecessary obs
   group_by(srcType,srcName,calibrationMethod,realization,startDate,
-         spName,statName,resultName) %>%
+         spName,statName,resultName,.drop=TRUE) %>%
   arrange(date) %>%
-  ungroup() %>%
-  select(-pKey,-leadIdx)
+  select(-pKey,-leadIdx,-field)
   
 for(n in rm.windows) {
   log_msg("Rolling window %i...\n",n)
