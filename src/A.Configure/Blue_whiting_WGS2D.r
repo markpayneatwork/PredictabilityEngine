@@ -237,13 +237,13 @@ GAM.sdm.fn <- function(dat,resources,retain) {
     scalar.l["westwardExtentMeanProb"] <- 
       west.ext(field.l$meanProbability,resources$thresholds$meanProbability)
     scalar.l["westwardExtent15April"] <- 
-      west.ext(field.l$april15,resources$thresholds$april15)
+      iwest.ext(field.l$april15,resources$thresholds$april15)
   }
   scalar.l["westwardExtentLarvae"] <- 
     west.ext(field.l$april15,resources$thresholds$larvae)
   
   #Return results
-  if(retain.field) {
+  if(retain) {
     this.rtn <- 
       bind_rows(enframe(field.l,"resultName","field"),
                 enframe(scalar.l,"resultName","value"))
