@@ -242,6 +242,27 @@ GAM.sdm.fn <- function(dat,resources,retain) {
   scalar.l["westwardExtentLarvae"] <- 
     west.ext(field.l$april15,resources$thresholds$larvae)
   
+  #Calculate westward extent using clumping approach
+  west.ext.clump <- function(r,this.threshold) {
+    west.focus <- crop(r,extent(-25,0,56,58))
+    west.ext.clump <- 
+      (west.focus > this.threshold ) %>%
+      clump()
+    west.ext.df <<-
+      west.ext.clump %>%
+      rasterToPoints() %>%
+      as_tibble() %>%
+      group_by(clumps,y) %>%
+      summarise(min.x=min(x),
+                .groups="drop") %>%
+      group_by(clumps) %>%
+      summarise(mean.min.x=mean(min.x),
+                .groups="drop") 
+    return(max(west.ext.df$mean.min.x))
+  }
+  scalar.l["westExtClumpLarvae"] <- 
+    west.ext.clump(field.l$april15,resources$thresholds$larvae)
+
   #Return results
   if(retain) {
     this.rtn <- 
