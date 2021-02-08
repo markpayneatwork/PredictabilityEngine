@@ -89,7 +89,7 @@ this.dir <- "manuscript"
 cfgs <- list()
 cfgs$Mackerel_summer <-
   tibble(tbl=PE.cfg$db$metrics,
-         spName="West_Greenland",
+         spName="Greenland",
          statName="JansenTreshold",
          resultName="area",
          calibrationMethod="MeanAdj",
@@ -105,15 +105,16 @@ cfgs$Bluefin <-
          lbl="b) Bluefin tuna",
          var="SST",
          fig="skill") 
-# cfgs$Blue_whiting_decadal <-
-#   tibble(tbl=PE.cfg$db$metrics,
-#          spName="NorthernComponent",
-#          statName="SDM",
-#          resultName="areaLarvae",
-#          calibrationMethod="MeanAdj",
-#          lbl="c) Blue whiting",
-#          var="Sal",
-#          fig="skill")
+cfgs$Blue_whiting_decadal <-
+  tibble(tbl=PE.cfg$db$metrics,
+         spName="NorthernComponent",
+         statName="SDM",
+         #resultName="areaLarvae",
+         resultName="westwardExtentLarvae",
+         calibrationMethod="MeanAdj",
+         lbl="c) Blue whiting",
+         var="Sal",
+         fig="skill")
 cfgs$NA_SST <-
   tibble(tbl=PE.cfg$db$metrics.field,
          spName="global.ROI",
@@ -124,15 +125,15 @@ cfgs$NA_SST <-
          fig="spMet",
          lbl="a) SST (August)")
 
-# cfgs$NA_Sal <-
-#   tibble(tbl=PE.cfg$db$metrics.field,
-#          spName="globalROI",
-#          statName="Anomaly",
-#          resultName="field",
-#          calibrationMethod="anomaly",
-#         var="Sal",
-#          fig="spMet",
-# lbl="b) Salinity (March, 250-600m)")
+cfgs$NA_Sal <-
+  tibble(tbl=PE.cfg$db$metrics.field,
+         spName="global.ROI",
+         statName="Anomaly",
+         resultName="field",
+         calibrationMethod="anomaly",
+         var="Sal",
+         fig="spMet",
+         lbl="b) Salinity (March, 250-600m)")
 
 #Import extermaæ pbkects
 these.cfg <-
@@ -255,7 +256,7 @@ for(this.cfg in plt.cfgs) {
            lowerCI=map_dbl(draws,quantile,probs=0.05))
   
   signif.breaks <- c(-1,0.005,0.01,0.05,1)
-  signif.lbls <- c("p < 0.005","p < 0.01", "p < 0.05", "ns")
+  signif.lbls <- c("p < 0.005","p < 0.01", "p < 0.05", "Not Signif.")
   
   signif.dat <- 
     highlight.dat %>%
@@ -263,7 +264,8 @@ for(this.cfg in plt.cfgs) {
     pivot_wider(names_from="dispName",values_from = "draws") %>%
     mutate(p.value=map2_dbl(`Ens. mean`,Persistence, ~ mean(.x < .y)),
            p.txt=cut(p.value,breaks=signif.breaks,
-                     labels=signif.lbls))
+                     labels=signif.lbls),
+           p.ns=ifelse(p.value>0.05,"ns",""))
   
   met.plots[[this.cfg$metric]] <- 
     #Setup baseline
@@ -364,13 +366,14 @@ smooth.dat <-
   separate(resultName,c("resultName","smoothing"),sep="/",fill="right") %>%
   mutate(smoothing=case_when(is.na(smoothing) ~ "1 year",
                              smoothing=="RollMean3" ~ "3 years",
-                             smoothing=="RollMean5" ~ "5 years"),
+                             smoothing=="RollMean5" ~ "5 years",
+                             smoothing=="RollMean9" ~ "9 years"),
          dispName=ifelse(srcType=="Decadal","Ens. mean",srcType),
-         ylbl=case_when(metric=="pearson.correlation"~ "Pearson correlation (r)",
-                        metric=="MSSS"~ "MSESS"),
-         ylbl=fct_relevel(ylbl,"Pearson correlation (r)"),
-         lbl=factor(lbl),
-         lbl=fct_relabel(lbl,function(x) gsub("^[a-c]) ","",x)))
+         ylbl=case_when(metric=="pearson.correlation"~ "Pearson correlation coefficient(r)",
+                        metric=="MSSS"~ "MSESS")) %>%
+  filter(!is.na(smoothing))  #Drop other windows
+         # lbl=factor(lbl),
+         # lbl=fct_relabel(lbl,function(x) gsub("^[a-c]) ","",x)))
 
 #Only show persistences that are also in the Ens.mean
 ensmean.metrics <- 
@@ -392,20 +395,20 @@ end.points <-
   filter(lead==min(lead)| lead==max(lead)) %>%
   ungroup()
 
-facet.lbls <-
-  expand_grid(ylbl=levels(smooth.plt$ylbl),
-              lbl=levels(smooth.plt$lbl)) %>%
-  mutate(this.lbl=sprintf("%s)",letters[1:nrow(.)]),
-         x=0.1,y=0.99,
-         ylbl=factor(ylbl,levels(smooth.plt$ylbl)),
-         lbl=factor(lbl,levels(smooth.plt$lbl)))
+# facet.lbls <-
+#   expand_grid(ylbl=levels(smooth.plt$ylbl),
+#               lbl=levels(smooth.plt$lbl)) %>%
+#   mutate(this.lbl=sprintf("%s)",letters[1:nrow(.)]),
+#          x=0.1,y=0.99,
+#          ylbl=factor(ylbl,levels(smooth.plt$ylbl)),
+#          lbl=factor(lbl,levels(smooth.plt$lbl)))
 
 g <- 
   #Setup baseline
   ggplot()+
   facet_grid(ylbl~lbl,switch = "y")+
-  geom_text(data=facet.lbls, mapping=aes(x,y,label=this.lbl),
-            hjust="left",vjust="top")+
+  # geom_text(data=facet.lbls, mapping=aes(x,y,label=this.lbl),
+  #           hjust="left",vjust="top")+
   # #annotate("rect",xmin=0,xmax=10,ymin=1,ymax=c(1,1.2),fill="white",colour="black")+
   coord_cartesian(xlim=c(0,10),
                   ylim=c(0,1),
@@ -415,7 +418,7 @@ g <-
   theme(legend.position="bottom",
         strip.placement = "outside",
         strip.text.y = element_text(hjust=0.5),
-        strip.text.x= element_text(hjust=0.5))+
+        strip.text.x= element_text(hjust=0))+
   labs(x="Lead time (years)",
        y="")+
   #Lines
@@ -430,8 +433,8 @@ g <-
                           colour=dispName,
                           shape=smoothing),
              size=2)+
-  scale_linetype_manual(values=c(1,2,3))+
-  scale_shape_manual(values=c(NA,1:5))+
+  scale_linetype_manual(values=c(1,2,3,4))+
+  scale_shape_manual(values=c(NA,15:19))+
   guides(shape=guide_legend(title="Mean window"),
          colour=guide_legend(title="Metrics",
                              title.position = "left",
@@ -452,14 +455,14 @@ tbl.dat <-
   select(lbl,dispName,lead.yr,draws,value,smoothing) %>%
   pivot_wider(names_from=c("dispName"),values_from=c("draws","value")) %>%
   filter(!is.na(smoothing)) %>%
-  mutate(p.value=map2_dbl(`draws_Ens. mean`,draws_Persistence,~ mean(.x[[1]] <.y[[1]])),
+  mutate(p.value=map2_dbl(`draws_Ens. mean`,draws_Persistence,~ mean(.x <.y)),
          "Ens.mean"=map_dbl(`value_Ens. mean`,~.x),
          Persistence=map_dbl(value_Persistence,~.x)) %>%
-  select(-starts_with("draws"),-starts_with("value")) %>%
-  filter(round(lead.yr)==5)
+  select(-starts_with("draws"),-starts_with("value"))
 
   knitr::kable(
     tbl.dat %>%
+      filter(round(lead.yr)==5)%>%
       select(Species=lbl,
              Smoothing=smoothing,
              "Ens. mean"=Ens.mean,
@@ -474,23 +477,23 @@ tbl.dat <-
 # Setup configuration -------------------------------------------------------------
 forecast.cfg.l <- list()
 forecast.cfg.l$Mackerel_summer <- 
-  tibble(yr.rng=list(1980:2020),
+  tibble(yr.rng=list(1970:2015),
          starts=list(c(1990,2000,2011)),
          scalar=1/1e6,
          lbl2="Area of Mackerel habitat (Mkm²)")
 
 forecast.cfg.l$Bluefin <- 
-  tibble(yr.rng=list(1960:2020),
+  tibble(yr.rng=list(1970:2015),
          starts=list(c(1982,1992,2002,2011)),
          scalar=-1,
-         lbl2="Bluefin Habitat Extent (deg Lat W)")
+         lbl2="Bluefin Westward Extent (deg Lat W)")
 
 
-# forecast.cfg.l$Blue_whiting_decadal <- 
-#   tibble(yr.rng=list(1980:2020),
-#          starts=list(c(2004,2012)),
-#          scalar=1,
-#          lbl2="Blue whiting spawning habitat (km²)")
+forecast.cfg.l$Blue_whiting_decadal <-
+  tibble(yr.rng=list(1970:2015),
+         starts=list(c(2004,2010,2012)),
+         scalar=1,
+         lbl2="Blue whiting spawning habitat (km²)")
 
 
 forecast.cfg <-
@@ -504,7 +507,7 @@ forecast.plt <- list()
 fixed.lead.plt <- list()
 
 for(this.cfg in forecast.cfg) {
-  # this.cfg <- forecast.cfg[1,]
+  # this.cfg <- forecast.cfg[[1]]
   
   #Import data
   stat.dat <- 
@@ -524,6 +527,7 @@ for(this.cfg in forecast.cfg) {
   this.obs <- 
     stat.dat %>%
     filter(srcType=="Observations",
+           is.na(calibrationMethod),
            month(date) ==this.cfg$pcfg[[1]]@MOI) %>%
     arrange(date) %>%
     mutate(rollmean=roll_mean(value,n=3,fill=NA)) %>%
