@@ -28,7 +28,7 @@
 #
 #    NMME_sync    : Downloads NMME data via OpenDAP
 #
-#    make         : Submit make script to cluster
+#    itso         : Make it so, ensign! Submit make script to cluster
 #    status       : Get status of make
 #
 # ----------------------------------------------------------------------
@@ -42,7 +42,7 @@ default: help
 #-------------------------------------
 #Remove any existing To do files
 
-make: FORCE
+itso: FORCE
 	bsub < src/Y.HPC/Make.sh
 
 install: FORCE
