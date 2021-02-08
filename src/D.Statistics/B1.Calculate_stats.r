@@ -163,6 +163,10 @@ cal.pKeys <-
   pull(pKey)
 dmp <- assert_that(!any(duplicated(cal.pKeys)),msg="Expecting unique set of pKeys to process")
 
+todo.tbl <- 
+  tibble(pKey=cal.pKeys,
+         tbl=PE.cfg$db$calibration)
+
 # Uncalibrated observations -------------------------------------------------------
 if(any(this.stat@sources==0)) {  #Have to explicitly ask for it
   tb.extr <- PE.db.tbl(pcfg,PE.cfg$db$extr)
@@ -176,16 +180,15 @@ if(any(this.stat@sources==0)) {  #Have to explicitly ask for it
   obs.pKeys <- 
     obs.sel %>%
     pull(pKey)
-} else  {
-  obs.pKeys <- NULL
+
+  #Add to todo list
+  todo.tbl <- 
+    todo.tbl %>%
+    bind_rows(tibble(pKey=obs.pKeys,
+                     tbl=PE.cfg$db$extract))
 }
 
-# Combine into a todo list --------------------------------------------------------
-todo.tbl <- 
-  bind_rows(tibble(pKey=cal.pKeys,
-                   tbl=PE.cfg$db$calibration),
-            tibble(pKey=obs.pKeys,
-                   tbl=PE.cfg$db$extract))
+# Check that todo list is sane ----------------------------------------------------
 dmp <- assert_that(nrow(todo.tbl)!=0,
                    msg="Nothing to do!")
 
