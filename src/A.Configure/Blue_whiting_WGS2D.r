@@ -237,7 +237,7 @@ GAM.sdm.fn <- function(dat,resources,retain) {
     scalar.l["westwardExtentMeanProb"] <- 
       west.ext(field.l$meanProbability,resources$thresholds$meanProbability)
     scalar.l["westwardExtent15April"] <- 
-      iwest.ext(field.l$april15,resources$thresholds$april15)
+      west.ext(field.l$april15,resources$thresholds$april15)
   }
   scalar.l["westwardExtentLarvae"] <- 
     west.ext(field.l$april15,resources$thresholds$larvae)
@@ -260,7 +260,7 @@ stat.l$SDM <-
               desc="Miesner and Payne 2018 habitat model applied to the GlobalROI",
               fn=GAM.sdm.fn,
               resources=GAM.sdm.resources,
-              sources = 1,
+              sources = 0:1,
               use.globalROI = TRUE,
               retain.field=TRUE)
 
