@@ -109,10 +109,20 @@ IBWSS.CTD.pts <-
          filter='srcType=="Observations" & srcName=="EN4"',
          points=.)
 
+NEAFC14.pts <-
+  readRDS(here("resources/BlueWhiting/NEAFC14_data.rds")) %>%
+  mutate(date=as.Date(ISOdate(year,3,15)))%>%
+  list()%>%
+  tibble(extrName="NEAFC14",
+         table="statistics",
+         filter='statName =="SDM" & srcType=="Observations" & spName=="global.ROI"',
+         points=.)
+
 pcfg@pt.extraction <- 
   bind_rows(CPR.pts,
             IBWSS.SA.pts,
-            IBWSS.CTD.pts)
+            IBWSS.CTD.pts,
+            NEAFC14.pts)
 
 #'========================================================================
 # Statistics ####
