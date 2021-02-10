@@ -184,19 +184,25 @@ tar.l$rollmean <-
                         stats))
 
 #Calculation verification metrics
+if(!pcfg@obs.only) {
 tar.l$metrics <-
   tar_target(metrics,
              ext.script(here("src/D.Statistics/C1.Calculate_scalar_skill_metrics.r"),
                         stats,rollmean))
+}
 
 #'========================================================================
 # Outputs ####
 #'========================================================================
 #Pointwise extraction
+tar.l$points <-
+  tar_target(points,
+             slot(pcfg,"pt.extraction"))
+
 tar.l$pointwise <-
   tar_target(pointwise,
              ext.script(here("src/E.Postprocessing/A1.Pointwise_extraction.r"),
-                        metrics,stats))  #Stats is a included as a second dependency for cases when
+                        points,stats))  #Stats is a included as a second dependency for cases when
 #there are no metrics to calculate
 
 #Markdown report
