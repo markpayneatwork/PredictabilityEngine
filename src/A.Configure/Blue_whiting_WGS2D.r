@@ -161,6 +161,7 @@ GAM.sdm.resources$thresholds <-
   list(april15=0.154,
        maximumProbability=0.208,
        meanProbability=0.113,
+       matchSurvey=0.25,
        larvae=GAM.sdm.resources$model$threshold)
 GAM.sdm.resources$doys <-seq(30,180,by=3)
 GAM.sdm.resources$WGS2D <- TRUE
@@ -228,6 +229,9 @@ GAM.sdm.fn <- function(dat,resources,retain) {
   scalar.l["areaLarvae"] <- 
     cellStats(pxl.area* (field.l$april15 > resources$thresholds$larvae),
               sum,na.rm=TRUE)
+  scalar.l["areaMatchSurvey"] <- 
+    cellStats(pxl.area* (field.l$april15 > resources$thresholds$matchSurvey),
+              sum,na.rm=TRUE)
   #Westward extent 
   west.ext <- function(r,this.threshold) {
     west.focus <- crop(r,extent(-25,0,56,58))
@@ -251,6 +255,8 @@ GAM.sdm.fn <- function(dat,resources,retain) {
   }
   scalar.l["westwardExtentLarvae"] <- 
     west.ext(field.l$april15,resources$thresholds$larvae)
+  scalar.l["westwardExtentMatchSurvey"] <- 
+    west.ext(field.l$april15,resources$thresholds$matchSurvey)
   
   #Calculate westward extent using clumping approach
   west.ext.clump <- function(r,this.threshold) {
@@ -272,7 +278,9 @@ GAM.sdm.fn <- function(dat,resources,retain) {
   }
   scalar.l["westExtClumpLarvae"] <- 
     west.ext.clump(field.l$april15,resources$thresholds$larvae)
-
+  scalar.l["westExtClumpMatchSurvey"] <- 
+    west.ext.clump(field.l$april15,resources$thresholds$matchSurvey)
+  
   #Return results
   if(retain) {
     this.rtn <- 
