@@ -31,24 +31,21 @@ cat(sprintf("Analysis performed %s\n\n",base::date()))
 #Source the common elements
 suppressPackageStartupMessages({
   library(PredEng)
-  library(tibble)
 })
-load(PE.cfg$path$datasrcs)
+these.srcs <- readRDS(PE.cfg$path$datasrcs)
 
 #'========================================================================
 # Project Configuration ####
 #'========================================================================
 #Global project configuration
 pcfg <- PredEng.config(project.name= "TestSuite",
-               MOI=8,  #August
-               average.months=FALSE,
-               clim.years=1991:2000,   #Take in everything
-               comp.years=1990:2100,
-               landmask="data_srcs/NMME/landmask.nc",
-               Observations=SST_obs$HadISST,
-               calibrationMethods=c("MeanAdj"),
-               persistence.leads = seq(7,120,by=12),
-               NMME=NMME.sst.l)
+                       MOI=8,  #August
+                       average.months=FALSE,
+                       clim.years=1991:2000,   #Take in everything
+                       comp.years=1990:2100,
+                       landmask="data_srcs/NMME/landmask.nc",
+                       calibrationMethods=c("MeanAdj"),
+                       persistence.leads = seq(7,120,by=12))
 
 #Setup scratch directory
 pcfg@scratch.dir <- file.path(PE.cfg$dir$scratch,pcfg@project.name)
@@ -57,47 +54,54 @@ define_dir(pcfg@scratch.dir)
 #'========================================================================
 # Data sources ####
 #'========================================================================
+#' Observations
+pcfg@Observations <- 
+  filter(these.srcs,
+         group=="SST.obs",srcName=="HadISST") %>%
+  pull(sources) %>%
+  pluck(1)
+  
+#'
 #Select a very limited set of decadal models
 # - Two realisations per model
 # - Start dates 1991-2005
 # - Only two models - chosen here to be fast!
 lim.dec <- 
   #Setup list of files that we have
-  tibble(data.srcs=unlist(SST.Decadal.production),
-         srcName=map_chr(data.srcs,slot,"name"),
-         fnames=map(data.srcs,slot,"sources")) %>%
+  these.srcs %>%
+  filter(group=="SST.Decadal") %>%
+  mutate(fnames=map(sources,slot,"sources")) %>%
   unnest(fnames) %>%
-  mutate(realization=map2_chr(data.srcs,fnames, ~ .x@realization.fn(.y)),
-         startDate=map2(data.srcs,fnames,~.x@start.date(.y))) %>%
+  mutate(realization=map2_chr(sources,fnames, ~ .x@realization.fn(.y)),
+         startDate=map2(sources,fnames,~.x@start.date(.y))) %>%
   unnest(startDate) %>%
   #Restrict
   filter(year(startDate) %in% 1991:1992,
          srcName %in% c("NorCPM","CESM.DPLE")) %>%
   arrange(srcName,startDate,realization) %>%
   group_by(srcName,startDate) %>%
-  slice_head(n=2) 
+  slice_head(n=2) %>%
+  ungroup() 
 
 #Get an overview of what we have
 lim.dec %>%
-  ungroup() %>%
   count(srcName,realization) %>%
   print(n=Inf)
 
-#Add data sources into object
-pcfg@Decadal <- 
+#Apply restricted list of files back on to the sources list
+pcfg@Decadal <-
   lim.dec %>%
-  ungroup() %>%
-  nest(data=c(-srcName)) %>%
-  mutate(data.src=map2(srcName,data,
-                       function(this.srcName,this.dat) {
-                         this.datsrc <- SST.Decadal.production[[this.srcName]]
-                         this.datsrc@sources <- this.dat$fnames
-                         return(this.datsrc)
+  select(-sources,-realization,-startDate) %>%
+  nest(fnames=c(fnames)) %>%
+  left_join(y=these.srcs) %>%
+  mutate(mod.data.src=map2(sources,fnames,
+                       function(this.src,this.fnames) {
+                         this.src@sources <- this.fnames$fnames
+                         return(this.src)
                        } )) %>%
-  pull(data.src) %>%
+  pull(mod.data.src) %>%
   PElst()
 
-  
 #Select CMIP5 models
 #pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="tos")
 pcfg@obs.only <- FALSE

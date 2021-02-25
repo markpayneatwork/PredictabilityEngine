@@ -7,7 +7,7 @@ PE.cfg$dir <- list(objects="objects",
 
 #Configuration
 PE.cfg$path$config   <- file.path(PE.cfg$dir$objects,"configuration.rds")
-PE.cfg$path$datasrcs <- file.path(PE.cfg$dir$objects,"datasrcs.RData")
+PE.cfg$path$datasrcs <- file.path(PE.cfg$dir$objects,"datasrcs.rds")
 PE.cfg$path$NAOmatching <- file.path(PE.cfg$dir$objects,"NAOmatching.rds")
 
 #Filenames

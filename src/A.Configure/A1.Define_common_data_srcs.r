@@ -120,7 +120,7 @@ SST.Decadal$"MPI-LR" <-
 #                                   date.fn=date.by.brick)
 
 #Add in the CESM DPLE
-CESM.DPLE.src <-   
+SST.Decadal$CESM.DPLE <-   
   data.source(name="CESM.DPLE",
               var="SST",
               type="Decadal",
@@ -137,8 +137,6 @@ CESM.DPLE.src <-
                 return(ceiling_date(init.date,"year"))},  #Round November start up to 1 Jan
               date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
 
-SST.Decadal$CESM.DPLE <- CESM.DPLE.src
-
 #NorCPM
 #Note that there are two initialisations here, stored in the same directory - i1 and i2.
 #We treat them as different data sources for the purpose of this analysis
@@ -150,14 +148,13 @@ NorCPM.fnames <-
   separate(variant,into=c("start","realization"),sep="-") %>%
   extract(realization,c("realization","initialization","other"),"^(r[[:digit:]]+)(i[[:digit:]]+)(.+)$")
 
-NorCPM.SST.src.i1 <- 
-  data.source(name="NorCPM.i1",
+SST.Decadal$NorCPM.SST.src <- 
+  data.source(name="NorCPM",
               var="tos",
               type="Decadal",
               fields.are.2D=TRUE,
               sources=filter(NorCPM.fnames,
-                             field=="tos",
-                             initialization=="i1")$path,
+                             field=="tos")$path,
               realization.fn = function(f) {
                 gsub("^.*_s[[:digit:]]{4}-(r.*?)_.*$","\\1",basename(f))},
               start.date=function(f){
@@ -165,26 +162,21 @@ NorCPM.SST.src.i1 <-
                 return(ceiling_date(init.date,"year"))}, #Round October start up to 1 Jan
               date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
 
-NorCPM.SST.src.i2 <- 
-  new("data.source",
-      NorCPM.SST.src.i1,
-      name="NorCPM.i2",
-      sources=filter(NorCPM.fnames,
-                          field=="tos",
-                          initialization=="i2")$path)
-
-NorCPM.SST.src <- 
-  new("data.source",
-      NorCPM.SST.src.i1,
-      name="NorCPM",
-      sources=filter(NorCPM.fnames,
-                     field=="tos")$path)
-
-SST.Decadal <- c(SST.Decadal,NorCPM.SST.src.i1,NorCPM.SST.src.i2,NorCPM.SST.src)
-
-#Set list names and ids
-#SST.Decadal.production <- SST.Decadal[c("CESM.DPLE","MPI.ESM.LR","NorCPM.i1","NorCPM.i2")]
-SST.Decadal.production <- SST.Decadal[c("CESM.DPLE","MPI.ESM.LR","NorCPM")]
+# SST.Decadal$NorCPM.SST.src.i1 <- 
+#   new("data.source",
+#       SST.Decadal$NorCPM.SST.src,
+#       name="NorCPM.i1",
+#       sources=filter(NorCPM.fnames,
+#                           field=="tos",
+#                           initialization=="i1")$path)
+# 
+# SST.Decadal$NorCPM.SST.src.i2 <- 
+#   new("data.source",
+#       SST.Decadal$NorCPM.SST.src,
+#       name="NorCPM.i2",
+#       sources=filter(NorCPM.fnames,
+#                      field=="tos",
+#                      initialization=="i2")$path)
 
 #'========================================================================
 # Salinity  ####
@@ -217,8 +209,8 @@ Sal.Decadal$"MPI-LR" <-
               date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
 
 #CESM-DPLE
-CESM.DPLE.SALT <- 
-  data.source(CESM.DPLE.src,
+Sal.Decadal$CESM.DPLE.SALT <- 
+  data.source(SST.Decadal$CESM.DPLE,
               var="SALT",
               sources=dir(here(PE.cfg$dir$datasrc,"Decadal","CESM-DPLE","SALT"),
                           pattern="\\.nc$",full.names = TRUE),
@@ -238,13 +230,11 @@ CESM.DPLE.SALT <-
                 return(idxs)},
               date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
 
-Sal.Decadal$CESM.DPLE.SALT <- CESM.DPLE.SALT
-
-NorCPM.sal.src.i1 <- 
+Sal.Decadal$NorCPM.sal.src <- 
   new("data.source",
       var="so",
-      NorCPM.SST.src.i1,
-      name="NorCPM.i1",
+      SST.Decadal$NorCPM.SST.src,
+      name="NorCPM",
       fields.are.2D=FALSE,
       z2idx=function(z,f) {
         ncid <- nc_open(f)
@@ -253,28 +243,26 @@ NorCPM.sal.src.i1 <-
         idxs <- bounds.to.indices(z,lev_bnds[1,],lev_bnds[2,])
         return(idxs)},
       sources=filter(NorCPM.fnames,
-                          field=="so",
-                          grid=="gr",
-                          initialization=="i1")$path)
-
-NorCPM.sal.src.i2 <- 
-  new("data.source",
-      NorCPM.sal.src.i1,
-      name="NorCPM.i2",
-      sources=filter(NorCPM.fnames,
-                          field=="so",
-                          grid=="gr",
-                          initialization=="i2")$path)
-
-NorCPM.sal.src <- 
-  new("data.source",
-      NorCPM.sal.src.i1,
-      name="NorCPM",
-      sources=filter(NorCPM.fnames,
                      field=="so",
                      grid=="gr")$path)
 
-Sal.Decadal <- c(Sal.Decadal,NorCPM.sal.src,NorCPM.sal.src.i1,NorCPM.sal.src.i2)
+# Sal.Decadal$NorCPM.sal.src.i1 <- 
+#   new("data.source",
+#       Sal.Decadal$NorCPM.sal.src,
+#       name="NorCPM.i1",
+#       sources=filter(NorCPM.fnames,
+#                      field=="so",
+#                      grid=="gr",
+#                      initialization=="i1")$path)
+# 
+# Sal.Decadal$NorCPM.sal.src.i2 <- 
+#   new("data.source",
+#       Sal.Decadal$NorCPM.sal.src,
+#       name="NorCPM.i2",
+#       sources=filter(NorCPM.fnames,
+#                           field=="so",
+#                           grid=="gr",
+#                           initialization=="i2")$path)
 
 #'========================================================================
 # Sea Level Pressure ####
@@ -298,8 +286,6 @@ SLP.Decadal$CESM.DPLE <-
                 init.date <- ymd(sprintf("%s-01",val))
                 return(ceiling_date(init.date,"year"))},  #Round November start up to 1 Jan
               date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
-
-
 
 #'========================================================================
 # Uninitialised models ####
@@ -366,6 +352,7 @@ Sal.obs$EN4  <- data.source(name="EN4",
 SLP.obs <- PElst()
 SLP.obs$HadSLP2 <- data.source(name="HadSLP2",
                                type="Observations",
+                               var="SLP",
                                fields.are.2D = TRUE)
 
 #'========================================================================
@@ -377,7 +364,7 @@ NMME.cfg <-
                       col_types = cols()) %>%
   filter(active)
 NMME.mdls <- split(NMME.cfg,NMME.cfg$Model)
-NMME.sst.l <- PElst()
+NMME.sst <- PElst()
 for(mdl.name in names(NMME.mdls)){
   mdl <- NMME.mdls[[mdl.name]]
   mdl.src <- mdl$URL
@@ -387,7 +374,7 @@ for(mdl.name in names(NMME.mdls)){
                      var="sst",
                      fields.are.2D = TRUE,
                      sources=mdl.src)  
-  NMME.sst.l[[mdl.name]] <- obj
+  NMME.sst[[mdl.name]] <- obj
 }
 
 #Restrict some realisations
@@ -403,6 +390,8 @@ CMIP5.db <- readRDS("objects/CMIP5db.rds")
 
 
 #Function to make data.sources for CMIP5 slot
+#20210225. Best approach now is just to generate all of these objects
+#and throw them in the output tibble.
 make.CMIP5.srcs <- function(meta,var) {
   #Select variable of interest
   stopifnot(length(var)==1)
@@ -433,22 +422,35 @@ make.CMIP5.srcs <- function(meta,var) {
 }
 
 #'========================================================================
-# Done ####
+# Finish ####
 #'========================================================================
-# Save data sources
-save(SST_obs,
-     SST.Decadal.production,
-     NMME.sst.l,
-     make.CMIP5.srcs,
-     Sal.obs,
-     Sal.Decadal,
-     SLP.Decadal,
-     SLP.obs,
-     CMIP5.db,
-     file=PE.cfg$path$datasrcs)
+#Combine into a tibble for storage and selection
+src.list <- 
+  list("SST.obs"=SST_obs,
+       "SST.Decadal"=SST.Decadal,
+       "SST.NMME"=NMME.sst,
+       "Sal.obs"=Sal.obs,
+       "Sal.Decadal"=Sal.Decadal,
+       "SLP.Decadal"=SLP.Decadal,
+       "SLP.obs"=SLP.obs)
+
+src.tb <- 
+  enframe(src.list,name="group",value = "sources") %>%
+  mutate(sources=map(sources,as.list)) %>%
+  unnest(sources) %>%
+  mutate(srcType=map_chr(sources,slot,"type"),
+         srcName=map_chr(sources,slot,"name"),
+         var=map_chr(sources,slot,"var"),
+         n.srcs=map_dbl(sources,~ length(slot(.x,"sources")))) %>%
+  arrange(group,srcType,srcName)
+
+these.srcs <-
+  src.tb %>%
+  filter(n.srcs!=0)
+
+saveRDS(these.srcs,file=PE.cfg$path$datasrcs)
 
 #Turn off thte lights
-if(grepl("pdf|png|wmf",names(dev.cur()))) {dmp <- dev.off()}
 log_msg("\nConfiguration complete.\n")
 
 #' -----------

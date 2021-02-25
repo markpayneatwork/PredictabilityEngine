@@ -30,7 +30,7 @@ cat(sprintf("Analysis performed %s\n\n",base::date()))
 suppressPackageStartupMessages({
   library(PredEng)
 })
-load(PE.cfg$path$datasrcs)
+these.srcs <- readRDS(PE.cfg$path$datasrcs)
 
 #'========================================================================
 # Project Configuration ####
@@ -42,12 +42,29 @@ pcfg <- PredEng.config(project.name= "NA_SST",
                        clim.years=1981:2010,  
                        comp.years=1970:2015,
                        landmask="data_srcs/NMME/landmask.nc",
-                       Observations=SST_obs[[c("HadISST")]],
-                       Decadal=SST.Decadal.production,
                        calibrationMethods=c("MeanAdj"))
 
 #Setup scratch directory
 pcfg@scratch.dir <- file.path(PE.cfg$dir$scratch,pcfg@project.name)
+
+#'========================================================================
+# Data sources ####
+#'========================================================================
+#' Observations
+pcfg@Observations <- 
+  filter(these.srcs,
+         group=="SST.obs",srcName=="HadISST") %>%
+  pull(sources) %>%
+  pluck(1)
+pcfg@obs.only <- FALSE
+
+#Decadal models
+pcfg@Decadal <- 
+  filter(these.srcs,
+         group=="SST.Decadal") %>%
+  pull(sources) %>%
+  PElst()
+
 
 #'========================================================================
 # Spatial Configurations ####

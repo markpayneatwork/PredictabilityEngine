@@ -95,14 +95,16 @@ PredEng.config <-
                              msg="Unsupported calibration method selected"))
              
              #Check for consistency between presence of 2D fields and requested vertical range
-             datsrc.meta <- 
-               tibble(data.srcs=c(object@Decadal,object@NMME,object@Observations,object@CMIP5)@.Data) %>%
-               mutate(srcType=map_chr(data.srcs,slot,"type"),
-                      srcName=map_chr(data.srcs,slot,"name"),
-                      is.2D=map_lgl(data.srcs,slot,"fields.are.2D"))
-             err.msg[["vertrange.2D"]] <-
-               validate_that(all(is.na(object@vert.range)) | all(!datsrc.meta$is.2D),
-                             msg="If vertical range is specified, all data sources must be 3D")
+             datsrcs <- c(object@Decadal,object@NMME,object@Observations,object@CMIP5)
+             if(!all(is.na(object@vert.range))) {
+               for(d in datsrcs) {
+                 if(length(d@fields.are.2D)!=0) {
+                   err.msg <- 
+                     c(err.msg,
+                       validate_that(!d@fields.are.2D,
+                                     msg="When vertical range is specified, all data sources must be 3D"))
+                 }
+               }}
              
              #Check for consistency between spatial.polygons requested in the stats, and those available
              stat.spNames <- 

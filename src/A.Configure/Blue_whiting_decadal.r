@@ -31,7 +31,7 @@ cat(sprintf("Analysis performed %s\n\n",base::date()))
 suppressPackageStartupMessages({
   library(PredEng)
 })
-load(PE.cfg$path$datasrcs)
+these.srcs <- readRDS(PE.cfg$path$datasrcs)
 
 # ========================================================================
 # Generic Configuration
@@ -58,7 +58,11 @@ pcfg@persistence.leads <- seq(pcfg@MOI-1,120,by=12)
 # Data Sources ####
 #'========================================================================
 #Decadal salinity models
-pcfg@Decadal <- Sal.Decadal[c("MPI.ESM.LR","CESM.DPLE","NorCPM")]
+pcfg@Decadal <- 
+  filter(these.srcs,
+         group=="Sal.Decadal") %>%
+  pull(sources) %>%
+  PElst()
 
 #'========================================================================
 # Spatial Configurations ####

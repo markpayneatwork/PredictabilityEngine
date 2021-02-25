@@ -31,7 +31,7 @@ cat(sprintf("Analysis performed %s\n\n",base::date()))
 suppressPackageStartupMessages({
   library(PredEng)
 })
-load(PE.cfg$path$datasrcs)
+these.srcs <- readRDS(PE.cfg$path$datasrcs)
 
 # ========================================================================
 # Generic Configuration
@@ -43,13 +43,22 @@ pcfg <- PredEng.config(project.name= "Blue_whiting_WGS2D",
                        average.months=FALSE,
                        clim.years=1981:2010,  
                        comp.years=1970:2015,
-                       Observations = Sal.obs$EN4,
                        calibrationMethods=c("MeanAdj"),
                        landmask="data_srcs/NMME/landmask.nc")
 
 #Setup scratch directory
 pcfg@scratch.dir <- file.path(PE.cfg$dir$scratch,pcfg@project.name)
 define_dir(pcfg@scratch.dir)
+
+#'========================================================================
+# Data sources ####
+#'========================================================================
+#' Observations
+pcfg@Observations <- 
+  filter(these.srcs,
+         group=="Sal.obs",srcName=="EN4") %>%
+  pull(sources) %>%
+  pluck(1)
 
 #'========================================================================
 # Spatial Configurations ####
@@ -66,12 +75,6 @@ sp.objs$"NorthernComponent" <- sfpolygon.from.extent(extent(-25,-5,54,58))
 
 pcfg@spatial.polygons <- 
   sp.objs %>% enframe(value="geometry") %>% st_sf()
-
-#'========================================================================
-# Data Sources ####
-#'========================================================================
-#Define observational sources
-pcfg@Observations <- Sal.obs$EN4
 
 #'========================================================================
 # Pointwise extraction ####

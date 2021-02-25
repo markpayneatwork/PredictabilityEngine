@@ -29,7 +29,7 @@ cat(sprintf("Analysis performed %s\n\n",base::date()))
 suppressPackageStartupMessages({
   library(PredEng)
 })
-load(PE.cfg$path$datasrcs)
+these.srcs <- readRDS(PE.cfg$path$datasrcs)
 
 #'========================================================================
 # Project Configuration ####
@@ -41,8 +41,6 @@ pcfg <- PredEng.config(project.name= "NA_Sal",
                        clim.years=1981:2010,  
                        comp.years=1970:2015,
                        landmask="data_srcs/NMME/landmask.nc",
-                       Observations=Sal.obs$EN4,
-                       Decadal=Sal.Decadal,
                        calibrationMethods=c("MeanAdj"))
 
 
@@ -52,6 +50,24 @@ pcfg <- PredEng.config(project.name= "NA_Sal",
 
 #Setup scratch directory
 pcfg@scratch.dir <- file.path(PE.cfg$dir$scratch,pcfg@project.name)
+
+#'========================================================================
+# Data Sources ####
+#'========================================================================
+#' Observations
+pcfg@Observations <- 
+  filter(these.srcs,
+         group=="Sal.obs",srcName=="EN4") %>%
+  pull(sources) %>%
+  pluck(1)
+
+#Decadal salinity models
+pcfg@Decadal <- 
+  filter(these.srcs,
+         group=="Sal.Decadal") %>%
+  pull(sources) %>%
+  PElst()
+
 
 #'========================================================================
 # Spatial Configurations ####

@@ -36,7 +36,7 @@ start.time <- proc.time()[3]; options(stringsAsFactors=FALSE)
 suppressPackageStartupMessages({
   library(PredEng)
 })
-load(PE.cfg$path$datasrcs)
+these.srcs <- readRDS(PE.cfg$path$datasrcs)
 
 #'========================================================================
 # Project Configuration ####
@@ -48,9 +48,7 @@ pcfg <- PredEng.config(project.name= "Mackerel_summer",
                        clim.years=1981:2010,  
                        comp.years=1970:2015,
                        landmask="data_srcs/NMME/landmask.nc",
-                       Observations=SST_obs[[c("HadISST")]],#,
-                       calibrationMethods=c("MeanAdj"),
-                       NMME=NMME.sst.l)
+                       calibrationMethods=c("MeanAdj"))
 
 #Setup scratch directory
 pcfg@scratch.dir <- file.path("scratch",pcfg@project.name)
@@ -59,11 +57,23 @@ define_dir(pcfg@scratch.dir)
 #Setup persistence
 pcfg@persistence.leads <- seq(pcfg@MOI-1,120,by=12)
 
-#Select decadal models
-pcfg@Decadal <- SST.Decadal.production
+#'========================================================================
+# Data sources ####
+#'========================================================================
+#' Observations
+pcfg@Observations <- 
+  filter(these.srcs,
+         group=="SST.obs",srcName=="HadISST") %>%
+  pull(sources) %>%
+  pluck(1)
+pcfg@obs.only <- FALSE
 
-#Select CMIP5 models
-#pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="tos")
+#Decadal models
+pcfg@Decadal <- 
+  filter(these.srcs,
+         group=="SST.Decadal") %>%
+  pull(sources) %>%
+  PElst()
 
 #'========================================================================
 # Spatial Configurations ####
