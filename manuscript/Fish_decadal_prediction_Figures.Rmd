@@ -3,7 +3,7 @@ title: "Fish_decadal_prediction_Figures"
 output:
   html_document: default
 editor_options: 
-  chunk_output_type: console
+  chunk_output_type: inline
 ---
 
 ```{r setup, include="FALSE"}
@@ -43,6 +43,7 @@ knitr::opts_chunk$set(
   warning = FALSE,
   include = TRUE,
   results = "markup",
+  #dev="CairoSVG",
   fig.width = 10,         #Old 4:3
   fig.height=14/25*10,
   fig.width = 10,         #New 16:9
@@ -65,6 +66,7 @@ library(RColorBrewer)
 library(RcppRoll)
 library(patchwork)
 library(ggsci)
+library(magrittr)
 
 theme_set(theme_bw())
 theme_replace(strip.text = element_text(hjust=0),
@@ -98,9 +100,9 @@ cfgs$Mackerel_summer <-
          fig="skill")
 cfgs$Bluefin <- 
   tibble(tbl=PE.cfg$db$metrics,
-         spName="SouthOfIceland",
-         statName="WestExt",
-         resultName="longitude",
+         spName="MacKenzieEtAl",
+         statName="threshold",
+         resultName="area",
          calibrationMethod="MeanAdj",
          lbl="b) Bluefin tuna",
          var="SST",
@@ -110,7 +112,8 @@ cfgs$Blue_whiting_decadal <-
          spName="NorthernComponent",
          statName="SDM",
          #resultName="areaLarvae",
-         resultName="westwardExtentLarvae",
+         resultName="areaMatchSurvey",
+         #resultName="westwardExtentLarvae",
          calibrationMethod="MeanAdj",
          lbl="c) Blue whiting",
          var="Sal",
@@ -128,9 +131,9 @@ cfgs$NA_SST <-
 cfgs$NA_Sal <-
   tibble(tbl=PE.cfg$db$metrics.field,
          spName="global.ROI",
-         statName="Anomaly",
+         statName="Field",
          resultName="field",
-         calibrationMethod="anomaly",
+         calibrationMethod="MeanAdj",
          var="Sal",
          fig="spMet",
          lbl="b) Salinity (March, 250-600m)")
@@ -476,24 +479,24 @@ tbl.dat <-
 ```{r}
 # Setup configuration -------------------------------------------------------------
 forecast.cfg.l <- list()
-forecast.cfg.l$Mackerel_summer <- 
-  tibble(yr.rng=list(1970:2015),
-         starts=list(c(1990,2000,2011)),
-         scalar=1/1e6,
-         lbl2="Area of Mackerel habitat (Mkm²)")
+forecast.cfg.l$Mackerel_summer <-
+  tibble(yr.rng=list(1980:2020),
+         starts=list(c(1980,1990,2000,2012)),
+         scalar=1/1e3,
+         lbl2="Mackerel habitat (kkm²)")
 
-forecast.cfg.l$Bluefin <- 
-  tibble(yr.rng=list(1970:2015),
-         starts=list(c(1982,1992,2002,2011)),
-         scalar=-1,
-         lbl2="Bluefin Westward Extent (deg Lat W)")
+# forecast.cfg.l$Bluefin <- 
+#   tibble(yr.rng=list(1980:2010),
+#          starts=list(c(1981,1991,2001)),
+#          scalar=1/1e6,
+#          lbl2="Bluefin tuna habitat (Mkm²)")
 
 
-forecast.cfg.l$Blue_whiting_decadal <-
-  tibble(yr.rng=list(1970:2015),
-         starts=list(c(2004,2010,2012)),
-         scalar=1,
-         lbl2="Blue whiting spawning habitat (km²)")
+# forecast.cfg.l$Blue_whiting_decadal <-
+#   tibble(yr.rng=list(1970:2015),
+#          starts=list(c(2004,2010,2012)),
+#          scalar=1/1e3,
+#          lbl2="Blue whiting spawning habitat (kkm²)")
 
 
 forecast.cfg <-
@@ -531,9 +534,8 @@ for(this.cfg in forecast.cfg) {
            month(date) ==this.cfg$pcfg[[1]]@MOI) %>%
     arrange(date) %>%
     mutate(rollmean=roll_mean(value,n=3,fill=NA)) %>%
-    select(year,Value=value,"Rolling mean"=rollmean) %>%
-    pivot_longer(-year) %>%
-    mutate(name=fct_rev(name))
+    select(year,Habitat=value,"Rolling mean"=rollmean) %>%
+    pivot_longer(-year) 
   
   this.model <- 
     stat.dat %>%
@@ -552,7 +554,7 @@ for(this.cfg in forecast.cfg) {
            year %in% this.cfg$yr.rng[[1]]) %>%
     group_by(startYear,year) %>%
     summarise(ptile=c("lower","upper"),
-              value=quantile(value,probs=c(0.25,0.75)),
+              value=quantile(value,probs=c(0.05,0.95)),
               .groups="drop") %>%
     pivot_wider(names_from=ptile,values_from = value)
   
@@ -565,20 +567,24 @@ for(this.cfg in forecast.cfg) {
                 alpha=0.25)+
     geom_line(data=forecast.realmean,
               mapping=aes(year,value,col=startYear))  +
-    scale_fill_npg()+
-    scale_colour_npg()+
-    labs(colour="Forecast start",
-         fill="Forecast start")+
+    scale_fill_npg(guide=guide_legend(order=2))+
+    scale_colour_npg(guide=guide_legend(order=2))+
+    labs(colour="Forecast",
+         fill="Forecast")+
     new_scale_color()+
     #Observations
     geom_line(data=this.obs,
-              mapping=aes(year,value,linetype=name,col=name,size=name))+
+              mapping=aes(year,value,linetype=name,col=name))+
     geom_point(data=this.obs,
                mapping=aes(year,value,shape=name),size=2)+
-    scale_color_manual(values=c("grey","black"))+
-    scale_shape_manual(values=c(16,NA))+
-    scale_size_manual(values=c(0.5,1.5))+
-    scale_linetype_manual(values=c("dotted","solid"))+
+    scale_color_manual(values=c("darkgrey","black","black"),
+                       guide=guide_legend(order=1))+
+    scale_shape_manual(values=c(17,NA,NA),
+                       guide=guide_legend(order=1))+
+    scale_size_manual(values=c(0.5,0,5),
+                      guide=guide_legend(order=1))+
+    scale_linetype_manual(values=c("dotted","longdash","dashed"),
+                          guide=guide_legend(order=1))+
     #Annotations
     labs(x="Year",
          y=this.cfg$lbl2,
@@ -586,70 +592,205 @@ for(this.cfg in forecast.cfg) {
          linetype="Observations",
          shape="Observations",
          size="Observations")+
-    scale_x_continuous(limits=range(this.cfg$yr.rng[[1]]))
+    scale_x_continuous(limits=range(this.cfg$yr.rng[[1]]))+
+    theme(legend.position = "bottom",
+          legend.direction = "vertical")
   
 
   # Fixed lead plot -----------------------------------------------------------------
-  this.lead.idx <- 5
-  fixed.realmean <-
-    this.model %>%
-    filter(realization=="realmean",
-           leadIdx==this.lead.idx) %>%
-    filter(year %in% this.cfg$yr.rng[[1]])
-  
-  fixed.preds <-
-    this.model %>%
-    filter(realization!="realmean",
-           leadIdx==this.lead.idx) %>%
-    dplyr::select(-startDate) %>%
-    filter(year %in% this.cfg$yr.rng[[1]]) %>%
-    group_by(date) %>%
-    summarise(ptile=c("lower","upper"),
-              value=quantile(value,probs=c(0.25,0.75)),
-              .groups="drop") %>%
-    pivot_wider(names_from=ptile,values_from = value)
-  
-  fixed.lead.plt[[this.cfg$name]] <- 
-    ggplot()+
-    #Ribbon
-    geom_ribbon(data=fixed.preds,
-                mapping=aes(x=year(date),ymax=upper,ymin=lower,
-                            fill=sprintf("%i year lead",this.lead.idx)),
-                alpha=0.25)+
-    #Observations
-    geom_line(data=this.obs,
-              mapping=aes(year,value,linetype=name,col=name,size=name))+
-    geom_point(data=this.obs,
-               mapping=aes(year,value,shape=name),size=2)+
-    scale_color_manual(values=c("grey","black"))+
-    scale_shape_manual(values=c(16,NA))+
-    scale_size_manual(values=c(0.5,1.5))+
-    scale_linetype_manual(values=c("dotted","solid"))+
-    labs(col="Observations",
-         linetype="Observations",
-         size="Observations",
-         shape="Observations",
-         alpha="Observations")+
-    #Forecast line
-    new_scale_color()+
-    geom_line(data=fixed.realmean,
-              aes(year,value,colour=sprintf("%i year lead",this.lead.idx)))+
-    scale_color_manual(values=c("red"))+
-    #Annotations
-    scale_x_continuous(limits=range(this.cfg$yr.rng[[1]])) +
-    labs(x="Year",
-         y=this.cfg$lbl2,
-         col="Forecast",
-         fill="Forecast")
+  # this.lead.idx <- 5
+  # fixed.realmean <-
+  #   this.model %>%
+  #   filter(realization=="realmean",
+  #          leadIdx==this.lead.idx) %>%
+  #   filter(year %in% this.cfg$yr.rng[[1]])
+  # 
+  # fixed.preds <-
+  #   this.model %>%
+  #   filter(realization!="realmean",
+  #          leadIdx==this.lead.idx) %>%
+  #   dplyr::select(-startDate) %>%
+  #   filter(year %in% this.cfg$yr.rng[[1]]) %>%
+  #   group_by(date) %>%
+  #   summarise(ptile=c("lower","upper"),
+  #             value=quantile(value,probs=c(0.25,0.75)),
+  #             .groups="drop") %>%
+  #   pivot_wider(names_from=ptile,values_from = value)
+  # 
+  # fixed.lead.plt[[this.cfg$name]] <-
+  #   ggplot()+
+  #   #Ribbon
+  #   geom_ribbon(data=fixed.preds,
+  #               mapping=aes(x=year(date),ymax=upper,ymin=lower,
+  #                           fill=sprintf("%i year lead",this.lead.idx)),
+  #               alpha=0.25)+
+  #   #Observations
+  #   geom_line(data=this.obs,
+  #             mapping=aes(year,value,linetype=name,col=name,size=name))+
+  #   geom_point(data=this.obs,
+  #              mapping=aes(year,value,shape=name),size=2)+
+  #   scale_color_manual(values=c("black","grey"))+
+  #   scale_shape_manual(values=c(16,NA))+
+  #   scale_size_manual(values=c(0.5,1.5))+
+  #   scale_linetype_manual(values=c("solid","solid"))+
+  #   labs(col="Observations",
+  #        linetype="Observations",
+  #        size="Observations",
+  #        shape="Observations",
+  #        alpha="Observations")+
+  #   #Forecast line
+  #   new_scale_color()+
+  #   geom_line(data=fixed.realmean,
+  #             aes(year,value,colour=sprintf("%i year lead",this.lead.idx)))+
+  #   scale_color_manual(values=c("red"))+
+  #   #Annotations
+  #   scale_x_continuous(limits=range(this.cfg$yr.rng[[1]])) +
+  #   labs(x="Year",
+  #        y=this.cfg$lbl2,
+  #        col="Forecast",
+  #        fill="Forecast")
 }
 
 #Merge together with patchwork
 wrap_plots(forecast.plt,ncol=1)+
   plot_annotation(tag_levels = "a",tag_suffix = ")")
 
-wrap_plots(fixed.lead.plt,ncol=1)+
-  plot_annotation(tag_levels = "a",tag_suffix = ")")
+# wrap_plots(fixed.lead.plt,ncol=1)+
+#   plot_annotation(tag_levels = "a",tag_suffix = ")")
+
 ```
+
+# Blue whiting forecast comparison
+
+```{r}
+#Setup
+this.cfg <- 
+  these.cfg %>%
+  filter(name=="Blue_whiting_decadal")%>%
+  mutate(yr.rng=list(2004:2019),
+         starts=list(c(2010:2020)),
+         scalar=1/1e3,
+         lbl2="Blue whiting spawning area (kkm²)")
+
+surv.dat <- 
+  readRDS(here("manuscript/Distribution_metrics.rds")) %>%
+  pivot_longer(-c(year,src)) %>%
+  filter(name=="surv.area",
+         src=="WGIPS") %>%
+  mutate(value=value*this.cfg$scalar,
+         lbl="Survey\ndistribution")
+
+library(icesSAG)
+SSB.dat <- 
+  getSummaryTable(13880) %>%  #2020 Assessment, Key from website
+  extract2(1) %>%
+  as_tibble() %>%
+  dplyr::select(Year,SSB)
+  
+
+#Import data
+stat.dat <- 
+  this.cfg$stats.db[[1]] %>%
+  tbl(PE.cfg$db$stats) %>%
+  filter(spName==!!this.cfg$spName,
+         statName==!!this.cfg$statName,
+         resultName==!!this.cfg$resultName,
+         calibrationMethod==!!this.cfg$calibrationMethod | is.na(calibrationMethod))%>%
+  select(-field) %>%
+  collect() %>%
+  mutate(year=year(date),
+         startYear=factor(year(startDate)),
+         value=value*this.cfg$scalar)
+
+#Extract data
+this.obs <- 
+  stat.dat %>%
+  filter(srcType=="Observations",
+         is.na(calibrationMethod),
+         month(date) ==this.cfg$pcfg[[1]]@MOI) %>%
+  arrange(date) %>%
+  mutate(rollmean=roll_mean(value,n=3,fill=NA)) %>%
+  select(year,Habitat=value,"Rolling mean"=rollmean) %>%
+  pivot_longer(-year)
+
+this.model <- 
+  stat.dat %>%
+  filter(srcType=="Decadal",
+         srcName=="CESM.DPLE",
+         year(startDate) %in% c(2004,2010,2016),
+         leadIdx<6)  %>%
+  mutate(startYear=factor(year(startDate)))
+
+forecast.mean <-
+  this.model %>%
+  filter(realization=="realmean") 
+
+forecast.rng <-
+  this.model %>%
+  filter(realization!="realmean" | realization!="ensmean") %>%
+  group_by(startYear,year) %>%
+  summarise(ptile=c("lower","upper"),
+            value=quantile(value,probs=c(0.05,0.95)),
+            .groups="drop") %>%
+  pivot_wider(names_from=ptile,values_from = value)
+
+# Forecast plot -------------------------------------------------------------------
+BW.plot <- 
+  ggplot()+
+  #Background fill
+  annotate("rect",xmin=-Inf,xmax=Inf,ymax=100,ymin=-Inf,fill="white",colour="black")+
+  #Forecasts
+  geom_ribbon(data=forecast.rng,
+              mapping=aes(x=year,ymax=upper,ymin=lower,fill=startYear),
+              alpha=0.25)+
+  geom_line(data=forecast.mean,
+            mapping=aes(year,value,col=startYear))  +
+  scale_fill_npg(guide=guide_legend(order=2))+
+  scale_colour_npg(guide=guide_legend(order=2))+
+  labs(colour="Forecast",
+       fill="Forecast")+
+  new_scale_color()+
+  #Lines
+  geom_line(data=this.obs, #Observed Habitat
+            mapping=aes(year,value,linetype=name,col=name))+
+  geom_line(data=surv.dat, #Blue whiting survey observations
+            mapping=aes(x=year,y=value,col=lbl,linetype=lbl))+
+  scale_linetype_manual(values=c("dotted","longdash","dotdash"),
+                        guide=guide_legend(order=1))+
+  scale_color_manual(values=c("darkgrey","black","red"),
+                     guide=guide_legend(order=1))+
+  labs(colour="Observations",
+       linetype="Observations")+  
+  #Points
+  new_scale_color()+
+  geom_point(data=this.obs,
+             mapping=aes(year,value,col=name,shape=name),size=2)+
+  geom_point(data=surv.dat,
+             mapping=aes(x=year,y=value,col=lbl,shape=lbl),fill="white",size=2)+
+  scale_color_manual(values=c("black","black","red"),
+                     guide=guide_legend(title="Observations",order=1))+
+  scale_shape_manual(values=c(17,NA,22),
+                     guide=guide_legend(title="Observations",order=1))+
+  #SSB timeseries
+  geom_point(data=SSB.dat,
+             mapping=aes(x=Year,y=90,size=SSB/1e6),shape=16)+
+  scale_size_area(breaks=c(2,4,6),
+                  labels=sprintf("%i Mt",c(2,4,6)),
+                  guide=guide_legend(title="Biomass",order=3))+
+  #Annotations
+  labs(x="Year",
+       y=this.cfg$lbl2)+
+  scale_x_continuous(limits=c(2004,2019))+
+  scale_y_continuous(limits=c(80,350),expand=c(0,0))+
+  theme(legend.position = "bottom",
+        legend.direction = "vertical")
+
+
+wrap_plots(c(forecast.plt,list(BW.plot)),nrow=1)+
+  plot_annotation(tag_levels = "a",tag_suffix = ")")
+
+```
+
 
 # Spatial Skill Maps ####
 
@@ -657,8 +798,7 @@ wrap_plots(fixed.lead.plt,ncol=1)+
 #Configuration
 this.lead <- c(67,62)
 this.met <- "pearson.correlation"
-relabel <- c(SST="a) SST (August)",
-             Sal="b) Salinity (March, 250-600m)")
+relabel <- 
 
 #Setup data
 sp.dat <-
@@ -689,7 +829,8 @@ sp.met <-
          dat=map(dat,as_tibble),
          dat=map(dat,set_names,c("x","y","value"))) %>%
   select(lbl,var,lead,metric,dat) %>%
-  unnest(dat)
+  unnest(dat) %>%
+  mutate(var=fct_rev(var))
 
 #Extract polygons
 sp.polys <-
@@ -699,7 +840,9 @@ sp.polys <-
     this$pcfg@spatial.polygons %>%
       filter(name==this$spName) %>%
       mutate(var=this$var,
-             lbl=gsub("^.*?)","",this$lbl))})
+             lbl=gsub("^.*?) ","",this$lbl))}) %>%
+  mutate(var=fct_rev(var),
+         lbl=factor(lbl,lbl))
 
 #Make plots
 sp.plt.cfg <- list()
@@ -736,9 +879,9 @@ for(plt.cfg in sp.plt.cfg) {
     geom_raster(aes(x,y,fill=value))+
     geom_sf(data=sp.polys,mapping=aes(linetype=lbl),fill=NA,colour="black")+
     facet_wrap(~var,
-               as.table=FALSE,
-               ncol=1,
-               labeller = labeller(var=relabel))+
+               ncol=2,
+               labeller = labeller(var=  c(SST="a) SST (August)",
+                                           Sal="b) Salinity (March, 250-600m)")))+
     binned_scale("fill","foo",
                  palette=plt.cfg$fill.pal,
                  guide="coloursteps",
