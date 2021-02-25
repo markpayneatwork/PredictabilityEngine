@@ -170,22 +170,9 @@ PE.db.setup <- function(object) {
   # dbDisconnect(this.db)
 }
 
-PE.db.safe.try <- function(expr,silent=TRUE,n.max=2) {
-  i <- 0
-  while(i<n.max) {
-    rtn <- try(expr,silent=silent)  
-    if(!is(rtn, "try-error")) return(rtn)
-    Sys.sleep(runif(1,0.01,0.1)+i/10)  #Avoid constant polling. Add some stochasticity to break synchronisation
-    i <- i+1
-  }
-  stop(sprintf("Maximum number of tries exceeded after %i attempts. %s\n",
-               n.max,rtn))
-}
-
-
 #' @export
 #' @rdname PE.db
-PE.db.delete.by.pKey <- function(object,table,pKeys,silent=TRUE) {
+PE.db.delete.by.pKey <- function(object,table,pKeys) {
   #Delete rows
   SQL.cmd <- sprintf("DELETE FROM %s WHERE pKey IN (%s)",
                      table,
@@ -193,7 +180,7 @@ PE.db.delete.by.pKey <- function(object,table,pKeys,silent=TRUE) {
   
   #Poll until can get access to DB
   db.con <- PE.db.connection(object,table)
-  PE.db.safe.try(n <- dbExecute(db.con,SQL.cmd),silent=silent)  
+  n <- dbExecute(db.con,SQL.cmd)
   dbDisconnect(db.con)
   if(!silent) { log_msg("Deleted %i rows from %s table...\n",n,table)}
   return(invisible(n))
@@ -220,7 +207,7 @@ PE.db.delete.by.datasource <- function(object,table=PE.cfg$db$extract,datasrc,si
 #' @details PE.db.appendTable serialises the data column and writes the data to the specified table
 #' @export
 #' @rdname PE.db
-PE.db.appendTable <- function(object,table,dat,silent=TRUE,serialize.first=TRUE) {
+PE.db.appendTable <- function(object,table,dat,serialize.first=TRUE) {
   #Serialise data
   if(serialize.first) {
     dat <- 
@@ -231,7 +218,7 @@ PE.db.appendTable <- function(object,table,dat,silent=TRUE,serialize.first=TRUE)
   }
   #Write
   db.con <- PE.db.connection(object,table)
-  n <- PE.db.safe.try(dbWriteTable(conn=db.con, name=table, value=dat, append = TRUE),silent=silent)  
+  dbWriteTable(conn=db.con, name=table, value=dat, append = TRUE)
   #Fin
   dbDisconnect(db.con)
   return(invisible(n))
@@ -258,7 +245,7 @@ PE.db.getQuery <- function(object,table,this.sql,silent=TRUE) {
   #Open connection
   db.con <- PE.db.connection(object,table)
   #Get query
-  PE.db.safe.try(rtn <- dbGetQuery(conn=db.con, this.sql),silent=silent)  
+  rtn <- dbGetQuery(conn=db.con, this.sql)
   #Fin
   dbDisconnect(db.con)
   return(rtn)
