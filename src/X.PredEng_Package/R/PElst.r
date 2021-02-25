@@ -101,3 +101,10 @@ setMethod("PElst",signature(x="missing"),
             rtn <- new("PElst")
             return(rtn)
           })
+
+#' @export
+setMethod("as.list",signature(x="PElst"),
+          function(x) {
+            rtn <- x@.Data
+            return(rtn)
+          })
