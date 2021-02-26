@@ -44,14 +44,16 @@ pcfg <- PE.load.config()
 if(interactive()) {
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
-  sel.cfg <- "NorCPM"
+  sel.cfg <- "CESM.DPLE"
   this.datasrc <- pcfg@Decadal[[sel.cfg]]
+  this.srcType <- this.datasrc@type
+  this.srcName <- this.datasrc@name
 } else {  #Running as a "function"
   cmd.args <- commandArgs(TRUE)
   assert_that(length(cmd.args)==2,msg="Cannot get command args")
   this.srcType <- cmd.args[1]
   this.srcName <- cmd.args[2]
-  this.datasrc <- slot(pcfg,this.srcType)[[this.srcName]]
+  this.datasrc <- data.source(type=this.srcType,name=this.srcName)
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
 }
@@ -75,6 +77,7 @@ SQL.cmd <- sprintf("SELECT pKey FROM %s WHERE `srcType` = '%s' AND `srcName` = '
                    PE.cfg$db$extract,
                    this.datasrc@type,
                    this.datasrc@name)
+
 #Fetch list to delete
 del.these <- PE.db.getQuery(pcfg,PE.cfg$db$extract,this.datasrc,SQL.cmd)
 

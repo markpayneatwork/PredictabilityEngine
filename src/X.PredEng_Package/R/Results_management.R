@@ -14,7 +14,7 @@ PE.db.path <- function(object,table,src) {
   #For the moment, only split the extraction phase into individual files
   if(table %in% c(PE.cfg$db$extract)) { #Then split by source
     assert_that(is(src,"data.source"),
-                msg="src argument must be a data.source object")
+                msg="Accessing extraction tables requires a data.source object as src")
     here(object@scratch.dir,sprintf("%s_%s_%s_%s.sqlite",object@project.name,table,src@type,src@name))
   } else { #Don't split by source
     here(object@scratch.dir,sprintf("%s_%s.sqlite",object@project.name,table))

@@ -33,7 +33,6 @@ suppressPackageStartupMessages({
   library(assertthat)
 })
 pcfg <- PE.load.config()
-pcfg@Decadal[[1]]@sources <-  pcfg@Decadal[[1]]@sources[1:3]
 
 #'========================================================================
 # Configure ####
@@ -43,6 +42,7 @@ PE.config.summary(pcfg)
 
 tar_option_set(error = "workspace")
 tar.l <- list()
+#pcfg@Decadal[[1]]@sources <- head(pcfg@Decadal[[1]]@sources,2)
 
 #'========================================================================
 # Helper functions ####
@@ -102,14 +102,14 @@ if(length(pcfg@Decadal)!=0 & !pcfg@obs.only){
   
 } 
 
+#Realisation means
 tar.l$model.extracts <-
   tar_target(model.extracts,
-             decadal.extr)
+             bind_rows(decadal.extr))
 
-#Realisations means
 tar.l$realmeans <-
-  tar_target(realmeans,
-             ext.script(here("src/B.Extract/Z1.Calculate_realmeans.r"),
+  tar_target(model.realmeans,
+             ext.script(here("src/C.Calibrate/A1.Calculate_realmeans.r"),
                         model.extracts,
                         args=c(srcType=model.extracts$srcType,
                                srcName=model.extracts$srcName)),
@@ -118,14 +118,32 @@ tar.l$realmeans <-
 #'========================================================================
 # Calibration ####
 #'========================================================================
+#Extraction databases
+#We merge in external extractions at this point
+get.extraction.databases <- function(object,...) {
+  tibble(path=PE.db.list(object,PE.cfg$db$extract),
+         checksum=tools::md5sum(path),
+         datetime=file.info(path)$mtime,
+         fnames=gsub(".sqlite$","",basename(path))) %>%
+    separate(fnames,
+             c("cfg","table","srcType","srcName"),
+             sep="_",
+             extra="drop")
+}
+
+tar.l$extraction.databases <-
+  tar_target(extraction.databases,
+             get.extraction.databases(pcfg,model.realmeans),
+             cue=tar_cue("always"))
+
 tar.l$all.extracts <-
   tar_target(all.extracts,
-             bind_rows(observations,realmeans))
+             bind_rows(observations,extraction.databases))
 
 #Climatology
 tar.l$clim <-
   tar_target(clim,
-             ext.script(here("src/C.Calibrate/A1.Climatological_statistics.r"),
+             ext.script(here("src/C.Calibrate/A2.Climatological_statistics.r"),
                         all.extracts,
                         args=c(srcType=all.extracts$srcType,
                                srcName=all.extracts$srcName)),
