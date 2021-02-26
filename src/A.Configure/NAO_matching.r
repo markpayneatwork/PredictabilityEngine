@@ -33,7 +33,7 @@ suppressPackageStartupMessages({
   library(tibble)
 })
 load(PE.cfg$path$datasrcs)
-
+stop("Needs to be updated to parallel tracks")
 #'========================================================================
 # Project Configuration ####
 #'========================================================================

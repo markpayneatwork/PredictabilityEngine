@@ -40,36 +40,39 @@ pcfg <- PE.load.config()
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  set.log_msg.silent()
-} else {
-  #Do everything and tell us all about it
-  set.log_msg.silent(FALSE)
-}
+  this.srcType <- "Decadal"
+} else {  #Running as a "function"
+  cmd.args <- commandArgs(TRUE)
+  assert_that(length(cmd.args)==2,msg="Cannot get command args")
+  this.srcType <- cmd.args[1]
+  }
 
 #'========================================================================
 # Setup ####
 #'========================================================================
 log_msg("Import data..\n")
 #Setup databases
-this.db <- PE.db.connection(pcfg,PE.cfg$db$calibration)
+this.db <- PE.db.connection(pcfg,PE.cfg$db$calibration,src=NULL)
 calib.tbl <- tbl(this.db,PE.cfg$db$calibration)
 
 #Get list of realisation means
 realmeans <-
   calib.tbl %>%
-  filter(realization=="realmean") %>%
+  filter(realization=="realmean",
+         srcType==this.srcType) %>%
   collect() %>%
   PE.db.unserialize()
 
-#Clear all previous ensemble means
+#Clear all previous ensemble means for this data source
 prev.ensmeans <- 
   calib.tbl %>%
-  filter(srcName=="ensmean") %>%
+  filter(srcName=="ensmean",
+         srcType==this.srcType) %>%
   select(pKey) %>%
   collect() %>%
   pull() 
 dbDisconnect(this.db)  #Finished with database
-PE.db.delete.by.pKey(pcfg,PE.cfg$db$calibration,pKeys = prev.ensmeans,silent=FALSE)
+PE.db.delete.by.pKey(pcfg,PE.cfg$db$calibration,src=NULL,pKeys = prev.ensmeans)
 
 #'========================================================================
 # Process ####
@@ -97,9 +100,8 @@ if(!pcfg@obs.only) {
   ensmeans %>%
     select(-n) %>%
     mutate(realization="ensmean") %>%
-    PE.db.appendTable(pcfg,PE.cfg$db$calibration,dat=.)
+    PE.db.appendTable(pcfg,PE.cfg$db$calibration,src=NULL,dat=.)
 }
-
 
 #'========================================================================
 # Complete ####

@@ -33,6 +33,7 @@ suppressPackageStartupMessages({
   library(assertthat)
 })
 pcfg <- PE.load.config()
+pcfg@Decadal[[1]]@sources <-  pcfg@Decadal[[1]]@sources[1:3]
 
 #'========================================================================
 # Configure ####
@@ -60,8 +61,8 @@ ext.script <- function(this.scp,...,args=NULL) {
                  stdout=log.fname,
                  stderr="2>&1",
                  show=FALSE)
-  return(bind_cols(tibble(datetime=Sys.time(),
-                          script=this.scp),
+  return(bind_cols(tibble(script=this.scp,
+                          finished=Sys.time()),
                    as.list(args)))
 }
 
@@ -81,7 +82,8 @@ tar.l$observations <-
                                    "HadSLP2"="A3.HadSLP2.r",
                                    stop("Cannot find observation script"))
              ext.script(here("src/B.Extract/",obs.script),
-                        args=c(srcName=obs.src@name))})
+                        args=c(srcType=obs.src@type,
+                               srcName=obs.src@name))})
 
 #Decadal sources
 if(length(pcfg@Decadal)!=0 & !pcfg@obs.only){
@@ -96,47 +98,72 @@ if(length(pcfg@Decadal)!=0 & !pcfg@obs.only){
                           decadal.srcs,
                           args=c(srcType=decadal.srcs@type,
                                  srcName=decadal.srcs@name)),
-               pattern=map(decadal.srcs),
-               iteration="list")
+               pattern=map(decadal.srcs))
   
-  tar.l$realmean.decadal <-
-    tar_target(decadal.realmean,
-               ext.script(here("src/B.Extract/Z1.Calculate_realmeans.r"),
-                          decadal.extr,
-                          args=c(srcType=decadal.extr$srcType,
-                                 srcName=decadal.extr$srcName)),
-               pattern=map(decadal.extr),
-               iteration="list")
 } 
 
+tar.l$model.extracts <-
+  tar_target(model.extracts,
+             decadal.extr)
+
+#Realisations means
+tar.l$realmeans <-
+  tar_target(realmeans,
+             ext.script(here("src/B.Extract/Z1.Calculate_realmeans.r"),
+                        model.extracts,
+                        args=c(srcType=model.extracts$srcType,
+                               srcName=model.extracts$srcName)),
+             pattern=map(model.extracts))
 
 #'========================================================================
 # Calibration ####
 #'========================================================================
+tar.l$all.extracts <-
+  tar_target(all.extracts,
+             bind_rows(observations,realmeans))
+
 #Climatology
 tar.l$clim <-
   tar_target(clim,
              ext.script(here("src/C.Calibrate/A1.Climatological_statistics.r"),
-                        decadal.realmean, observations))
+                        all.extracts,
+                        args=c(srcType=all.extracts$srcType,
+                               srcName=all.extracts$srcName)),
+             pattern=map(all.extracts))
 
 #Calibration
-tar.l$calibratioon <-
+tar.l$calibration <-
   tar_target(calibration,
              ext.script(here("src/C.Calibrate/B1.Mean_adjustment.r"),
-                        clim))
-
-if(any(pcfg@calibrationMethods=="NAOmatching")) {
-  tar.l$NAOmatching <- 
-    tar_target(NAOmatching,
-               ext.script(here("src/C.Calibrate/B2.NAO_matching.r"),
-                          calibration))
-}
-
+                        clim,observations,
+                        args=c(srcType=clim$srcType,
+                               srcName=clim$srcName)),
+             pattern=map(clim))
+# 
+# if(any(pcfg@calibrationMethods=="NAOmatching")) {
+#   tar.l$NAOmatching <- 
+#     tar_target(NAOmatching,
+#                ext.script(here("src/C.Calibrate/B2.NAO_matching.r"),
+#                           calibration))
+# }
+# 
 #Ensemble means
+tar.l$ensmean.l <-
+  tar_target(ensmean.src,
+             calibration %>%
+               filter(srcType!="Observations") %>%
+               nest(members=c(-srcType)))
+
 tar.l$ensmean <-
   tar_target(ensmeans,
              ext.script(here("src/C.Calibrate/C1.Ensemble_means.r"),
-                        calibration,NAOmatching))
+                        args=c(srcType=ensmean.src$srcType,
+                               srcName="ensmean")),
+             pattern=map(ensmean.src))
+
+tar.l$stat.srcs <-
+  tar_target(stat.srcs,
+             bind_rows(ensmeans,calibration))
 
 #'========================================================================
 # Stats ####
@@ -146,9 +173,9 @@ stat.jobs.fn <- function(...){
   #Check that we have at least some statistics
   assert_that(length(pcfg@statistics)>0,
               msg="No statistics defined. Must be at least one.")
-  
+
   #Extract statistics
-  todo.stats <- 
+  todo.stats <-
     tibble(st=pcfg@statistics@.Data) %>%
     mutate(statName=map_chr(st,slot,"name"),
            st.request=map(st,slot,"spatial.polygons"),
@@ -158,9 +185,9 @@ stat.jobs.fn <- function(...){
            #Merge in defaults
            spName=map_if(st.request,st.request.mt, ~ pcfg@spatial.polygons$name),
            spName=map_if(spName,st.request.na,~ NULL),
-           spName=map_if(spName,st.uses.globalROI, ~ c(.x,PE.cfg$misc$globalROI))) %>% 
-    unnest(spName) 
-  
+           spName=map_if(spName,st.uses.globalROI, ~ c(.x,PE.cfg$misc$globalROI))) %>%
+    unnest(spName)
+
   return(todo.stats)
 }
 
@@ -172,10 +199,11 @@ tar.l$stat.jobs <-
 tar.l$stats <-
   tar_target(stats,
              ext.script(here("src/D.Statistics/B1.Calculate_stats.r"),
-                        statJobs,ensmeans,
                         args=c(spName=statJobs$spName,
-                               statName=statJobs$statName)),
-             pattern=map(statJobs))
+                               statName=statJobs$statName,
+                               srcType=stat.srcs$srcType,
+                               srcName=stat.srcs$srcName)),
+             pattern=cross(statJobs,stat.srcs))
 
 #Rolling means
 tar.l$rollmean <-
@@ -195,15 +223,15 @@ tar.l$metrics <-
 # Outputs ####
 #'========================================================================
 #Pointwise extraction
-tar.l$points <-
-  tar_target(points,
-             slot(pcfg,"pt.extraction"))
-
-tar.l$pointwise <-
-  tar_target(pointwise,
-             ext.script(here("src/E.Postprocessing/A1.Pointwise_extraction.r"),
-                        points,stats))  #Stats is a included as a second dependency for cases when
-#there are no metrics to calculate
+# tar.l$points <-
+#   tar_target(points,
+#              slot(pcfg,"pt.extraction"))
+# 
+# tar.l$pointwise <-
+#   tar_target(pointwise,
+#              ext.script(here("src/E.Postprocessing/A1.Pointwise_extraction.r"),
+#                         points,stats))  #Stats is a included as a second dependency for cases when
+# #there are no metrics to calculate
 
 #Markdown report
 if(!pcfg@obs.only) {

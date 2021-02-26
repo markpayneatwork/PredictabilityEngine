@@ -66,11 +66,11 @@ plan(multisession,workers = n.cores)
 assert_that(length(pcfg@MOI)==1,msg="Metric calculation currently one works with one MOI")
 
 #Setup databases
-stats.tbl <- PE.db.tbl(pcfg,PE.cfg$db$stats)
+stats.tbl <- PE.db.tbl(pcfg,PE.cfg$db$stats,src=NULL)
 
 #Clear existing metrics table
-if(file.exists(PE.db.path(pcfg,PE.cfg$db$metrics))) {
-  file.remove(PE.db.path(pcfg,PE.cfg$db$metrics))
+if(file.exists(PE.db.path(pcfg,PE.cfg$db$metrics,src=NULL))) {
+  file.remove(PE.db.path(pcfg,PE.cfg$db$metrics,src=NULL))
 }
 
 #'========================================================================
@@ -337,7 +337,7 @@ cent.metrics <-
 
 #Write these results
 cent.metrics %>%
-  PE.db.appendTable(pcfg,PE.cfg$db$metrics,dat=.)
+  PE.db.appendTable(pcfg,PE.cfg$db$metrics,src=NULL,dat=.)
 
 #'========================================================================
 # Distribution metrics ####
@@ -416,7 +416,7 @@ if(have.mdl.dat) {
   
   #Write these results
   dist.metrics %>%
-    PE.db.appendTable(pcfg,PE.cfg$db$metrics,dat=.)
+    PE.db.appendTable(pcfg,PE.cfg$db$metrics,src=NULL,dat=.)
   
   
   #'========================================================================
@@ -458,7 +458,7 @@ if(have.mdl.dat) {
   #Drop exploratory columns and write to database
   skill.scores %>%
     dplyr::select(all_of(names(dist.metrics))) %>%
-    PE.db.appendTable(pcfg,PE.cfg$db$metrics,dat=.)  
+    PE.db.appendTable(pcfg,PE.cfg$db$metrics,src=NULL,dat=.)  
 }
 
 #'========================================================================

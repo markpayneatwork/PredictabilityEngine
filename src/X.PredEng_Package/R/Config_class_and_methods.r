@@ -34,7 +34,7 @@
 #' @slot package.version Details of the package version that this object was built with. Written automatically by the set.configuration() function
 #' @slot config.date Date/time when the configuration was finalised
 #'
-#' @include Data_class_and_methods.r
+#' @include Data_source_class_and_methods.r
 #' @include PElst.r
 #' 
 #' @details Extraction from the data sets can be performed either at specific geographical locations
@@ -258,9 +258,6 @@ set.configuration <- function(object) {
   define_dir(scratch.tar,"logs")
   file.symlink(scratch.tar,targets.link)
   
-  #Setup SQLite database to store results
-  PE.db.setup(object)
- 
   #Final check
   validObject(object,complete=TRUE)
   show(object)

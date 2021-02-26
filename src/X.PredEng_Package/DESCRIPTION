@@ -28,7 +28,7 @@ Suggests:
     maps
 Collate: 
     'PElst.r'
-    'Data_class_and_methods.r'
+    'Data_source_class_and_methods.r'
     'Config_class_and_methods.r'
     'Defaults.r'
     'Field_functions.r'

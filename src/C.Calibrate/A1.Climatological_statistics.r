@@ -41,14 +41,30 @@ pcfg <- PE.load.config()
 # Configuration ####
 #'========================================================================
 #Take input arguments, if any
-set.log_msg.silent()
+if(interactive()) {
+  this.srcType <- "Decadal"
+  this.srcName <- "NorCPM"
+} else {  #Running as a "function"
+  cmd.args <- commandArgs(TRUE)
+  assert_that(length(cmd.args)==2,msg="Cannot get command args")
+  this.srcType <- cmd.args[1]
+  this.srcName <- cmd.args[2]
+}
+this.datasrc <- data.source(type=this.srcType,name=this.srcName)
 
 #'========================================================================
 # Setup ####
 #'========================================================================
 #Setup databases
-this.db <- PE.db.connection(pcfg,PE.cfg$db$extract)
-extr.tbl <- tbl(this.db,PE.cfg$db$extract)
+if(this.srcType=="Observations") {  #Obs are stored directly in the calibration table
+  extr.tbl <- 
+    PE.db.tbl(pcfg,PE.cfg$db$calibration,src=NULL) %>%
+    filter(is.na(calibrationMethod))
+} else {
+  extr.tbl <- 
+    PE.db.tbl(pcfg,PE.cfg$db$extract,this.datasrc)  %>%
+    select(-srcFname)   #srcFname is only in extraction tables
+}
 
 #'========================================================================
 # Calculate climatologies ####
@@ -71,12 +87,11 @@ extr.these.pKeys<-
 extr.dat <-
   extr.tbl %>%
   filter(pKey %in% extr.these.pKeys) %>%
-  select(-srcFname) %>%
   collect() %>%
   mutate(date=ymd(date),
          month=month(date)) %>%
   PE.db.unserialize() 
-dbDisconnect(this.db)
+dbDisconnect(extr.tbl)
 
 #Calculate climatologies in a summarisation loop
 clim.dat <-
@@ -98,11 +113,10 @@ clim.out <-
   mutate(statistic=gsub("clim.","",statistic),
          field=map_if(field,~!inMemory(.x),~readAll(.x)))
 
-#Write results
-#Reset the resutls table by deleting the file and reestablishing it
-file.remove(PE.db.path(pcfg,PE.cfg$db$climatology))
-PE.db.setup(pcfg)
-PE.db.appendTable(pcfg,PE.cfg$db$climatology,clim.out)
+#Clear existing results and write new ones
+PE.db.setup.climatology(pcfg)
+PE.db.delete.by.datasource(pcfg,PE.cfg$db$climatology,this.datasrc)
+PE.db.appendTable(pcfg,PE.cfg$db$climatology,this.datasrc, clim.out)
 
 #'========================================================================
 # Complete ####

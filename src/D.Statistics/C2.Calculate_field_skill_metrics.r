@@ -55,11 +55,11 @@ if(interactive()) {
 assert_that(length(pcfg@MOI)==1,msg="Metric calculation currently one works with one MOI")
 
 #Setup databases
-stats.tbl <- PE.db.tbl(pcfg,PE.cfg$db$stats)
+stats.tbl <- PE.db.tbl(pcfg,PE.cfg$db$stats,src=NULL)
 
 #Clear existing metrics table
-if(file.exists(PE.db.path(pcfg,PE.cfg$db$metrics.field))) {
-  file.remove(PE.db.path(pcfg,PE.cfg$db$metrics.field))
+if(file.exists(PE.db.path(pcfg,PE.cfg$db$metrics.field,src=NULL))) {
+  file.remove(PE.db.path(pcfg,PE.cfg$db$metrics.field,src=NULL))
 }
 
 #'========================================================================
@@ -204,7 +204,7 @@ these.mets <-
   select(-MSE.clim) %>%
   pivot_longer(-group_vars(.),names_to = "metric",values_to = "field") %>%
   ungroup()
-PE.db.appendTable(pcfg,PE.cfg$db$metrics.field,dat=these.mets)
+PE.db.appendTable(pcfg,PE.cfg$db$metrics.field,src=NULL,dat=these.mets)
 
 #Turn off the lights
 dbDisconnect(stats.tbl)

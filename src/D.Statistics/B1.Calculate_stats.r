@@ -44,12 +44,16 @@ if(interactive()) {
   set.log_msg.silent()
   stat.id <- names(pcfg@statistics)[1]
   sp.id <- c(pcfg@spatial.polygons$name,PE.cfg$misc$globalROI)[1]
+  this.srcType <- pcfg@Decadal[[1]]@type
+  this.srcName <- pcfg@Decadal[[2]]@name
 } else {
   set.log_msg.silent()
   cmd.args <- commandArgs(TRUE)
-  assert_that(length(cmd.args)==2,msg="Cannot get command args")
+  assert_that(length(cmd.args)==4,msg="Cannot get command args")
   sp.id <- cmd.args[1]
   stat.id <- cmd.args[2]
+  this.srcType <- cmd.args[3]
+  this.srcName <- cmd.args[4]
 }
 
 #Setup parallelisation
@@ -60,7 +64,6 @@ if(Sys.info()["nodename"]=="aqua-cb-mpay18" | interactive()) {
   assert_that(!is.na(n.cores),msg = "Cannot detect number of allocated cores")
 }
 plan(multisession,workers = n.cores)
-
 
 #'========================================================================
 # Setup  ####
@@ -88,6 +91,8 @@ dmp <- assert_that(nrow(this.sp)==1,msg="Failed to select only one spatial polyg
 PE.config.summary(pcfg,
                   "spName"=sp.id,
                   "statName"=stat.id,
+                  "srcType"=this.srcType,
+                  "srcName"=this.srcName,
                   "calibrationMethod(s)"=paste0(this.stat@calibration,collapse=", "),
                   "sources"=paste0(this.stat@sources,collapse=", "))
 log_msg("\n\nSpatial domain--------------------------------------------\n")
@@ -95,102 +100,85 @@ print(this.sp)
 log_msg("\n\nStatistic-------------------------------------------------\n")
 print(this.stat)
 
+#'========================================================================
+# Handle databases ####
+#'========================================================================
+#Setup database if it doesn't exist already
+PE.db.setup.statistics(pcfg,src=NULL)
+
 #Delete existing results 
 log_msg("Getting list of previous ids to clear...")
 existing.stats.sel <- 
-  sprintf("SELECT pKey FROM %s WHERE `statName` = '%s' AND `spName` = '%s'",
+  sprintf(paste("SELECT pKey FROM %s WHERE `statName` = '%s' AND `spName` = '%s' AND",
+                "`srcType` = '%s' AND `srcName` = '%s'"),
           PE.cfg$db$stats,
           stat.id,
-          sp.id)
+          sp.id,
+          this.srcType,
+          this.srcName)
 this.query.time <- 
   system.time({
     del.these.pKeys <- 
-      PE.db.getQuery(pcfg,PE.cfg$db$stats,existing.stats.sel) %>%
+      PE.db.getQuery(pcfg,PE.cfg$db$stats,src=NULL,existing.stats.sel) %>%
       pull()
   })
 log_msg("Complete in %0.3fs. \nDeleting...",this.query.time[3])
 this.query.time <- 
   system.time({
-    n <- PE.db.delete.by.pKey(pcfg,PE.cfg$db$stats,pKeys = del.these.pKeys)
+    PE.db.delete.by.pKey(pcfg,PE.cfg$db$stats,src=NULL,pKeys = del.these.pKeys)
   })
-log_msg("Deleted %i rows in %0.3fs.\n\n",n,this.query.time[3])
+log_msg("Deletion complete in %0.3fs.\n\n",this.query.time[3])
 
 #'========================================================================
 # Get lists of data to process ####
 #'========================================================================
 log_msg("Getting list of data to process...\n")
 
-# Calibrated data -----------------------------------------------------------------
-
 #Get calibration methods
 these.calibs <- 
   if(length(this.stat@calibration)==0) {
-  pcfg@calibrationMethods
-}  else {
-  this.stat@calibration} 
-  
+    pcfg@calibrationMethods
+  }  else {
+    this.stat@calibration} 
+
 #SQL table
 cal.SQL <-  #Calibrations x realisations frags
   expand_grid(calibration=these.calibs,
-              sources=this.stat@sources) %>%  
-  filter(sources!=0) %>% #Handled 0 separately
-  mutate(WHERE.real=
-           case_when(sources==1 ~ "`srcType`='Observations'",
+              sources=this.stat@sources) %>%
+  mutate(WHERE.sel=  #Selects appropriate data
+           case_when(sources==0 ~ "`srcType`='Observations' AND `calibrationMethod` IS NULL",
+                     sources==1 ~ "`srcType`='Observations'", #Calibration method selected in next step
                      sources==2 ~ paste("NOT(`realization` IN ('realmean', 'ensmean')) AND",
-                                             "NOT(`srcType`= 'Observations')"),
+                                        "NOT(`srcType`= 'Observations')"),
                      sources==3 ~ "`realization` = 'realmean'",
                      sources==4 ~ "`realization` = 'ensmean'",
-                     TRUE~ as.character(NA))) %>%
-  mutate(SQL.cmd=sprintf("SELECT pKey FROM %s WHERE `calibrationMethod` LIKE '%s%%' AND %s",
+                     TRUE~ as.character(NA)),
+         WHERE.calib= #Only include desired calibration methods, if relevant
+           case_when(sources>=1 ~ sprintf("AND `calibrationMethod` LIKE '%s%%'",calibration),
+                     TRUE~""),
+         SQL.cmd=sprintf("SELECT pKey FROM %s WHERE %s %s AND `srcType`='%s' AND `srcName`='%s'",
                          PE.cfg$db$calibration,
-                         calibration,
-                         WHERE.real))
+                         WHERE.sel,
+                         WHERE.calib,
+                         this.srcType,
+                         this.srcName))
 
 #Now get list of pKeys to process
 this.query.time <- 
   system.time({
     cal.SQL <- 
       cal.SQL %>%
-      mutate(pKeys=map(SQL.cmd,~ PE.db.getQuery(pcfg,PE.cfg$db$calibration,.x)),
+      mutate(pKeys=map(SQL.cmd,~ PE.db.getQuery(pcfg,PE.cfg$db$calibration,src=NULL,.x)),
              nKeys=map_dbl(pKeys,nrow)) 
   })
 log_msg("Complete in %0.3fs.\n",this.query.time[3])
 
 #And generate a todo list
-cal.pKeys <- 
+todo.pKeys <- 
   cal.SQL %>%
   unnest(pKeys) %>% 
   pull(pKey)
-dmp <- assert_that(!any(duplicated(cal.pKeys)),msg="Expecting unique set of pKeys to process")
-
-todo.tbl <- 
-  tibble(pKey=cal.pKeys,
-         tbl=PE.cfg$db$calibration)
-
-# Uncalibrated observations -------------------------------------------------------
-if(any(this.stat@sources==0)) {  #Have to explicitly ask for it
-  tb.extr <- PE.db.tbl(pcfg,PE.cfg$db$extr)
-  obs.sel <- 
-    tb.extr %>%
-    filter(srcType=="Observations") %>%
-    select(pKey,date) %>%
-    collect() 
-  dbDisconnect(tb.extr)
-  
-  obs.pKeys <- 
-    obs.sel %>%
-    pull(pKey)
-
-  #Add to todo list
-  todo.tbl <- 
-    todo.tbl %>%
-    bind_rows(tibble(pKey=obs.pKeys,
-                     tbl=PE.cfg$db$extract))
-}
-
-# Check that todo list is sane ----------------------------------------------------
-dmp <- assert_that(nrow(todo.tbl)!=0,
-                   msg="Nothing to do!")
+dmp <- assert_that(!any(duplicated(todo.pKeys)),msg="Expecting unique set of pKeys to process")
 
 #'========================================================================
 # Calculation of statistics ####
@@ -215,21 +203,17 @@ if(length(pcfg@landmask)==0) {
 combined.mask <- mask(landmask,as(this.sp,"Spatial"),updatevalue=1)
 
 # Stat calculation function -------------------------------------------------------
-calc.stat.fn <- function(this.pKey,this.table) {
+calc.stat.fn <- function(this.pKey) {
   #Debugging
-  # this.pKey <- cal.pKeys[1]
-  # this.table <- PE.cfg$db$calibration
-  # this.pKey <- obs.pKeys[1]
-  # this.table <- PE.cfg$db$extract
-  
+  # this.pKey <- todo.pKeys[1]
+
   #Import data
   this.dat <- 
     sprintf("SELECT * FROM %s WHERE `pKey` = %i",
-            this.table,
+            PE.cfg$db$calibration,
             this.pKey) %>%
-    PE.db.getQuery(pcfg,this.table,this.sql = .) %>%
+    PE.db.getQuery(pcfg,PE.cfg$db$calibration,src=NULL,this.sql = .) %>%
     as_tibble() %>%
-    select(-any_of(c("pKey","srcFname"))) %>%
     PE.db.unserialize() 
   
   #Apply the masks to data
@@ -241,7 +225,7 @@ calc.stat.fn <- function(this.pKey,this.table) {
   #Store the results
   out.dat <-
     this.dat %>%
-    select(!field) %>% #Drop the source data
+    select(-c(field,pKey)) %>% #Drop the source data
     add_column(spName=sp.id,
                statName=stat.id) %>%
     bind_cols(this.res) 
@@ -253,19 +237,16 @@ calc.stat.fn <- function(this.pKey,this.table) {
 # Try doing the first evaluation as a sanity check. This will let us fail gracefully,
 # before getting medieval on their asses...
 log_msg("Dry run....\n")
-dmp.cal <- 
-  todo.tbl %>%
-  head(1) %>%
-  mutate(map2(pKey,tbl,calc.stat.fn))
+dmp.cal <- calc.stat.fn(todo.pKeys[1])
 log_msg("Sanity check passed. Parallellising using %i cores...\n",n.cores)
 
 
 # Chunking ------------------------------------------------------------------------
 chunk.l <-
-  todo.tbl %>%
+  tibble(pKey=todo.pKeys) %>%
   mutate(batch.id=rep(seq(nrow(.)),
-                    each=n.cores*5,
-                    length.out=nrow(.))) %>%
+                      each=n.cores*5,
+                      length.out=nrow(.))) %>%
   group_by(batch.id) %>%
   group_split()
 
@@ -277,13 +258,12 @@ dmp <- pb$tick(0)
 for(this.chunk in chunk.l) {
   #Using furrr
   stat.dat <-
-    future_map2_dfr(this.chunk$pKey,
-                    this.chunk$tbl,
+    future_map_dfr(this.chunk$pKey,
                     calc.stat.fn, 
                     .options = furrr_options(stdout=FALSE,
                                              seed=TRUE))
   #Write results
-  PE.db.appendTable(pcfg,PE.cfg$db$stats,stat.dat)
+  PE.db.appendTable(pcfg,PE.cfg$db$stats,src=NULL,stat.dat)
   
   #Loop
   pb$tick()

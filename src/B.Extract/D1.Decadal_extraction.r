@@ -84,12 +84,13 @@ these.srcs <-
 assert_that(nrow(these.srcs)>0,msg="No source files provided")
 assert_that(all(file.exists(these.srcs$src.fname)),msg="Cannot find all source files")
 
-#Delete all previous entries of this datasource
+#Setup extraction database and delete all previous entries of this datasource
 #My fear is that
 #an interruption of the source processing may lead to only a subset of
 #the fragments being produced from a given file. Hence, required that
 #the datasource extraction is run in one large chunk all the way to completion.
-PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,datasrc=this.datasrc)
+PE.db.setup.extraction(pcfg,this.datasrc)
+PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,this.datasrc)
 
 #'========================================================================
 # Extract Fragments from Source Files ####
@@ -242,7 +243,7 @@ for(this.chunk in chunk.l) {
   frag.dat %>%
     mutate(startDate=as.character(startDate),
            date=as.character(date)) %>%
-    PE.db.appendTable(pcfg,PE.cfg$db$extract,dat=.)
+    PE.db.appendTable(pcfg,PE.cfg$db$extract,this.datasrc,dat=.)
   
   #Loop
   pb$tick()

@@ -41,11 +41,15 @@ pcfg <- PE.load.config()
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  set.log_msg.silent()
-} else {
-  #Do everything and tell us all about it
-  set.log_msg.silent(FALSE)
+  this.srcType <- "Observations"
+  this.srcName <- "HadISST"
+} else {  #Running as a "function"
+  cmd.args <- commandArgs(TRUE)
+  assert_that(length(cmd.args)==2,msg="Cannot get command args")
+  this.srcType <- cmd.args[1]
+  this.srcName <- cmd.args[2]
 }
+this.datasrc <- data.source(type=this.srcType,name=this.srcName)
 
 #Setup parallelism
 if(Sys.info()["nodename"]=="aqua-cb-mpay18" | interactive()) {
@@ -61,19 +65,31 @@ options(future.globals.onReference = "error")
 # Import data ####
 #'========================================================================
 log_msg("Import data..\n")
-#Setup databases
-extr.tbl <- PE.db.tbl(pcfg,PE.cfg$db$extract)
-clim.tbl <- PE.db.tbl(pcfg,PE.cfg$db$climatology)
-calib.tbl <- PE.db.tbl(pcfg,PE.cfg$db$calibration)
 
-#Clear all previous analyses that give these types of calibration methods
+#Setup databases
+if(this.srcType=="Observations") {  #Obs are stored directly in the calibration table
+  extr.tbl <- 
+    PE.db.tbl(pcfg,PE.cfg$db$calibration,src=NULL) %>%
+    filter(is.na(calibrationMethod))
+} else {
+  extr.tbl <- 
+    PE.db.tbl(pcfg,PE.cfg$db$extract,this.datasrc)  %>%
+    select(-srcFname)   #srcFname is only in extraction tables
+}
+clim.tbl <- PE.db.tbl(pcfg,PE.cfg$db$climatology,this.datasrc)
+PE.db.setup.calibration(pcfg,this.datasrc)
+calib.tbl <- PE.db.tbl(pcfg,PE.cfg$db$calibration,this.datasrc)
+
+#Clear all previous analyses that give these types of calibration methods and sources
 del.this <-
   calib.tbl %>%
-  filter(calibrationMethod %in% c("anomaly","MeanAdj","MeanVarAdj")) %>%
+  filter(calibrationMethod %in% c("anomaly","MeanAdj","MeanVarAdj"),
+         srcType==!!this.datasrc@type,
+         srcName==!!this.datasrc@name) %>%
   select(pKey) %>%
   collect() %>%
   pull(pKey) 
-PE.db.delete.by.pKey(pcfg,PE.cfg$db$calibration,del.this)
+PE.db.delete.by.pKey(pcfg,PE.cfg$db$calibration,this.datasrc,del.this)
 
 #Import observational climatology data for the month in question
 #Note that the extraction process has already ensured for all of the models
@@ -214,9 +230,9 @@ for(this.basket in basket.l) {
     calib.dat %>%
     #Select columns 
     select(srcName,srcType,realization,startDate,date,leadIdx,
-           starts_with("calib")) %>% 
+           starts_with("calib.")) %>% 
     #Pivot
-    pivot_longer(starts_with("calib"),
+    pivot_longer(starts_with("calib."),
                  names_to = "calibrationMethod",
                  values_to = "field") %>%
     #Tidy
@@ -225,7 +241,7 @@ for(this.basket in basket.l) {
     filter(calibrationMethod %in% pcfg@calibrationMethods) 
     
   #Write results
-  PE.db.appendTable(pcfg,PE.cfg$db$calibration,out.dat)
+  PE.db.appendTable(pcfg,PE.cfg$db$calibration,this.datasrc,out.dat)
   
   #Loop
   pb$tick()

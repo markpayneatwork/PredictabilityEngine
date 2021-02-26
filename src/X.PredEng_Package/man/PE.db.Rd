@@ -2,11 +2,15 @@
 % Please edit documentation in R/Results_management.R
 \name{PE.db}
 \alias{PE.db}
+\alias{PE.db.path}
+\alias{PE.db.list}
 \alias{PE.db.connection}
 \alias{PE.db.tbl}
 \alias{dbDisconnect,tbl_SQLiteConnection-method}
-\alias{PE.db.path}
-\alias{PE.db.setup}
+\alias{PE.db.setup.extraction}
+\alias{PE.db.setup.climatology}
+\alias{PE.db.setup.calibration}
+\alias{PE.db.setup.statistics}
 \alias{PE.db.delete.by.pKey}
 \alias{PE.db.delete.by.datasource}
 \alias{PE.db.appendTable}
@@ -14,35 +18,40 @@
 \alias{PE.db.getQuery}
 \title{Setup results databases}
 \usage{
-PE.db.connection(object, table)
+PE.db.path(object, table, src)
 
-PE.db.tbl(object, table)
+PE.db.list(object, table)
+
+PE.db.connection(object, table, src)
+
+PE.db.tbl(object, table, src)
 
 \S4method{dbDisconnect}{tbl_SQLiteConnection}(conn, ...)
 
-PE.db.path(object, table)
+PE.db.setup.extraction(object, src)
 
-PE.db.setup(object)
+PE.db.setup.climatology(object, src)
 
-PE.db.delete.by.pKey(object, table, pKeys, silent = TRUE)
+PE.db.setup.calibration(object, src)
 
-PE.db.delete.by.datasource(
-  object,
-  table = PE.cfg$db$extract,
-  datasrc,
-  silent = TRUE
-)
+PE.db.setup.statistics(object, src)
 
-PE.db.appendTable(object, table, dat, silent = TRUE, serialize.first = TRUE)
+PE.db.delete.by.pKey(object, table, src, pKeys, silent = FALSE)
+
+PE.db.delete.by.datasource(object, table, src, silent = FALSE)
+
+PE.db.appendTable(object, table, src, dat, serialize.first = TRUE)
 
 PE.db.unserialize(dat)
 
-PE.db.getQuery(object, table, this.sql, silent = TRUE)
+PE.db.getQuery(object, table, src, this.sql)
 }
 \arguments{
 \item{object}{PredEng configuration object}
 
-\item{table}{Name of the table to connect to. Each table is stored in a separate file}
+\item{table}{Name of the table to connect to.}
+
+\item{src}{Data source object which is to be stored in the table. Each table for each src is stored in a separate file.}
 }
 \value{
 

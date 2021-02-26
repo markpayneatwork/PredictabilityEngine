@@ -52,7 +52,7 @@ existing.rm.SQL <-
 this.query.time <- 
   system.time({
     del.these.pKeys <- 
-      PE.db.getQuery(pcfg,PE.cfg$db$stats,existing.rm.SQL) %>%
+      PE.db.getQuery(pcfg,PE.cfg$db$stats,src=NULL,existing.rm.SQL) %>%
       pull()
   })
 log_msg("Complete in %0.3fs. \nDeleting...",this.query.time[3])
@@ -60,6 +60,7 @@ this.query.time <-
   system.time({
     n <- PE.db.delete.by.pKey(object=pcfg,
                               table=PE.cfg$db$stats,
+                              src=NULL,
                               pKeys = del.these.pKeys)
   })
 log_msg("Deleted %i rows in %0.3fs.\n\n",n,this.query.time[3])
@@ -68,7 +69,7 @@ log_msg("Deleted %i rows in %0.3fs.\n\n",n,this.query.time[3])
 # And Go ####
 #'========================================================================
 #'#Open database
-stats.tbl <- PE.db.tbl(pcfg,PE.cfg$db$stats)
+stats.tbl <- PE.db.tbl(pcfg,PE.cfg$db$stats,src=NULL)
 
 #'Load data
 dat.in <- 
@@ -92,7 +93,7 @@ for(n in rm.windows) {
            resultName=sprintf("%s/RollMean%i",resultName,n))
   
   #Write back to table
-  PE.db.appendTable(pcfg,PE.cfg$db$stats,rm.stats)
+  PE.db.appendTable(pcfg,PE.cfg$db$stats,src=NULL,rm.stats)
 }
 
 #'========================================================================

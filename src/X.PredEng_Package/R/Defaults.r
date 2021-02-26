@@ -18,13 +18,13 @@ PE.cfg$file <- list(analysis.grid="analysis.grid",
                     logs="logs/")
 
 #Results database tables
-PE.cfg$db <- list(extract="extraction",
-                  climatology="climatology",
-                  calibration="calibration",
-                  stats="statistics",
-                  metrics="metrics",
-                  metrics.field="metricsField",
-                  pt.extraction="ptExtraction")
+PE.cfg$db <- list(extract="Extraction",
+                  climatology="Climatology",
+                  calibration="Calibration",
+                  stats="Statistics",
+                  metrics="Metrics",
+                  metrics.field="MetricsField",
+                  pt.extraction="PtExtraction")
 
 #Validity
 PE.cfg$validity <- list(calibrationMethods=c("anomaly","MeanAdj","MeanVarAdj","NAOmatching"))
@@ -83,7 +83,6 @@ PE.scratch.path <- function(pcfg,type) {
   rtn <- file.path(pcfg@scratch.dir,scratch.types[[type]])
   return(rtn)
 }
-
 
 
 

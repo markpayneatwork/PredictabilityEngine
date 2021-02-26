@@ -44,7 +44,7 @@ pcfg <- PE.load.config()
 if(interactive()) {
   set.cdo.defaults("--silent --no_warnings -O")
   set.log_msg.silent()
-  sel.cfg <- "CESM.DPLE"
+  sel.cfg <- "NorCPM"
   this.datasrc <- pcfg@Decadal[[sel.cfg]]
 } else {  #Running as a "function"
   cmd.args <- commandArgs(TRUE)
@@ -76,16 +76,16 @@ SQL.cmd <- sprintf("SELECT pKey FROM %s WHERE `srcType` = '%s' AND `srcName` = '
                    this.datasrc@type,
                    this.datasrc@name)
 #Fetch list to delete
-del.these <- PE.db.getQuery(pcfg,PE.cfg$db$extract,SQL.cmd,silent=FALSE)
+del.these <- PE.db.getQuery(pcfg,PE.cfg$db$extract,this.datasrc,SQL.cmd)
 
 #Delete
-PE.db.delete.by.pKey(pcfg,PE.cfg$db$extract,del.these$pKey,silent=TRUE)
+PE.db.delete.by.pKey(pcfg,PE.cfg$db$extract,this.datasrc,del.these$pKey,silent=FALSE)
 
 #'========================================================================
 # Calculate means ####
 #'========================================================================
 #Setup database
-this.db <- PE.db.connection(pcfg,PE.cfg$db$extract)
+this.db <- PE.db.connection(pcfg,PE.cfg$db$extract,this.datasrc)
 extr.tbl <- tbl(this.db,PE.cfg$db$extract)
 
 #Get meta data
@@ -141,7 +141,7 @@ for(this.basket in basket.l) {
 
   #Write to database 
   realMeans %>%
-    PE.db.appendTable(pcfg, PE.cfg$db$extract,dat=.)
+    PE.db.appendTable(pcfg, PE.cfg$db$extract,this.datasrc,dat=.)
 
   #Loop
   pb$tick()
