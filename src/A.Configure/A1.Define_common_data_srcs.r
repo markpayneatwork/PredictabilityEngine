@@ -33,6 +33,23 @@ suppressPackageStartupMessages({
 })
 
 #'========================================================================
+# Helper functions ####
+#'========================================================================
+CMIP6.filename.extr <- function(p) {
+  tibble(path=p,
+         fname=basename(p)) %>%
+  separate(fname,
+           into=c("field","table","model","experiment","variant","grid","time"),
+           sep="_") %>%
+    separate(variant,
+             into=c("start","realization"),
+             sep="-") %>%
+    extract(realization,
+            c("realization","initialization","other"),
+            "^(r[[:digit:]]+)(i[[:digit:]]+)(.+)$")
+}
+
+#'========================================================================
 # SST.Decadal models ####
 #'========================================================================
 #IPSL and MPI-MR have basically an identifical structure, both being produced
@@ -141,12 +158,9 @@ SST.Decadal$CESM.DPLE <-
 #Note that there are two initialisations here, stored in the same directory - i1 and i2.
 #We treat them as different data sources for the purpose of this analysis
 NorCPM.fnames <- 
-  tibble(path=dir(here(PE.cfg$dir$datasrc,"Decadal","NorCPM"),
-                  pattern="*.nc$",recursive = TRUE,full.names = TRUE),
-         fname=basename(path)) %>%
-  separate(fname,into=c("field","table","model","experiment","variant","grid","time"),sep="_") %>%
-  separate(variant,into=c("start","realization"),sep="-") %>%
-  extract(realization,c("realization","initialization","other"),"^(r[[:digit:]]+)(i[[:digit:]]+)(.+)$")
+  dir(here(PE.cfg$dir$datasrc,"Decadal","NorCPM"),
+      pattern="*.nc$",recursive = TRUE,full.names = TRUE) %>%
+  CMIP6.filename.extr()
 
 SST.Decadal$NorCPM.SST.src <- 
   data.source(name="NorCPM",
@@ -158,8 +172,10 @@ SST.Decadal$NorCPM.SST.src <-
               realization.fn = function(f) {
                 gsub("^.*_s[[:digit:]]{4}-(r.*?)_.*$","\\1",basename(f))},
               start.date=function(f){
-                init.date <- ymd(gsub("^([[:digit:]]{6})-.*$","\\101",underscore_field(basename(f),7)))
-                return(ceiling_date(init.date,"year"))}, #Round October start up to 1 Jan
+                syear <- gsub("^s([[:digit:]]{4})-r.*$",
+                              "\\1",
+                              underscore_field(basename(f),5))
+                return(as.Date(ISOdate(as.numeric(syear)+1,1,1)))}, #Round  up to 1 Jan
               date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
 
 # SST.Decadal$NorCPM.SST.src.i1 <- 
@@ -177,6 +193,33 @@ SST.Decadal$NorCPM.SST.src <-
 #       sources=filter(NorCPM.fnames,
 #                      field=="tos",
 #                      initialization=="i2")$path)
+
+#EC-Earth3
+ECEarth.fnames <-
+  dir(here(PE.cfg$dir$datasrc,"Decadal","EC-Earth3"),
+      pattern="*.nc$",recursive=TRUE,full.names=TRUE) %>%
+  CMIP6.filename.extr()
+
+SST.Decadal$ECEarth3 <- 
+  data.source(name="ECEarth3",
+              type="Decadal",
+              var="tos",
+              fields.are.2D=TRUE,
+              sources=filter(ECEarth.fnames,
+                             field=="tos",
+                             table=="Omon",
+                             model=="EC-Earth3",
+                             experiment=="dcppA-hindcast",
+                             grid=="gn")$path,
+              realization.fn = function(f) {
+                gsub("^.*_s[[:digit:]]{4}-(r.*?)_.*$","\\1",basename(f))},
+              start.date=function(f){
+                syear <- gsub("^s([[:digit:]]{4})-r.*$",
+                              "\\1",
+                              underscore_field(basename(f),5))
+                return(as.Date(ISOdate(as.numeric(syear)+1,1,1)))}, #Round  up to 1 Jan
+              date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
+
 
 #'========================================================================
 # Salinity  ####
@@ -263,6 +306,31 @@ Sal.Decadal$NorCPM.sal.src <-
 #                           field=="so",
 #                           grid=="gr",
 #                           initialization=="i2")$path)
+
+#EC-Earth3
+ECEarth.fnames <-
+  dir(here(PE.cfg$dir$datasrc,"Decadal","EC-Earth3"),
+      pattern="*.nc$",recursive=TRUE,full.names=TRUE) %>%
+  CMIP6.filename.extr()
+
+Sal.Decadal$ECEarth3 <- 
+  d<-new("data.source",
+      SST.Decadal$ECEarth3,
+      var="so",
+      fields.are.2D=FALSE,
+      z2idx=function(z,f) {
+        ncid <- nc_open(f)
+        lev_bnds <- ncvar_get(ncid,"lev_bnds")
+        nc_close(ncid)
+        idxs <- bounds.to.indices(z,lev_bnds[1,],lev_bnds[2,])
+        return(idxs)},
+      sources=filter(ECEarth.fnames,
+                     field=="so",
+                     table=="Omon",
+                     model=="EC-Earth3",
+                     experiment=="dcppA-hindcast",
+                     grid=="gn")$path) 
+
 
 #'========================================================================
 # Sea Level Pressure ####
