@@ -80,12 +80,8 @@ PE.config.summary(pcfg,this.datasrc)
 #but avoids the risk of duplication when we are dealing with parallelisation
 #We also drop files that don't contain the MOIs
 these.srcs <- 
-  tibble(src.fname=this.datasrc@sources) %>%
-  mutate(dates=map(src.fname,~this.datasrc@date.fn(.x)),
-         contains.MOI=map_lgl(dates,~any(month(.x) %in% pcfg@MOI))) %>%
-  filter(contains.MOI) %>%
-  transmute(src.fname,
-            tmp.stem=tempfile(fileext = rep("",nrow(.))))
+  tibble(src.fname=this.datasrc@sources,
+            tmp.stem=tempfile(fileext = rep("",length(src.fname))))
 
 #Check configuration is sane
 assert_that(nrow(these.srcs)>0,msg="No source files provided")
@@ -103,8 +99,8 @@ PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,this.datasrc)
 # Extract Fragments from Source Files ####
 #'========================================================================
 extract.frags <- function(src.fname,tmp.stem,opts) {
-  # src.fname <- these.srcs[1,]$src.fname
-  # tmp.stem <- these.srcs[1,]$tmp.stem
+  # src.fname <- these.srcs[2,]$src.fname
+  # tmp.stem <- these.srcs[2,]$tmp.stem
   #Get started
   #The use of generic tmp.in and tmp.out filenames allows the order of 
   #execution to be reshuffled as required
@@ -122,6 +118,10 @@ extract.frags <- function(src.fname,tmp.stem,opts) {
   if(!is.na(this.datasrc@use.timebounds)) {
     timebounds.to.time(this.datasrc,tmp.out)
   }
+  
+  #Check that we actually have the Month of Interest
+  these.months <- this.datasrc@date.fn(tmp.out)
+  if(!any(month(these.months) %in% pcfg@MOI)) {return(NULL)}
   
   #Select the months of interest 
   tmp.in <- tmp.out
