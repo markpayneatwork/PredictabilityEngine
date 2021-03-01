@@ -19,8 +19,7 @@
 #    clean        : Remove all log files from working directory
 #    install      : Installs support R packages
 #    %.r          : (Re-)runs the file %.r e.g. a linked configuration file, but also others
-#    extract      : Extracts results into a separate SQLite database
-#    extractflds  : Extracts results into a separate SQLite database, including fields
+#    extracts     : Perform the extraction steps of the pipeline
 #    watch        : Watch tail of the most recent LSF log
 #    less	  : View all of most recent LSF log using less
 #    tail 	  : View end of most recent target log file
@@ -34,7 +33,7 @@
 # ----------------------------------------------------------------------
 
 #Setup
-Rscript= /appl/R/4.0.2-mkl2020/bin/Rscript
+Rscript= Rscript #/appl/R/4.0.2-mkl2020/bin/Rscript
   
 #Default target
 default: help 
@@ -51,11 +50,9 @@ install: FORCE
 %.r: FORCE
 	$(Rscript) $@
 
-extract: 
-	$(Rscript) src/E.Postprocessing/Extract_results_from_SQlite.r
+extracts: 
+	$(Rscript) src/ZZ.Helpers/targets.r model.extracts 
 
-extractflds: 
-	$(Rscript) src/E.Postprocessing/Extract_results_from_SQlite.r TRUE
 
 NMME_sync:
 	bsub  < src/Y.HPC_scripts/bNMME_sync.sh
