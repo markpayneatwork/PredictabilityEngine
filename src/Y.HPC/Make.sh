@@ -42,7 +42,7 @@ module load gcc
 module load nco
 module load gdal/2.2.3
 
-/appl/R/4.0.2-mkl2020/bin/Rscript ./src/ZZ.Helpers/targets.r
+./Rscript ./src/ZZ.Helpers/targets.r
 
 #Error check
 if [ "$?" -eq 0 ]; 
