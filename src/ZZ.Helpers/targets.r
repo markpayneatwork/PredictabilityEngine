@@ -30,7 +30,19 @@ suppressPackageStartupMessages({
   library(targets)
 })
 
-tar_make()
+#Take input arguments, if any
+if(interactive()) {
+  make.this <- character(0L) #I.e. run everything
+} else {  #Running as a "function"
+  make.this <- commandArgs(TRUE)
+
+}
+
+if(length(make.this)==0)  {
+  tar_make()
+} else {
+  tar_make(names=!!make.this)
+}
 
 cat(sprintf("\nAnalysis complete in %.1fs at %s.\n",proc.time()[3]-start.time,base::date()))
 
