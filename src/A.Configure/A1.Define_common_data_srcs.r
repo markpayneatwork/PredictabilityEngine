@@ -454,40 +454,40 @@ for(mdl.name in names(NMME.mdls)){
 #Import local CMIP5 metadata base
 #Note that this is generated using F0... and can be
 #legitimately copied from e.g. the HPC
-CMIP5.db <- readRDS("objects/CMIP5db.rds")
-
-
-#Function to make data.sources for CMIP5 slot
-#20210225. Best approach now is just to generate all of these objects
-#and throw them in the output tibble.
-make.CMIP5.srcs <- function(meta,var) {
-  #Select variable of interest
-  stopifnot(length(var)==1)
-  meta <- filter(meta,variable==var)
-  
-  #Setup vert selection function
-  layermids.fn <- function(f) {
-    #z.idx are the indices, v is the vertical coordinate in metres
-    ncid <- nc_open(f)
-    stopifnot(length(ncid$dim$lev)!=0)  #Must be a level variable
-    stopifnot(ncid$dim$lev$units=="m")  #with units of metres
-    layer.mids <- ncid$dim$lev$vals
-    nc_close(ncid)
-    return(layer.mids)}
-  
-  
-  
-  #Split the remaining CMIP5 data into individual sources
-  mdl.l <- split(meta,meta$model)
-  rtn <- lapply(mdl.l,function(f) {
-    data.source(name=unique(f$model),
-                type="CMIP5",
-#                layermids.fn = layermids.fn,
-                var=var,
-                sources=f$fname)
-  })
-  return(PElst(rtn))
-}
+# CMIP5.db <- readRDS("objects/CMIP5db.rds")
+# 
+# 
+# #Function to make data.sources for CMIP5 slot
+# #20210225. Best approach now is just to generate all of these objects
+# #and throw them in the output tibble.
+# make.CMIP5.srcs <- function(meta,var) {
+#   #Select variable of interest
+#   stopifnot(length(var)==1)
+#   meta <- filter(meta,variable==var)
+#   
+#   #Setup vert selection function
+#   layermids.fn <- function(f) {
+#     #z.idx are the indices, v is the vertical coordinate in metres
+#     ncid <- nc_open(f)
+#     stopifnot(length(ncid$dim$lev)!=0)  #Must be a level variable
+#     stopifnot(ncid$dim$lev$units=="m")  #with units of metres
+#     layer.mids <- ncid$dim$lev$vals
+#     nc_close(ncid)
+#     return(layer.mids)}
+#   
+#   
+#   
+#   #Split the remaining CMIP5 data into individual sources
+#   mdl.l <- split(meta,meta$model)
+#   rtn <- lapply(mdl.l,function(f) {
+#     data.source(name=unique(f$model),
+#                 type="CMIP5",
+# #                layermids.fn = layermids.fn,
+#                 var=var,
+#                 sources=f$fname)
+#   })
+#   return(PElst(rtn))
+# }
 
 #'========================================================================
 # Finish ####
