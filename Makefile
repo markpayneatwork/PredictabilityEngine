@@ -33,7 +33,7 @@
 # ----------------------------------------------------------------------
 
 #Setup
-Rscript= Rscript #/appl/R/4.0.2-mkl2020/bin/Rscript
+Rscript= ./Rscript #/appl/R/4.0.2-mkl2020/bin/Rscript
   
 #Default target
 default: help 
@@ -52,7 +52,6 @@ install: FORCE
 
 extracts: 
 	$(Rscript) src/ZZ.Helpers/targets.r model.extracts 
-
 
 NMME_sync:
 	bsub  < src/Y.HPC_scripts/bNMME_sync.sh
@@ -74,6 +73,8 @@ FORCE:
 help:
 	@#Display help up to first empty line
 	@grep "^ *$$" Makefile -n -m1 |   sed "s/\(^.*\):.*/\1/" | xargs -I {} head -n{} Makefile
+R:
+	$(Rscript) -e "sessionInfo()"
 
 watch:
 	watch 'ls _targets/*.out | tail -n 1 | xargs tail -n 50'
