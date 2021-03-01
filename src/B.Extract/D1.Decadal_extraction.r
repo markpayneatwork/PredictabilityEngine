@@ -78,9 +78,13 @@ PE.config.summary(pcfg,this.datasrc)
 #Setup
 #Note that we preassign tempfile filenames. This is probably not necessary,
 #but avoids the risk of duplication when we are dealing with parallelisation
+#We also drop files that don't contain the MOIs
 these.srcs <- 
   tibble(src.fname=this.datasrc@sources) %>%
-  mutate(tmp.stem=tempfile(fileext = rep("",nrow(.))))
+  mutate(tmp.stem=tempfile(fileext = rep("",nrow(.))),
+         dates=map(src.fname,~this.datasrc@date.fn(.x)),
+         contains.MOI=map_lgl(dates,~any(month(.x) %in% pcfg@MOI))) %>%
+  filter(contains.MOI)
 
 #Check configuration is sane
 assert_that(nrow(these.srcs)>0,msg="No source files provided")
