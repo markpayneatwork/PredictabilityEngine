@@ -81,10 +81,11 @@ PE.config.summary(pcfg,this.datasrc)
 #We also drop files that don't contain the MOIs
 these.srcs <- 
   tibble(src.fname=this.datasrc@sources) %>%
-  mutate(tmp.stem=tempfile(fileext = rep("",nrow(.))),
-         dates=map(src.fname,~this.datasrc@date.fn(.x)),
+  mutate(dates=map(src.fname,~this.datasrc@date.fn(.x)),
          contains.MOI=map_lgl(dates,~any(month(.x) %in% pcfg@MOI))) %>%
-  filter(contains.MOI)
+  filter(contains.MOI) %>%
+  transmute(src.fname,
+            tmp.stem=tempfile(fileext = rep("",nrow(.))))
 
 #Check configuration is sane
 assert_that(nrow(these.srcs)>0,msg="No source files provided")
