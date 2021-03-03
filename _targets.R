@@ -102,11 +102,19 @@ if(length(pcfg@Decadal)!=0 & !pcfg@obs.only){
   
 } 
 
-#Realisation means
+#Combined model extracts
 tar.l$model.extracts <-
   tar_target(model.extracts,
              bind_rows(decadal.extr))
 
+#Realisation means
+tar.l$realmeans <-
+  tar_target(model.realmeans,
+             ext.script(here("src/C.Calibrate/A1.Calculate_realmeans.r"),
+                        model.extracts,
+                        args=c(srcType=model.extracts$srcType,
+                               srcName=model.extracts$srcName)),
+             pattern=map(model.extracts))
 
 #'========================================================================
 # Calibration ####
@@ -126,21 +134,13 @@ get.extraction.databases <- function(object,...) {
 
 tar.l$extraction.databases <-
   tar_target(extraction.databases,
-             get.extraction.databases(pcfg,model.extracts),
+             get.extraction.databases(pcfg,model.realmeans),
              cue=tar_cue("always"))
 
-#Realisation means
-tar.l$realmeans <-
-  tar_target(model.realmeans,
-             ext.script(here("src/C.Calibrate/A1.Calculate_realmeans.r"),
-                        extraction.databases,
-                        args=c(srcType=extraction.databases$srcType,
-                               srcName=extraction.databases$srcName)),
-             pattern=map(extraction.databases))
 
 tar.l$all.extracts <-
   tar_target(all.extracts,
-             bind_rows(observations,model.realmeans))
+             bind_rows(observations,extraction.databases))
 
 #Climatology
 tar.l$clim <-
