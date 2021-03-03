@@ -56,7 +56,7 @@ if(interactive() ) {
 
 #Setup parallelism
 if(Sys.info()["nodename"]=="aqua-cb-mpay18" | interactive()) {
-  n.cores <- availableCores()
+  n.cores <- 8
 } else if(Sys.info()["nodename"]=="volta.dmi.dk" ) {
   n.cores <- 8
 } else {
