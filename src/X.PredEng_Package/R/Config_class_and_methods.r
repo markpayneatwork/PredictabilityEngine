@@ -154,7 +154,7 @@ setMethod("show","PredEng.config", function(object) {
     obj <- slot(ob,slt)
     if(any(class(obj) %in% c("logical","formula","character",
                          "numeric","Extent","integer","list",
-                         "data.frame","PElst","data.source"))) {
+                         "data.frame","PElst","data.source","NULL"))) {
       cat(sprintf("%-20s : ",slt))
     } else {return(NULL)}
     if(is(obj,"formula")) {
