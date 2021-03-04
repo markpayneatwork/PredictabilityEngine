@@ -51,6 +51,8 @@ if(interactive()) {
 }
 this.datasrc <- data.source(type=this.srcType,name=this.srcName)
 
+PE.config.summary(pcfg,this.datasrc)
+
 #Setup parallelism
 if(Sys.info()["nodename"]=="aqua-cb-mpay18" | interactive()) {
   n.cores <- availableCores()

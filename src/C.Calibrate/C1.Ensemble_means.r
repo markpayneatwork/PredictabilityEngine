@@ -46,6 +46,8 @@ if(interactive()) {
   assert_that(length(cmd.args)==2,msg="Cannot get command args")
   this.srcType <- cmd.args[1]
   }
+PE.config.summary(pcfg,this.srcType=this.srcType)
+
 
 #'========================================================================
 # Setup ####
