@@ -125,9 +125,9 @@ get.extraction.databases <- function(object,...) {
   tibble(path=PE.db.list(object,PE.cfg$db$extract),
          checksum=tools::md5sum(path),
          datetime=file.info(path)$mtime,
-         fnames=gsub(".sqlite$","",basename(path))) %>%
-    separate(fnames,
-             c("cfg","table","srcType","srcName"),
+         srcTypeName=gsub("^.*_Extraction_(.*).sqlite$","\\1",basename(path))) %>%
+    separate(srcTypeName,
+             c("srcType","srcName"),
              sep="_",
              extra="drop")
 }
