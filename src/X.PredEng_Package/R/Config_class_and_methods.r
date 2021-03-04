@@ -1,3 +1,6 @@
+setClassUnion("data.sourceORNULL",c("data.source","NULL"))
+
+
 #' PredEng Project configuration class
 #'
 #' @slot project.name Name of the configuration
@@ -52,7 +55,7 @@
 PredEng.config <- 
   setClass("PredEng.config",
            slots=list(project.name="character",
-                      Observations="data.source",
+                      Observations="data.sourceORNULL",
                       Decadal="PElst",
                       NMME="PElst",
                       CMIP5="PElst",
