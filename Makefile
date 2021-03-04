@@ -51,7 +51,7 @@ install: FORCE
 	$(Rscript) $@
 
 extracts: 
-	$(Rscript) src/ZZ.Helpers/targets.r model.extracts 
+	$(Rscript) src/ZZ.Helpers/targets.r model.realmeans 
 
 NMME_sync:
 	bsub  < src/Y.HPC_scripts/bNMME_sync.sh
