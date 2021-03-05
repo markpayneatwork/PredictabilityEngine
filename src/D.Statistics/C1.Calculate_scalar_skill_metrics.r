@@ -166,10 +166,10 @@ persis.dat <-
   filter(!grepl("/.+$",resultName)) %>%   #Remove smoothed variables
   group_by(srcType,srcName,spName,statName,resultName) %>%
   arrange(date,.by_group=TRUE) %>%
-  mutate(RollMean3=roll_meanr(value,n=3),
-         RollMean5=roll_meanr(value,n=5),
-         RollMean7=roll_meanr(value,n=7),
-         RollMean9=roll_meanr(value,n=9),
+  mutate(RollMean03=roll_meanr(value,n=3,fill=Inf),  #Use Inf (rather than NA) to indicate can't calculate
+         RollMean05=roll_meanr(value,n=5,fill=Inf),  #Want to propigate NAs if they exist, as error check
+         RollMean07=roll_meanr(value,n=7,fill=Inf),
+         RollMean09=roll_meanr(value,n=9,fill=Inf),
          srcType="Persistence") %>%
   ungroup() %>%
   #Pivot longer and merge averages into value column
@@ -177,8 +177,10 @@ persis.dat <-
   pivot_longer(c(rawValue,starts_with("RollMean")),
                names_to = "averaging",values_to = "value") %>%
   unite("resultName",c("resultName","averaging"),sep="/") %>%
-  mutate(resultName=gsub("/rawValue$","",resultName))  #Don't label raw value
-
+  mutate(resultName=gsub("/rawValue$","",resultName)) %>%  #Don't label raw value 
+  #Drop persistences where we can't calculate due to rolling window limitations
+  filter(!is.infinite(value))
+  
 #Calculate the persistences that we want to include
 persis.grid <- 
   #Setup grid

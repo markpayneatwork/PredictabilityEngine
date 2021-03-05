@@ -89,8 +89,9 @@ for(n in rm.windows) {
   rm.stats <-
     dat.in  %>%
     mutate(date=as.character(date),
-           value=roll_mean(value,n=n,fill=NA,align="center"),
-           resultName=sprintf("%s/RollMean%i",resultName,n))
+           value=roll_mean(value,n=n,fill=Inf,align="center"),
+           resultName=sprintf("%s/RollMean%02i",resultName,n)) %>%
+    filter(!is.infinite(value))  #Drop values we can't calculate
   
   #Write back to table
   PE.db.appendTable(pcfg,PE.cfg$db$stats,src=NULL,rm.stats)
