@@ -107,7 +107,7 @@ mdl.meta <-
   mutate(date=ymd(date)) %>%
   filter(year(date) %in% pcfg@comp.years) %>%
   #Group into chunks for further processing
-  select(pKey,srcType,srcName,leadIdx,spName,statName,resultName) %>%
+  select(pKey,srcType,srcName,lead,spName,statName,resultName) %>%
   group_by(across(-pKey),.drop=TRUE) %>%
   nest(pKeys=c(pKey)) %>%
   mutate(pKeys=map(pKeys,pull)) %>%

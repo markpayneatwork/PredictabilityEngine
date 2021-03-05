@@ -45,9 +45,9 @@ if(interactive()) {
   cmd.args <- commandArgs(TRUE)
   assert_that(length(cmd.args)==2,msg="Cannot get command args")
   this.srcType <- cmd.args[1]
-  }
-PE.config.summary(pcfg,this.srcType=this.srcType)
+}
 
+PE.config.summary(pcfg,this.srcType=this.srcType)
 
 #'========================================================================
 # Setup ####
@@ -91,7 +91,7 @@ assert_that(all(assert.day$day==1),msg="Day = 1 condition violated")
 if(!pcfg@obs.only) {
   ensmeans <- 
     realmeans %>%
-    group_by(srcType,calibrationMethod,startDate,date,leadIdx,.drop=TRUE) %>%
+    group_by(srcType,calibrationMethod,startDate,date,lead,.drop=TRUE) %>%
     summarise(field=raster.list.mean(field),
               n=n(),
               .groups="keep") %>% #Check for duplicated realization codes

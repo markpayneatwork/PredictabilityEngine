@@ -25,7 +25,7 @@
 #'========================================================================
 # Initialise system ####
 #'========================================================================
-cat(sprintf("\n%s\n","A1.Climatological statistics"))
+cat(sprintf("\n%s\n","A2.Climatological statistics"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 start.time <- proc.time()[3];
 
@@ -98,7 +98,7 @@ dbDisconnect(extr.tbl)
 #Calculate climatologies in a summarisation loop
 clim.dat <-
   extr.dat %>%
-  group_by(srcType,srcName,leadIdx,month,.drop=TRUE) %>%
+  group_by(srcType,srcName,lead,month,.drop=TRUE) %>%
   summarise(clim.mean=raster.list.mean(field),
             clim.sd=list(calc(brick(field),sd)),
             nYears=n(),

@@ -98,7 +98,7 @@ chunk.meta <-
   extr.tbl %>%
   filter(srcType==!!this.datasrc@type,
          srcName==!!this.datasrc@name) %>%
-  select(pKey,srcType,srcName,realization,startDate,date,leadIdx) %>%
+  select(pKey,srcType,srcName,realization,startDate,date,lead) %>%
   collect() %>%
   group_by(across(-c(pKey,realization)),.drop=TRUE) %>%
   mutate(grp.idx=cur_group_id())

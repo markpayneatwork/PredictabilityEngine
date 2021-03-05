@@ -184,7 +184,7 @@ extract.frags <- function(src.fname,tmp.stem,opts) {
                       realization=this.datasrc@realization.fn(src.fname),
                       startDate=this.datasrc@start.date(src.fname),
                       date=this.datasrc@date.fn(tmp.out),
-                      leadIdx=1:nlayers(dat.b),
+                      lead=month_diff(date,startDate),
                       field=as.list(dat.b))
 
   #Remove the temporary files to tidy up

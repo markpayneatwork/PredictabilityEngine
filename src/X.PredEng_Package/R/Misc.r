@@ -86,10 +86,8 @@ PE.global.sf <- function(this.pcfg) {
 #' a risk that the days of the month may be different between data sources.
 #'
 #' @param d Vector of dates to convert, as Date classes
-#' @param t1 First Date
-#' @param t2 Second Date
 #'
-#' @return String of format yyyy-mm
+#' @return date_to_ym returns a string of format yyyy-mm
 #' @export
 #' @name month_fns
 date_to_ym <- function(d) {
@@ -97,7 +95,10 @@ date_to_ym <- function(d) {
 }
 
 #' @export
-#' @rdname month_fns
+#' @param t1 First Date
+#' @param t2 Second Date
+#' @return month_diff returns an integrer indicating the number of (whole) months different between two dates. Days are completely ignored in the calculation
+#' @describeIn  month_fns
 month_diff <- function(t1,t2) {
   year(t1)*12+month(t1) - year(t2)*12-month(t2)
 }

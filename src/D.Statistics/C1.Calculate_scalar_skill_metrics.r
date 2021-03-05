@@ -58,6 +58,13 @@ if(Sys.info()["nodename"]=="aqua-cb-mpay18" | interactive()) {
 }
 plan(multisession,workers = n.cores)
 
+#Scale back number of samples to increase debugging speed
+if(pcfg@project.name=="TestSuite") {
+  n.samples <- 10
+} else {
+  n.samples <- 1000
+}
+
 #'========================================================================
 # Setup ####
 #'========================================================================
@@ -91,7 +98,7 @@ obs.dat.all <-
          ym=date_to_ym(date)) %>%
   filter(month(date) %in% pcfg@MOI) %>%
   #Drop unused fields relating to forecasts
-  dplyr::select(-calibrationMethod,-realization,-startDate,-leadIdx,-field)
+  dplyr::select(-calibrationMethod,-realization,-startDate,-field)
 
 #Simplified versions 
 obs.dat <-
@@ -216,6 +223,7 @@ persis.forecasts <-
             realization=NA_character_,
             startDate=request.startDates,
             date=date,
+            lead,
             spName,statName,resultName,value,
             ym=date_to_ym(date))
 
@@ -242,7 +250,7 @@ if(have.mdl.dat) {
     #Import relevant data first
     stats.tbl %>%
     filter(srcType != "Observations") %>%
-    dplyr::select(-field,-pKey,-leadIdx) %>% 
+    dplyr::select(-field,-pKey) %>% 
     filter(!is.na(value)) %>%
     collect() %>%
     #Tweak
@@ -269,8 +277,9 @@ if(have.mdl.dat) {
 log_msg("Central tendency metrics...\n")
 
 #Skill functions
-cent.skill.fn <- function(d,n.samples=1000) { 
-  #d <- cent.pred$data[[1]]
+cent.skill.fn <- function(d) { 
+  #i <- 97
+  #d <- cent.pred$data[[i]]
 
   #Setup
   xy <- 
@@ -311,8 +320,6 @@ cent.pred <-
   left_join(y=obs.dat.bare,
             by=c("ym","spName","statName","resultName"),
             suffix=c(".pred",".obs")) %>%
-  #Add lead
-  mutate(lead=month_diff(date,startDate))  %>%
   #Nest
   group_by(srcType,srcName,calibrationMethod,realization,
          spName,statName,resultName,lead,
@@ -381,7 +388,7 @@ if(have.mdl.dat) {
     group_nest()
   
   #Skill functions
-  dist.skill.fn <- function(d,n.samples=1000) { 
+  dist.skill.fn <- function(d) { 
     #d <- dist.dat$data[[1]]
     
     #Setup

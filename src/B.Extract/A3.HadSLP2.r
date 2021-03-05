@@ -125,7 +125,7 @@ frag.dat <- tibble(srcFname=NA,
                    realization=NA,
                    startDate=NA,
                    date=getZ(HadSLP2.b),
-                   leadIdx=NA,
+                   lead=NA,
                    field=as.list(dat.b))
 
 #Write to database

@@ -18,9 +18,16 @@ month_diff(t1, t2)
 \item{t2}{Second Date}
 }
 \value{
-String of format yyyy-mm
+date_to_ym returns a string of format yyyy-mm
+
+month_diff returns an integrer indicating the number of (whole) months different between two dates. Days are completely ignored in the calculation
 }
 \description{
 Works with dates in terms of their months only, ignoring days. Handy for standardising time where there is
 a risk that the days of the month may be different between data sources.
 }
+\section{Functions}{
+\itemize{
+\item \code{month_diff}: 
+}}
+

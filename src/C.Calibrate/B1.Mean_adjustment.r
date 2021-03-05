@@ -205,7 +205,7 @@ for(this.basket in basket.l) {
     extr.dat %>%
     #Join in model climatological data
     left_join(y=clim.dat,
-              by=c("srcName","srcType","month","leadIdx")) %>%
+              by=c("srcName","srcType","month","lead")) %>%
     #Join in obseervations
     left_join(y=obs.clim,by="month")
 
@@ -231,7 +231,7 @@ for(this.basket in basket.l) {
   out.dat <- 
     calib.dat %>%
     #Select columns 
-    select(srcName,srcType,realization,startDate,date,leadIdx,
+    select(srcName,srcType,realization,startDate,date,lead,
            starts_with("calib.")) %>% 
     #Pivot
     pivot_longer(starts_with("calib."),

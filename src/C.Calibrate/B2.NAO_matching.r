@@ -71,7 +71,7 @@ if(Sys.info()["nodename"]=="aqua-cb-mpay18" | interactive()) {
 }
 plan(multisession,workers = n.cores)
 
-stop("Needs to be updated to parallel tracks")
+stop("Needs to be updated to parallel tracks. Convert leadIdx to lead")
 #'========================================================================
 # Prepare data ####
 #'========================================================================

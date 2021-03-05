@@ -123,7 +123,7 @@ frag.dat <- tibble(srcName=this.datasrc@name,
                    realization=NA,
                    startDate=NA,
                    date=getZ(dat.b),
-                   leadIdx=NA,
+                   lead=NA,
                    field=as.list(dat.b))
 
 #Write to database

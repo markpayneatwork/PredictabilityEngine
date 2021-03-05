@@ -81,7 +81,7 @@ dat.in <-
   group_by(srcType,srcName,calibrationMethod,realization,startDate,
          spName,statName,resultName,.drop=TRUE) %>%
   arrange(date) %>%
-  select(-pKey,-leadIdx,-field)
+  select(-pKey,-field)
   
 for(n in rm.windows) {
   log_msg("Rolling window %i...\n",n)

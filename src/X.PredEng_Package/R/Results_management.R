@@ -79,7 +79,7 @@ PE.db.setup.extraction <- function(object,src) {
         "realization TEXT",
         "startDate TEXT",
         "date TEXT",
-        "leadIdx INTEGER",
+        "lead INTEGER",
         "field BLOB") 
     cmd.l <- list()
     cmd.l$tbl <- 
@@ -105,7 +105,7 @@ PE.db.setup.climatology <- function(object,src) {
       c("pKey INTEGER NOT NULL PRIMARY KEY",
         "srcType TEXT",
         "srcName TEXT",
-        "leadIdx INTEGER",
+        "lead INTEGER",
         "month INTEGER",
         "nYears INTEGER",
         "statistic TEXT",
@@ -131,7 +131,7 @@ PE.db.setup.calibration <- function(object,src) {
         "realization TEXT",
         "startDate TEXT",
         "date TEXT",
-        "leadIdx INTEGER",
+        "lead INTEGER",
         "field BLOB")  
     cmd.l <- list()
     cmd.l$tbl <- 
@@ -167,7 +167,7 @@ PE.db.setup.statistics <- function(object,src) {
         "realization TEXT",
         "startDate TEXT",
         "date TEXT",
-        "leadIdx INTEGER",
+        "lead INTEGER",
         "spName TEXT",
         "statName TEXT",
         "resultName TEXT",
