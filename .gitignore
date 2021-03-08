@@ -12,3 +12,4 @@ _targets
 this.cfg
 *.r
 Rscript
+nohup.out
