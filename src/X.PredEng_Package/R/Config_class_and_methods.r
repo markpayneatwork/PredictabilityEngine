@@ -86,6 +86,8 @@ PredEng.config <-
            validity = function(object) {
              #Basics
              err.msg <- list(
+               validate_that(grepl("[^[:alnum:]-]",object@project.name),
+                                   msg="Project.name can only contain numbers, letters and -"),
                validate_that(!(length(object@MOI)!=1 & object@average.months),
                              msg="Dates are currently not handled correctly when averaging over multiple months"),
                validate_that(length(object@vert.range)==2 | all(is.na(object@vert.range)),
@@ -278,6 +280,7 @@ set.configuration <- function(object) {
 PE.load.config <- function() {
   #Find configuration file
   rfnames <- dir(here(),pattern="*.r$",full.names = TRUE)
+  assert_that(length(rfnames)>=1,msg="No configuration file found.")
   assert_that(length(rfnames)==1,msg="More than one configuration file found.")
   #Load corresponding configuration from scratch
   cfg.fname  <- 
