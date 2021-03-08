@@ -456,7 +456,8 @@ for(mdl.name in names(NMME.mdls)){
 #File naming convention, from https://docs.google.com/document/d/1h0r8RZr_f3-8egBMMh7aqLwy3snpD6_MrDz1q8n5XUk/edit
 #<variable_id>_<table_id>_<source_id>_<experiment_id >_<member_id>_<grid_label>[_<time_range>].nc
 CMIP6.db.all <- 
-  tibble(path=dir(here(PE.cfg$dir$datasrc,"CMIP6"),pattern="*.nc",full.names = TRUE)) %>%
+  tibble(path=dir(here(PE.cfg$dir$datasrc,"CMIP6"),
+                  recursive = TRUE,pattern="*.nc",full.names = TRUE)) %>%
   mutate(file.size=file.size(path),
          fname=basename(path)) %>%
   separate(fname,sep="_",
