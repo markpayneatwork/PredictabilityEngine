@@ -86,7 +86,7 @@ PredEng.config <-
            validity = function(object) {
              #Basics
              err.msg <- list(
-               validate_that(grepl("[^[:alnum:]-]",object@project.name),
+               validate_that(!grepl("[^[:alnum:]-]",object@project.name),
                                    msg="Project.name can only contain numbers, letters and -"),
                validate_that(!(length(object@MOI)!=1 & object@average.months),
                              msg="Dates are currently not handled correctly when averaging over multiple months"),
