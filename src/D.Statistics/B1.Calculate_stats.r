@@ -44,8 +44,8 @@ if(interactive()) {
   set.log_msg.silent()
   stat.id <- names(pcfg@statistics)[1]
   sp.id <- c(pcfg@spatial.polygons$name,PE.cfg$misc$globalROI)[1]
-  this.srcType <- pcfg@Decadal[[1]]@type
-  this.srcName <- pcfg@Decadal[[2]]@name
+  this.srcType <- pcfg@Models[[1]]@type
+  this.srcName <- pcfg@Models[[1]]@name
 } else {
   set.log_msg.silent()
   cmd.args <- commandArgs(TRUE)

@@ -42,22 +42,18 @@ pcfg <- PE.load.config()
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  set.cdo.defaults("--silent --no_warnings -O")
-  set.log_msg.silent()
-  sel.cfg <- "CESM.DPLE"
-  this.datasrc <- pcfg@Decadal[[sel.cfg]]
-  this.srcType <- this.datasrc@type
-  this.srcName <- this.datasrc@name
+  this.srcType <- "Decadal"
+  this.srcName <- "CESM.DPLE"
 } else {  #Running as a "function"
   cmd.args <- commandArgs(TRUE)
   assert_that(length(cmd.args)==2,msg="Cannot get command args")
   this.srcType <- cmd.args[1]
   this.srcName <- cmd.args[2]
-  this.datasrc <- data.source(type=this.srcType,name=this.srcName)
-  set.cdo.defaults("--silent --no_warnings -O")
-  set.log_msg.silent()
 }
+set.cdo.defaults("--silent --no_warnings -O")
+set.log_msg.silent()
 
+this.datasrc <- PE.get.datasrc(pcfg,this.srcType,this.srcName)
 PE.config.summary(pcfg,this.datasrc)
 
 #Setup parallelisation

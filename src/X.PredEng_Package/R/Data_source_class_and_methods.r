@@ -178,3 +178,27 @@ test.data.source <- function(obj,f="missing"){
   print(obj@start.date(f))
 }
 
+#' Extract data.source objecct
+#'
+#' Extract the correct datasource object from the configuration specifying the
+#' source type and source name.
+#'
+#' @param object PredEng.config object
+#' @param this.srcType Type of the data.source to match
+#' @param this.srcName Name of the data.source to match
+#'
+#' @return data.source object
+#' @export
+PE.get.datasrc <- function(object,this.srcType,this.srcName) {
+  datasrc.sel <- 
+    tibble(data.src=object@Models@.Data) %>%
+    mutate(srcName=map_chr(data.src,slot,"name"),
+           srcType=map_chr(data.src,slot,"type")) %>%
+    filter(srcName==this.srcName,
+           srcType==this.srcType) 
+  assert_that(nrow(datasrc.sel)==1,msg="Error identifying a unique data source")
+  return(datasrc.sel$data.src[[1]])
+}
+
+
+

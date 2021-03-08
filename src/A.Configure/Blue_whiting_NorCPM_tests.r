@@ -54,9 +54,10 @@ define_dir(pcfg@scratch.dir)
 #'========================================================================
 # Data Sources ####
 #'========================================================================
-pcfg@Decadal <- 
+pcfg@Models <- 
   filter(these.srcs,
-         group=="Sal.Decadal",srcName=="NorCPM") %>%
+         group=="Sal.Decadal",
+         srcName=="NorCPM") %>%
   pull(sources) %>%
   PElst()
   

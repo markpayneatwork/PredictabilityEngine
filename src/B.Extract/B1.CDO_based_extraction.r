@@ -1,5 +1,5 @@
 #/*##########################################################################*/
-#' Extract data from Decadal hindcast archive
+#' Extract data using CDO
 #' ==========================================================================
 #'
 #' by Mark R Payne  
@@ -8,8 +8,7 @@
 #'
 #' Thu Jun  2 15:10:05 2016
 #'
-#' Extracts hindcast data from DCPP-like outputs and that is stored in a 
-#' CDO compatable format
+#' Extracts data from CDO-compatible CMOR-ised outputs
 #
 #  This work is subject to a Creative Commons "Attribution" "ShareALike" License.
 #  You are largely free to do what you like with it, so long as you "attribute" 
@@ -25,7 +24,7 @@
 #'========================================================================
 # Initialise system ####
 #'========================================================================
-cat(sprintf("\n%s\n","Extract Decadal hindcast data"))
+cat(sprintf("\n%s\n","Extract CDO-compatible data"))
 cat(sprintf("Analysis performed %s\n\n",base::date()))
 start.time <- proc.time()[3];
 
@@ -44,12 +43,14 @@ pcfg <- PE.load.config()
 if(interactive() ) {
   set.cdo.defaults("--silent --no_warnings -O -f nc4")
   set.log_msg.silent()
-  sel.src <- names(pcfg@Decadal)[2]
+  this.srcType <- pcfg@Models[[2]]@type
+  this.srcName <-  pcfg@Models[[2]]@name
 } else {  
   #Running as a terminal
   cmd.args <- commandArgs(TRUE)
   assert_that(length(cmd.args)==2,msg="Cannot get command args")
-  sel.src <- cmd.args[2]
+  this.srcType <- cmd.args[1]
+  this.srcName <- cmd.args[2]
   set.cdo.defaults("--silent --no_warnings -O -f nc4 ")
   set.log_msg.silent()
 }
@@ -68,8 +69,10 @@ plan(multisession,workers = n.cores)
 #Other configurations
 set.nco.defaults("--quench --overwrite")
 
+#Get data source
+this.datasrc <- PE.get.datasrc(pcfg,this.srcType,this.srcName)
+
 #Display configuration
-this.datasrc <- pcfg@Decadal[[sel.src]]
 PE.config.summary(pcfg,this.datasrc)
 
 #'========================================================================

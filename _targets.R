@@ -85,27 +85,22 @@ tar.l$observations <-
                         args=c(srcType=obs.src@type,
                                srcName=obs.src@name))})
 
-#Decadal sources
-if(length(pcfg@Decadal)!=0 & !pcfg@obs.only){
+#Model sources
+if(length(pcfg@Models)!=0 & !pcfg@obs.only){
   tar.l$decadal.srcs <-
-    tar_target(decadal.srcs,
-               pcfg@Decadal,
+    tar_target(model.srcs,
+               pcfg@Models,
                iteration = "list")
   
   tar.l$extract.decadal <-
-    tar_target(decadal.extr,
-               ext.script(here('src/B.Extract/D1.Decadal_extraction.r'),
-                          decadal.srcs,
-                          args=c(srcType=decadal.srcs@type,
-                                 srcName=decadal.srcs@name)),
-               pattern=map(decadal.srcs))
+    tar_target(model.extracts,
+               ext.script(here('src/B.Extract/B1.CDO_based_extraction.r'),
+                          model.srcs,
+                          args=c(srcType=model.srcs@type,
+                                 srcName=model.srcs@name)),
+               pattern=map(model.srcs))
   
 } 
-
-#Combined model extracts
-tar.l$model.extracts <-
-  tar_target(model.extracts,
-             bind_rows(decadal.extr))
 
 #Realisation means
 tar.l$realmeans <-

@@ -56,9 +56,7 @@ PredEng.config <-
   setClass("PredEng.config",
            slots=list(project.name="character",
                       Observations="data.sourceORNULL",
-                      Decadal="PElst",
-                      NMME="PElst",
-                      CMIP5="PElst",
+                      Models="PElst",
                       obs.only="logical",
                       persistence.leads="numeric",
                       spatial.polygons="sf",
@@ -100,7 +98,7 @@ PredEng.config <-
                              msg="Unsupported calibration method selected"))
              
              #Check for consistency between presence of 2D fields and requested vertical range
-             datsrcs <- c(object@Decadal,object@NMME,object@Observations,object@CMIP5)
+             datsrcs <- c(object@Models,object@Observations)
              if(!all(is.na(object@vert.range))) {
                for(d in datsrcs) {
                  if(length(d@fields.are.2D)!=0) {
@@ -292,6 +290,9 @@ PE.load.config <- function() {
               msg=sprintf("Cannot find configuration file, %s.",cfg.fname))
   readRDS(cfg.fname)
 }
+
+
+
 
 
 

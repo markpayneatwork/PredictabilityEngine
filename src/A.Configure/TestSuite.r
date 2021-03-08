@@ -89,7 +89,7 @@ lim.dec %>%
   print(n=Inf)
 
 #Apply restricted list of files back on to the sources list
-pcfg@Decadal <-
+pcfg@Models <-
   lim.dec %>%
   select(-sources,-realization,-startDate) %>%
   nest(fnames=c(fnames)) %>%

@@ -69,7 +69,7 @@ pcfg@Observations <-
 pcfg@obs.only <- FALSE
 
 #Decadal models
-pcfg@Decadal <- 
+pcfg@Models <- 
   filter(these.srcs,
          group=="SST.Decadal") %>%
   pull(sources) %>%

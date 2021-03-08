@@ -62,7 +62,7 @@ pcfg@Observations <-
   pluck(1)
 
 #Decadal salinity models
-pcfg@Decadal <- 
+pcfg@Models <- 
   filter(these.srcs,
          group=="Sal.Decadal") %>%
   pull(sources) %>%
