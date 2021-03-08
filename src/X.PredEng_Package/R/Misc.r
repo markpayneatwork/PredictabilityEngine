@@ -103,4 +103,30 @@ month_diff <- function(t1,t2) {
   year(t1)*12+month(t1) - year(t2)*12-month(t2)
 }
 
+#' PredEng Progress bar
+#' 
+#' Creates a standardised progress bar across all of the Predictability Engine
+#'
+#' @param n Number of iterations. If a vector of length greater than 1, then the
+#' number of iterations is set to the length of the vector instead
+#' @param show.bar Show progress bar, or just list status
+#'
+#' @return A progress bar object
+#' @export
+PE.progress <- function(n,show.bar=interactive()) {
+  if(length(n)>1) n <- length(n)
+  if(show.bar) {
+    pb <- progress_bar$new(total=n,
+                           show=0,clear=FALSE,
+                           force=TRUE,
+                           format = "[:bar] :elapsedfull (:percent), :eta remaining")    
+  } else {
+    pb <- progress_bar$new(total=n,
+                           show=0,clear=FALSE,
+                           force=TRUE,
+                           format = "Elapsed: :elapsedfull (:percent), :eta remaining\n")    
+  }
+  
+  return(pb)
+}
 
