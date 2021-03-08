@@ -42,7 +42,7 @@ these.srcs <- readRDS(PE.cfg$path$datasrcs)
 # Project Configuration ####
 #'========================================================================
 #Global project configuration
-pcfg <- PredEng.config(project.name= "Mackerel_summer",
+pcfg <- PredEng.config(project.name= "Mackerel-summer",
                        MOI=8,
                        average.months=FALSE,
                        clim.years=1981:2010,  

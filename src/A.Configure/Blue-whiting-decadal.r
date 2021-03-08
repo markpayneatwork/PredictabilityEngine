@@ -37,11 +37,11 @@ these.srcs <- readRDS(PE.cfg$path$datasrcs)
 # Generic Configuration
 # ========================================================================
 #Import configuration from B9
-WGS2D.pcfg <- readRDS("scratch/Blue_whiting_WGS2D/configuration.rds")
+WGS2D.pcfg <- readRDS("scratch/Blue-whiting-WGS2D/configuration.rds")
 
 #Global project configuration
 pcfg <- PredEng.config(WGS2D.pcfg,
-                       project.name= "Blue_whiting_decadal",
+                       project.name= "Blue-whiting-decadal",
                        clim.years=1981:2010,  
                        comp.years=1970:2015,
                        calibrationMethods=c("MeanAdj"),

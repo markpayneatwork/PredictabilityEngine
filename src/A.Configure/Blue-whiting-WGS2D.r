@@ -37,7 +37,7 @@ these.srcs <- readRDS(PE.cfg$path$datasrcs)
 # Generic Configuration
 # ========================================================================
 #Global project configuration
-pcfg <- PredEng.config(project.name= "Blue_whiting_WGS2D",
+pcfg <- PredEng.config(project.name= "Blue-whiting-WGS2D",
                        MOI=3,  #March - ideally should be Feb-March-april average (??)
                        obs.only=TRUE,
                        average.months=FALSE,
