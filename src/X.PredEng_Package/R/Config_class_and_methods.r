@@ -157,7 +157,17 @@ setMethod("show","PredEng.config", function(object) {
                          "data.frame","PElst","data.source","NULL"))) {
       cat(sprintf("%-20s : ",slt))
     } else {return(NULL)}
-    if(is(obj,"formula")) {
+    if(slt=="Models") {
+      tibble(dat.src=obj@.Data)%>%
+        mutate(srcName=map_chr(dat.src,slot,"name"),
+               srcType=map_chr(dat.src,slot,"type"),
+               this.str=paste(srcType,srcName,sep="/")) %>%
+        arrange(this.str) %>%
+        pull(this.str) %>%
+        paste(collapse=", ") %>%
+        cat()
+      cat("\n")
+    } else if(is(obj,"formula")) {
       cat(deparse(obj,width.cutoff=options()$width),"\n")
     } else if(is(obj,"Extent")){
       cat(paste(obj[],collapse=", "),"\n")
