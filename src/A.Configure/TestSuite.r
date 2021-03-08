@@ -69,15 +69,15 @@ pcfg@Observations <-
 lim.dec <- 
   #Setup list of files that we have
   these.srcs %>%
-  filter(group=="SST.Decadal") %>%
+  filter(group=="SST.Decadal" | group=="CMIP6" & var=="tos") %>%
   mutate(fnames=map(sources,slot,"sources")) %>%
   unnest(fnames) %>%
   mutate(realization=map2_chr(sources,fnames, ~ .x@realization.fn(.y)),
          startDate=map2(sources,fnames,~.x@start.date(.y))) %>%
   unnest(startDate) %>%
   #Restrict
-  filter(year(startDate) %in% 1991:1992,
-         srcName %in% c("NorCPM","CESM.DPLE")) %>%
+  filter(year(startDate) %in% 1991:1992 | is.na(startDate),
+         srcName %in% c("NorCPM","CESM.DPLE","historical")) %>%
   arrange(srcName,startDate,realization) %>%
   group_by(srcName,startDate) %>%
   slice_head(n=2) %>%

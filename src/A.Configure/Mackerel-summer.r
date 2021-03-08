@@ -46,7 +46,7 @@ pcfg <- PredEng.config(project.name= "Mackerel-summer",
                        MOI=8,
                        average.months=FALSE,
                        clim.years=1981:2010,  
-                       comp.years=1970:2015,
+                       comp.years=1961:2014,
                        landmask="data_srcs/NMME/landmask.nc",
                        calibrationMethods=c("MeanAdj"))
 
@@ -71,7 +71,7 @@ pcfg@obs.only <- FALSE
 #Decadal models
 pcfg@Models <- 
   filter(these.srcs,
-         group=="SST.Decadal") %>%
+         group=="SST.Decadal" | group=="CMIP6" & var=="tos") %>%
   pull(sources) %>%
   PElst()
 

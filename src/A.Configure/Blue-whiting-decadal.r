@@ -43,7 +43,7 @@ WGS2D.pcfg <- readRDS("scratch/Blue-whiting-WGS2D/configuration.rds")
 pcfg <- PredEng.config(WGS2D.pcfg,
                        project.name= "Blue-whiting-decadal",
                        clim.years=1981:2010,  
-                       comp.years=1970:2015,
+                       comp.years=1961:2014,
                        calibrationMethods=c("MeanAdj"),
                        obs.only=FALSE)
 
@@ -60,7 +60,7 @@ pcfg@persistence.leads <- seq(pcfg@MOI-1,120,by=12)
 #Decadal salinity models
 pcfg@Models <- 
   filter(these.srcs,
-         group=="Sal.Decadal") %>%
+         group=="Sal.Decadal" | group=="CMIP6" & var=="so") %>%
   pull(sources) %>%
   PElst()
 

@@ -449,45 +449,57 @@ for(mdl.name in names(NMME.mdls)){
 #NMME.sst.l[["NASA-GEOS5"]]@realizations <- as.character(1:11)  #12th realization is very intermittant
 #NMME.sst.l[["NCEP-CFSv2"]]@realizations <- as.character(1:24)  #Forecast has 32 but hindcast 24. 
 
+#'========================================================================
+# CMIP6 ####
+#'========================================================================
+#Setup CMIP6 database of filenames first
+#File naming convention, from https://docs.google.com/document/d/1h0r8RZr_f3-8egBMMh7aqLwy3snpD6_MrDz1q8n5XUk/edit
+#<variable_id>_<table_id>_<source_id>_<experiment_id >_<member_id>_<grid_label>[_<time_range>].nc
+CMIP6.db.all <- 
+  tibble(path=dir(here(PE.cfg$dir$datasrc,"CMIP6"),pattern="*.nc",full.names = TRUE)) %>%
+  mutate(file.size=file.size(path),
+         fname=basename(path)) %>%
+  separate(fname,sep="_",
+           into=c("variable","table","source","experiment","member","grid","time_range"))
 
+#Print some summary data
+CMIP6.db.all %>%
+  filter(file.size!=0) %>%
+  count(variable,source,grid) %>%
+  pivot_wider(names_from=c(grid),values_from=n) %>%
+  print(n=Inf)
 
-#Import local CMIP5 metadata base
-#Note that this is generated using F0... and can be
-#legitimately copied from e.g. the HPC
-# CMIP5.db <- readRDS("objects/CMIP5db.rds")
-# 
-# 
-# #Function to make data.sources for CMIP5 slot
-# #20210225. Best approach now is just to generate all of these objects
-# #and throw them in the output tibble.
-# make.CMIP5.srcs <- function(meta,var) {
-#   #Select variable of interest
-#   stopifnot(length(var)==1)
-#   meta <- filter(meta,variable==var)
-#   
-#   #Setup vert selection function
-#   layermids.fn <- function(f) {
-#     #z.idx are the indices, v is the vertical coordinate in metres
-#     ncid <- nc_open(f)
-#     stopifnot(length(ncid$dim$lev)!=0)  #Must be a level variable
-#     stopifnot(ncid$dim$lev$units=="m")  #with units of metres
-#     layer.mids <- ncid$dim$lev$vals
-#     nc_close(ncid)
-#     return(layer.mids)}
-#   
-#   
-#   
-#   #Split the remaining CMIP5 data into individual sources
-#   mdl.l <- split(meta,meta$model)
-#   rtn <- lapply(mdl.l,function(f) {
-#     data.source(name=unique(f$model),
-#                 type="CMIP5",
-# #                layermids.fn = layermids.fn,
-#                 var=var,
-#                 sources=f$fname)
-#   })
-#   return(PElst(rtn))
-# }
+#Setup the CMIP6 template object
+CMIP6.template <- 
+  data.source(type="CMIP6",
+              name="historical",
+              realization.fn = function(f) {
+                gsub("^.*?_.*?_(.*?)_.*$","\\1",basename(f))},
+              start.date=function(f){NA}, #No start date
+              date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
+
+#Remove
+# * Partial files
+# * Only one type of grid - gn
+# * Only historical experiments
+CMIP6.db <- 
+  CMIP6.db.all %>%
+  filter(file.size!=0) %>%
+  filter(experiment=="historical",
+         grid=="gn") %>%
+  nest(data=-c(variable)) %>%
+  #Create objects
+  mutate(fields.are.2D=case_when(variable =="tos"~TRUE,
+                                 variable == "so" ~FALSE,
+                                 TRUE ~ NA)) %>%
+  mutate(data.srcs=pmap(.,function(...) {
+    d <- list(...)
+    new("data.source",CMIP6.template,
+        fields.are.2D=d$fields.are.2D,
+        var=d$variable,
+        sources=d$data$path)})) %>%
+  pull(data.srcs) %>% 
+  PElst()
 
 #'========================================================================
 # Finish ####
@@ -500,7 +512,8 @@ src.list <-
        "Sal.obs"=Sal.obs,
        "Sal.Decadal"=Sal.Decadal,
        "SLP.Decadal"=SLP.Decadal,
-       "SLP.obs"=SLP.obs)
+       "SLP.obs"=SLP.obs,
+       "CMIP6"=CMIP6.db)
 
 src.tb <- 
   enframe(src.list,name="group",value = "sources") %>%
