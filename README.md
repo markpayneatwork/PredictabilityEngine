@@ -15,6 +15,8 @@ Setup
 * Associated packages can be installed using ./src/ZZ.Helpers/Setup_system.r
 * The engine also requires the availability of CDO and NCO as well
 * The ./scratch directory should be configured with lots of space available to serve as storage for intermediate files. This can be, for example, on the HPC scratch.
+* Make sure that the temp drectory that R uses is both fast and has lots of space. The default directory can be overriden (in Linux at least) by setting the TMP variable in ~/.Renviron
+* The version of Rscript used to run the code also needs to be made explicity - softlink the desired version to the project root directory with the name Rscript
 
 Workflow
 ========
