@@ -214,6 +214,22 @@ Sal.Decadal$"MPI-LR" <-
                 return(init.date)},
               date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
 
+
+#New CMIP6 MPI HER runs
+Sal.Decadal$"MPI-ESM1-2-HER" <-
+  new("data.source",SST.Decadal$"MPI-ESM1-2-HER",
+      var="so",
+      fields.are.2D=FALSE,
+      sources=dir(here(PE.cfg$dir$datasrc,"Decadal","MPI-ESM1-2-HER","so"),
+                  pattern="*.nc",full.names = TRUE),
+      z2idx=function(z,f) {
+        ncid <- nc_open(f)
+        lev_bnds <- ncvar_get(ncid,"lev_bnds")
+        nc_close(ncid)
+        idxs <- bounds.to.indices(z,lev_bnds[1,],lev_bnds[2,])
+        return(idxs)})
+      
+
 #CESM-DPLE
 Sal.Decadal$CESM.DPLE.SALT <- 
   data.source(SST.Decadal$CESM.DPLE,
@@ -310,10 +326,12 @@ SLP.Decadal$CESM.DPLE <-
                           pattern="\\.nc$",full.names = TRUE),
               use.timebounds=3,
               realization.fn=function(f) {
-                val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,3]
+                val <- str_match(basename(f),
+                                 "^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,3]
                 return(val)},
               start.date=function(f) {
-                val <- str_match(basename(f),"^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,2]
+                val <- str_match(basename(f),
+                                 "^b.e11.BDP.f09_g16.([0-9]{4}-[0-9]{2}).([0-9]{3}).*$")[,2]
                 init.date <- ymd(sprintf("%s-01",val))
                 return(ceiling_date(init.date,"year"))},  #Round November start up to 1 Jan
               date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
@@ -367,7 +385,8 @@ SST_obs$EN4  <- data.source(name="EN4",
                               return(time.var+ as.Date("1800-01-01"))
                             },
                             sources=dir(here(PE.cfg$dir$datasrc,"Observations","EN4"),
-                                             pattern="\\.zip$",full.names = TRUE,recursive=TRUE))
+                                        pattern="\\.zip$",
+                                        full.names = TRUE,recursive=TRUE))
 
 Sal.obs <- PElst()
 Sal.obs$EN4  <- data.source(name="EN4",
@@ -377,7 +396,8 @@ Sal.obs$EN4  <- data.source(name="EN4",
                             z2idx=SST_obs$EN4@z2idx,
                             date.fn=SST_obs$EN@date.fn,
                             sources=dir(here(PE.cfg$dir$datasrc, "Observations","EN4"),
-                                             pattern="\\.nc$",full.names = TRUE,recursive=TRUE))
+                                        pattern="\\.nc$",
+                                        full.names = TRUE,recursive=TRUE))
 
 #Sea level pressure
 SLP.obs <- PElst()
@@ -437,6 +457,12 @@ CMIP6.db.all %>%
 CMIP6.template <- 
   data.source(type="CMIP6",
               name="historical",
+              z2idx=function(z,f) {
+                ncid <- nc_open(f)
+                lev_bnds <- ncvar_get(ncid,"lev_bnds")
+                nc_close(ncid)
+                idxs <- bounds.to.indices(z,lev_bnds[1,],lev_bnds[2,])
+                return(idxs)},
               realization.fn = function(f) {
                 gsub("^.*?_.*?_(.*?)_.*$","\\1",basename(f))},
               start.date=function(f){NA}, #No start date
@@ -450,8 +476,16 @@ CMIP6.db <-
   CMIP6.db.all %>%
   filter(file.size!=0) %>%
   filter(experiment=="historical",
-         grid=="gn") %>%
-  nest(data=-c(variable)) %>%
+         table=="Omon") %>%
+  #Select native grid in preference
+  nest(data=-c(variable,source,grid)) %>%
+  pivot_wider(names_from="grid",values_from="data") %>%
+  mutate(sel.fnames=case_when(!is.null(gn) ~gn,
+                              is.null(gn) ~gr)) %>%
+  select(variable,source,sel.fnames) 
+
+CMIP6.datasrcs <-
+  CMIP6.db %>%
   #Create objects
   mutate(fields.are.2D=case_when(variable =="tos"~TRUE,
                                  variable == "so" ~FALSE,
@@ -461,7 +495,7 @@ CMIP6.db <-
     new("data.source",CMIP6.template,
         fields.are.2D=d$fields.are.2D,
         var=d$variable,
-        sources=d$data$path)})) %>%
+        sources=d$sel.fnames$path)})) %>%
   pull(data.srcs) %>% 
   PElst()
 
@@ -477,7 +511,7 @@ src.list <-
        "Sal.Decadal"=Sal.Decadal,
        "SLP.Decadal"=SLP.Decadal,
        "SLP.obs"=SLP.obs,
-       "CMIP6"=CMIP6.db)
+       "CMIP6"=CMIP6.datasrcs)
 
 src.tb <- 
   enframe(src.list,name="group",value = "sources") %>%
