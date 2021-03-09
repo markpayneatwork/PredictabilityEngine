@@ -52,30 +52,7 @@ CMIP6.filename.extr <- function(p) {
 #'========================================================================
 # SST.Decadal models ####
 #'========================================================================
-#IPSL and MPI-MR have basically an identifical structure, both being produced
-#originally by SPECS
 SST.Decadal <- PElst()
-# SST.Decadal$IPSL  <- data.source(name="IPSL-CM5A-LR",
-#                                  type="Decadal",
-#                                  sources=list(dir(file.path(decadal.dir,"IPSL-CM5A-LR"),
-#                                                   pattern="\\.nc$",full.names = TRUE)),
-#                                  var="tos",
-#                                  realization.fn=function(f) {
-#                                    underscore_field(f,6)},
-#                                  start.date=function(f){
-#                                    init.str <- gsub("S","",underscore_field(f,5))
-#                                    init.date <- ymd(init.str)
-#                                    return(init.date)},
-#                                  date.fn=function(f,varname="tos") {
-#                                      if(length(f)>1) stop("Function not vectorised")
-#                                      dates <- getZ(brick(f,varname=varname))
-#                                      return(floor_date(dates,"month"))})
-# 
-# SST.Decadal$"MPI-MR" <-  new("data.source",
-#                              SST.Decadal$IPSL,
-#                              name="MPI-ESM-MR",
-#                              sources=list(dir(file.path(decadal.dir,"MPI-ESM-MR"),
-#                                               pattern="\\.nc$",full.names = TRUE)))
 
 #MPI-LR
 #There is a problem with the date-time stamps in one of the files in this hindcast
@@ -104,37 +81,22 @@ SST.Decadal$"MPI-LR" <-
                 return(init.date)},
               date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
 
-#MPI - NCEP requires all three to be specified
-# SST.Decadal$"MPI-NCEP" <- data.source(name="MPI-NCEP-forced",
-#                                       type="Decadal",
-#                                       sources=list(dir(file.path(decadal.dir,"MPI-ESM-LR_NCEP-forced"),
-#                                                        pattern="\\.nc$",full.names = TRUE)),
-#                                       var="var2",
-#                                       realization.fn=function(f){return(rep("r1",length(f)))},
-#                                       date.fn=function(f){
-#                                         stop("Needs to be checked")
-#                                         dates.str <- getZ(brick(f))
-#                                         dates <- ymd(dates.str)
-#                                         day(dates) <- 15  #Adjust to be mid month, rather than end of month
-#                                         #But adjust
-#                                         return(dates)},
-#                                       start.date=function(f){
-#                                         init.yr <- str_match(basename(f),"^dma([0-9]{4})_.*$")[,2]
-#                                         init.date <- as.Date(ISOdate(init.yr,1,1))
-#                                         return(init.date)})
-
-#GFDL is largely in CMIP5 format
-# SST.Decadal$GFDL <-   data.source(name="GFDL-CM2.1",
-#                                   type="Decadal",
-#                                   sources=list(dir(file.path(decadal.dir,"GFDL-CM2.1"),
-#                                                    pattern="\\.nc$",full.names = TRUE)),
-#                                   var="tos",
-#                                   realization.fn=CMIP5_realisation,
-#                                   start.date=function(f){
-#                                     init.yr <- str_match(basename(f),"^.*?_decadal([0-9]{4})_r.*$")[,2]
-#                                     init.date <- as.Date(ISOdate(init.yr,1,1))
-#                                     return(init.date)},
-#                                   date.fn=date.by.brick)
+#New CMIP6 MPI HER runs
+SST.Decadal$"MPI-ESM1-2-HER" <-
+  data.source(name="MPI-ESM1-2-HER",
+              type="Decadal",
+              var="tos",
+              fields.are.2D=TRUE,
+              sources=dir(here(PE.cfg$dir$datasrc,"Decadal","MPI-ESM1-2-HER","tos"),
+                          pattern="*.nc",full.names = TRUE),
+              date.fn =function(f) {return(floor_date(cdo.dates(f),"month"))},
+              start.date=function(f){
+                syear <- gsub("^s([[:digit:]]{4})-r.*$",
+                              "\\1",
+                              underscore_field(basename(f),5))
+                return(as.Date(ISOdate(as.numeric(syear)+1,1,1)))}, #Round  up to 1 Jan
+              realization.fn = function(f) {
+                gsub("^.*_s[[:digit:]]{4}-(r.*?)_.*$","\\1",basename(f))})
 
 #Add in the CESM DPLE
 SST.Decadal$CESM.DPLE <-   
@@ -219,6 +181,7 @@ SST.Decadal$ECEarth3 <-
                               underscore_field(basename(f),5))
                 return(as.Date(ISOdate(as.numeric(syear)+1,1,1)))}, #Round  up to 1 Jan
               date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
+
 
 
 #'========================================================================
