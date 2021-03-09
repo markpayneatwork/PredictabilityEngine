@@ -13,7 +13,7 @@ PE.config.summary<- function(...){
       show(this)
       log_msg("---------------------\n")}
     if(is(this,"data.source")) {
-      log_msg("Data source          : %s (%s) \n",this@name,this@type)}
+      log_msg("Data source          : %s/%s \n",this@type,this@name)}
     if(is(this,"spatial.domain"))     {
       log_msg("Spatial domain       : %s (%s)\n",this@name,this@desc)}
     if(is.numeric(this)) {
