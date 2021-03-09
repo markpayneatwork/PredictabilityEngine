@@ -58,7 +58,7 @@ PE.config.summary(pcfg,this.datasrc)
 # Setup ####
 #'========================================================================
 #Setup databases
-if(this.srcType=="Observations") {  #Obs are stored directly in the calibration table
+if(this.datasrc@type=="Observations") {  #Obs are stored directly in the calibration table
   extr.tbl <- 
     PE.db.tbl(pcfg,PE.cfg$db$calibration,src=NULL) %>%
     filter(is.na(calibrationMethod))
