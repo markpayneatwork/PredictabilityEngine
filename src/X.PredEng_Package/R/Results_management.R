@@ -24,7 +24,7 @@ PE.db.path <- function(object,table,src) {
 #' @export
 #' @rdname PE.db
 PE.db.list <- function(object,table) {
-  dir(object@scratch.dir,pattern=sprintf("^%s_%s",object@project.name,table),full.names = TRUE)
+  dir(here(object@scratch.dir),pattern=sprintf("^%s_%s",object@project.name,table),full.names = TRUE)
 }
 
 

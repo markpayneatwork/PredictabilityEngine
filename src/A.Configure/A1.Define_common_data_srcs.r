@@ -495,7 +495,7 @@ CMIP6.db <-
 CMIP6.datasrcs <-
   #Nest to make things easier to work with
   CMIP6.db %>%
-  nest(fnames=-c(variable,source,grid)) %>%
+  nest(fnames=-c(variable,grid)) %>%
   #Create objects
   mutate(fields.are.2D=case_when(variable =="tos"~TRUE,
                                  variable == "so" ~FALSE,
