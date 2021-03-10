@@ -472,20 +472,24 @@ CMIP6.template <-
 # * Partial files
 # * Only one type of grid - gn
 # * Only historical experiments
+grid.ranking <- c("gn","gr","gr1")
+assert_that(all(CMIP6.db.all$grid %in% grid.ranking),
+            msg="Unknown grid type found")
 CMIP6.db <- 
   CMIP6.db.all %>%
   filter(file.size!=0) %>%
   filter(experiment=="historical",
          table=="Omon") %>%
-  #Select native grid in preference
-  nest(data=-c(variable,source,grid)) %>%
-  pivot_wider(names_from="grid",values_from="data") %>%
-  mutate(sel.fnames=case_when(!is.null(gn) ~gn,
-                              is.null(gn) ~gr)) %>%
-  select(variable,source,sel.fnames) 
+  #Choose grid preferred grid
+  mutate(grid.pref=as.numeric(factor(grid,grid.ranking)))  %>%
+  group_by(variable,table,source) %>%
+  filter(grid.pref==min(grid.pref)) %>%  #Take the most preferrred option
+  ungroup()
 
 CMIP6.datasrcs <-
+  #Nest to make things easier to work with
   CMIP6.db %>%
+  nest(fnames=-c(variable,source,grid)) %>%
   #Create objects
   mutate(fields.are.2D=case_when(variable =="tos"~TRUE,
                                  variable == "so" ~FALSE,
@@ -495,7 +499,7 @@ CMIP6.datasrcs <-
     new("data.source",CMIP6.template,
         fields.are.2D=d$fields.are.2D,
         var=d$variable,
-        sources=d$sel.fnames$path)})) %>%
+        sources=d$fnames$path)})) %>%
   pull(data.srcs) %>% 
   PElst()
 
