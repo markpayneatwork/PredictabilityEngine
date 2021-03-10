@@ -450,11 +450,16 @@ CMIP6.db.all <-
   mutate(file.size=file.size(path),
          fname=basename(path)) %>%
   separate(fname,sep="_",
-           into=c("variable","table","source","experiment","member","grid","time_range"))
+           into=c("variable","table","source","experiment","member","grid","time_range")) %>%
+  #Remove empty files
+  filter(file.size!=0) %>%
+  #Get grid info
+  mutate(sinfo=map(path,~cdo("sinfo",.x)),
+         grid.info=map_chr(sinfo,~.x[which(grepl("Grid coordinates",.x))+1]),
+         grid.type=str_match(grid.info,"^.*?: (.*?) +:.*?$")[,2])
 
 #Print some summary data
 CMIP6.db.all %>%
-  filter(file.size!=0) %>%
   count(variable,source,grid) %>%
   pivot_wider(names_from=c(grid),values_from=n) %>%
   print(n=Inf)
@@ -483,9 +488,9 @@ assert_that(all(CMIP6.db.all$grid %in% grid.ranking),
             msg="Unknown grid type found")
 CMIP6.db <- 
   CMIP6.db.all %>%
-  filter(file.size!=0) %>%
   filter(experiment=="historical",
-         table=="Omon") %>%
+         table=="Omon",
+         grid.type!="unstructured") %>%
   #Choose grid preferred grid
   mutate(grid.pref=as.numeric(factor(grid,grid.ranking)))  %>%
   group_by(variable,table,source) %>%
