@@ -452,11 +452,11 @@ CMIP6.db.all <-
   separate(fname,sep="_",
            into=c("variable","table","source","experiment","member","grid","time_range")) %>%
   #Remove empty files
-  filter(file.size!=0) %>%
-  #Get grid info
-  mutate(sinfo=map(path,~cdo("sinfo",.x)),
-         grid.info=map_chr(sinfo,~.x[which(grepl("Grid coordinates",.x))+1]),
-         grid.type=str_match(grid.info,"^.*?: (.*?) +:.*?$")[,2])
+  filter(file.size!=0)# %>%
+  # #Get grid info
+  # mutate(sinfo=map(path,~cdo("sinfo",.x)),
+  #        grid.info=map_chr(sinfo,~.x[which(grepl("Grid coordinates",.x))+1]),
+  #        grid.type=str_match(grid.info,"^.*?: (.*?) +:.*?$")[,2])
 
 #Print some summary data
 CMIP6.db.all %>%
@@ -483,19 +483,24 @@ CMIP6.template <-
 # * Partial files
 # * Only one type of grid - gn
 # * Only historical experiments
+# * Models on unstructured grids
 grid.ranking <- c("gn","gr","gr1")
 assert_that(all(CMIP6.db.all$grid %in% grid.ranking),
             msg="Unknown grid type found")
+unstructured.sources <- c("AWI-CM-1-1-MR","AWI-ESM-1-1-LR")
 CMIP6.db <- 
   CMIP6.db.all %>%
   filter(experiment=="historical",
-         table=="Omon",
-         grid.type!="unstructured") %>%
+         table=="Omon") %>%
+  #Remove the native grid for sources running on unstructured grids
+  #CDO can't interpolate on these
+  filter(!(source %in% unstructured.sources),
+         grid=="gn") %>%
   #Choose grid preferred grid
   mutate(grid.pref=as.numeric(factor(grid,grid.ranking)))  %>%
   group_by(variable,table,source) %>%
   filter(grid.pref==min(grid.pref)) %>%  #Take the most preferrred option
-  ungroup()
+  ungroup() 
 
 CMIP6.datasrcs <-
   #Nest to make things easier to work with
