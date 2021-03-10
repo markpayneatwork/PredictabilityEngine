@@ -52,6 +52,7 @@ CMIP6.filename.extr <- function(p) {
 #'========================================================================
 # SST.Decadal models ####
 #'========================================================================
+log_msg("Decadal SST models...\n")
 SST.Decadal <- PElst()
 
 #MPI-LR
@@ -187,6 +188,7 @@ SST.Decadal$ECEarth3 <-
 #'========================================================================
 # Salinity  ####
 #'========================================================================
+log_msg("Decadal Salinity models...\n")
 Sal.Decadal <- PElst()
 
 #MPI-LR
@@ -314,6 +316,7 @@ Sal.Decadal$ECEarth3 <-
 #'========================================================================
 # Sea Level Pressure ####
 #'========================================================================
+log_msg("Decadal SLP models...\n")
 SLP.Decadal <- PElst()
 
 #Add in the CESM DPLE
@@ -362,6 +365,7 @@ SLP.Decadal$CESM.DPLE <-
 #'========================================================================
 # Observations ####
 #'========================================================================
+log_msg("Observations...\n")
 SST_obs <- PElst()
 SST_obs$HadISST <- data.source(name="HadISST",
                                type="Observations",
@@ -409,6 +413,7 @@ SLP.obs$HadSLP2 <- data.source(name="HadSLP2",
 #'========================================================================
 # NMME ####
 #'========================================================================
+log_msg("NMME...\n")
 library(readr)
 NMME.cfg <- 
   read_csv2(here(PE.cfg$dir$datasrc,"NMME","NMME_SST_urls.csv"),
@@ -435,6 +440,7 @@ for(mdl.name in names(NMME.mdls)){
 #'========================================================================
 # CMIP6 ####
 #'========================================================================
+log_msg("CMIP6...\n")
 #Setup CMIP6 database of filenames first
 #File naming convention, from https://docs.google.com/document/d/1h0r8RZr_f3-8egBMMh7aqLwy3snpD6_MrDz1q8n5XUk/edit
 #<variable_id>_<table_id>_<source_id>_<experiment_id >_<member_id>_<grid_label>[_<time_range>].nc
@@ -506,6 +512,7 @@ CMIP6.datasrcs <-
 #'========================================================================
 # Finish ####
 #'========================================================================
+log_msg("Finalising...\n")
 #Combine into a tibble for storage and selection
 src.list <- 
   list("SST.obs"=SST_obs,
