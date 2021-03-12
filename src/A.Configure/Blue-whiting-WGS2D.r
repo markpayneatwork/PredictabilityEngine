@@ -135,8 +135,7 @@ stat.l <- PElst()
 
 #Average salinity
 stat.l[["MeanSal"]]  <- spatial.mean(name="Mean-salinity",
-                                     desc="Mean salinity",
-                                     sources = 0:1)
+                                     desc="Mean salinity")
 
 #Setup Miesner & Payne habitat model
 require(mgcv)
