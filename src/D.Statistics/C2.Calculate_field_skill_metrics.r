@@ -97,18 +97,36 @@ obs.dat.bare <-
 # Skill Functions ####
 #'========================================================================
 #Correlation coefficent, with resampling
-resamp.cor <- function(brick.obs,brick.pred) {
-  # brick.obs <- brick(this.dat$field.obs)
-  # brick.pred <- brick(this.dat$field.pred)
-  # 
-  assert_that(nlayers(brick.obs)==nlayers(brick.pred),
+skill.fn <- function(obs,pred) {
+  # obs <- this.dat$field.obs
+  # pred <- this.dat$field.pred
+  
+  #Setup
+  obs.b <- brick(obs)
+  pred.b <- brick(pred)
+  assert_that(nlayers(obs.b)==nlayers(pred.b),
               msg="Mismatch in number of layers")
-  rtn <- tibble(idxs=map(1:n.samples,~sample(1:nlayers(brick.obs),nlayers(brick.obs),replace=TRUE)),
-         cor=map(idxs,~corLocal(brick.obs[[.x]],
-                                brick.pred[[.x]],
-                                method="pearson",
-                                ngb=1)))
-  return(rtn$cor)
+  
+  #Calculate metrics
+  draw.idxs <- map(1:n.samples,~sample(1:nlayers(obs.b),nlayers(obs.b),replace=TRUE))
+  rtn <- list()
+  rtn$pearson.correlation <- corLocal(obs.b,pred.b,method="pearson",ngb=1)
+  rtn$pearson.correlation.draws <-
+    map(draw.idxs,
+        ~corLocal(obs.b[[.x]],
+                  pred.b[[.x]],
+                  method="pearson",
+                  ngb=1)) %>%
+    brick()
+  rtn$MSE <- mean((obs.b-pred.b)^2)
+  rtn$MSE.draws <-
+    map(draw.idxs,
+        ~mean((obs.b[[.x]]-pred.b[[.x]])^2)) %>%
+    brick()
+  rtn %>%
+    enframe(name = "metric",value="field") %>%
+    pivot_wider(names_from="metric",values_from="field") %>%
+    return()
 }
 
 #'========================================================================
@@ -163,17 +181,11 @@ for(i in seq(n.groups)) {
   #Calculate metrics
   this.met <-
     this.dat %>%
-    group_by(srcType,srcName,calibrationMethod,realization,lead,
-             spName,statName,resultName,.drop=TRUE) %>%
-    summarise(brick.obs=list(brick(field.obs)),
-              brick.pred=list(brick(field.pred)),
-              pearson.correlation=list(corLocal(brick.obs[[1]],
-                                                brick.pred[[1]],
-                                                ngb=1)),
-              pearson.corrrelation.draws=resamp.cor(brick.obs[[1]],
-                                                    brick.pred[[1]]),
-              MSE=list(mean((brick.obs[[1]]-brick.pred[[1]])^2)),
-              .groups="keep") 
+    nest(data=-c(srcType,srcName,calibrationMethod,realization,lead,
+         spName,statName,resultName)) %>%
+    mutate(metrics=map(data,~skill.fn(.x$field.obs,.x$field.pred))) %>%
+    dplyr::select(-data) %>% 
+    unnest(metrics)
   
   #Store results
   met.l[[i]] <- this.met
@@ -185,8 +197,7 @@ for(i in seq(n.groups)) {
 
 #Bind
 mdl.mets <-
-  bind_rows(met.l) %>%
-  select(-starts_with("brick"))
+  bind_rows(met.l)
 
 #'========================================================================
 # Skill Score ####
@@ -218,7 +229,8 @@ SS.dat <-
   select(-srcType,-srcName) %>%
   left_join(x=mdl.mets,
             by=c("spName","statName","resultName")) %>%
-  mutate(MSSS=map2(MSE,MSE.clim,~ 1- .x/.y))
+  mutate(MSSS=map2(MSE,MSE.clim,~ 1- .x/.y),
+         MSSS.draws=map2(MSE.draws,MSE.clim,~ 1- .x/.y))
 
 #'========================================================================
 # Complete ####
@@ -227,7 +239,8 @@ SS.dat <-
 these.mets <- 
   SS.dat %>%
   select(-MSE.clim) %>%
-  pivot_longer(-group_vars(.),names_to = "metric",values_to = "field") %>%
+  pivot_longer(-c(srcType,srcName,calibrationMethod,realization,lead,spName,statName,resultName),
+               names_to = "metric",values_to = "field") %>%
   ungroup()
 PE.db.appendTable(pcfg,PE.cfg$db$metrics.field,src=NULL,dat=these.mets)
 
