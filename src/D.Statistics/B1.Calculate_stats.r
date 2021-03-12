@@ -92,9 +92,7 @@ PE.config.summary(pcfg,
                   "spName"=sp.id,
                   "statName"=stat.id,
                   "srcType"=this.srcType,
-                  "srcName"=this.srcName,
-                  "calibrationMethod(s)"=paste0(this.stat@calibration,collapse=", "),
-                  "sources"=paste0(this.stat@sources,collapse=", "))
+                  "srcName"=this.srcName)
 log_msg("\n\nSpatial domain--------------------------------------------\n")
 print(this.sp)
 log_msg("\n\nStatistic-------------------------------------------------\n")
@@ -134,49 +132,19 @@ log_msg("Deletion complete in %0.3fs.\n\n",this.query.time[3])
 #'========================================================================
 log_msg("Getting list of data to process...\n")
 
-#Get calibration methods
-these.calibs <- 
-  if(length(this.stat@calibration)==0) {
-    pcfg@calibrationMethods
-  }  else {
-    this.stat@calibration} 
-
-#SQL table
-cal.SQL <-  #Calibrations x realisations frags
-  expand_grid(calibration=these.calibs,
-              sources=this.stat@sources) %>%
-  mutate(WHERE.sel=  #Selects appropriate data
-           case_when(sources==0 ~ "`srcType`='Observations' AND `calibrationMethod` IS NULL",
-                     sources==1 ~ "`srcType`='Observations'", #Calibration method selected in next step
-                     sources==2 ~ paste("NOT(`realization` IN ('realmean', 'ensmean')) AND",
-                                        "NOT(`srcType`= 'Observations')"),
-                     sources==3 ~ "`realization` = 'realmean'",
-                     sources==4 ~ "`realization` = 'ensmean'",
-                     TRUE~ as.character(NA)),
-         WHERE.calib= #Only include desired calibration methods, if relevant
-           case_when(sources>=1 ~ sprintf("AND `calibrationMethod` LIKE '%s%%'",calibration),
-                     TRUE~""),
-         SQL.cmd=sprintf("SELECT pKey FROM %s WHERE %s %s AND `srcType`='%s' AND `srcName`='%s'",
-                         PE.cfg$db$calibration,
-                         WHERE.sel,
-                         WHERE.calib,
-                         this.srcType,
-                         this.srcName))
-
-#Now get list of pKeys to process
-this.query.time <- 
-  system.time({
-    cal.SQL <- 
-      cal.SQL %>%
-      mutate(pKeys=map(SQL.cmd,~ PE.db.getQuery(pcfg,PE.cfg$db$calibration,src=NULL,.x)),
-             nKeys=map_dbl(pKeys,nrow)) 
-  })
-log_msg("Complete in %0.3fs.\n",this.query.time[3])
-
-#And generate a todo list
+#Setup query to get primary keys
+calib.tbl <- PE.db.tbl(pcfg,PE.cfg$db$calib)
+pKey.tbl <-
+  calib.tbl %>%
+  filter(srcType==this.srcType,
+         srcName==this.srcName)
+if(!this.stat@apply.to.realisations) {  #Filter out realisations
+  pKey.tbl <-
+    pKey.tbl %>%
+    filter(realization %in% c("ensmean","realmean") | is.na(realization))
+}
 todo.pKeys <- 
-  cal.SQL %>%
-  unnest(pKeys) %>% 
+  pKey.tbl %>%
   pull(pKey)
 dmp <- assert_that(!any(duplicated(todo.pKeys)),msg="Expecting unique set of pKeys to process")
 

@@ -189,21 +189,20 @@ stat.jobs.fn <- function(...){
               msg="No statistics defined. Must be at least one.")
 
   #Extract statistics
-  todo.stats <-
+  these.stats <- 
     tibble(st=pcfg@statistics@.Data) %>%
     mutate(statName=map_chr(st,slot,"name"),
-           st.request=map(st,slot,"spatial.polygons"),
            st.uses.globalROI=map_lgl(st,slot,"use.globalROI"),
-           st.returns.field=map_lgl(st,returns.field),
-           st.request.mt=map_lgl(st.request, ~length(.x)==0),
-           st.request.na=map_lgl(st.request, ~any(is.na(.x))),
-           #Merge in defaults
-           spName=map_if(st.request,st.request.mt, ~ pcfg@spatial.polygons$name),
-           spName=map_if(spName,st.request.na,~ NULL),
+           st.request=map(st,slot,"spatial.polygons"),
+           st.request.is.mt=map_lgl(st.request, ~length(.x)==0),
+           st.request.is.na=map_lgl(st.request, ~any(is.na(.x))),
+           #Set spatial polygons by merging in defaults
+           spName=map_if(st.request,st.request.is.mt, ~ pcfg@spatial.polygons$name),
+           spName=map_if(spName,st.request.is.na,~ NULL),
            spName=map_if(spName,st.uses.globalROI, ~ c(.x,PE.cfg$misc$globalROI))) %>%
     unnest(spName)
-
-  return(todo.stats)
+  
+  return(these.stats)
 }
 
 tar.l$stat.jobs <-
@@ -274,8 +273,8 @@ if(pcfg@obs.only) {
   tar.l <- tar.l[!(names(tar.l) %in% obs.only.drop)]
 }
 
-#Turn off fields if there aren't any
-if(!any(any(stat.jobs.fn()$st.returns.field))) {
+#Turn off field metrics if there aren't any
+if(!any(map_lgl(pcfg@statistics,returns.field))) {
   tar.l <- tar.l[(names(tar.l)!="field.metrics")]
 }
 

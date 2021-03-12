@@ -4,11 +4,7 @@
 #'
 #' @param name Name of the statistics class. Cannot contain spaces, underscores or dots. Must be less than 20 char
 #' @param desc Description of the statistics class. 
-#' @param sources Tells what sort of data source to apply the statistics to. 0 = Uncalibrated
-#' observations  1 = Calibrated observations  2 = Individual realisations  
-#' 3 = Realization means 4 = Ensemble means. 
-#' @param calibration Choose the calibration method to base the statistic on. Defaults to NULL,
-#' indicating to use all available calibrations
+#' @param apply.to.realisations Should we apply the statistic to all realisations? Realmeans, Ensmean and Observations (including calibrated observations) are always calculated. 
 #' @param use.globalROI Indicates whether the stat should also be calculated on
 #' global basis, in addition to those specified by this.stat@spatial.polygons slot.
 #' @param spatial.polygons The names of spatial polygons to run this metric with. Setting this to 
@@ -22,13 +18,11 @@ stat <-
   setClass("stat",
            slots=list(name="character",
                       desc="character",
-                      sources="numeric",
-                      calibration="character",
+                      apply.to.realisations="logical",
                       use.globalROI="logical",
                       spatial.polygons="character",
-                      retain.field="logical")
-,
-           prototype = list(sources=0:4,  #Default to all
+                      retain.field="logical"),
+           prototype = list(apply.to.realisations=TRUE,
                             retain.field=FALSE,
                             use.globalROI=FALSE),
            validity = function(object) {
@@ -39,12 +33,8 @@ stat <-
                validate_that(nchar(object@name)<20,msg="Object name must not exceed 20 characters"),
                validate_that(!is_empty(object@desc),msg=".description slot must not be empty"),
                validate_that(!is_empty(object@name),msg=".@name slot must not be empty"),
-               validate_that(all(object@calibration %in% PE.cfg$validity$calibrationMethod) | length(object@calibration)==0,
-                             msg="Unsupported calibration method selected"),
                validate_that(!(any(is.na(object@spatial.polygons)) & !object@use.globalROI),
-                             msg="No spatial polygons selected by this stat. Specify a polygon or use the global ROI."),
-               validate_that(all(object@sources %in% 0:4),
-                             msg="Valid choices for source slot are 0,1, 2, 3 and 4"))
+                             msg="No spatial polygons selected by this stat. Specify a polygon or use the global ROI."))
              err.idxs <- map_lgl(err.msg,is.character)
              if(all(!err.idxs)) return(TRUE) else unlist(err.msg[err.idxs])
            })

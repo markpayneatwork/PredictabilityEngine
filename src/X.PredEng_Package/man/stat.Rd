@@ -9,12 +9,7 @@
 
 \item{desc}{Description of the statistics class.}
 
-\item{sources}{Tells what sort of data source to apply the statistics to. 0 = Uncalibrated
-observations  1 = Calibrated observations  2 = Individual realisations  
-3 = Realization means 4 = Ensemble means.}
-
-\item{calibration}{Choose the calibration method to base the statistic on. Defaults to NULL,
-indicating to use all available calibrations}
+\item{apply.to.realisations}{Should we apply the statistic to all realisations? Realmeans, Ensmean and Observations are always calculated.}
 
 \item{use.globalROI}{Indicates whether the stat should also be calculated on
 global basis, in addition to those specified by this.stat@spatial.polygons slot.}
