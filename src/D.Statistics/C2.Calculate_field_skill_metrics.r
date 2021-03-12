@@ -47,6 +47,13 @@ if(interactive()) {
   debug.mode <- FALSE
 }
 
+#Scale back number of samples to increase debugging speed
+if(pcfg@project.name=="TestSuite") {
+  n.samples <- 10
+} else {
+  n.samples <- 1000
+}
+
 #'========================================================================
 # Setup ####
 #'========================================================================
@@ -87,6 +94,24 @@ obs.dat.bare <-
   select(spName,statName,resultName,ym,field)
 
 #'========================================================================
+# Skill Functions ####
+#'========================================================================
+#Correlation coefficent, with resampling
+resamp.cor <- function(brick.obs,brick.pred) {
+  # brick.obs <- brick(this.dat$field.obs)
+  # brick.pred <- brick(this.dat$field.pred)
+  # 
+  assert_that(nlayers(brick.obs)==nlayers(brick.pred),
+              msg="Mismatch in number of layers")
+  rtn <- tibble(idxs=map(1:n.samples,~sample(1:nlayers(brick.obs),nlayers(brick.obs),replace=TRUE)),
+         cor=map(idxs,~corLocal(brick.obs[[.x]],
+                                brick.pred[[.x]],
+                                method="pearson",
+                                ngb=1)))
+  return(rtn$cor)
+}
+
+#'========================================================================
 # Loop over data sources ####
 #'========================================================================
 #To lower the computational load, we don't load all of the data into
@@ -95,12 +120,10 @@ log_msg("Processing in chunks...\n")
 
 #First get an overview of what's available and what we actually want to
 #process
-#Note that we can't tell, a priori, what result could be a field
-#and what could be empty. Instead we work this into the processing.
-#Note that we also loop by leadIdx, to simplify further
 mdl.meta <-
   stats.tbl %>%
-  filter(srcType!="Observations") %>% 
+  filter(srcType!="Observations",
+         !is.na(field)) %>% #Only want the fields
   select(-field,-value) %>%
   collect() %>%
   #Restrict to comparison years
@@ -147,6 +170,8 @@ for(i in seq(n.groups)) {
               pearson.correlation=list(corLocal(brick.obs[[1]],
                                                 brick.pred[[1]],
                                                 ngb=1)),
+              pearson.corrrelation.draws=resamp.cor(brick.obs[[1]],
+                                                    brick.pred[[1]]),
               MSE=list(mean((brick.obs[[1]]-brick.pred[[1]])^2)),
               .groups="keep") 
   
