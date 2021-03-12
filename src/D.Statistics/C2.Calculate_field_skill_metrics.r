@@ -141,6 +141,7 @@ log_msg("Processing in chunks...\n")
 mdl.meta <-
   stats.tbl %>%
   filter(srcType!="Observations",
+         srcName=="ensmean",
          !is.na(field)) %>% #Only want the fields
   select(-field,-value) %>%
   collect() %>%
