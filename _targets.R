@@ -86,24 +86,23 @@ tar.l$observations <-
                                srcName=obs.src@name))})
 
 #Model sources
-if(length(pcfg@Models)!=0 & !pcfg@obs.only){
-  tar.l$decadal.srcs <-
-    tar_target(model.srcs,
-               pcfg@Models,
-               iteration = "list")
-  
-  tar.l$extract.decadal <-
-    tar_target(model.extracts,
-               ext.script(here('src/B.Extract/B1.CDO_based_extraction.r'),
-                          model.srcs,
-                          args=c(srcType=model.srcs@type,
-                                 srcName=model.srcs@name)),
-               pattern=map(model.srcs))
-  
-} 
+tar.l$model.srcs <-
+  tar_target(model.srcs,
+             pcfg@Models,
+             iteration = "list")
+
+tar.l$model.extracts <-
+  tar_target(model.extracts,
+             ext.script(here('src/B.Extract/B1.CDO_based_extraction.r'),
+                        model.srcs,
+                        args=c(srcType=model.srcs@type,
+                               srcName=model.srcs@name)),
+             pattern=map(model.srcs))
+
+
 
 #Realisation means
-tar.l$realmeans <-
+tar.l$model.realmeans <-
   tar_target(model.realmeans,
              ext.script(here("src/C.Calibrate/A1.Calculate_realmeans.r"),
                         model.extracts,
@@ -195,6 +194,7 @@ stat.jobs.fn <- function(...){
     mutate(statName=map_chr(st,slot,"name"),
            st.request=map(st,slot,"spatial.polygons"),
            st.uses.globalROI=map_lgl(st,slot,"use.globalROI"),
+           st.returns.field=map_lgl(st,returns.field),
            st.request.mt=map_lgl(st.request, ~length(.x)==0),
            st.request.na=map_lgl(st.request, ~any(is.na(.x))),
            #Merge in defaults
@@ -227,12 +227,15 @@ tar.l$rollmean <-
                         stats))
 
 #Calculation verification metrics
-if(!pcfg@obs.only) {
-tar.l$metrics <-
-  tar_target(metrics,
+tar.l$scalar.metrics <-
+  tar_target(scalar.metrics,
              ext.script(here("src/D.Statistics/C1.Calculate_scalar_skill_metrics.r"),
                         stats,rollmean))
-}
+
+tar.l$field.metrics <-
+    tar_target(field.metrics,
+               ext.script(here("src/D.Statistics/C2.Calculate_field_skill_metrics.r"),
+                          stats,rollmean))
 
 #'========================================================================
 # Outputs ####
@@ -249,16 +252,34 @@ tar.l$metrics <-
 # #there are no metrics to calculate
 
 #Markdown report
-if(!pcfg@obs.only) {
-  tar.l$report <-
-    tar_target(report,
-               ext.script(here("src/E.Postprocessing/B1.Visualise_scalar_skill_metrics.r"),
-                          metrics,stats))
-}
+tar.l$report <-
+  tar_target(report,
+             ext.script(here("src/E.Postprocessing/B1.Visualise_scalar_skill_metrics.r"),
+                        scalar.metrics))
+
+
 
 #'========================================================================
-# Make a Plan! ####
+# Make a Plan! And then change it. ####
 #'========================================================================
+#Synchronise list and target names
+names(tar.l) <- map_chr(tar.l,~get("name",envir=.x$settings))
+
+#If only running obs, reduce the number of targets
+if(pcfg@obs.only) {
+  obs.only.drop <-
+    c("report","scalar.metrics","field.metrics",
+      "ensmean.src","ensmeans",
+      "model.srcs","model.extracts","model.realmeans","extraction.databases")
+  tar.l <- tar.l[!(names(tar.l) %in% obs.only.drop)]
+}
+
+#Turn off fields if there aren't any
+if(!any(any(stat.jobs.fn()$st.returns.field))) {
+  tar.l <- tar.l[(names(tar.l)!="field.metrics")]
+}
+
+#Done!
 tar.l
 
 
