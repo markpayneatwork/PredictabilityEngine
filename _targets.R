@@ -278,6 +278,11 @@ if(!any(map_lgl(pcfg@statistics,returns.field))) {
   tar.l <- tar.l[(names(tar.l)!="field.metrics")]
 }
 
+#Turn off scalar metrics if there aren't any
+if(!any(map_lgl(pcfg@statistics,returns.scalar))) {
+  tar.l <- tar.l[!(names(tar.l) %in% c("scalar.metrics","report"))]
+}
+
 #Done!
 tar.l
 

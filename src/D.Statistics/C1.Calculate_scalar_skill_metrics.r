@@ -110,8 +110,8 @@ obs.dat.bare <- #Simplified version for matching with forecasts
   dplyr::select(spName,statName,resultName,ym,value)
 
 #Some checks
-if(nrow(obs.dat.all)!=0) quit(status=0)  #Stop execution
-assert_that(length(unique(obs.dat$srcName))==1,msg="Multiple source names detected")
+assert_that(length(unique(obs.dat$srcName))>0,msg="Cannot find observational data")
+assert_that(length(unique(obs.dat$srcName))==1,msg="Multiple observational sources detected")
 assert_that(all(month(obs.dat$date) %in% pcfg@MOI),
             msg="Mismatch between months in database and MOI.")
 
