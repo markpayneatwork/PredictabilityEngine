@@ -86,7 +86,8 @@ pcfg@retain.realizations <- TRUE
 statsum.l <- PElst()
 statsum.l[[1]] <- pass.through(name="Field",
                                desc="SST field",
-                               use.globalROI = TRUE)
+                               use.globalROI = TRUE,
+                               do.field.metrics = TRUE)
 
 pcfg@statistics <- statsum.l
 

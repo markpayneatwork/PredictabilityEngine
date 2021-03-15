@@ -89,7 +89,8 @@ pcfg@vert.range <- c(250,600)
 statsum.l <- PElst()
 statsum.l[[1]] <- pass.through(name="Field",
                                desc="Salinity anomaly",
-                               use.globalROI = TRUE)
+                               use.globalROI = TRUE,
+                               do.field.metrics = TRUE)
 
 pcfg@statistics <- statsum.l
 

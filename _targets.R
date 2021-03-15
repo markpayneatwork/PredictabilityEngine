@@ -281,7 +281,7 @@ if(pcfg@obs.only) {
 }
 
 #Turn off field metrics if there aren't any
-if(!any(map_lgl(pcfg@statistics,returns.field))) {
+if(!any(map_lgl(pcfg@statistics,slot,"do.field.metrics"))) {
   tar.l <- tar.l[(names(tar.l)!="field.metrics")]
 }
 
