@@ -56,7 +56,8 @@ define_dir(pcfg@scratch.dir)
 #' Observations
 pcfg@Observations <- 
   filter(these.srcs,
-         group=="Sal.obs",srcName=="EN4") %>%
+         group=="Sal.obs",
+         srcName=="ORAS4") %>%
   pull(sources) %>%
   pluck(1)
 
@@ -301,7 +302,6 @@ stat.l$SDM <-
               desc="Miesner and Payne 2018 habitat model applied to the GlobalROI",
               fn=GAM.sdm.fn,
               resources=GAM.sdm.resources,
-              sources = 0:1,
               use.globalROI = TRUE,
               retain.field=TRUE)
 

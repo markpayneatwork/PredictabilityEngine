@@ -125,9 +125,9 @@ timebounds.to.time <- function(this.obj,f){
 }
 
 
-#' Convert z-layer bounds to layer indices
+#' Convert vertical coordinates to layer indices
 #'
-#' Converts a vertical range (two elements) to the indices of the vertical levels defined by their
+#' bounds.to.indices converts a vertical range (two elements) to the indices of the vertical levels defined by their
 #' upper and lower bounds. A layer is included if the bound includes more than 50% of it
 #'
 #' @param z.range the vertical range
@@ -135,6 +135,7 @@ timebounds.to.time <- function(this.obj,f){
 #' @param layer.bottom a vector defining the depths of the bottoms of the layers
 #'
 #' @return
+#' @name verticalLayers
 #' @export
 bounds.to.indices <- function(z.range,layer.top,layer.bottom) {
   #Check inputs
@@ -155,6 +156,23 @@ bounds.to.indices <- function(z.range,layer.top,layer.bottom) {
   assert_that(nrow(keep.layers)>0,msg="Problem with z.range specification")
   return(keep.layers$idx)
 }
+
+
+#' 
+#' 
+#' midpoints.to.indices works with midpoints of the layers, instead of bounds
+#' 
+#' @param midpoints A vector of the midpoints
+#'
+#' @return
+#' @export
+#' @rdname verticalLayers
+midpoints.to.indices <- function(z.range,midpoints) {
+  #We take a nearest neighbour approach. This is not perfect, but in most cases it will be ok
+  idxs <- apply(outer(midpoints,z.range,"-")^2,2,which.min)
+  return(idxs)
+}
+
 
 #' Test Data Source
 #'
@@ -181,7 +199,8 @@ test.data.source <- function(obj,f="missing"){
 #' Extract data.source objecct
 #'
 #' Extract the correct datasource object from the configuration specifying the
-#' source type and source name.
+#' source type and source name. Note that this includes both the model slot and
+#' the observations slot.
 #'
 #' @param object PredEng.config object
 #' @param this.srcType Type of the data.source to match
@@ -191,7 +210,7 @@ test.data.source <- function(obj,f="missing"){
 #' @export
 PE.get.datasrc <- function(object,this.srcType,this.srcName) {
   datasrc.sel <- 
-    tibble(data.src=object@Models@.Data) %>%
+    tibble(data.src=c(object@Models@.Data,object@Observations)) %>%
     mutate(srcName=map_chr(data.src,slot,"name"),
            srcType=map_chr(data.src,slot,"type")) %>%
     filter(srcName==this.srcName,

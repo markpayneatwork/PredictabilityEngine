@@ -9,7 +9,7 @@
 
 \item{desc}{Description of the statistics class.}
 
-\item{apply.to.realisations}{Should we apply the statistic to all realisations? Realmeans, Ensmean and Observations are always calculated.}
+\item{apply.to.realisations}{Should we apply the statistic to all realisations? Realmeans, Ensmean and Observations (including calibrated observations) are always calculated.}
 
 \item{use.globalROI}{Indicates whether the stat should also be calculated on
 global basis, in addition to those specified by this.stat@spatial.polygons slot.}

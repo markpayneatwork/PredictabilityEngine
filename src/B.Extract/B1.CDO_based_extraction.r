@@ -43,8 +43,10 @@ pcfg <- PE.load.config()
 if(interactive() ) {
   set.cdo.defaults("--silent --no_warnings -O -f nc4")
   set.log_msg.silent()
-  this.srcType <- pcfg@Models[[2]]@type
-  this.srcName <-  pcfg@Models[[2]]@name
+  #this.srcType <- pcfg@Models[[2]]@type
+  #this.srcName <-  pcfg@Models[[2]]@name
+  this.srcType <- "Observations"
+  this.srcName <- "ORAS4"
 } else {  
   #Running as a terminal
   cmd.args <- commandArgs(TRUE)
@@ -71,6 +73,8 @@ set.nco.defaults("--quench --overwrite")
 
 #Get data source
 this.datasrc <- PE.get.datasrc(pcfg,this.srcType,this.srcName)
+this.extract.tbl <- case_when(this.srcType=="Observations"~PE.cfg$db$calibration,
+                              TRUE ~ PE.cfg$db$extract)
 
 #Display configuration
 PE.config.summary(pcfg,this.datasrc)
@@ -95,8 +99,12 @@ assert_that(all(file.exists(these.srcs$src.fname)),msg="Cannot find all source f
 #an interruption of the source processing may lead to only a subset of
 #the fragments being produced from a given file. Hence, required that
 #the datasource extraction is run in one large chunk all the way to completion.
-PE.db.setup.extraction(pcfg,this.datasrc)
-PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,this.datasrc)
+if(this.srcType=="Observations") {
+  PE.db.setup.calibration(pcfg,this.datasrc)  
+} else {
+  PE.db.setup.extraction(pcfg,this.datasrc)  
+}
+PE.db.delete.by.datasource(pcfg,this.extract.tbl,this.datasrc)
 
 #'========================================================================
 # Extract Fragments from Source Files ####
@@ -250,10 +258,13 @@ for(this.chunk in chunk.l) {
   #      bind_rows()
 
   #Write to database
+  if(this.extract.tbl=="Calibration") { #Drop the srcFname when writing to calibration table
+    frag.dat <- select(frag.dat,-srcFname)
+  }
   frag.dat %>%
     mutate(startDate=as.character(startDate),
            date=as.character(date)) %>%
-    PE.db.appendTable(pcfg,PE.cfg$db$extract,this.datasrc,dat=.)
+    PE.db.appendTable(pcfg,this.extract.tbl,this.datasrc,dat=.)
   
   #Loop
   pb$tick()

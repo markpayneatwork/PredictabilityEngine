@@ -18,5 +18,6 @@ data.source object
 }
 \description{
 Extract the correct datasource object from the configuration specifying the
-source type and source name.
+source type and source name. Note that this includes both the model slot and
+the observations slot.
 }
