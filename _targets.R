@@ -80,6 +80,7 @@ tar.l$observations <-
                                    "EN4"="A2.EN4_extraction.r",
                                    "HadISST"="A1.HadISST_data.r",
                                    "HadSLP2"="A3.HadSLP2.r",
+                                   "ORAS4"="B1.CDO_based_extraction.r",
                                    stop("Cannot find observation script"))
              ext.script(here("src/B.Extract/",obs.script),
                         args=c(srcType=obs.src@type,
