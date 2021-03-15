@@ -242,7 +242,10 @@ these.mets <-
   select(-MSE.clim) %>%
   pivot_longer(-c(srcType,srcName,calibrationMethod,realization,lead,spName,statName,resultName),
                names_to = "metric",values_to = "field") %>%
-  ungroup()
+  ungroup() %>%
+  #Make sure everything is in memory before writing
+  mutate(field=map_if(field,~!inMemory(.x),~readAll(.x)))
+
 PE.db.appendTable(pcfg,PE.cfg$db$metrics.field,src=NULL,dat=these.mets)
 
 #Turn off the lights
