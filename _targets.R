@@ -161,7 +161,7 @@ tar.l$calibration <-
 #                           calibration))
 # }
 # 
-#Ensemble means
+#Ensemble and Grand means
 tar.l$ensmean.l <-
   tar_target(ensmean.src,
              calibration %>%
@@ -175,9 +175,16 @@ tar.l$ensmean <-
                                srcName="ensmean")),
              pattern=map(ensmean.src))
 
+tar.l$GrandEns <-
+  tar_target(GrandEns,
+             ext.script(here("src/C.Calibrate/C2.Grand_ensemble.r"),
+                        args=c(srcType=ensmean.src$srcType,
+                               srcName="GrandEns")),
+             pattern=map(ensmean.src))
+
 tar.l$stat.srcs <-
   tar_target(stat.srcs,
-             bind_rows(ensmeans,calibration))
+             bind_rows(ensmeans,GrandEns,calibration))
 
 #'========================================================================
 # Stats ####
