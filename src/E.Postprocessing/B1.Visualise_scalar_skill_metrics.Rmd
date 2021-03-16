@@ -256,10 +256,10 @@ for(this.sp in sp.names) {
                  statName==this.stat,
                  resultName==this.result,
                  metric==this.met,
-                 realization %in% c("realmean","ensmean") | srcType=="Persistence") %>% 
+                 realization %in% c("realmean","ensmean","GrandEns") | srcType=="Persistence") %>% 
           collect() %>%
           mutate(type.name=paste(srcType,srcName,sep="."),
-                 highlight=realization=="ensmean"|srcType=="Persistence") %>%
+                 highlight=realization %in% c("ensmean","GrandEns")|srcType=="Persistence") %>%
           separate(calibrationMethod,c("calibration","matching","members"),fill="right")
         
         met.dat <- 
@@ -292,6 +292,7 @@ for(this.sp in sp.names) {
           guides(size="none")+
           labs(x="Lead (years)",y=this.met,colour="Forecast System")
         print(g)
+
       }  #Plot  
     } 
   }
