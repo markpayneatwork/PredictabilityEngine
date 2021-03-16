@@ -169,8 +169,11 @@ bounds.to.indices <- function(z.range,layer.top,layer.bottom) {
 #' @rdname verticalLayers
 midpoints.to.indices <- function(z.range,midpoints) {
   #We take a nearest neighbour approach. This is not perfect, but in most cases it will be ok
-  idxs <- apply(outer(midpoints,z.range,"-")^2,2,which.min)
-  return(idxs)
+  #In particular, as the midpoint of the cell is at 0.5, then we can take advantage of this 
+  #as the inclusion / exclusion criteria, depending on the direction
+  idx.min <- which.min(ifelse(min(z.range)>midpoints,NA,midpoints))  #Round up
+  idx.max <- which.max(ifelse(max(z.range)>midpoints,midpoints,NA)) #Round down
+  return(c(idx.min,idx.max))
 }
 
 
