@@ -46,7 +46,7 @@ if(interactive() ) {
   #this.srcType <- pcfg@Models[[2]]@type
   #this.srcName <-  pcfg@Models[[2]]@name
   this.srcType <- "Observations"
-  this.srcName <- "ORAS4"
+  this.srcName <- "ORAS5"
 } else {  
   #Running as a terminal
   cmd.args <- commandArgs(TRUE)
@@ -88,7 +88,12 @@ PE.config.summary(pcfg,this.datasrc)
 #We also drop files that don't contain the MOIs
 these.srcs <- 
   tibble(src.fname=this.datasrc@sources,
-            tmp.stem=tempfile(fileext = rep("",length(src.fname))))
+         tmp.stem=tempfile(fileext = rep("",length(src.fname)))) %>%
+  mutate(dates=map(src.fname,this.datasrc@date.fn),
+         contains.MOI=map_lgl(dates, ~ any(month(.x) %in% pcfg@MOI ))) %>%
+  filter(contains.MOI) %>%
+  select(src.fname,tmp.stem)
+  
 
 #Check configuration is sane
 assert_that(nrow(these.srcs)>0,msg="No source files provided")
