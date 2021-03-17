@@ -420,6 +420,26 @@ Sal.obs$ORAS4 <- data.source(name="ORAS4",
                                          pattern="^so_.*nc$",
                                          full.names = TRUE,recursive=TRUE))
 
+Sal.obs$ORAS5  <- data.source(name="ORAS5",
+                             type="Observations",
+                             var="vosaline",
+                             fields.are.2D=FALSE,
+                             realization.fn = function(f)  {
+                               return(basename(dirname(f)))},
+                             start.date = function(...) return(NA),
+                             z2idx=function(z,f){
+                               ncid <- nc_open(f)
+                               depths <- ncvar_get(ncid,"deptht")
+                               nc_close(ncid)
+                               idxs <- midpoints.to.indices(z,depths)
+                               return(idxs)},
+                             date.fn = cdo.dates,
+                             sources=dir(here(PE.cfg$dir$datasrc,"Observations","ORAS5"),
+                                         pattern="^vosaline_.*nc$",
+                                         full.names = TRUE,
+                                         recursive=TRUE))
+
+
 
 #Sea level pressure
 SLP.obs <- PElst()
