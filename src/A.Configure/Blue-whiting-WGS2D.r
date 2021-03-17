@@ -57,9 +57,16 @@ define_dir(pcfg@scratch.dir)
 pcfg@Observations <- 
   filter(these.srcs,
          group=="Sal.obs",
-         srcName=="ORAS4") %>%
+         srcName=="EN4") %>%
   pull(sources) %>%
   pluck(1)
+
+pcfg@Models <- 
+  filter(these.srcs,
+         group=="Sal.obs",
+         str_starts(srcName,"ORAS")) %>%
+  pull(sources) %>% 
+  PElst()
 
 #'========================================================================
 # Spatial Configurations ####
