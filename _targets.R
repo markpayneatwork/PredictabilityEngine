@@ -280,15 +280,22 @@ tar.l$report <-
 names(tar.l) <- map_chr(tar.l,~get("name",envir=.x$settings))
 
 #If only running obs, reduce the number of targets
+#Note that we can also have observations in the Model slots though.
 if(pcfg@obs.only) {
   obs.only.drop <-
     c("report","scalar.metrics","field.metrics",
-      "ensmean.src","ensmeans","GrandEns",
-      "model.srcs","model.extracts","model.realmeans")
+      "ensmean.src","ensmeans","GrandEns")
   tar.l <- tar.l[!(names(tar.l) %in% obs.only.drop)]
 }
 
-#If not observations, only run model extractions
+#Turn off multimodel aspects if there are no models
+if(length(pcfg@Models)==0) {
+  no.models.drop <-
+    c("model.srcs","model.extracts","model.realmeans")
+  tar.l <- tar.l[!(names(tar.l) %in% no.models.drop)]
+}
+
+#If no observations, only run model extractions
 if(is.null(pcfg@Observations)) {
   tar.l <- tar.l[names(tar.l) %in% c("model.srcs","model.extracts","model.realmeans","local.data")]
 }
