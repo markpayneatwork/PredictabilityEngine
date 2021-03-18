@@ -49,7 +49,7 @@ if(interactive()) {
   this.srcType <- cmd.args[1]
   this.srcName <- cmd.args[2]
 }
-this.datasrc <- PE.get.datasrc(pcfg,this.srcType,this.srcName)
+this.datasrc <- data.source(type=this.srcType,name=this.srcName)
 ref.datasrc <-  pcfg@Observations   #Which serves as our baseline reference to adjust to
 this.datasrc.is.ref <- identical(this.datasrc,ref.datasrc)
 PE.config.summary(pcfg,this.datasrc)

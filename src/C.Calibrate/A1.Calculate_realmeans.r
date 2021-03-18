@@ -53,7 +53,7 @@ if(interactive()) {
 set.cdo.defaults("--silent --no_warnings -O")
 set.log_msg.silent()
 
-this.datasrc <- PE.get.datasrc(pcfg,this.srcType,this.srcName)
+this.datasrc <- data.source(type=this.srcType,name=this.srcName)
 PE.config.summary(pcfg,this.datasrc)
 
 #Setup parallelisation
