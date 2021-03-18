@@ -170,30 +170,36 @@ tar.l$calibration <-
 # }
 # 
 #Ensemble and Grand means
-tar.l$ensmean.l <-
-  tar_target(ensmean.src,
-             calibration %>%
-               filter(srcType!="Observations") %>%
-               nest(members=c(-srcType)))
+if(pcfg@obs.only) {
+  tar.l$stat.srcs <-
+    tar_target(stat.srcs,
+               calibration)
+} else {
+  tar.l$ensmean.l <-
+    tar_target(ensmean.src,
+               calibration %>%
+                 filter(srcType!="Observations") %>%
+                 nest(members=c(-srcType)))
+  
+  tar.l$ensmean <-
+    tar_target(ensmeans,
+               run.extern.script(here("src/C.Calibrate/C1.Ensemble_means.r"),
+                                 args=c(srcType=ensmean.src$srcType,
+                                        srcName="ensmean")),
+               pattern=map(ensmean.src))
+  
+  tar.l$GrandEns <-
+    tar_target(GrandEns,
+               run.extern.script(here("src/C.Calibrate/C2.Grand_ensemble.r"),
+                                 args=c(srcType=ensmean.src$srcType,
+                                        srcName="GrandEns")),
+               pattern=map(ensmean.src))
 
-tar.l$ensmean <-
-  tar_target(ensmeans,
-             run.extern.script(here("src/C.Calibrate/C1.Ensemble_means.r"),
-                        args=c(srcType=ensmean.src$srcType,
-                               srcName="ensmean")),
-             pattern=map(ensmean.src))
-
-tar.l$GrandEns <-
-  tar_target(GrandEns,
-             run.extern.script(here("src/C.Calibrate/C2.Grand_ensemble.r"),
-                        args=c(srcType=ensmean.src$srcType,
-                               srcName="GrandEns")),
-             pattern=map(ensmean.src))
-
-tar.l$stat.srcs <-
-  tar_target(stat.srcs,
-             bind_rows(ensmeans,GrandEns,calibration))
-
+  tar.l$stat.srcs <-
+    tar_target(stat.srcs,
+               bind_rows(ensmeans,GrandEns,calibration)) 
+}
+  
 #'========================================================================
 # Stats ####
 #'========================================================================
