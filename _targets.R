@@ -42,7 +42,6 @@ PE.config.summary(pcfg)
 
 tar_option_set(error = "workspace")
 tar.l <- list()
-#pcfg@Decadal[[1]]@sources <- head(pcfg@Decadal[[1]]@sources,2)
 
 #'========================================================================
 # Helper functions ####
@@ -82,6 +81,7 @@ run.extraction.script <- function(this.src) {
              args=c(srcType=this.src@type,
                     srcName=this.src@name))
 }
+
 
 #Observations
 tar.l$obs.src <-
@@ -286,6 +286,11 @@ if(pcfg@obs.only) {
       "ensmean.src","ensmeans","GrandEns",
       "model.srcs","model.extracts","model.realmeans")
   tar.l <- tar.l[!(names(tar.l) %in% obs.only.drop)]
+}
+
+#If not observations, only run model extractions
+if(is.null(pcfg@Observations)) {
+  tar.l <- tar.l[names(tar.l) %in% c("model.srcs","model.extracts","model.realmeans")]
 }
 
 #Turn off field metrics if there aren't any
