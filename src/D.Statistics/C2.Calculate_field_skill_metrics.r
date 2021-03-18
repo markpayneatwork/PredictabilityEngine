@@ -75,10 +75,11 @@ if(file.exists(PE.db.path(pcfg,PE.cfg$db$metrics.field,src=NULL))) {
 log_msg("Merging...\n")
 
 #Import uncalibrated observations that have field data with them
-obs.dat <-
+ref.dat <-
   stats.tbl %>%
-  filter(srcType=="Observations",
-         is.na(calibrationMethod),
+  filter(srcType==!!ref.datasrc@type,
+         srcName==!!ref.datasrc@name,
+         calibrationMethod=="None",# Only uncalibrated observations
          !is.na(field)) %>% 
   select(srcType,srcName,date,spName,statName,resultName,field) %>%
   collect() %>%
@@ -89,39 +90,39 @@ obs.dat <-
   filter(month(date) %in% pcfg@MOI) 
 
 #Strip back to bare bones
-obs.dat.bare <-
-  obs.dat %>%
+ref.dat.bare <-
+  ref.dat %>%
   select(spName,statName,resultName,ym,field)
 
 #'========================================================================
 # Skill Functions ####
 #'========================================================================
 #Correlation coefficent, with resampling
-skill.fn <- function(obs,pred) {
-  # obs <- this.dat$field.obs
+skill.fn <- function(ref,pred) {
+  # ref <- this.dat$field.ref
   # pred <- this.dat$field.pred
   
   #Setup
-  obs.b <- brick(obs)
+  ref.b <- brick(ref)
   pred.b <- brick(pred)
-  assert_that(nlayers(obs.b)==nlayers(pred.b),
+  assert_that(nlayers(ref.b)==nlayers(pred.b),
               msg="Mismatch in number of layers")
   
   #Calculate metrics
-  draw.idxs <- map(1:n.samples,~sample(1:nlayers(obs.b),nlayers(obs.b),replace=TRUE))
+  draw.idxs <- map(1:n.samples,~sample(1:nlayers(ref.b),nlayers(ref.b),replace=TRUE))
   rtn <- list()
-  rtn$pearson.correlation <- corLocal(obs.b,pred.b,method="pearson",ngb=1)
+  rtn$pearson.correlation <- corLocal(ref.b,pred.b,method="pearson",ngb=1)
   rtn$pearson.correlation.draws <-
     map(draw.idxs,
-        ~corLocal(obs.b[[.x]],
+        ~corLocal(ref.b[[.x]],
                   pred.b[[.x]],
                   method="pearson",
                   ngb=1)) %>%
     brick()
-  rtn$MSE <- mean((obs.b-pred.b)^2)
+  rtn$MSE <- mean((ref.b-pred.b)^2)
   rtn$MSE.draws <-
     map(draw.idxs,
-        ~mean((obs.b[[.x]]-pred.b[[.x]])^2)) %>%
+        ~mean((ref.b[[.x]]-pred.b[[.x]])^2)) %>%
     brick()
   rtn %>%
     enframe(name = "metric",value="field") %>%
@@ -173,9 +174,9 @@ for(i in seq(n.groups)) {
            ym=date_to_ym(date),
            lead=month_diff(date,startDate))  %>%
     #Merge in observations
-    left_join(y=obs.dat.bare,
+    left_join(y=ref.dat.bare,
               by=c("ym","spName","statName","resultName"),
-              suffix=c(".pred",".obs")) %>%
+              suffix=c(".pred",".ref")) %>%
     #Sort
     arrange(date)
   
@@ -184,7 +185,7 @@ for(i in seq(n.groups)) {
     this.dat %>%
     nest(data=-c(srcType,srcName,calibrationMethod,realization,lead,
          spName,statName,resultName)) %>%
-    mutate(metrics=map(data,~skill.fn(.x$field.obs,.x$field.pred))) %>%
+    mutate(metrics=map(data,~skill.fn(.x$field.ref,.x$field.pred))) %>%
     dplyr::select(-data) %>% 
     unnest(metrics)
   
@@ -204,20 +205,20 @@ mdl.mets <-
 # Skill Score ####
 #'========================================================================
 #Calculate observed stat climatologies first
-obs.stat.clim <- 
-  obs.dat %>%
+ref.stat.clim <- 
+  ref.dat %>%
   filter(year(date) %in% pcfg@clim.years,
          month(date) %in% pcfg@MOI) %>%
   group_by(srcType,srcName,spName,statName,resultName) %>%
   summarise(clim=list(mean(brick(field))),
             .groups="drop")
 
-#Calculate observation (climatology) metrics
-obs.clim.mets <-
-  obs.dat %>%
+#Calculate reference (climatology) metrics
+ref.clim.mets <-
+  ref.dat %>%
   filter(year(date) %in% pcfg@comp.years,
          month(date) %in% pcfg@MOI)%>%
-  left_join(y=obs.stat.clim,
+  left_join(y=ref.stat.clim,
             by=c("srcType","srcName","spName","statName","resultName")) %>%
   #Calculate climatology metrics
   group_by(srcType,srcName,spName,statName,resultName) %>%
@@ -226,7 +227,7 @@ obs.clim.mets <-
 
 #Now calculate skill scores
 SS.dat <- 
-  obs.clim.mets %>%
+  ref.clim.mets %>%
   select(-srcType,-srcName) %>%
   left_join(x=mdl.mets,
             by=c("spName","statName","resultName")) %>%

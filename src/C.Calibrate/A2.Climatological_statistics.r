@@ -42,15 +42,15 @@ pcfg <- PE.load.config()
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  this.srcType <- "Decadal"
-  this.srcName <- "NorCPM"
+  this.srcType <- "Observations"
+  this.srcName <- "HadISST"
 } else {  #Running as a "function"
   cmd.args <- commandArgs(TRUE)
   assert_that(length(cmd.args)==2,msg="Cannot get command args")
   this.srcType <- cmd.args[1]
   this.srcName <- cmd.args[2]
 }
-this.datasrc <- data.source(type=this.srcType,name=this.srcName)
+this.datasrc <- PE.get.datasrc(pcfg,this.srcType,this.srcName)
 
 PE.config.summary(pcfg,this.datasrc)
 
@@ -58,15 +58,9 @@ PE.config.summary(pcfg,this.datasrc)
 # Setup ####
 #'========================================================================
 #Setup databases
-if(this.datasrc@type=="Observations") {  #Obs are stored directly in the calibration table
-  extr.tbl <- 
-    PE.db.tbl(pcfg,PE.cfg$db$calibration,src=NULL) %>%
-    filter(is.na(calibrationMethod))
-} else {
-  extr.tbl <- 
-    PE.db.tbl(pcfg,PE.cfg$db$extract,this.datasrc)  %>%
-    select(-srcFname)   #srcFname is only in extraction tables
-}
+extr.tbl <- 
+  PE.db.tbl(pcfg,PE.cfg$db$extract,this.datasrc)  %>%
+  select(-srcFname)   #srcFname is only in extraction tables
 
 #'========================================================================
 # Calculate climatologies ####
@@ -78,7 +72,7 @@ if(this.datasrc@type=="Observations") {  #Obs are stored directly in the calibra
 # Note that we avoid loading everything into memory at once
 extr.these.pKeys<-
   extr.tbl %>%
-  filter(realization == "realmean" | srcType == "Observations") %>%
+  filter(realization == "realmean") %>%
   select(pKey,date,srcType,srcName) %>%
   collect() %>%
   mutate(date=ymd(date),

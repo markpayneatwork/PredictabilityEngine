@@ -4,10 +4,12 @@
 \alias{test.data.source}
 \title{Test Data Source}
 \usage{
-test.data.source(obj, f = "missing")
+test.data.source(obj, z.range = c(250, 600), f = "missing")
 }
 \arguments{
 \item{obj}{Data.source object}
+
+\item{z.range}{Range of vertical coordinates over which to test the z2idx function}
 
 \item{f}{Filename on which to test the functions. If missing, defaults to the first file in the data source list}
 }

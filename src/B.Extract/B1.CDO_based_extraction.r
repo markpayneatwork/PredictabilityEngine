@@ -43,10 +43,10 @@ pcfg <- PE.load.config()
 if(interactive() ) {
   set.cdo.defaults("--silent --no_warnings -O -f nc4")
   set.log_msg.silent()
-  #this.srcType <- pcfg@Models[[2]]@type
-  #this.srcName <-  pcfg@Models[[2]]@name
-  this.srcType <- "Observations"
-  this.srcName <- "ORAS5"
+  this.srcType <- pcfg@Models[[2]]@type
+  this.srcName <-  pcfg@Models[[2]]@name
+  # this.srcType <- "Observations"
+  # this.srcName <- "ORAS5"
 } else {  
   #Running as a terminal
   cmd.args <- commandArgs(TRUE)
@@ -104,12 +104,8 @@ assert_that(all(file.exists(these.srcs$src.fname)),msg="Cannot find all source f
 #an interruption of the source processing may lead to only a subset of
 #the fragments being produced from a given file. Hence, required that
 #the datasource extraction is run in one large chunk all the way to completion.
-if(this.srcType=="Observations") {
-  PE.db.setup.calibration(pcfg,this.datasrc)  
-} else {
-  PE.db.setup.extraction(pcfg,this.datasrc)  
-}
-PE.db.delete.by.datasource(pcfg,this.extract.tbl,this.datasrc)
+PE.db.setup.extraction(pcfg,this.datasrc)  
+PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,this.datasrc)
 
 #'========================================================================
 # Extract Fragments from Source Files ####
@@ -263,13 +259,10 @@ for(this.chunk in chunk.l) {
   #      bind_rows()
 
   #Write to database
-  if(this.extract.tbl=="Calibration") { #Drop the srcFname when writing to calibration table
-    frag.dat <- select(frag.dat,-srcFname)
-  }
   frag.dat %>%
     mutate(startDate=as.character(startDate),
            date=as.character(date)) %>%
-    PE.db.appendTable(pcfg,this.extract.tbl,this.datasrc,dat=.)
+    PE.db.appendTable(pcfg,PE.cfg$db$extract,this.datasrc,dat=.)
   
   #Loop
   pb$tick()

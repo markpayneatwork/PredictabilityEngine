@@ -58,8 +58,8 @@ if(!this.datasrc@name=="EN4") stop("Not configured to use EN4 data")
 #'## Extract EN4 meta data into fragments
 #/*======================================================================*/
 #Setup calibration database and clear anything that doesn't exist
-PE.db.setup.calibration(pcfg,this.datasrc)
-PE.db.delete.by.datasource(pcfg,PE.cfg$db$calibration,this.datasrc)
+PE.db.setup.extraction(pcfg,this.datasrc)
+PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,this.datasrc)
 
 log_msg("Extracting fragments...\n")
 
@@ -113,7 +113,8 @@ for(f in this.datasrc@sources) {
   dat.b@crs <- PE.cfg$misc$crs
   
   #Create metadata
-  frag.data <- tibble(srcName=this.datasrc@name,
+  frag.data <- tibble(srcFname=basename(f),
+                      srcName=this.datasrc@name,
                       srcType=this.datasrc@type,
                       date=this.datasrc@date.fn(f.remap),
                       field=as.list(dat.b))
@@ -121,7 +122,7 @@ for(f in this.datasrc@sources) {
   #Write to database
   frag.data %>%
     mutate(date=as.character(date)) %>%
-    PE.db.appendTable(pcfg,PE.cfg$db$calibration,this.datasrc,dat=.)
+    PE.db.appendTable(pcfg,PE.cfg$db$extract,this.datasrc,dat=.)
   
   #Tidy up
   tmp.fnames <- dir(dirname(f.tmpstem),pattern=basename(f.tmpstem),full.names = TRUE)

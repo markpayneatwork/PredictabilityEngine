@@ -44,7 +44,7 @@ pcfg <- PredEng.config(project.name= "TestSuite",
                        clim.years=1991:2000,   #Take in everything
                        comp.years=1990:2010,
                        landmask="data_srcs/NMME/landmask.nc",
-                       calibrationMethods=c("MeanAdj"),
+                       calibrationMethods=c("None","MeanAdj"),
                        persistence.leads = seq(7,120,by=12))
 
 #Setup scratch directory

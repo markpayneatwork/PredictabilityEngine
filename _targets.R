@@ -48,45 +48,58 @@ tar.l <- list()
 # Helper functions ####
 #'========================================================================
 # Helper functions
-ext.script <- function(this.scp,...,args=NULL) {
-  assert_that(!is.null(names(args)) | is.null(args),msg="args variable must be a named vector")
-  log.fname <- 
-    file.path(here("_targets","logs"),
-              paste(substr(basename(dirname(this.scp)),1,1),
-                    gsub("\\.r$","",basename(this.scp)),
-                    paste(args,collapse="."),
-                    sep="."))
-  callr::rscript(this.scp,
-                 cmdargs=args,
-                 stdout=log.fname,
-                 stderr="2>&1",
-                 show=FALSE)
-  return(bind_cols(tibble(script=this.scp,
-                          finished=Sys.time()),
-                   as.list(args)))
-}
+run.extern.script <- 
+  function(this.scp,...,args=NULL) {
+    assert_that(!is.null(names(args)) | is.null(args),msg="args variable must be a named vector")
+    log.fname <- 
+      file.path(here("_targets","logs"),
+                paste(substr(basename(dirname(this.scp)),1,1),
+                      gsub("\\.r$","",basename(this.scp)),
+                      paste(args,collapse="."),
+                      sep="."))
+    callr::rscript(this.scp,
+                   cmdargs=args,
+                   stdout=log.fname,
+                   stderr="2>&1",
+                   show=FALSE)
+    return(bind_cols(tibble(script=this.scp,
+                            finished=Sys.time()),
+                     as.list(args)))
+  }
 
 #'========================================================================
 # Data Extraction ####
 #'========================================================================
+#Choose extraction script
+run.extraction.script <- function(this.src) {
+  this.extract.script <- 
+    switch(paste(this.src@type,this.src@name,sep="/"),
+           "Observations/EN4"="A2.EN4_extraction.r",
+           "Observations/HadISST"="A1.HadISST_data.r",
+           "Observations/HadSLP2"="A3.HadSLP2.r",
+           "B1.CDO_based_extraction.r")
+  run.extern.script(here("src/B.Extract/",this.extract.script),
+             args=c(srcType=this.src@type,
+                    srcName=this.src@name))
+}
+
 #Observations
 tar.l$obs.src <-
   tar_target(obs.src,
              pcfg@Observations)
 
-tar.l$observations <-
-  tar_target(observations,
-             {obs.script <- switch(obs.src@name,
-                                   "EN4"="A2.EN4_extraction.r",
-                                   "HadISST"="A1.HadISST_data.r",
-                                   "HadSLP2"="A3.HadSLP2.r",
-                                   "ORAS4"="B1.CDO_based_extraction.r",
-                                   stop("Cannot find observation script"))
-             ext.script(here("src/B.Extract/",obs.script),
-                        args=c(srcType=obs.src@type,
-                               srcName=obs.src@name))})
+tar.l$obs.extracts <-
+  tar_target(obs.extracts,
+             run.extraction.script(obs.src))
 
-#Model sources
+tar.l$obs.realmeans <-
+  tar_target(obs.realmeans,
+             run.extern.script(here("src/C.Calibrate/A1.Calculate_realmeans.r"),
+                               obs.extracts,
+                               args=c(srcType=obs.extracts$srcType,
+                                      srcName=obs.extracts$srcName)))
+
+#Models
 tar.l$model.srcs <-
   tar_target(model.srcs,
              pcfg@Models,
@@ -94,22 +107,21 @@ tar.l$model.srcs <-
 
 tar.l$model.extracts <-
   tar_target(model.extracts,
-             ext.script(here('src/B.Extract/B1.CDO_based_extraction.r'),
-                        model.srcs,
-                        args=c(srcType=model.srcs@type,
-                               srcName=model.srcs@name)),
+             run.extraction.script(model.srcs),
              pattern=map(model.srcs))
 
-
-
-#Realisation means
 tar.l$model.realmeans <-
   tar_target(model.realmeans,
-             ext.script(here("src/C.Calibrate/A1.Calculate_realmeans.r"),
+             run.extern.script(here("src/C.Calibrate/A1.Calculate_realmeans.r"),
                         model.extracts,
                         args=c(srcType=model.extracts$srcType,
                                srcName=model.extracts$srcName)),
              pattern=map(model.extracts))
+
+#Combine
+tar.l$local.data <-
+  tar_target(local.data,
+             bind_rows(obs.realmeans,model.realmeans))
 
 #'========================================================================
 # Calibration ####
@@ -127,30 +139,25 @@ get.extraction.databases <- function(object,...) {
              extra="drop")
 }
 
-tar.l$extraction.databases <-
-  tar_target(extraction.databases,
-             get.extraction.databases(pcfg,model.realmeans),
+tar.l$all.data <-
+  tar_target(all.data,
+             get.extraction.databases(pcfg,local.data),
              cue=tar_cue("always"))
-
-
-tar.l$all.extracts <-
-  tar_target(all.extracts,
-             bind_rows(observations,extraction.databases))
 
 #Climatology
 tar.l$clim <-
   tar_target(clim,
-             ext.script(here("src/C.Calibrate/A2.Climatological_statistics.r"),
-                        all.extracts,
-                        args=c(srcType=all.extracts$srcType,
-                               srcName=all.extracts$srcName)),
-             pattern=map(all.extracts))
+             run.extern.script(here("src/C.Calibrate/A2.Climatological_statistics.r"),
+                        all.data,
+                        args=c(srcType=all.data$srcType,
+                               srcName=all.data$srcName)),
+             pattern=map(all.data))
 
 #Calibration
 tar.l$calibration <-
   tar_target(calibration,
-             ext.script(here("src/C.Calibrate/B1.Mean_adjustment.r"),
-                        clim,observations,
+             run.extern.script(here("src/C.Calibrate/B1.Mean_adjustment.r"),
+                        clim, obs.realmeans,
                         args=c(srcType=clim$srcType,
                                srcName=clim$srcName)),
              pattern=map(clim))
@@ -158,7 +165,7 @@ tar.l$calibration <-
 # if(any(pcfg@calibrationMethods=="NAOmatching")) {
 #   tar.l$NAOmatching <- 
 #     tar_target(NAOmatching,
-#                ext.script(here("src/C.Calibrate/B2.NAO_matching.r"),
+#                run.extern.script(here("src/C.Calibrate/B2.NAO_matching.r"),
 #                           calibration))
 # }
 # 
@@ -171,14 +178,14 @@ tar.l$ensmean.l <-
 
 tar.l$ensmean <-
   tar_target(ensmeans,
-             ext.script(here("src/C.Calibrate/C1.Ensemble_means.r"),
+             run.extern.script(here("src/C.Calibrate/C1.Ensemble_means.r"),
                         args=c(srcType=ensmean.src$srcType,
                                srcName="ensmean")),
              pattern=map(ensmean.src))
 
 tar.l$GrandEns <-
   tar_target(GrandEns,
-             ext.script(here("src/C.Calibrate/C2.Grand_ensemble.r"),
+             run.extern.script(here("src/C.Calibrate/C2.Grand_ensemble.r"),
                         args=c(srcType=ensmean.src$srcType,
                                srcName="GrandEns")),
              pattern=map(ensmean.src))
@@ -220,7 +227,7 @@ tar.l$stat.jobs <-
 #Process stats
 tar.l$stats <-
   tar_target(stats,
-             ext.script(here("src/D.Statistics/B1.Calculate_stats.r"),
+             run.extern.script(here("src/D.Statistics/B1.Calculate_stats.r"),
                         args=c(spName=statJobs$spName,
                                statName=statJobs$statName,
                                srcType=stat.srcs$srcType,
@@ -230,18 +237,18 @@ tar.l$stats <-
 #Rolling means
 tar.l$rollmean <-
   tar_target(rollmean,
-             ext.script("src/D.Statistics/B2.Rolling_means.r",
+             run.extern.script("src/D.Statistics/B2.Rolling_means.r",
                         stats))
 
 #Calculation verification metrics
 tar.l$scalar.metrics <-
   tar_target(scalar.metrics,
-             ext.script(here("src/D.Statistics/C1.Calculate_scalar_skill_metrics.r"),
+             run.extern.script(here("src/D.Statistics/C1.Calculate_scalar_skill_metrics.r"),
                         stats,rollmean))
 
 tar.l$field.metrics <-
     tar_target(field.metrics,
-               ext.script(here("src/D.Statistics/C2.Calculate_field_skill_metrics.r"),
+               run.extern.script(here("src/D.Statistics/C2.Calculate_field_skill_metrics.r"),
                           stats,rollmean))
 
 #'========================================================================
@@ -254,14 +261,14 @@ tar.l$field.metrics <-
 # 
 # tar.l$pointwise <-
 #   tar_target(pointwise,
-#              ext.script(here("src/E.Postprocessing/A1.Pointwise_extraction.r"),
+#              run.extern.script(here("src/E.Postprocessing/A1.Pointwise_extraction.r"),
 #                         points,stats))  #Stats is a included as a second dependency for cases when
 # #there are no metrics to calculate
 
 #Markdown report
 tar.l$report <-
   tar_target(report,
-             ext.script(here("src/E.Postprocessing/B1.Visualise_scalar_skill_metrics.r"),
+             run.extern.script(here("src/E.Postprocessing/B1.Visualise_scalar_skill_metrics.r"),
                         scalar.metrics))
 
 
@@ -276,8 +283,8 @@ names(tar.l) <- map_chr(tar.l,~get("name",envir=.x$settings))
 if(pcfg@obs.only) {
   obs.only.drop <-
     c("report","scalar.metrics","field.metrics",
-      "ensmean.src","ensmeans",
-      "model.srcs","model.extracts","model.realmeans","extraction.databases")
+      "ensmean.src","ensmeans","GrandEns",
+      "model.srcs","model.extracts","model.realmeans")
   tar.l <- tar.l[!(names(tar.l) %in% obs.only.drop)]
 }
 

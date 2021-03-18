@@ -49,8 +49,9 @@ if(interactive()) {
   this.srcType <- cmd.args[1]
   this.srcName <- cmd.args[2]
 }
-this.datasrc <- data.source(type=this.srcType,name=this.srcName)
-
+this.datasrc <- PE.get.datasrc(pcfg,this.srcType,this.srcName)
+ref.datasrc <-  pcfg@Observations   #Which serves as our baseline reference to adjust to
+this.datasrc.is.ref <- identical(this.datasrc,ref.datasrc)
 PE.config.summary(pcfg,this.datasrc)
 
 #Setup parallelism
@@ -69,23 +70,17 @@ options(future.globals.onReference = "error")
 log_msg("Import data..\n")
 
 #Setup databases
-if(this.srcType=="Observations") {  #Obs are stored directly in the calibration table
-  extr.tbl <- 
-    PE.db.tbl(pcfg,PE.cfg$db$calibration,src=NULL) %>%
-    filter(is.na(calibrationMethod))
-} else {
-  extr.tbl <- 
-    PE.db.tbl(pcfg,PE.cfg$db$extract,this.datasrc)  %>%
-    select(-srcFname)   #srcFname is only in extraction tables
-}
+extr.tbl <- 
+  PE.db.tbl(pcfg,PE.cfg$db$extract,this.datasrc)  %>%
+  select(-srcFname)   #srcFname is only in extraction tables
 clim.tbl <- PE.db.tbl(pcfg,PE.cfg$db$climatology,this.datasrc)
 PE.db.setup.calibration(pcfg,this.datasrc)
 calib.tbl <- PE.db.tbl(pcfg,PE.cfg$db$calibration,this.datasrc)
 
-#Clear all previous analyses that give these types of calibration methods and sources
+#Clear all previous analyses that give the types of calibration methods done here
 del.this <-
   calib.tbl %>%
-  filter(calibrationMethod %in% c("anomaly","MeanAdj","MeanVarAdj"),
+  filter(calibrationMethod %in% c("None","anomaly","MeanAdj","MeanVarAdj"),
          srcType==!!this.datasrc@type,
          srcName==!!this.datasrc@name) %>%
   select(pKey) %>%
@@ -102,9 +97,10 @@ PE.db.delete.by.pKey(pcfg,PE.cfg$db$calibration,this.datasrc,del.this)
 #are starting to think about multiple MOIs - it might work ok though if thinking about
 #averaged MOIs on the other hand. Anyway, it's a bit hard to handle at the moment, so we
 #do not allow meanAdjustment when there are multiple MOIs at the moment.
-obs.clim <-
+ref.clim <-
   clim.tbl %>%
-  filter(srcType=="Observations") %>%
+  filter(srcType==!!ref.datasrc@type,
+         srcName==!!ref.datasrc@name) %>%
   select(-pKey) %>%
   collect() %>% 
   PE.db.unserialize() %>%
@@ -112,7 +108,7 @@ obs.clim <-
   select(month,obsMean=mean,obsSd=sd)
 
 target.clim <-   #Climatological values which to do mean adjustment
-  obs.clim %>%
+  ref.clim %>%
   filter(month %in% pcfg@MOI) %>%
   #Although we don't currently use it, we can nevertheless average over the months here
   summarise(targetMean=list(mean(brick(obsMean))),
@@ -145,9 +141,18 @@ calibration.fn <- function(this.dat,this.target,this.calib) {
   # this.target <- target.clim
   # this.calib <- pcfg@calibrationMethods
  
-  #First calculate the anomaly - we always need this
+  rtn <- this.dat
+  #We store the raw values if requested explicitly, or if we are working with the
+  #reference datasource, do this
+  if(any(this.calib == "None") | this.datasrc.is.ref) {
+    rtn <- 
+      rtn %>%
+      mutate(calib.None=field.extr)
+  }
+  
+  #Next calculate the anomaly - we always need this
   rtn <-
-    this.dat %>%
+    rtn %>%
     mutate(calib.anomaly=map2(field.extr,mdlClim.mean,
                            ~ .x - .y))
   
@@ -165,6 +170,13 @@ calibration.fn <- function(this.dat,this.target,this.calib) {
       rtn %>%
       mutate(calib.MeanVarAdj=map2(calib.anomaly, mdlClim.sd,
                                       ~(.x/.y)*this.target$targetSd + this.target$targetMean))
+  }
+
+  #But drop the anomaly if not requested
+  if(!any(this.calib=="anomaly")) {
+    rtn <-
+      rtn %>%
+      select(-calib.anomaly)
   }
 
   return(rtn)
@@ -206,8 +218,8 @@ for(this.basket in basket.l) {
     #Join in model climatological data
     left_join(y=clim.dat,
               by=c("srcName","srcType","month","lead")) %>%
-    #Join in obseervations
-    left_join(y=obs.clim,by="month")
+    #Join in observations
+    left_join(y=ref.clim,by="month")
 
   #Split basket into chunks
   chunk.l <- 
@@ -239,8 +251,7 @@ for(this.basket in basket.l) {
                  values_to = "field") %>%
     #Tidy
     mutate(calibrationMethod=gsub("calib\\.","",calibrationMethod),
-           date=as.character(date)) %>%
-    filter(calibrationMethod %in% pcfg@calibrationMethods) 
+           date=as.character(date)) 
     
   #Write results
   PE.db.appendTable(pcfg,PE.cfg$db$calibration,this.datasrc,out.dat)

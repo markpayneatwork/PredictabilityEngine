@@ -75,6 +75,9 @@ assert_that(length(pcfg@MOI)==1,msg="Metric calculation currently one works with
 #Setup databases
 stats.tbl <- PE.db.tbl(pcfg,PE.cfg$db$stats,src=NULL)
 
+#Reference datasource
+ref.datasrc <- pcfg@Observations
+
 #Clear existing metrics table
 if(file.exists(PE.db.path(pcfg,PE.cfg$db$metrics,src=NULL))) {
   file.remove(PE.db.path(pcfg,PE.cfg$db$metrics,src=NULL))
@@ -87,10 +90,12 @@ log_msg("Extract observations...\n")
 
 #Import uncalibrated observation stats for the target months
 #These are the references against which everything else is compared.
-obs.dat.all <-
+ref.dat.all <-
   stats.tbl %>%
-  filter(srcType=="Observations",
-         is.na(calibrationMethod),# Only uncalibrated observations
+  filter(srcType==!!ref.datasrc@type,
+         srcName==!!ref.datasrc@name,
+         realization=="realmean",  #Important for e.g. ORAS5, with multiple realisations
+         calibrationMethod=="None",# Only uncalibrated observations
          is.na(field)) %>%  #Only values. No fields
   collect() %>%
   #Setup year-month key
@@ -101,26 +106,26 @@ obs.dat.all <-
   dplyr::select(-calibrationMethod,-realization,-startDate,-field)
 
 #Simplified versions 
-obs.dat <-
-  obs.dat.all %>%
+ref.dat <-
+  ref.dat.all %>%
   filter(year(date) %in% pcfg@comp.years) 
 
-obs.dat.bare <- #Simplified version for matching with forecasts
-  obs.dat %>%
+ref.dat.bare <- #Simplified version for matching with forecasts
+  ref.dat %>%
   dplyr::select(spName,statName,resultName,ym,value)
 
 #Some checks
-assert_that(length(unique(obs.dat$srcName))>0,msg="Cannot find observational data")
-assert_that(length(unique(obs.dat$srcName))==1,msg="Multiple observational sources detected")
-assert_that(all(month(obs.dat$date) %in% pcfg@MOI),
+assert_that(length(unique(ref.dat$srcName))>0,msg="Cannot find reference data")
+assert_that(length(unique(ref.dat$srcName))==1,msg="Multiple reference sources detected")
+assert_that(all(month(ref.dat$date) %in% pcfg@MOI),
             msg="Mismatch between months in database and MOI.")
 
 #Create a data.frame with the observations and the corresponding mean and standard deviation
 #of each stat result over the climatological period. This is used in generating skill
 #scores of both the distributional and central tendency metrics
-obs.clim <-
+ref.clim <-
   #Calculate statistics
-  obs.dat %>%
+  ref.dat %>%
   filter(year(date) %in% pcfg@clim.years) %>%
   group_by(spName,statName,resultName) %>%
   summarise(clim.mean=mean(value),
@@ -128,14 +133,14 @@ obs.clim <-
             clim.n=n(),
             .groups="drop")
 
-assert_that(all(!is.na(obs.clim$clim.mean)),
-            all(!is.na(obs.clim$clim.sd)),
+assert_that(all(!is.na(ref.clim$clim.mean)),
+            all(!is.na(ref.clim$clim.sd)),
             msg="NAs detected in climatology")
 
 #Setup forecasts using the climatology as the forecast as well.
 clim.as.forecast <- 
-  left_join(x=obs.dat,
-            y=obs.clim,
+  left_join(x=ref.dat,
+            y=ref.clim,
             by=c("spName","statName","resultName")) %>%
   mutate(value=clim.mean,
          srcType="Climatology") %>%
@@ -162,7 +167,7 @@ log_msg("Persistence...\n")
 #the centered window.
 #Also don't want any smoothed data
 persis.dat <-
-  obs.dat.all %>%
+  ref.dat.all %>%
   #Apply smoothing self
   filter(!grepl("/.+$",resultName)) %>%   #Remove smoothed variables
   group_by(srcType,srcName,spName,statName,resultName) %>%
@@ -185,7 +190,7 @@ persis.dat <-
 #Calculate the persistences that we want to include
 persis.grid <- 
   #Setup grid
-  expand_grid(date=unique(obs.dat$date),
+  expand_grid(date=unique(ref.dat$date),
               lead=pcfg@persistence.leads) %>%
   #Drop non-relevant forecasts
   filter(year(date) %in% pcfg@comp.years) %>%
@@ -286,7 +291,7 @@ cent.skill.fn <- function(d) {
 
   #Setup
   xy <- 
-    cbind(d$value.obs,d$value.pred) %>%
+    cbind(d$value.ref,d$value.pred) %>%
     na.omit() 
   
   err <-
@@ -320,9 +325,9 @@ cent.pred <-
   filter(realization %in% c("realmean","ensmean","GrandEns") | 
            srcType %in% c("Persistence","Climatology")) %>%
   #Merge in the observations
-  left_join(y=obs.dat.bare,
+  left_join(y=ref.dat.bare,
             by=c("ym","spName","statName","resultName"),
-            suffix=c(".pred",".obs")) %>%
+            suffix=c(".pred",".ref")) %>%
   #Nest
   group_by(srcType,srcName,calibrationMethod,realization,
          spName,statName,resultName,lead,
@@ -381,9 +386,9 @@ if(have.mdl.dat) {
     bind_rows(dist.pred) %>%
     #Add in observations
     mutate(ym=date_to_ym(date)) %>%
-    left_join(y=obs.dat.bare,
+    left_join(y=ref.dat.bare,
               by=c("ym","spName","statName","resultName"),
-              suffix=c(".mdl",".obs")) %>%
+              suffix=c(".mdl",".ref")) %>%
     #Tidy
     mutate(lead=month_diff(date,startDate)) %>%
     group_by(srcType,srcName,calibrationMethod,spName,

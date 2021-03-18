@@ -54,8 +54,8 @@ analysis.grid.fname <- PE.scratch.path(pcfg,"analysis.grid")
 # Setup ####
 #'========================================================================
 #Setup calibration database and clear anything that doesn't exist
-PE.db.setup.calibration(pcfg,this.datasrc)
-PE.db.delete.by.datasource(pcfg,PE.cfg$db$calibration,this.datasrc)
+PE.db.setup.extraction(pcfg,this.datasrc)
+PE.db.delete.by.datasource(pcfg,PE.cfg$db$extract,this.datasrc)
 
 #/*======================================================================*/
 #'## Extract HadISST data
@@ -117,9 +117,9 @@ dat.b[dat.b < -100] <- NA
 dat.b@crs <- PE.cfg$misc$crs
 
 #Create metadata
-frag.dat <- tibble(srcName=this.datasrc@name,
+frag.dat <- tibble(srcFname=basename(this.datasrc@sources),
+                   srcName=this.datasrc@name,
                    srcType=this.datasrc@type,
-                   calibrationMethod=NA,
                    realization=NA,
                    startDate=NA,
                    date=getZ(dat.b),
@@ -129,7 +129,7 @@ frag.dat <- tibble(srcName=this.datasrc@name,
 #Write to database
 frag.dat %>%
   mutate(date=as.character(date)) %>%
-  PE.db.appendTable(pcfg,PE.cfg$db$calibration,this.datasrc,dat=.)
+  PE.db.appendTable(pcfg,PE.cfg$db$extract,this.datasrc,dat=.)
 
 #Remove the temporary files to tidy up
 del.err <- unlink(regrid.fname)
