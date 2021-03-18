@@ -50,8 +50,8 @@ install: FORCE
 %.r: FORCE
 	$(Rscript) $@
 
-extracts: 
-	$(Rscript) src/ZZ.Helpers/targets.r model.realmeans 
+local: 
+	$(Rscript) src/ZZ.Helpers/targets.r local.data 
 
 NMME_sync:
 	bsub  < src/Y.HPC_scripts/bNMME_sync.sh

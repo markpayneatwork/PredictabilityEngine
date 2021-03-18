@@ -290,7 +290,7 @@ if(pcfg@obs.only) {
 
 #If not observations, only run model extractions
 if(is.null(pcfg@Observations)) {
-  tar.l <- tar.l[names(tar.l) %in% c("model.srcs","model.extracts","model.realmeans")]
+  tar.l <- tar.l[names(tar.l) %in% c("model.srcs","model.extracts","model.realmeans","local.data")]
 }
 
 #Turn off field metrics if there aren't any
