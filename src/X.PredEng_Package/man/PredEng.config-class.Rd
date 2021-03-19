@@ -25,13 +25,9 @@ Different extraction modes can be combined in the same list.
 \describe{
 \item{\code{project.name}}{Name of the configuration}
 
-\item{\code{Observations}}{A data.source object defining the observational dataset to include.}
+\item{\code{reference}}{The name of the reference data-set, against which to compare predictions. For the meantime, assumes that this is of type "Observations".}
 
-\item{\code{Decadal}}{A list of GCM objects defining the decadal forecast systems to be analysed}
-
-\item{\code{NMME}}{A list of GCM objects defining the NMME models to be analysed}
-
-\item{\code{CMIP5}}{A list of data source objects to configure extraction from the CMIP5 ensemble.}
+\item{\code{data.sources}}{A list of data.sources objects defining the data.sets to be extracted}
 
 \item{\code{obs.only}}{Only process observations. Useful for cases where we don't want to process everything.}
 

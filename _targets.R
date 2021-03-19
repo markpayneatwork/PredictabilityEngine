@@ -82,46 +82,34 @@ run.extraction.script <- function(this.src) {
                     srcName=this.src@name))
 }
 
+#Reference modl
+tar.l$reference.src <-
+  tar_target(reference.src,
+             pcfg@reference)
 
-#Observations
-tar.l$obs.src <-
-  tar_target(obs.src,
-             pcfg@Observations)
-
-tar.l$obs.extracts <-
-  tar_target(obs.extracts,
-             run.extraction.script(obs.src))
-
-tar.l$obs.realmeans <-
-  tar_target(obs.realmeans,
-             run.extern.script(here("src/C.Calibrate/A1.Calculate_realmeans.r"),
-                               obs.extracts,
-                               args=c(srcType=obs.extracts$srcType,
-                                      srcName=obs.extracts$srcName)))
-
-#Models
-tar.l$model.srcs <-
-  tar_target(model.srcs,
-             pcfg@Models,
+#Data sources
+#Only run if we need to do some local extraction
+tar.l$data.srcs <-
+  tar_target(datasrcs,
+             pcfg@data.sources,
              iteration = "list")
 
-tar.l$model.extracts <-
-  tar_target(model.extracts,
-             run.extraction.script(model.srcs),
-             pattern=map(model.srcs))
+tar.l$datasrc.extracts <-
+  tar_target(datasrc.extracts,
+             run.extraction.script(datasrcs),
+             pattern=map(datasrcs))
 
-tar.l$model.realmeans <-
-  tar_target(model.realmeans,
-             run.extern.script(here("src/C.Calibrate/A1.Calculate_realmeans.r"),
-                        model.extracts,
-                        args=c(srcType=model.extracts$srcType,
-                               srcName=model.extracts$srcName)),
-             pattern=map(model.extracts))
+tar.l$datasrc.realmeans <-
+  tar_target(datasrc.realmeans,
+             run.extern.script(here("src/B.Extract/Z1.Calculate_realmeans.r"),
+                        datasrc.extracts,
+                        args=c(srcType=datasrc.extracts$srcType,
+                               srcName=datasrc.extracts$srcName)),
+             pattern=map(datasrc.extracts))
 
-#Combine
 tar.l$local.data <-
   tar_target(local.data,
-             bind_rows(obs.realmeans,model.realmeans))
+             datasrc.realmeans)
 
 #'========================================================================
 # Calibration ####
@@ -131,33 +119,33 @@ tar.l$local.data <-
 get.extraction.databases <- function(object,...) {
   tibble(path=PE.db.list(object,PE.cfg$db$extract),
          checksum=tools::md5sum(path),
-         datetime=file.info(path)$mtime,
-         srcTypeName=gsub("^.*_Extraction_(.*).sqlite$","\\1",basename(path))) %>%
-    separate(srcTypeName,
+         datetime=file.info(path)$mtime) %>%
+  extract(path,into="srcTypeName",regex="^.*_Extraction_(.*).sqlite$",remove = FALSE) %>%
+  separate(srcTypeName,
              c("srcType","srcName"),
              sep="_",
              extra="drop")
 }
 
-tar.l$all.data <-
-  tar_target(all.data,
-             get.extraction.databases(pcfg,local.data),
+tar.l$extraction.databases <-
+  tar_target(extraction.databases,
+             get.extraction.databases(pcfg),
              cue=tar_cue("always"))
 
 #Climatology
 tar.l$clim <-
   tar_target(clim,
              run.extern.script(here("src/C.Calibrate/A2.Climatological_statistics.r"),
-                        all.data,
-                        args=c(srcType=all.data$srcType,
-                               srcName=all.data$srcName)),
-             pattern=map(all.data))
+                               extraction.databases,
+                               args=c(srcType=extraction.databases$srcType,
+                                      srcName=extraction.databases$srcName)),
+             pattern=map(extraction.databases))
 
 #Calibration
 tar.l$calibration <-
   tar_target(calibration,
              run.extern.script(here("src/C.Calibrate/B1.Mean_adjustment.r"),
-                        clim, obs.realmeans,
+                        clim, reference.src,
                         args=c(srcType=clim$srcType,
                                srcName=clim$srcName)),
              pattern=map(clim))
@@ -169,6 +157,7 @@ tar.l$calibration <-
 #                           calibration))
 # }
 # 
+
 #Ensemble and Grand means
 if(pcfg@obs.only) {
   tar.l$stat.srcs <-
@@ -277,7 +266,11 @@ tar.l$report <-
              run.extern.script(here("src/E.Postprocessing/B1.Visualise_scalar_skill_metrics.r"),
                         scalar.metrics))
 
-
+#Final target of this branch
+collator.fn <- function(...) {return(NULL)}
+tar.l$analysis <-
+  tar_target(analysis,
+             collator.fn(report,field.metrics))
 
 #'========================================================================
 # Make a Plan! And then change it. ####
@@ -289,21 +282,15 @@ names(tar.l) <- map_chr(tar.l,~get("name",envir=.x$settings))
 #Note that we can also have observations in the Model slots though.
 if(pcfg@obs.only) {
   obs.only.drop <-
-    c("report","scalar.metrics","field.metrics",
-      "ensmean.src","ensmeans","GrandEns")
+    c("report","scalar.metrics","field.metrics")
   tar.l <- tar.l[!(names(tar.l) %in% obs.only.drop)]
 }
 
 #Turn off multimodel aspects if there are no models
-if(length(pcfg@Models)==0) {
+if(length(pcfg@data.sources)==0) {
   no.models.drop <-
-    c("model.srcs","model.extracts","model.realmeans")
+    c("datasrcs","datasrc.extracts","datasrc.realmeans")
   tar.l <- tar.l[!(names(tar.l) %in% no.models.drop)]
-}
-
-#If no observations, only run model extractions
-if(is.null(pcfg@Observations)) {
-  tar.l <- tar.l[names(tar.l) %in% c("model.srcs","model.extracts","model.realmeans","local.data")]
 }
 
 #Turn off field metrics if there aren't any

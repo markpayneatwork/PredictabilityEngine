@@ -44,7 +44,7 @@ set.log_msg.silent()
 set.nco.defaults("--overwrite")
 
 #Data source
-this.datasrc <- pcfg@Observations
+this.datasrc <- PE.get.datasrc(pcfg,"Observations","EN4")
 assert_that(this.datasrc@name=="EN4",msg="This script is only for processing EN4 data")
 
 #Working directories

@@ -50,8 +50,8 @@ if(interactive()) {
   this.srcName <- cmd.args[2]
 }
 this.datasrc <- data.source(type=this.srcType,name=this.srcName)
-ref.datasrc <-  pcfg@Observations   #Which serves as our baseline reference to adjust to
-this.datasrc.is.ref <- ref.datasrc@name==this.srcName & ref.datasrc@type==this.srcType
+ref.datasrc <-  data.source(type="Observations",name=pcfg@reference)   #baseline reference to adjust to
+this.datasrc.is.ref <- identical(this.datasrc,ref.data.src)
 PE.config.summary(pcfg,this.datasrc)
 
 #Setup parallelism

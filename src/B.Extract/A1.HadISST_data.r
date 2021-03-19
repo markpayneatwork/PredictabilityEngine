@@ -44,7 +44,7 @@ set.log_msg.silent()
 set.nco.defaults("--overwrite")
 
 #Data source
-this.datasrc <- pcfg@Observations
+this.datasrc <- PE.get.datasrc(pcfg,"Observations","HadISST")
 assert_that(this.datasrc@name=="HadISST",msg="This script is only for processing HadISST data")
 
 #Working directories

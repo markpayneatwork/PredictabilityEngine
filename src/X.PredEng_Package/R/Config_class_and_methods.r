@@ -4,10 +4,8 @@ setClassUnion("data.sourceORNULL",c("data.source","NULL"))
 #' PredEng Project configuration class
 #'
 #' @slot project.name Name of the configuration
-#' @slot Observations A data.source object defining the observational dataset to include. 
-#' @slot Decadal A list of GCM objects defining the decadal forecast systems to be analysed
-#' @slot NMME A list of GCM objects defining the NMME models to be analysed
-#' @slot CMIP5 A list of data source objects to configure extraction from the CMIP5 ensemble. 
+#' @slot reference The name of the reference data-set, against which to compare predictions. For the meantime, assumes that this is of type "Observations".
+#' @slot data.sources A list of data.sources objects defining the data.sets to be extracted
 #' @slot obs.only Only process observations. Useful for cases where we don't want to process everything.
 #' @slot persistence.leads A vector (in months) of lead times at which to generate persistence forcasts
 #' @slot spatial.polygons A sf data.frame defining the spatial domains over which  to operate
@@ -55,8 +53,8 @@ setClassUnion("data.sourceORNULL",c("data.source","NULL"))
 PredEng.config <- 
   setClass("PredEng.config",
            slots=list(project.name="character",
-                      Observations="data.sourceORNULL",
-                      Models="PElst",
+                      reference="character",
+                      data.sources="PElst",
                       obs.only="logical",
                       persistence.leads="numeric",
                       spatial.polygons="sf",
@@ -98,7 +96,7 @@ PredEng.config <-
                              msg="Unsupported calibration method selected"))
              
              #Check for consistency between presence of 2D fields and requested vertical range
-             datsrcs <- c(object@Models,object@Observations)
+             datsrcs <- object@data.sources
              if(!all(is.na(object@vert.range))) {
                for(d in datsrcs) {
                  if(length(d@fields.are.2D)!=0) {
@@ -157,7 +155,7 @@ setMethod("show","PredEng.config", function(object) {
                          "data.frame","PElst","data.source","NULL"))) {
       cat(sprintf("%-20s : ",slt))
     } else {return(NULL)}
-    if(slt=="Models") {
+    if(slt=="data.sources") {
       tibble(dat.src=obj@.Data)%>%
         mutate(srcName=map_chr(dat.src,slot,"name"),
                srcType=map_chr(dat.src,slot,"type"),

@@ -219,7 +219,7 @@ test.data.source <- function(obj,z.range=c(250,600),f="missing"){
 #' @export
 PE.get.datasrc <- function(object,this.srcType,this.srcName) {
   datasrc.sel <- 
-    tibble(data.src=c(object@Models@.Data,object@Observations)) %>%
+    tibble(data.src=object@data.sources@.Data) %>%
     mutate(srcName=map_chr(data.src,slot,"name"),
            srcType=map_chr(data.src,slot,"type")) %>%
     filter(srcName==this.srcName,

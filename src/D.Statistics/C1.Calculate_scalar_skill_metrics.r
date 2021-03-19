@@ -76,7 +76,7 @@ assert_that(length(pcfg@MOI)==1,msg="Metric calculation currently one works with
 stats.tbl <- PE.db.tbl(pcfg,PE.cfg$db$stats,src=NULL)
 
 #Reference datasource
-ref.datasrc <- pcfg@Observations
+ref.datasrc <-  data.source(type="Observations",name=pcfg@reference)  
 
 #Clear existing metrics table
 if(file.exists(PE.db.path(pcfg,PE.cfg$db$metrics,src=NULL))) {

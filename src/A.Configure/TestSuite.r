@@ -55,11 +55,8 @@ define_dir(pcfg@scratch.dir)
 # Data sources ####
 #'========================================================================
 #' Observations
-pcfg@Observations <- 
-  filter(these.srcs,
-         group=="SST.obs",srcName=="HadISST") %>%
-  pull(sources) %>%
-  pluck(1)
+pcfg@reference <- "HadISST" 
+
   
 #'
 #Select a very limited set of decadal models
@@ -89,7 +86,7 @@ lim.dec %>%
   print(n=Inf)
 
 #Apply restricted list of files back on to the sources list
-pcfg@Models <-
+pcfg@data.sources <-
   lim.dec %>%
   select(-sources,-realization,-startDate) %>%
   nest(fnames=c(fnames)) %>%
@@ -102,12 +99,19 @@ pcfg@Models <-
   pull(mod.data.src) %>%
   PElst()
 
+#Setup observations, including short version of HadISST data
+obs.datsrc <- 
+  filter(these.srcs,
+         group=="SST.obs",srcName=="HadISST") %>%
+  pull(sources) %>%
+  pluck(1) 
+obs.datsrc@sources <- here("data_srcs/Observations/HadISST/HadISST_sst_short.nc")
+pcfg@data.sources <- c(pcfg@data.sources,obs.datsrc)
+
+
 #Select CMIP5 models
 #pcfg@CMIP5 <- make.CMIP5.srcs(CMIP5.db,var="tos")
 pcfg@obs.only <- FALSE
-
-#Set short version of HadISST data
-pcfg@Observations@sources <- here("data_srcs/Observations/HadISST/HadISST_sst_short.nc")
 
 #'========================================================================
 # Spatial Configurations ####
