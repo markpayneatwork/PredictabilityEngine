@@ -66,6 +66,9 @@ run.extern.script <-
                      as.list(args)))
   }
 
+#Links targets without evaluating them
+lazy.collator.fn <- function(...) {return(NULL)}
+
 #'========================================================================
 # Data Extraction ####
 #'========================================================================
@@ -135,7 +138,7 @@ tar.l$extraction.databases <-
 #Climatology
 tar.l$clim <-
   tar_target(clim,
-             run.extern.script(here("src/C.Calibrate/A2.Climatological_statistics.r"),
+             run.extern.script(here("src/C.Calibrate/A1.Climatological_statistics.r"),
                                extraction.databases,
                                args=c(srcType=extraction.databases$srcType,
                                       srcName=extraction.databases$srcName)),
@@ -267,10 +270,10 @@ tar.l$report <-
                         scalar.metrics))
 
 #Final target of this branch
-collator.fn <- function(...) {return(NULL)}
+
 tar.l$analysis <-
   tar_target(analysis,
-             collator.fn(report,field.metrics))
+             lazy.collator.fn(report,field.metrics))
 
 #'========================================================================
 # Make a Plan! And then change it. ####
