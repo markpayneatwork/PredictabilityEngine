@@ -19,7 +19,8 @@
 #    clean        : Remove all log files from working directory
 #    install      : Installs support R packages
 #    %.r          : (Re-)runs the file %.r e.g. a linked configuration file, but also others
-#    extracts     : Perform the extraction steps of the pipeline
+#    local        : Perform the local extraction steps of the pipeline
+#    analysis     : Performs the full analysis (without submitting to a queue)
 #    watch        : Watch tail of the most recent LSF log
 #    less	  : View all of most recent LSF log using less
 #    tail 	  : View end of most recent target log file
@@ -52,6 +53,9 @@ install: FORCE
 
 local: 
 	$(Rscript) src/ZZ.Helpers/targets.r local.data 
+
+analysis: 
+	$(Rscript) src/ZZ.Helpers/targets.r
 
 NMME_sync:
 	bsub  < src/Y.HPC_scripts/bNMME_sync.sh

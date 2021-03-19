@@ -40,7 +40,7 @@ if(interactive()) {
 
 if(length(make.this)==0)  {
   tar_make(local.data)  #Run the local data extraction first
-  tar_make() #Then rerun the rest. This will duplicate the local.data, but shouldn't rerun (as it's up to date)
+  tar_make(analysis) #Then rerun the rest. This will duplicate the local.data, but shouldn't rerun (as it's up to date)
 } else {
   tar_make(names=!!make.this)
 }
