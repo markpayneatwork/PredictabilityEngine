@@ -57,10 +57,13 @@ pcfg@persistence.leads <- seq(pcfg@MOI-1,120,by=12)
 #'========================================================================
 # Data Sources ####
 #'========================================================================
+pcfg@reference <- "EN4"
+
 #Decadal salinity models
-pcfg@Models <- 
+pcfg@data.sources <- 
   filter(these.srcs,
-         group=="Sal.Decadal" | group=="CMIP6" & var=="so") %>%
+         group=="Sal.Decadal" |
+         group=="Sal.obs") %>%
   pull(sources) %>%
   PElst()
 

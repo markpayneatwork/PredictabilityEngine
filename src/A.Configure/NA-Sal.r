@@ -54,17 +54,13 @@ pcfg@scratch.dir <- file.path(PE.cfg$dir$scratch,pcfg@project.name)
 #'========================================================================
 # Data Sources ####
 #'========================================================================
-#' Observations
-pcfg@Observations <- 
-  filter(these.srcs,
-         group=="Sal.obs",srcName=="EN4") %>%
-  pull(sources) %>%
-  pluck(1)
+pcfg@reference <- "EN4"
 
 #Decadal salinity models
-pcfg@Models <- 
+pcfg@data.sources <- 
   filter(these.srcs,
-         group=="Sal.Decadal") %>%
+         group=="Sal.Decadal" |
+         group=="Sal.obs" & srcName=="EN4") %>%
   pull(sources) %>%
   PElst()
 

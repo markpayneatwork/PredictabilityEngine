@@ -53,18 +53,12 @@ define_dir(pcfg@scratch.dir)
 #'========================================================================
 # Data sources ####
 #'========================================================================
-#' Observations
-pcfg@Observations <- 
-  filter(these.srcs,
-         group=="Sal.obs",
-         srcName=="EN4") %>%
-  pull(sources) %>%
-  pluck(1)
+pcfg@reference <- "EN4"
 
-pcfg@Models <- 
+pcfg@data.sources <- 
   filter(these.srcs,
-         group=="Sal.obs",
-         str_starts(srcName,"ORAS")) %>%
+         group=="Sal.obs" & srcName=="EN4" |
+         group=="Sal.obs" & str_starts(srcName,"ORAS")) %>%
   pull(sources) %>% 
   PElst()
 

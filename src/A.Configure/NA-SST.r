@@ -50,21 +50,14 @@ pcfg@scratch.dir <- file.path(PE.cfg$dir$scratch,pcfg@project.name)
 #'========================================================================
 # Data sources ####
 #'========================================================================
-#' Observations
-pcfg@Observations <- 
-  filter(these.srcs,
-         group=="SST.obs",srcName=="HadISST") %>%
-  pull(sources) %>%
-  pluck(1)
-pcfg@obs.only <- FALSE
+pcfg@reference <- "HadISST"
 
-#Decadal models
-pcfg@Models <- 
+pcfg@data.sources <- 
   filter(these.srcs,
+         group=="SST.obs" & srcName=="HadISST" |
          group=="SST.Decadal") %>%
   pull(sources) %>%
   PElst()
-
 
 #'========================================================================
 # Spatial Configurations ####

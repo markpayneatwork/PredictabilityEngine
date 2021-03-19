@@ -60,18 +60,12 @@ pcfg@persistence.leads <- seq(pcfg@MOI-1,120,by=12)
 #'========================================================================
 # Data sources ####
 #'========================================================================
-#' Observations
-pcfg@Observations <- 
-  filter(these.srcs,
-         group=="SST.obs",srcName=="HadISST") %>%
-  pull(sources) %>%
-  pluck(1)
-pcfg@obs.only <- FALSE
+pcfg@reference <- "HadISST"
 
-#Decadal models
-pcfg@Models <- 
+pcfg@data.sources <- 
   filter(these.srcs,
-         group=="SST.Decadal" | group=="CMIP6" & var=="tos") %>%
+         group=="SST.obs" &srcName=="HadISST" |
+         group=="SST.Decadal") %>%
   pull(sources) %>%
   PElst()
 
