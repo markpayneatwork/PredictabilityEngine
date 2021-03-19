@@ -43,7 +43,7 @@ WGS2D.pcfg <- readRDS("scratch/Blue-whiting-WGS2D/configuration.rds")
 pcfg <- PredEng.config(WGS2D.pcfg,
                        project.name= "Blue-whiting-decadal",
                        clim.years=1981:2010,  
-                       comp.years=1961:2014,
+                       comp.years=1980:2014,
                        calibrationMethods=c("MeanAdj"),
                        obs.only=FALSE)
 
