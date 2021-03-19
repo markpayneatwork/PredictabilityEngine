@@ -1,0 +1,231 @@
+---
+title: "Comparison of blue whiting salinity products"
+output:
+  html_document: 
+    df_print: paged
+    keep_md: no
+    toc: no
+    toc_float: yes
+---
+
+```{r setup, include="FALSE"}
+#'========================================================================
+# B4.Comparison_of_Blue_whiting_salinity_observations
+#'========================================================================
+#
+# by Mark R Payne
+# DTU-Aqua, Kgs. Lyngby, Denmark
+# http://www.staff.dtu.dk/mpay
+#
+# Created Fri Mar 19 07:35:58 2021
+#
+# <Description>
+#
+# This work is subject to a Creative Commons "Attribution" "ShareALike" License.
+# You are largely free to do what you like with it, so long as you "attribute"
+# me for my contribution. See the fine print at the end for exact details.
+#
+# To do:
+#
+# Notes:
+#   * Knitting of notebooks from Rstudio leads to all sorts of messy problems 
+#     with the directory. Use here::here() to specify a location relative to
+#     the project top directory
+#
+#'========================================================================
+
+#Configure Knitr
+knitr::opts_chunk$set(
+  echo=FALSE,
+	error = FALSE,
+	message = FALSE,
+	warning = FALSE,
+	include = TRUE,
+	results = "markup",
+	fig.width = 10,
+	fig.height=14/25*10,
+  fig.align="center",
+  fig.path=here::here("notebooks","figures","B4.Comparison_of_Blue_whiting_salinity_observations_"))
+
+#Powerpoint needs 14 x 25cm figures
+
+# knitr::opts_knit$set(
+#    root.dir="..")
+
+library(tidyverse)
+library(ggplot2)
+library(tibble)
+library(here)
+library(RSQLite)
+library(lubridate)
+library(RcppRoll)
+library(zoo)
+library(PredEng)
+
+theme_set(theme_bw(base_size = 14))
+```
+
+```{r}
+#==========================================================================
+# Configure ####
+#==========================================================================
+
+```
+
+by Mark R Payne  <br>
+DTU-Aqua, Kgs. Lyngby, Denmark  <br>
+http://www.staff.dtu.dk/mpay  <br>
+`r format(Sys.time(), "%a %b %d %Y, %H:%M:%S ")`
+
+This notebook compares the salinity results obtained from three different observational
+data products - EN4, ORAS4 and ORAS5. For each of these data products I have extracted the data in the same manner, and averaged the salinity field. The five individual realisations in ORAS5 after 1978 have been averaged together to make a combined product.
+
+## Region of Interest
+
+Extraction and averaging is performed over the "Northern Component" region below, over depths from 250-600m in the month of March.
+
+```{r}
+pcfg <- readRDS(here("scratch/Blue-whiting-WGS2D/configuration.rds"))
+plot(pcfg)
+
+```
+
+
+
+```{r}
+#'========================================================================
+# Setup ####
+#'========================================================================
+#Connect to database
+this.db <- dbConnect(SQLite(),here("scratch/Blue-whiting-WGS2D/Blue-whiting-WGS2D_Statistics.sqlite"))
+this.tbl <- tbl(this.db,"Statistics")
+
+#Extract data
+dat <- 
+  this.tbl %>%
+  filter(resultName=="average",
+         month(date)==3,
+         calibrationMethod=="None",
+         !is.na(realization) | realization=="realmean") %>%
+  collect() %>%
+  mutate(date=ymd(date))
+
+
+```
+
+## Salinity comparisons
+
+First, a direct comparison of all data from the three data sets.
+
+```{r}
+dat %>%
+  filter(realization=="realmean")%>%
+  ggplot(aes(x=date,y=value,colour=srcName,group=paste(srcName,realization)))+
+  geom_line()+
+  guides(colour=guide_legend(title="Product"))
+
+```
+There is clearly some disagrement in the datasets prior to e.g. 1980. Lets quantify that a bit more robustly, by calculating the spread in the three data sets versus time.
+
+```{r}
+dat %>%
+  filter(realization=="realmean") %>%
+  group_by(date) %>%
+  summarize(sd=sd(value)) %>%
+  mutate(smooth=roll_mean(sd,n = 3,fill = NA)) %>%
+  ggplot(aes(date,sd))+
+  stat_smooth()+
+  geom_point()+
+  labs(x="Year",y="Standard deviation across datasets")
+
+```
+
+And the bias relative to EN4.
+
+```{r}
+dat %>%
+  filter(realization=="realmean") %>%
+  dplyr::select(date,srcName,value) %>%
+  pivot_wider(names_from=srcName) %>%
+  mutate(bias.ORAS4=abs(ORAS4 - EN4),
+         bias.ORAS5=abs(ORAS5- EN4)) %>%
+  dplyr::select(date,starts_with("bias")) %>%
+  pivot_longer(-date) %>%
+  tidyr::extract(name,"Product",regex="^.*\\.(.*)$") %>%
+  ggplot(aes(date,value,colour=Product))+
+  stat_smooth()+
+  labs(x="Year",y="Absolute bias relative to EN4 (smoothed)")
+
+```
+
+So there is clearly an improvement in the agreement around 1980. Lets try a running correlation just for good measure
+
+```{r}
+cor.fn <-  function(x) {cor(x[,1],x[,2])}
+cor.width <- 15
+dat %>%
+  filter(realization=="realmean") %>%
+  dplyr::select(date,srcName,value) %>%
+  pivot_wider(names_from=srcName,values_from = value) %>%
+  mutate(cor.EN4.S4=rollapply(cbind(EN4,ORAS4),width=cor.width, cor.fn,by.column=FALSE,na.pad=TRUE),
+         cor.EN4.S5=rollapply(cbind(EN4,ORAS5),width=cor.width, cor.fn,by.column=FALSE,na.pad=TRUE),
+         cor.S4.S5=rollapply(cbind(ORAS4,ORAS5),width=cor.width, cor.fn,by.column=FALSE,na.pad=TRUE)) %>%
+  dplyr::select(date,starts_with("cor")) %>% 
+  pivot_longer(c(-date)) %>%
+  tidyr::extract(name,into="Correlation",regex="^cor.(.*)$") %>%
+  ggplot(aes(date,value,color=Correlation))+
+  geom_hline(yintercept=0)+
+  geom_line()+
+  coord_cartesian(ylim=c(-1,1),expand=0)+
+  labs(y=sprintf("Pearson correlation (%s year window)",cor.width),
+       x="Window center (year)")
+
+```
+
+So, S4 and S5 are relative closely coupled (unsurprisingly), but there is certaintly a change around 1980. It's surprising to see some disagreement after 2000 as well.
+
+## EN4 profile density
+
+As an addition check, I have downloaded the EN4 profile data and then checked how many profiles we actually have in the region of interest (west of Great Britain and Ireland) in March (the month of interest).
+
+```{r}
+EN4.prof <- 
+  readRDS(here("resources/BlueWhiting/EN4.profiles.rds")) 
+
+tibble(year=1900:2020) %>%
+  left_join(y=EN4.prof) %>%
+  mutate(n=ifelse(is.na(n),0,n),
+         runMed=roll_median(n,n=5,fill=NA)) %>%
+  ggplot(aes(x=year))+
+  geom_bar(aes(y=n),stat="identity")+
+  geom_line(aes(y=runMed),col="red",size=1)+
+  xlim(c=1950,2021)+
+  labs(x="Year",y="Number of EN4 profiles in March")
+
+```
+(Red line is a five year running median). 
+
+Which is actually a lot more uniform that I had originally feared - you would struggle to say that there is a clear trend there. The large in 2014 is due to a sampling campaign with lots of samples in one region.
+
+
+## Conclusion
+
+Maybe we should only consider salinity data from 1980 onwards? My logic is that the different decadal prediction models are initialised with different products, and therefore prior to 1980 have quite a different perception of both the starting point and therefore the truth - it's not entirely reasonable to expect them to agree back there, when there is not agreement about "truth". At least after 1980 there is a broad agreement.
+
+This all feels very 2016, discussing different perceptions of the truth. I thought we had put that behind us???!!
+
+***
+*This work by Mark R Payne is licensed under a  Creative Commons
+Attribution-NonCommercial-ShareAlike 3.0 Unported License. 
+For details, see http://creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US
+Basically, this means that you are free to "share" and "remix" for 
+non-commerical purposes as you see fit, so long as you "attribute" me for my
+contribution. Derivatives can be distributed under the same or 
+similar license.*
+
+*This work comes with ABSOLUTELY NO WARRANTY or support.*
+
+***
+
+
+
