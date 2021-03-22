@@ -103,6 +103,16 @@ pcfg@statistics[["SDM"]]@resources$pred.l <-
        list(latitude=lat.rast,
             log10bath=log10bath)
 
+
+#Use a simple threshold approach, based on 35.3 to 35.5 psu
+threshold.stat <- 
+  threshold(name="threshold",
+            desc="35.3-25.5",
+            threshold=c(35.3,35.5),
+            retain.field=FALSE,
+            above=NA)
+pcfg@statistics <- list(threshold.stat) %>% PElst()
+
 #'========================================================================
 # Output ####
 #'========================================================================
