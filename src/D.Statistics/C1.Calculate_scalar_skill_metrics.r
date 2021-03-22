@@ -50,8 +50,8 @@ if(interactive()) {
 }
 
 #Setup parallelisation
-if(Sys.info()["nodename"]=="aqua-cb-mpay18" | interactive()) {
-  n.cores <- availableCores()
+if(Sys.info()["nodename"]%in% c("aqua-cb-mpay18","volta.dmi.dk") | interactive()) {
+  n.cores <- 8
 } else {
   n.cores <- as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))    
   assert_that(!is.na(n.cores),msg = "Cannot detect number of allocated cores")
