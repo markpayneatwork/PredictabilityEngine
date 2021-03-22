@@ -236,55 +236,55 @@ GAM.sdm.fn <- function(dat,resources,retain) {
   scalar.l["areaMatchSurvey"] <- 
     cellStats(pxl.area* (field.l$april15 > resources$thresholds$matchSurvey),
               sum,na.rm=TRUE)
-  #Westward extent 
-  west.ext <- function(r,this.threshold) {
-    west.focus <- crop(r,extent(-25,0,56,58))
-    west.ext.df <- 
-      (west.focus > this.threshold ) %>%
-      rasterToPoints() %>%
-      as_tibble() %>%
-      filter(layer==1) %>%
-      group_by(y) %>%
-      summarise(min.x=min(x),
-                .groups="drop") 
-    return(mean(west.ext.df$min.x,na.rm=TRUE))
-  }
-  if(resources$WGS2D) {
-    scalar.l["westwardExtentMaxProb"] <- 
-      west.ext(field.l$maximumProbability,resources$thresholds$maximumProbability)
-    scalar.l["westwardExtentMeanProb"] <- 
-      west.ext(field.l$meanProbability,resources$thresholds$meanProbability)
-    scalar.l["westwardExtent15April"] <- 
-      west.ext(field.l$april15,resources$thresholds$april15)
-  }
-  scalar.l["westwardExtentLarvae"] <- 
-    west.ext(field.l$april15,resources$thresholds$larvae)
-  scalar.l["westwardExtentMatchSurvey"] <- 
-    west.ext(field.l$april15,resources$thresholds$matchSurvey)
-  
-  #Calculate westward extent using clumping approach
-  west.ext.clump <- function(r,this.threshold) {
-    west.focus <- crop(r,extent(-25,0,56,58))
-    west.ext.clump <- 
-      (west.focus > this.threshold ) %>%
-      clump()
-    west.ext.df <<-
-      west.ext.clump %>%
-      rasterToPoints() %>%
-      as_tibble() %>%
-      group_by(clumps,y) %>%
-      summarise(min.x=min(x),
-                .groups="drop") %>%
-      group_by(clumps) %>%
-      summarise(mean.min.x=mean(min.x),
-                .groups="drop") 
-    return(max(west.ext.df$mean.min.x))
-  }
-  scalar.l["westExtClumpLarvae"] <- 
-    west.ext.clump(field.l$april15,resources$thresholds$larvae)
-  scalar.l["westExtClumpMatchSurvey"] <- 
-    west.ext.clump(field.l$april15,resources$thresholds$matchSurvey)
-  
+  # #Westward extent 
+  # west.ext <- function(r,this.threshold) {
+  #   west.focus <- crop(r,extent(-25,0,56,58))
+  #   west.ext.df <- 
+  #     (west.focus > this.threshold ) %>%
+  #     rasterToPoints() %>%
+  #     as_tibble() %>%
+  #     filter(layer==1) %>%
+  #     group_by(y) %>%
+  #     summarise(min.x=min(x),
+  #               .groups="drop") 
+  #   return(mean(west.ext.df$min.x,na.rm=TRUE))
+  # }
+  # if(resources$WGS2D) {
+  #   scalar.l["westwardExtentMaxProb"] <- 
+  #     west.ext(field.l$maximumProbability,resources$thresholds$maximumProbability)
+  #   scalar.l["westwardExtentMeanProb"] <- 
+  #     west.ext(field.l$meanProbability,resources$thresholds$meanProbability)
+  #   scalar.l["westwardExtent15April"] <- 
+  #     west.ext(field.l$april15,resources$thresholds$april15)
+  # }
+  # scalar.l["westwardExtentLarvae"] <- 
+  #   west.ext(field.l$april15,resources$thresholds$larvae)
+  # scalar.l["westwardExtentMatchSurvey"] <- 
+  #   west.ext(field.l$april15,resources$thresholds$matchSurvey)
+  # 
+  # #Calculate westward extent using clumping approach
+  # west.ext.clump <- function(r,this.threshold) {
+  #   west.focus <- crop(r,extent(-25,0,56,58))
+  #   west.ext.clump <- 
+  #     (west.focus > this.threshold ) %>%
+  #     clump()
+  #   west.ext.df <<-
+  #     west.ext.clump %>%
+  #     rasterToPoints() %>%
+  #     as_tibble() %>%
+  #     group_by(clumps,y) %>%
+  #     summarise(min.x=min(x),
+  #               .groups="drop") %>%
+  #     group_by(clumps) %>%
+  #     summarise(mean.min.x=mean(min.x),
+  #               .groups="drop") 
+  #   return(max(west.ext.df$mean.min.x))
+  # }
+  # scalar.l["westExtClumpLarvae"] <- 
+  #   west.ext.clump(field.l$april15,resources$thresholds$larvae)
+  # scalar.l["westExtClumpMatchSurvey"] <- 
+  #   west.ext.clump(field.l$april15,resources$thresholds$matchSurvey)
+  # 
   #Return results
   if(retain) {
     this.rtn <- 
