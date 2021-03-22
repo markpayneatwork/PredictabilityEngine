@@ -57,7 +57,7 @@ if(interactive()) {
 }
 
 #Setup parallelisation
-if(Sys.info()["nodename"]=="aqua-cb-mpay18" | interactive()) {
+if(Sys.info()["nodename"]%in% c("aqua-cb-mpay18","volta.dmi.dk") | interactive()) {
   n.cores <- availableCores()
 } else {
   n.cores <- as.numeric(Sys.getenv("LSB_DJOB_NUMPROC"))    

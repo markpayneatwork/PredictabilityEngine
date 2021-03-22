@@ -58,7 +58,7 @@ local:
 	$(Rscript) src/ZZ.Helpers/targets.r local.data 
 
 analysis: 
-	$(Rscript) src/ZZ.Helpers/targets.r
+	$(Rscript) src/ZZ.Helpers/targets.r analysis
 
 NMME_sync:
 	bsub  < src/Y.HPC_scripts/bNMME_sync.sh
