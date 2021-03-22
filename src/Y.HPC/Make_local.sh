@@ -42,7 +42,7 @@ module load gcc
 module load nco
 module load gdal/2.2.3
 
-./Rscript ./src/ZZ.Helpers/targets.r
+./Rscript ./src/ZZ.Helpers/targets.r local.data
 
 #Error check
 if [ "$?" -eq 0 ]; 
