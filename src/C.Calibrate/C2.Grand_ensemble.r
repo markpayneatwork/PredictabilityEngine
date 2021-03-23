@@ -59,21 +59,21 @@ calib.tbl <- PE.db.tbl(pcfg,PE.cfg$db$calibration,src=NULL)
 #Get list of realisation means
 realisations <-
   calib.tbl %>%
-  filter(!realization %in% c("realmean","ensmean"),
+  filter(!realization %in% c("realmean","ensmean","grandens"),
          srcType==this.srcType) %>%
   collect() %>%
   PE.db.unserialize()
 
 #Clear all previous Grand ensemble means for this data source
-prev.GrandEns <- 
+prev.grandens <- 
   calib.tbl %>%
-  filter(srcName=="GrandEns",
+  filter(srcName=="grandens",
          srcType==this.srcType) %>%
   select(pKey) %>%
   collect() %>%
   pull() 
 dbDisconnect(calib.tbl)  #Finished with database
-PE.db.delete.by.pKey(pcfg,PE.cfg$db$calibration,src=NULL,pKeys = prev.GrandEns)
+PE.db.delete.by.pKey(pcfg,PE.cfg$db$calibration,src=NULL,pKeys = prev.grandens)
 
 #'========================================================================
 # Process ####
@@ -88,19 +88,19 @@ assert_that(all(assert.day$day==1),msg="Day = 1 condition violated")
 
 #Throw it all at dplyr and hope
 if(!pcfg@obs.only) {
-  GrandEns <- 
+  grandens <- 
     realisations %>%
     group_by(srcType,calibrationMethod,startDate,date,lead,.drop=TRUE) %>%
     summarise(field=raster.list.mean(field),
               n=n(),
               .groups="keep") %>% #Check for duplicated realization codes
     ungroup() %>%
-    add_column(srcName="GrandEns",.after=1)
+    add_column(srcName="grandens",.after=1)
   
   #Write results
-  GrandEns %>%
+  grandens %>%
     select(-n) %>%
-    mutate(realization="GrandEns") %>%
+    mutate(realization="grandens") %>%
     PE.db.appendTable(pcfg,PE.cfg$db$calibration,src=NULL,dat=.)
 }
 

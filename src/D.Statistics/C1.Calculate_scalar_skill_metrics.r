@@ -322,7 +322,7 @@ cent.skill.fn <- function(d) {
 cent.pred <- 
   pred.dat %>%
   #Only want persistence, realmean or ensmean
-  filter(realization %in% c("realmean","ensmean","GrandEns") | 
+  filter(realization %in% c("realmean","ensmean","grandens") | 
            srcType %in% c("Persistence","Climatology")) %>%
   #Merge in the observations
   left_join(y=ref.dat.bare,
@@ -366,7 +366,7 @@ if(have.mdl.dat) {
   dist.pred <- 
     #Convert to probabilistic forecasts
     mdl.stats.dat %>%  #Don't include persistence
-    filter(!(realization %in% c("realmean","ensmean","GrandEns"))) %>%   #Individual ens members only
+    filter(!(realization %in% c("realmean","ensmean","grandens"))) %>%   #Individual ens members only
     group_by(srcType,srcName,calibrationMethod,startDate,date,
              spName,statName,resultName,.drop=TRUE) %>%
     summarise(pred.mean=mean(value),
