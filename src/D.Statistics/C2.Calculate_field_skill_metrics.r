@@ -64,6 +64,9 @@ assert_that(length(pcfg@MOI)==1,msg="Metric calculation currently one works with
 #Setup databases
 stats.tbl <- PE.db.tbl(pcfg,PE.cfg$db$stats,src=NULL)
 
+#Reference datasource
+ref.datasrc <-  data.source(type="Observations",name=pcfg@reference)  
+
 #Clear existing metrics table
 if(file.exists(PE.db.path(pcfg,PE.cfg$db$metrics.field,src=NULL))) {
   file.remove(PE.db.path(pcfg,PE.cfg$db$metrics.field,src=NULL))
@@ -98,7 +101,7 @@ ref.dat.bare <-
 # Skill Functions ####
 #'========================================================================
 #Correlation coefficent, with resampling
-skill.fn <- function(ref,pred) {
+skill.fn <- function(ref,pred,do.draws) {
   # ref <- this.dat$field.ref
   # pred <- this.dat$field.pred
   
@@ -112,18 +115,20 @@ skill.fn <- function(ref,pred) {
   draw.idxs <- map(1:n.samples,~sample(1:nlayers(ref.b),nlayers(ref.b),replace=TRUE))
   rtn <- list()
   rtn$pearson.correlation <- corLocal(ref.b,pred.b,method="pearson",ngb=1)
-  rtn$pearson.correlation.draws <-
-    map(draw.idxs,
-        ~corLocal(ref.b[[.x]],
-                  pred.b[[.x]],
-                  method="pearson",
-                  ngb=1)) %>%
-    brick()
   rtn$MSE <- mean((ref.b-pred.b)^2)
-  rtn$MSE.draws <-
-    map(draw.idxs,
-        ~mean((ref.b[[.x]]-pred.b[[.x]])^2)) %>%
-    brick()
+  if(do.draws) {
+    rtn$pearson.correlation.draws <-
+      map(draw.idxs,
+          ~corLocal(ref.b[[.x]],
+                    pred.b[[.x]],
+                    method="pearson",
+                    ngb=1)) %>%
+      brick()
+    rtn$MSE.draws <-
+      map(draw.idxs,
+          ~mean((ref.b[[.x]]-pred.b[[.x]])^2)) %>%
+      brick()
+  }
   rtn %>%
     enframe(name = "metric",value="field") %>%
     pivot_wider(names_from="metric",values_from="field") %>%
@@ -142,7 +147,7 @@ log_msg("Processing in chunks...\n")
 mdl.meta <-
   stats.tbl %>%
   filter(srcType!="Observations",
-         srcName=="ensmean",
+         realization %in% c("ensmean","grandens","realmean"),
          !is.na(field)) %>% #Only want the fields
   select(-field,-value) %>%
   collect() %>%
@@ -184,9 +189,12 @@ for(i in seq(n.groups)) {
   this.met <-
     this.dat %>%
     nest(data=-c(srcType,srcName,calibrationMethod,realization,lead,
-         spName,statName,resultName)) %>%
-    mutate(metrics=map(data,~skill.fn(.x$field.ref,.x$field.pred))) %>%
-    dplyr::select(-data) %>% 
+                 spName,statName,resultName)) %>%
+    #Only do redraws for some data types
+    mutate(do.draws=realization=="grandens") %>%
+    #Calculate
+    mutate(metrics=map2(data,do.draws,~skill.fn(.x$field.ref,.x$field.pred,do.draws=.y))) %>%
+    dplyr::select(-data,-do.draws) %>% 
     unnest(metrics)
   
   #Store results
@@ -227,12 +235,11 @@ ref.clim.mets <-
 
 #Now calculate skill scores
 SS.dat <- 
-  ref.clim.mets %>%
-  select(-srcType,-srcName) %>%
-  left_join(x=mdl.mets,
+  mdl.mets %>%
+  left_join(y=select(ref.clim.mets,-srcType,-srcName),
             by=c("spName","statName","resultName")) %>%
   mutate(MSSS=map2(MSE,MSE.clim,~ 1- .x/.y),
-         MSSS.draws=map2(MSE.draws,MSE.clim,~ 1- .x/.y))
+         MSSS.draws=map2(MSE.draws,MSE.clim, ~ if(is.null(.x)) { NULL} else {1- .x/.y}))
 
 #'========================================================================
 # Complete ####
@@ -244,6 +251,10 @@ these.mets <-
   pivot_longer(-c(srcType,srcName,calibrationMethod,realization,lead,spName,statName,resultName),
                names_to = "metric",values_to = "field") %>%
   ungroup() %>%
+  #Drop nulls
+  mutate(field.is.null=map_lgl(field,is.null)) %>%
+  filter(!field.is.null) %>%
+  select(-field.is.null) %>%
   #Make sure everything is in memory before writing
   mutate(field=map_if(field,~!inMemory(.x),~readAll(.x)))
 
