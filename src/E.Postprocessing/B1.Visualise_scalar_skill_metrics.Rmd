@@ -106,55 +106,6 @@ mets.tbl <- PE.db.tbl(pcfg,PE.cfg$db$metrics,src=NULL)
 
 ```{r results="asis"}
 #'========================================================================
-# Field skills ####
-#'========================================================================
-# if(nrow(field.skill.mets)>0) {
-#     cat("## Field statistics\n")
-#   
-#   #For simplicity, we only look at the skill of the ensemble mean
-#   ensmean.field.skill <- field.skill.mets %>%
-#                           filter(src.name==PE.cfg$files$ensmean.name) 
-#   
-#   #Now extract the raster-based skill fields into a format ready for plotting
-#   plt.dat.all <- rowwise(ensmean.field.skill) %>%
-#     group_split() %>%
-#     lapply(function(x) {
-#       rast.df <- rasterToPoints(x$field.skill[[1]])
-#       colnames(rast.df)[3] <- "skill"
-#       cbind(x,rast.df)}) %>%
-#     bind_rows() %>%
-#     as_tibble() %>%
-#     dplyr::select(-src.name,-sp.subdomain,-skill.type,-value,-field.skill) 
-#   
-#   #Now split into plots
-#   plt.dat.stat <- group_by(plt.dat.all) %>% group_split(stat.name)
-#   for(this.stat.dat in plt.dat.stat) {
-#     cat(sprintf("\n\n### %s\n",unique(this.stat.dat$stat.name)))
-# 
-#     #Now split into the individual plots
-#     plt.dat.l <- group_by(this.stat.dat,src.type,skill.metric) %>% group_split()
-#     for(plt.dat in plt.dat.l) {
-#       g <- ggplot(plt.dat,aes(x,y,fill=skill))+
-#         geom_raster()+
-#         facet_wrap(~lead)+
-#         coord_quickmap()+
-#         annotation_map(map_data("world"))+
-#         scale_fill_viridis_c()+
-#         labs(fill=unique(plt.dat$skill.metric),x="",y="")+
-#         ggtitle(unique(plt.dat$src.type))
-#       print(g)
-#       
-#       
-#     }
-#     
-#     
-#   }
-#   
-#     
-#   
-# }
-
-#'========================================================================
 # Stat skills ####
 #'========================================================================
 #Present results by spatial region
@@ -193,49 +144,51 @@ for(this.sp in sp.names) {
       #Show a subtitle
       cat(sprintf("\n\n### %s / %s\n",this.stat,this.result))
       
-      #Extract the corresponding stat data observations 
-      stat.obs <- 
+      #Extract the corresponding reference stat data 
+      stat.ref <- 
         stats.tbl %>%
         filter(srcType=="Observations",
+               realization=="realmean",
+               calibrationMethod=="None",
                spName==this.sp,
                statName==this.stat,
                resultName==this.result) %>% 
         collect() %>%
         mutate(date=ymd(date),
-               matching=NA,members=NA) %>%
-        filter(year(date)>=min(pcfg@comp.years),
+               lbl="Reference") %>%
+        filter(year(date) %in% pcfg@comp.years,
                month(date) %in% pcfg@MOI) %>%
-        dplyr::select(-calibrationMethod) %>%
-        mutate(timeframe=ifelse(year(date)<start.near.term,
-                                "Historical","Near-term predictions"))
+        dplyr::select(-calibrationMethod,-srcType)
         
-      #Extract the most recent starts in each model
+      #Extract the first predictions
       stat.pred <- 
         stats.tbl %>%
-        filter(srcType %in% c("Decadal","NMME"),
+        filter(srcType %in% c("Decadal","NMME","Observations"),
                spName==this.sp,
                statName==this.stat,
                resultName==this.result,
-               realization %in% c("realmean","ensmean")) %>%
+               realization %in% c("realmean","ensmean"),
+               calibrationMethod!="None") %>%
         collect() %>% #Retrieve all
         group_by(srcType,srcName) %>%
-        filter(startDate==max(startDate)) %>% #Select the most recent starts
+        filter(lead==min(lead) | is.na(lead),  #Select the first prediction
+               month(date) %in% pcfg@MOI,
+               year(date) %in% pcfg@comp.years) %>%
         mutate(type.name=paste(srcType,srcName,sep="."),
-               date=ymd(date)) %>%
-        separate(calibrationMethod,c("calibration","matching","members"),
-                 fill="right",remove=FALSE) %>%
-        mutate(timeframe=ifelse(year(date)<start.near.term,
-                                "Historical","Near-term predictions") )
-      
+               date=ymd(date),
+               lbl=paste(srcType,srcName,sep="/")) %>%
+        ungroup()
+
       #Plot timeseries
       g <- 
-        ggplot(mapping=aes(x=date,y=value,colour=srcName,group=paste(srcType,srcName,matching,members)))+
-        geom_line(data=stat.obs)+
+        ggplot(mapping=aes(x=date,y=value,colour=lbl))+
+        geom_line(data=stat.ref,size=2)+
         geom_line(data=stat.pred)+
         labs(x="Year",y=this.stat)+
-        facet_grid(calibration~timeframe,scales="free_x")
+        facet_grid(srcType~calibrationMethod) +
+        labs(colour="Forecast system")
       print(g) 
-      
+
       # Metrics -------------------------------------------------------------------------
       metric.names <-
         mets.tbl %>%
@@ -258,7 +211,7 @@ for(this.sp in sp.names) {
                  metric==this.met,
                  realization %in% c("realmean","ensmean","grandens") | srcType=="Persistence") %>% 
           collect() %>%
-          mutate(type.name=paste(srcType,srcName,sep="."),
+          mutate(type.name=paste(srcType,srcName,sep="/"),
                  highlight=realization %in% c("ensmean","grandens")|srcType=="Persistence") %>%
           separate(calibrationMethod,c("calibration","matching","members"),fill="right")
         
