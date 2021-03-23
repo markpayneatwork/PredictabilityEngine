@@ -155,9 +155,9 @@ for(this.sp in sp.names) {
                resultName==this.result) %>% 
         collect() %>%
         mutate(date=ymd(date),
-               lbl="Reference") %>%
-        filter(year(date) %in% pcfg@comp.years,
-               month(date) %in% pcfg@MOI) %>%
+               lbl="Reference",
+               highlight=TRUE) %>%
+        filter(month(date) %in% pcfg@MOI) %>%
         dplyr::select(-calibrationMethod,-srcType)
         
       #Extract the first predictions
@@ -167,26 +167,32 @@ for(this.sp in sp.names) {
                spName==this.sp,
                statName==this.stat,
                resultName==this.result,
-               realization %in% c("realmean","ensmean"),
+               realization %in% c("realmean","ensmean","grandens"),
                calibrationMethod!="None") %>%
         collect() %>% #Retrieve all
         group_by(srcType,srcName) %>%
         filter(lead==min(lead) | is.na(lead),  #Select the first prediction
-               month(date) %in% pcfg@MOI,
-               year(date) %in% pcfg@comp.years) %>%
+               month(date) %in% pcfg@MOI) %>%
         mutate(type.name=paste(srcType,srcName,sep="."),
                date=ymd(date),
-               lbl=paste(srcType,srcName,sep="/")) %>%
+               lbl=paste(srcType,srcName,sep="/"),
+               highlight=realization %in% c("ensmean","grandens")) %>%
         ungroup()
 
       #Plot timeseries
       g <- 
-        ggplot(mapping=aes(x=date,y=value,colour=lbl))+
-        geom_line(data=stat.ref,size=2)+
+        ggplot(mapping=aes(x=date,y=value,colour=lbl,size=highlight))+
+        annotate("rect",
+                 xmin=as.Date(ISOdate(min(pcfg@comp.years),1,1)),
+                 xmax=as.Date(ISOdate(max(pcfg@comp.years)+1,1,1)),
+                 ymin=-Inf,ymax=Inf,
+                 fill="grey90")+
+        geom_line(data=stat.ref)+
         geom_line(data=stat.pred)+
         labs(x="Year",y=this.stat)+
         facet_grid(srcType~calibrationMethod) +
-        labs(colour="Forecast system")
+        scale_size_manual(values=c(0.5,2))+
+        labs(colour="Forecast system",size="Forecast system")
       print(g) 
 
       # Metrics -------------------------------------------------------------------------
