@@ -39,7 +39,7 @@ pcfg <- PredEng.config(project.name= "NA-Sal",
                        MOI=3,
                        average.months=FALSE,
                        clim.years=1981:2010,  
-                       comp.years=1961:2014,
+                       comp.years=1980:2014,
                        landmask="data_srcs/NMME/landmask.nc",
                        calibrationMethods=c("MeanAdj"))
 
