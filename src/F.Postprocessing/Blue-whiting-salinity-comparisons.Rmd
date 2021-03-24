@@ -1,0 +1,165 @@
+---
+title: "Blue-whiting-salinity-comparisons"
+output:
+  html_document: 
+    df_print: paged
+    keep_md: no
+    toc: no
+    toc_float: yes
+---
+
+```{r setup, include="FALSE"}
+#'========================================================================
+# Blue-whiting-salinity-comparisons
+#'========================================================================
+#
+# by Mark R Payne
+# DTU-Aqua, Kgs. Lyngby, Denmark
+# http://www.staff.dtu.dk/mpay
+#
+# Created Mon Mar 22 09:32:17 2021
+#
+# <Description>
+#
+# This work is subject to a Creative Commons "Attribution" "ShareALike" License.
+# You are largely free to do what you like with it, so long as you "attribute"
+# me for my contribution. See the fine print at the end for exact details.
+#
+# To do:
+#
+# Notes:
+#   * Knitting of notebooks from Rstudio leads to all sorts of messy problems 
+#     with the directory. Use here::here() to specify a location relative to
+#     the project top directory
+#
+#'========================================================================
+
+#Configure Knitr
+knitr::opts_chunk$set(
+  echo=FALSE,
+	error = FALSE,
+	message = FALSE,
+	warning = FALSE,
+	include = TRUE,
+	results = "markup",
+	fig.width = 10,
+	fig.height=14/25*10,
+  fig.align="center",
+  fig.path=here::here("notebooks","figures","Blue-whiting-salinity-comparisons_"))
+
+#Powerpoint needs 14 x 25cm figures
+
+# knitr::opts_knit$set(
+#    root.dir="..")
+
+library(tidyverse)
+library(ggplot2)
+library(tibble)
+library(here)
+library(RSQLite)
+library(lubridate)
+
+theme_set(theme_bw(base_size = 14))
+```
+
+```{r}
+#==========================================================================
+# Configure ####
+#==========================================================================
+
+```
+
+by Mark R Payne  <br>
+DTU-Aqua, Kgs. Lyngby, Denmark  <br>
+http://www.staff.dtu.dk/mpay  <br>
+`r format(Sys.time(), "%a %b %d %Y, %H:%M:%S ")`
+
+This notebook makes a direct comparison of the salinity time series extracted from the different data sources. In particular, I suspct that the difference in initialisation data sources may be driving a lot of variability prior to 1980. We look at the first forecasts from the models (i.e. the first March) as a way to get an idea about what is going on with the initialisation of the models.
+
+
+```{r}
+#'========================================================================
+# Setup ####
+#'========================================================================
+db.fname <- here("scratch/Blue-whiting-decadal/Blue-whiting-decadal_Statistics.sqlite")
+this.db <- dbConnect(SQLite(),db.fname)
+this.tbl <- tbl(this.db,"Statistics")
+
+
+#Import relevant data
+dec.dat <- 
+  this.tbl %>%
+  filter(srcType=="Decadal",
+         !(srcName %in% c("ensmean","Grandens")),
+         realization=="realmean",
+         lead==2,
+         statName=="Mean-salinity") %>% 
+  collect()
+
+obs.dat <- 
+  this.tbl %>%
+  filter(srcType=="Observations",
+         statName=="Mean-salinity",
+         realization=="realmean",
+         calibrationMethod=="MeanAdj") %>%
+  collect()
+
+plt.dat <- 
+  bind_rows(obs.dat,dec.dat) %>%
+  mutate(date=ymd(date)) %>%
+  filter(month(date)==3,
+         resultName=="average") 
+
+
+ggplot(plt.dat,aes(x=date,y=value,colour=srcName)) +
+  geom_line()+
+  facet_wrap(~srcType,ncol=1)+
+  labs(x="Year",y="Mean salinity",colour="Product")
+
+```
+So, we can see straight away that there is divergence prior to 1980 in both data sets. Plotting this as the sd should make it clearer.
+
+```{r}
+plt.dat %>%
+  group_by(date) %>%
+  summarise(sd=sd(value)) %>%
+  ggplot(aes(x=date,y=sd))+
+  stat_smooth()+
+  geom_point()+
+  expand_limits(y=0)+
+  labs(x="Year",y="Standard deviation")
+
+```
+
+Which is pretty similar to what we have seen previously. Splitting it up by data sources should confirm this a bit better.
+
+```{r}
+plt.dat %>%
+  group_by(date,srcType) %>%
+  summarise(sd=sd(value)) %>%
+  ggplot(aes(x=date,y=sd,colour=srcType))+
+  stat_smooth()+
+  geom_point()+
+  expand_limits(y=0)+
+  labs(x="Year",y="Standard deviation")
+
+```
+
+So, yes, that looks more or less right. The increase in the spread of the decadal models after 2000 is odd though - I wonder if this is the same effect again..... But the pre/post 1980 effect is clearly there in both data types, anyway.
+
+
+***
+*This work by Mark R Payne is licensed under a  Creative Commons
+Attribution-NonCommercial-ShareAlike 3.0 Unported License. 
+For details, see http://creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US
+Basically, this means that you are free to "share" and "remix" for 
+non-commerical purposes as you see fit, so long as you "attribute" me for my
+contribution. Derivatives can be distributed under the same or 
+similar license.*
+
+*This work comes with ABSOLUTELY NO WARRANTY or support.*
+
+***
+
+
+
