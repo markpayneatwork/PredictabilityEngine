@@ -38,7 +38,7 @@ pcfg <- PE.load.config()
 #'========================================================================
 # Configure ####
 #'========================================================================
-Rmd.src <- here("src/E.Postprocessing/B1.Visualise_scalar_skill_metrics.Rmd")
+Rmd.src <- here("src/E.Skill/B1.Visualise_scalar_skill_metrics.Rmd")
 
 #'========================================================================
 # Setup ####
