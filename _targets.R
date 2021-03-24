@@ -85,7 +85,7 @@ run.extraction.script <- function(this.src) {
                     srcName=this.src@name))
 }
 
-#Reference modl
+#Reference model
 tar.l$reference.src <-
   tar_target(reference.src,
              pcfg@reference)
@@ -238,16 +238,20 @@ tar.l$rollmean <-
              run.extern.script("src/D.Statistics/B2.Rolling_means.r",
                         stats))
 
-#Calculation verification metrics
+#Calculation skill metrics
+tar.l$comp.years <-
+  tar_target(comp.years,
+             pcfg@comp.years)
+
 tar.l$scalar.metrics <-
   tar_target(scalar.metrics,
              run.extern.script(here("src/D.Statistics/C1.Calculate_scalar_skill_metrics.r"),
-                        stats,rollmean))
+                        stats,rollmean,comp.years))
 
 tar.l$field.metrics <-
     tar_target(field.metrics,
                run.extern.script(here("src/D.Statistics/C2.Calculate_field_skill_metrics.r"),
-                          stats,rollmean))
+                          stats,rollmean,comp.years))
 
 #'========================================================================
 # Outputs ####
