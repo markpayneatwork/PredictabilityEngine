@@ -86,21 +86,21 @@ run.extraction.script <- function(this.src) {
 }
 
 #Reference model
-tar.l$reference.src <-
-  tar_target(reference.src,
+tar.l$cfg.reference.src <-
+  tar_target(cfg.reference.src,
              pcfg@reference)
 
 #Data sources
 #Only run if we need to do some local extraction
 tar.l$data.srcs <-
-  tar_target(datasrcs,
+  tar_target(cfg.datasrcs,
              pcfg@data.sources,
              iteration = "list")
 
 tar.l$datasrc.extracts <-
   tar_target(datasrc.extracts,
-             run.extraction.script(datasrcs),
-             pattern=map(datasrcs))
+             run.extraction.script(cfg.datasrcs),
+             pattern=map(cfg.datasrcs))
 
 tar.l$datasrc.realmeans <-
   tar_target(datasrc.realmeans,
@@ -136,10 +136,14 @@ tar.l$extraction.databases <-
              cue=tar_cue("always"))
 
 #Climatology
+tar.l$cfg.clim.years <-
+  tar_target(cfg.clim.years,
+             pcfg@clim.years)
+
 tar.l$clim <-
   tar_target(clim,
              run.extern.script(here("src/C.Calibrate/A1.Climatological_statistics.r"),
-                               extraction.databases,
+                               extraction.databases,cfg.clim.years,
                                args=c(srcType=extraction.databases$srcType,
                                       srcName=extraction.databases$srcName)),
              pattern=map(extraction.databases))
@@ -148,7 +152,7 @@ tar.l$clim <-
 tar.l$calibration <-
   tar_target(calibration,
              run.extern.script(here("src/C.Calibrate/B1.Mean_adjustment.r"),
-                        clim, reference.src,
+                        clim, cfg.reference.src,
                         args=c(srcType=clim$srcType,
                                srcName=clim$srcName)),
              pattern=map(clim))
@@ -239,19 +243,19 @@ tar.l$rollmean <-
                         stats))
 
 #Calculation skill metrics
-tar.l$comp.years <-
-  tar_target(comp.years,
+tar.l$cfg.comp.years <-
+  tar_target(cfg.comp.years,
              pcfg@comp.years)
 
 tar.l$scalar.metrics <-
   tar_target(scalar.metrics,
              run.extern.script(here("src/E.Skill/A1.Calculate_scalar_skill_metrics.r"),
-                        stats,rollmean,comp.years))
+                        stats,rollmean,cfg.comp.years))
 
 tar.l$field.metrics <-
     tar_target(field.metrics,
                run.extern.script(here("src/E.Skill/A2.Calculate_field_skill_metrics.r"),
-                          stats,rollmean,comp.years))
+                          stats,rollmean,cfg.comp.years))
 
 #'========================================================================
 # Outputs ####
