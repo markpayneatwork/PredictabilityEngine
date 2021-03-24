@@ -1,0 +1,223 @@
+---
+title: "Visualise Field skill metrics"
+output:
+  html_document: 
+    df_print: paged
+    keep_md: no
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include="FALSE"}
+#'========================================================================
+# Field_skill_metrics
+#'========================================================================
+#
+# by Mark R Payne
+# DTU-Aqua, Kgs. Lyngby, Denmark
+# http://www.staff.dtu.dk/mpay
+#
+# Created Wed Mar 24 09:19:59 2021
+#
+# <Description>
+#
+# This work is subject to a Creative Commons "Attribution" "ShareALike" License.
+# You are largely free to do what you like with it, so long as you "attribute"
+# me for my contribution. See the fine print at the end for exact details.
+#
+# To do:
+#
+# Notes:
+#   * Knitting of notebooks from Rstudio leads to all sorts of messy problems 
+#     with the directory. Use here::here() to specify a location relative to
+#     the project top directory
+#
+#'========================================================================
+
+#Configure Knitr
+knitr::opts_chunk$set(
+  echo=FALSE,
+	error = FALSE,
+	message = FALSE,
+	warning = FALSE,
+	include = TRUE,
+	results = "markup",
+	fig.width = 10,
+	fig.height=14/25*10,
+  fig.align="center",
+  fig.path=here::here("notebooks","figures","Field_skill_metrics_"))
+
+#Powerpoint needs 14 x 25cm figures
+
+# knitr::opts_knit$set(
+#    root.dir="..")
+
+library(PredEng)
+library(here)
+
+theme_set(theme_bw(base_size = 14))
+```
+
+```{r}
+#==========================================================================
+# Configure ####
+#==========================================================================
+
+```
+
+by Mark R Payne  <br>
+DTU-Aqua, Kgs. Lyngby, Denmark  <br>
+http://www.staff.dtu.dk/mpay  <br>
+```{r results="asis"}
+cat(sprintf("Visualisations generated  %s\n",date()))
+```
+
+This notebook visualises the skill metrics for statistics that return a field, rather than a single scalar value.
+
+## Configuration
+
+```{r}
+#==========================================================================
+# Configure
+#==========================================================================
+pcfg <- PE.load.config()
+PE.config.summary(pcfg)
+plot(pcfg)
+
+#'========================================================================
+# Setup ####
+#'========================================================================
+#Import data
+mets.tbl <- PE.db.tbl(pcfg,PE.cfg$db$metrics.field,src=NULL)
+
+```
+
+
+```{r results="asis"}
+#'========================================================================
+# Stat skills ####
+#'========================================================================
+#Present results by spatial region
+sp.names <-
+  mets.tbl %>%
+  distinct(spName) %>%
+  collect() %>%
+  pull(spName)
+
+for(this.sp in sp.names) {
+  #Show title
+  cat(sprintf("\n\n## %s\n",gsub("_"," ",this.sp)))
+  
+  #Now split it down further into Individual statistics and loop
+  stat.names <-
+    mets.tbl %>%
+    filter(spName==this.sp) %>%
+    distinct(statName) %>%
+    collect() %>%
+    pull(statName)
+  
+
+  for(this.stat in stat.names) {
+    # Stats ---------------------------------------------------------------------------
+    #Loop over resultNames as well
+    result.names <- 
+      mets.tbl %>%
+      filter(spName==this.sp,
+             statName==this.stat) %>%
+      distinct(resultName) %>%
+      collect() %>%
+      pull(resultName)
+    
+    # Results -------------------------------------------------------------------------
+    for(this.result in result.names) {
+      #Show a subtitle
+      cat(sprintf("\n\n### %s / %s\n",this.stat,this.result))
+ 
+      # Metrics -------------------------------------------------------------------------
+      metric.names <-
+        mets.tbl %>%
+        filter(spName==this.sp,
+               statName==this.stat,
+               resultName==this.result,
+               metric!="n") %>%   #Don't really need to see this
+        distinct(metric) %>%
+        collect() %>%
+        filter(!str_ends(metric,".draws")) %>% #Don't take the draws
+        pull(metric) 
+      
+      #Iterate over skill metrics
+      for(this.met in metric.names) {
+        #Get data
+        met.dat <- 
+          mets.tbl %>%
+          filter(spName==this.sp,
+                 statName==this.stat,
+                 resultName==this.result,
+                 metric==this.met,
+                 realization %in% c("realmean","ensmean","grandens")) %>% 
+          collect() %>%
+          mutate(type.name=paste(srcType,srcName,sep="/"),
+                 highlight=realization %in% c("ensmean","grandens"))
+        
+        #Set y range accordingly
+        if(this.met %in% c("pearson.correlation")) {
+          y.rng <- c(0,1)
+        } else if(this.met %in% c("MSSS","crpss")) {
+          y.rng <- c(-1,1) 
+        } else {
+          y.rng <- range(pretty(c(0,met.dat$value)))
+        }
+        
+        #Plot the first predictions for each srcName, as a way of looking at the initialisation
+        g <- 
+          met.dat %>%
+          #filter(!srcName%in%c("grandens","ensmean")) %>%
+          group_by(srcName) %>%
+          filter(lead==min(lead)) %>%
+          PE.db.unserialize() %>%
+          mutate(field=map(field,~ as_tibble(rasterToPoints(.x))),
+                 field=map(field,~set_names(.x,nm=c("lon","lat","value")))) %>%
+          unnest(field) %>%
+          ggplot(aes(lon,lat,fill=value))+
+          geom_raster()+
+          annotation_map(map_data("world"),fill="black")+
+          scale_fill_viridis_c(limits=c(0,0.025))+
+          facet_wrap(~type.name)+
+          ggtitle(sprintf("First forecast, %s",this.met))+
+          coord_quickmap(expand=FALSE)+
+          labs(x="",y="")
+        print(g)
+        
+
+
+      }  #Plot  
+    } 
+  }
+  
+
+}
+
+
+dbDisconnect(mets.tbl)
+```
+
+
+
+
+
+
+***
+*This work by Mark R Payne is licensed under a  Creative Commons
+Attribution-NonCommercial-ShareAlike 3.0 Unported License. 
+For details, see http://creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US
+Basically, this means that you are free to "share" and "remix" for 
+non-commerical purposes as you see fit, so long as you "attribute" me for my
+contribution. Derivatives can be distributed under the same or 
+similar license.*
+
+*This work comes with ABSOLUTELY NO WARRANTY or support.*
+
+***
+
+
+

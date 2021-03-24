@@ -43,10 +43,10 @@ default: help
 #Remove any existing To do files
 
 HPClocal: FORCE
-	bsub < src/Y.HPC/Make_local.sh
+	bsub < src/ZZ.Helpers/Make_local.sh
 
 HPCanalysis: FORCE
-	bsub < src/Y.HPC/Make_analysis.sh
+	bsub < src/ZZ.Helpers/Make_analysis.sh
 
 install: FORCE
 	$(Rscript) src/ZZ.Helpers/Setup_system.r
@@ -61,7 +61,7 @@ analysis:
 	$(Rscript) src/ZZ.Helpers/targets.r analysis
 
 NMME_sync:
-	bsub  < src/Y.HPC_scripts/bNMME_sync.sh
+	bsub  < src/ZZ.Helpers/bNMME_sync.sh
 
 srcs:
 	$(Rscript) src/A.Configure/A1.Define_common_data_srcs.r

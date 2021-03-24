@@ -245,12 +245,12 @@ tar.l$comp.years <-
 
 tar.l$scalar.metrics <-
   tar_target(scalar.metrics,
-             run.extern.script(here("src/D.Statistics/C1.Calculate_scalar_skill_metrics.r"),
+             run.extern.script(here("src/E.Skill/A1.Calculate_scalar_skill_metrics.r"),
                         stats,rollmean,comp.years))
 
 tar.l$field.metrics <-
     tar_target(field.metrics,
-               run.extern.script(here("src/D.Statistics/C2.Calculate_field_skill_metrics.r"),
+               run.extern.script(here("src/E.Skill/A2.Calculate_field_skill_metrics.r"),
                           stats,rollmean,comp.years))
 
 #'========================================================================
@@ -263,14 +263,14 @@ tar.l$field.metrics <-
 # 
 # tar.l$pointwise <-
 #   tar_target(pointwise,
-#              run.extern.script(here("src/E.Postprocessing/A1.Pointwise_extraction.r"),
+#              run.extern.script(here("src/F.Postprocessing/A1.Pointwise_extraction.r"),
 #                         points,stats))  #Stats is a included as a second dependency for cases when
 # #there are no metrics to calculate
 
 #Markdown report
 tar.l$report <-
   tar_target(report,
-             run.extern.script(here("src/E.Postprocessing/B1.Visualise_scalar_skill_metrics.r"),
+             run.extern.script(here("src/E.Skill/B1.Visualise_scalar_skill_metrics.r"),
                         scalar.metrics))
 
 #Final target of this branch
