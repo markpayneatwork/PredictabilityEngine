@@ -181,15 +181,15 @@ if(pcfg@obs.only) {
                pattern=map(ensmean.src))
   
   tar.l$GrandEns <-
-    tar_target(GrandEns,
+    tar_target(grandens,
                run.extern.script(here("src/C.Calibrate/C2.Grand_ensemble.r"),
                                  args=c(srcType=ensmean.src$srcType,
-                                        srcName="GrandEns")),
+                                        srcName="grandens")),
                pattern=map(ensmean.src))
 
   tar.l$stat.srcs <-
     tar_target(stat.srcs,
-               bind_rows(ensmeans,GrandEns,calibration)) 
+               bind_rows(ensmeans,grandens,calibration)) 
 }
   
 #'========================================================================
