@@ -45,7 +45,7 @@ stats.tbl <- PE.db.tbl(pcfg,PE.cfg$db$stats)
 #'========================================================================
 #'Work directly from database
 #'Base.dat corresponds to the statistics applied to each realisation
-base.dat <- 
+base.tbl <- 
   stats.tbl  %>%
   filter(is.na(field),
          month(date) %in% !!pcfg@MOI,
@@ -54,9 +54,9 @@ base.dat <-
          !realization %in% c("grandens","realmean","ensmean"))
 
 #'First, the grand ensembles
-log_msg("Grand ensemble stat means / medians\n")
+log_msg("Grand ensemble stat means / medians...\n")
 grandens.smms<- 
-  base.dat  %>%
+  base.tbl  %>%
   #Group and summarise
   group_by(srcType,calibrationMethod,startDate,date,
            spName,statName,resultName,.drop=TRUE) %>%
@@ -71,9 +71,9 @@ grandens.smms<-
          realization="grandens")
 
 #Then the individual models
-log_msg("Stat means / medians by individual data sources\n")
+log_msg("Stat means / medians by individual data sources...\n")
 realmean.smms<- 
-  base.dat %>%
+  base.tbl %>%
   #Group and summarise
   group_by(srcType,srcName,calibrationMethod,startDate,date,
            spName,statName,resultName,.drop=TRUE) %>%
@@ -89,17 +89,16 @@ realmean.smms<-
 #And we can now use this as the input to calculate ensmean metrics as
 #as well. Note that we don'y calculate medians in this case, as the 
 #number of models is generally small
-log_msg("Ensemble mean - Stat means / medians\n")
-ensmean.statmeans <- 
+log_msg("Ensemble mean - Stat means / medians...\n")
+ensmean.smms <- 
   realmean.smms %>%
+  filter(str_ends(resultName,"stat_mean")) %>%
   #Group and summarise
   group_by(srcType,calibrationMethod,startDate,date,
            spName,statName,resultName,.drop=TRUE) %>%
-  summarise(stat_mean=mean(value,na.rm=TRUE),
+  summarise(value=mean(value,na.rm=TRUE),
             .groups="drop") %>%
   #Now polish and massage
-  pivot_longer(starts_with("stat_")) %>%
-  unite("resultName",c(resultName,name),sep = "/") %>%
   mutate(realization="ensmean",
          srcName="ensmean")
 
@@ -147,7 +146,7 @@ log_msg("Deleted %i rows in %0.3fs.\n\n",n,this.query.time[3])
 smms.out <- 
   bind_rows(grandens.smms,
             realmean.smms,
-            ensmean.statmeans,
+            ensmean.smms,
             obs.smms) 
 PE.db.appendTable(pcfg,PE.cfg$db$stats,src=NULL,dat=smms.out)
 
