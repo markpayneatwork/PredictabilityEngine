@@ -58,7 +58,7 @@ log_msg("Grand ensemble stat means / medians...\n")
 grandens.smms<- 
   base.tbl  %>%
   #Group and summarise
-  group_by(srcType,calibrationMethod,startDate,date,
+  group_by(srcType,calibrationMethod,startDate,date,lead,
            spName,statName,resultName,.drop=TRUE) %>%
   summarise(stat_median=median(value,na.rm=TRUE),
             stat_mean=mean(value,na.rm=TRUE)) %>%
@@ -75,7 +75,7 @@ log_msg("Stat means / medians by individual data sources...\n")
 realmean.smms<- 
   base.tbl %>%
   #Group and summarise
-  group_by(srcType,srcName,calibrationMethod,startDate,date,
+  group_by(srcType,srcName,calibrationMethod,startDate,date,lead,
            spName,statName,resultName,.drop=TRUE) %>%
   summarise(stat_median=median(value,na.rm=TRUE),
             stat_mean=mean(value,na.rm=TRUE)) %>%
@@ -94,7 +94,7 @@ ensmean.smms <-
   realmean.smms %>%
   filter(str_ends(resultName,"stat_mean")) %>%
   #Group and summarise
-  group_by(srcType,calibrationMethod,startDate,date,
+  group_by(srcType,calibrationMethod,startDate,date,lead,
            spName,statName,resultName,.drop=TRUE) %>%
   summarise(value=mean(value,na.rm=TRUE),
             .groups="drop") %>%
