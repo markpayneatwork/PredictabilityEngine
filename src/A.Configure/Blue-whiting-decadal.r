@@ -111,7 +111,7 @@ threshold.stat <-
             threshold=c(35.3,35.5),
             retain.field=FALSE,
             above=NA)
-pcfg@statistics <- list(threshold.stat) %>% PElst()
+pcfg@statistics <- c(pcfg@statistics,list(threshold.stat)) %>% PElst()
 
 #'========================================================================
 # Output ####
