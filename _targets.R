@@ -236,11 +236,18 @@ tar.l$stats <-
                                srcName=stat.srcs$srcName)),
              pattern=cross(statJobs,stat.srcs))
 
+#Stat median / means
+tar.l$stat_median_means <-
+  tar_target(stat_median_means,
+               run.extern.script("src/D.Statistics/B2.Statmeans.r",
+                               stats))
+
+
 #Rolling means
 tar.l$rollmean <-
   tar_target(rollmean,
-             run.extern.script("src/D.Statistics/B2.Rolling_means.r",
-                        stats))
+             run.extern.script("src/D.Statistics/B3.Rolling_means.r",
+                               stat_median_means))
 
 #Calculation skill metrics
 tar.l$cfg.comp.years <-
