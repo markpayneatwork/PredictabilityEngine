@@ -42,8 +42,8 @@ pcfg <- PE.load.config()
 #'========================================================================
 #Take input arguments, if any
 if(interactive()) {
-  this.srcType <- "Decadal"
-  this.srcName <- "CESM.DPLE"
+  this.srcType <- "Observations"
+  this.srcName <- "HadISST"
 } else {  #Running as a "function"
   cmd.args <- commandArgs(TRUE)
   assert_that(length(cmd.args)==2,msg="Cannot get command args")

@@ -42,8 +42,8 @@ these.srcs <- readRDS(PE.cfg$path$datasrcs)
 pcfg <- PredEng.config(project.name= "Bluefin",
                MOI=8,  #August
                average.months=FALSE,
-               clim.years=1981:2010,  
-               comp.years=1961:2014,
+               clim.years=1985:2014,  
+               comp.years=1961:2018,
                landmask="data_srcs/NMME/landmask.nc",
                calibrationMethods=c("MeanAdj"))
 
