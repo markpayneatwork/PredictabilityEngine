@@ -296,10 +296,9 @@ tar.l$report <-
                         scalar.metrics))
 
 #Final target of this branch
-
 tar.l$analysis <-
   tar_target(analysis,
-             lazy.collator.fn(report,field.metrics))
+             lazy.collator.fn(report,field.metrics,rollmean))
 
 #'========================================================================
 # Make a Plan! And then change it. ####
