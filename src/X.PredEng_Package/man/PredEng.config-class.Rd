@@ -59,7 +59,7 @@ integers)}
 
 \item{\code{comp.years}}{The years over which to make comparisons between observations and models}
 
-\item{\code{landmask}}{The file to use as the basis for masking out land [optional]. If null, all pixels are used.}
+\item{\code{use.landmask}}{Should landmasks be generated automatically and applied? If FALSE, all pixels are used.}
 
 \item{\code{scratch.dir}}{Directory in which processed files are to be stored}
 

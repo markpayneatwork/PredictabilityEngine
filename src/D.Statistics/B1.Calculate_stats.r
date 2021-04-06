@@ -44,8 +44,8 @@ if(interactive()) {
   set.log_msg.silent()
   stat.id <- names(pcfg@statistics)[1]
   sp.id <- c(pcfg@spatial.polygons$name,PE.cfg$misc$globalROI)[1]
-  this.srcType <- pcfg@Models[[1]]@type
-  this.srcName <- pcfg@Models[[1]]@name
+  this.srcType <- pcfg@data.sources[[1]]@type
+  this.srcName <- pcfg@data.sources[[1]]@name
 } else {
   set.log_msg.silent()
   cmd.args <- commandArgs(TRUE)
@@ -152,18 +152,14 @@ dmp <- assert_that(!any(duplicated(todo.pKeys)),msg="Expecting unique set of pKe
 # Calculation of statistics ####
 #'========================================================================
 #Setup landmask 
-if(length(pcfg@landmask)==0) {
+if(pcfg@use.landmask) {
+  #Import the file
+  landmask <- readRDS(PE.scratch.path(pcfg,"landmask")) 
+} else {
   #Create a simple raster that includes everything
   landmask <- raster(pcfg@global.ROI)
   res(landmask) <- pcfg@global.res
   landmask[] <- 0   #Include everything
-} else {
-  #Use the filename to specify and remap
-  landmask.cmd <- cdo("--silent -f nc",
-                      csl(" remapnn", PE.scratch.path(pcfg,"analysis.grid")),
-                      pcfg@landmask,
-                      PE.scratch.path(pcfg,"landmask"))
-  landmask <- raster(PE.scratch.path(pcfg,"landmask")) 
 }
 
 #Setup the mask for the corresponding spatial boundary

@@ -143,7 +143,8 @@ tar.l$cfg.clim.years <-
 tar.l$clim <-
   tar_target(clim,
              run.extern.script(here("src/C.Calibrate/A1.Climatological_statistics.r"),
-                               extraction.databases,cfg.clim.years,
+                               extraction.databases,
+                               cfg.clim.years,
                                args=c(srcType=extraction.databases$srcType,
                                       srcName=extraction.databases$srcName)),
              pattern=map(extraction.databases))
@@ -226,14 +227,24 @@ tar.l$stat.jobs <-
   tar_target(statJobs,
              stat.jobs.fn(pcfg))
 
+#Setup landmask
+if(pcfg@use.landmask) {
+  tar.l$landmask <-
+    tar_target(landmask,
+               run.extern.script(here("src/D.Statistics/A1.Generate_landmask.r"),
+                                clim))
+  
+}
+
 #Process stats
 tar.l$stats <-
   tar_target(stats,
              run.extern.script(here("src/D.Statistics/B1.Calculate_stats.r"),
-                        args=c(spName=statJobs$spName,
-                               statName=statJobs$statName,
-                               srcType=stat.srcs$srcType,
-                               srcName=stat.srcs$srcName)),
+                               landmask,
+                               args=c(spName=statJobs$spName,
+                                      statName=statJobs$statName,
+                                      srcType=stat.srcs$srcType,
+                                      srcName=stat.srcs$srcName)),
              pattern=cross(statJobs,stat.srcs))
 
 #Stat median / means

@@ -25,7 +25,7 @@ setClassUnion("data.sourceORNULL",c("data.source","NULL"))
 #' @slot clim.years The years to include in the climatology and analysis of hindcast skill (vector of 
 #' integers)
 #' @slot comp.years The years over which to make comparisons between observations and models
-#' @slot landmask The file to use as the basis for masking out land [optional]. If null, all pixels are used.
+#' @slot use.landmask Should landmasks be generated automatically and applied? If FALSE, all pixels are used.
 #' @slot scratch.dir Directory in which processed files are to be stored
 #' @slot global.ROI  Extent object defining the global ROI to work with. 
 #' @slot global.res Resolution of the analysis to be applied globally
@@ -67,7 +67,7 @@ PredEng.config <-
                       vert.range="numeric",
                       clim.years="numeric",
                       comp.years="numeric",
-                      landmask="character",
+                      use.landmask="logical",
                       scratch.dir="character",
                       retain.realizations="logical",
                       average.months="logical",
@@ -75,6 +75,7 @@ PredEng.config <-
                       package.version="character"),
            prototype = list(global.ROI=extent(as.numeric(rep(NA,4))),
                             obs.only=FALSE,
+                            use.landmask=TRUE,
                             persistence.leads=0:120,  #1-10 years
                             retain.realizations=TRUE,
                             vert.range=as.numeric(NA),  #Use surface unless specified

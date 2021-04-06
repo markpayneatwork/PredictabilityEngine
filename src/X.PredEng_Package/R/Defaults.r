@@ -12,7 +12,8 @@ PE.cfg$path$NAOmatching <- file.path(PE.cfg$dir$objects,"NAOmatching.rds")
 
 #Filenames
 PE.cfg$file <- list(analysis.grid="analysis.grid",
-                    landmask="landmask.nc",
+                    landmask="landmask.rds",
+                    landmask.pdf="landmask.pdf",
                     config=basename(PE.cfg$path$config),
                     statjoblist="statjoblist.rds",
                     logs="logs/")

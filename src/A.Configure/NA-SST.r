@@ -41,7 +41,6 @@ pcfg <- PredEng.config(project.name= "NA-SST",
                        average.months=FALSE,
                        clim.years=1985:2014,  
                        comp.years=1961:2018,
-                       landmask="data_srcs/NMME/landmask.nc",
                        calibrationMethods=c("MeanAdj"))
 
 #Setup scratch directory

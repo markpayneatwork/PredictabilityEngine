@@ -41,9 +41,8 @@ these.srcs <- readRDS(PE.cfg$path$datasrcs)
 pcfg <- PredEng.config(project.name= "TestSuite",
                        MOI=8,  #August
                        average.months=FALSE,
-                       clim.years=1991:2000,   #Take in everything
-                       comp.years=1990:2010,
-                       landmask="data_srcs/NMME/landmask.nc",
+                       clim.years=1992:1993,   #Take in everything
+                       comp.years=1992:1995,
                        calibrationMethods=c("None","MeanAdj"),
                        persistence.leads = seq(7,120,by=12))
 
@@ -73,7 +72,7 @@ lim.dec <-
          startDate=map2(sources,fnames,~.x@start.date(.y))) %>%
   unnest(startDate) %>%
   #Restrict
-  filter(year(startDate) %in% 1991:1992 | is.na(startDate),
+  filter(year(startDate) %in% 1990:1992 | is.na(startDate),
          srcName %in% c("NorCPM","CESM.DPLE","historical")) %>%
   arrange(srcName,startDate,realization) %>%
   group_by(srcName,startDate) %>%

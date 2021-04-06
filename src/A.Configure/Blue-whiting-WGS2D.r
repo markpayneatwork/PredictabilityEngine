@@ -43,8 +43,7 @@ pcfg <- PredEng.config(project.name= "Blue-whiting-WGS2D",
                        average.months=FALSE,
                        clim.years=1981:2010,  
                        comp.years=1970:2015,
-                       calibrationMethods=c("None","MeanAdj"),
-                       landmask="data_srcs/NMME/landmask.nc")
+                       calibrationMethods=c("None","MeanAdj"))
 
 #Setup scratch directory
 pcfg@scratch.dir <- file.path(PE.cfg$dir$scratch,pcfg@project.name)
