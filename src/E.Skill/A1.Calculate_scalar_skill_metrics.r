@@ -182,8 +182,8 @@ persis.dat <-
   rename(rawValue=value)%>%
   pivot_longer(c(rawValue,starts_with("RollMean")),
                names_to = "averaging",values_to = "value") %>%
-  unite("resultName",c("resultName","averaging"),sep="/") %>%
-  mutate(resultName=gsub("/rawValue$","",resultName)) %>%  #Don't label raw value 
+  unite("resultName",c("resultName","averaging"),sep=" / ") %>%
+  mutate(resultName=gsub(" / rawValue$","",resultName)) %>%  #Don't label raw value 
   #Drop persistences where we can't calculate due to rolling window limitations
   filter(!is.infinite(value))
   
