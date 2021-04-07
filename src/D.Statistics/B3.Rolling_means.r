@@ -90,7 +90,7 @@ for(n in rm.windows) {
     dat.in  %>%
     mutate(date=as.character(date),
            value=roll_mean(value,n=n,fill=Inf,align="center"),
-           resultName=sprintf("%s/RollMean%02i",resultName,n)) %>%
+           resultName=sprintf("%s / RollMean%02i",resultName,n)) %>%
     filter(!is.infinite(value))  #Drop values we can't calculate
   
   #Write back to table

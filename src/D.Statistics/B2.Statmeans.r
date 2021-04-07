@@ -66,7 +66,7 @@ grandens.smms<-
   ungroup() %>%
   #Now polish and massage
   pivot_longer(starts_with("stat_")) %>%
-  unite("resultName",c(resultName,name),sep = "/") %>%
+  unite("resultName",c(resultName,name),sep = " / ") %>%
   mutate(srcName="grandens",
          realization="grandens")
 
@@ -83,7 +83,7 @@ realmean.smms<-
   ungroup() %>%
   #Now polish and massage
   pivot_longer(starts_with("stat_")) %>%
-  unite("resultName",c(resultName,name),sep = "/") %>%
+  unite("resultName",c(resultName,name),sep = " / ") %>%
   mutate(realization="realmean")
 
 #And we can now use this as the input to calculate ensmean metrics as
@@ -116,7 +116,7 @@ obs.dat <-
   
 obs.smms <-
   obs.dat %>%
-  mutate(resultName=map(resultName,~ paste(.x,c("stat_mean","stat_median"),sep="/"))) %>%
+  mutate(resultName=map(resultName,~ paste(.x,c("stat_mean","stat_median"),sep=" / "))) %>%
   unnest(resultName)
 
 #'========================================================================
