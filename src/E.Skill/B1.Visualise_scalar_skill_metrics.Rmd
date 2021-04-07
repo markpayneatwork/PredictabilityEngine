@@ -137,7 +137,8 @@ for(this.sp in sp.names) {
              statName==this.stat) %>%
       distinct(resultName) %>%
       collect() %>%
-      pull(resultName)
+      pull(resultName) %>%
+      sort()
     
     # Results -------------------------------------------------------------------------
     for(this.result in result.names) {
@@ -192,7 +193,8 @@ for(this.sp in sp.names) {
         labs(x="Year",y=this.stat)+
         facet_grid(srcType~calibrationMethod) +
         scale_size_manual(values=c(0.5,2))+
-        labs(colour="Forecast system",size="Forecast system")
+        labs(colour="Forecast system")+
+        guides(size="none")
       print(g) 
 
       # Metrics -------------------------------------------------------------------------
@@ -204,8 +206,12 @@ for(this.sp in sp.names) {
                metric!="n") %>%   #Don't really need to see this
         distinct(metric) %>%
         collect() %>%
-        pull(metric)
-      
+        pull(metric) %>%
+        sort() %>%
+        factor() %>%
+        relevel(ref="pearson.correlation") %>%
+        levels()
+
       #Iterate over skill metrics
       for(this.met in metric.names) {
         #Get data
@@ -218,17 +224,16 @@ for(this.sp in sp.names) {
                  realization %in% c("realmean","ensmean","grandens") | srcType=="Persistence") %>% 
           collect() %>%
           mutate(type.name=paste(srcType,srcName,sep="/"),
-                 highlight=realization %in% c("ensmean","grandens")|srcType=="Persistence") %>%
-          separate(calibrationMethod,c("calibration","matching","members"),fill="right")
+                 highlight=realization %in% c("ensmean","grandens")|srcType=="Persistence") 
         
         met.dat <- 
           all.met.dat %>%
-          filter(srcType!="Persistence")
+          filter(! srcType %in% c("Persistence","Climatology"))
         
         met.persis.dat <-
           all.met.dat %>%
-          filter(srcType=="Persistence") %>%
-          dplyr::select(-calibration)
+          filter(srcType %in% c("Persistence","Climatology")) %>%
+          dplyr::select(-calibrationMethod)
         
         #Set y range accordingly
         if(this.met %in% c("pearson.correlation")) {
@@ -241,11 +246,12 @@ for(this.sp in sp.names) {
         
         #Plot
         g <- ggplot(mapping=aes(x=lead/12,y=value,
-                                group=paste(type.name,matching,members),
-                                colour=type.name,size=highlight))+
+                                group=type.name,
+                                colour=type.name,
+                                size=highlight))+
           geom_line(data=met.persis.dat)+
           geom_line(data=met.dat)+
-          facet_wrap(~calibration,scales = "free_y")+
+          facet_wrap(~calibrationMethod,scales = "free_y")+
           coord_cartesian(ylim=y.rng)+
           scale_size_manual(values=c(0.25,1))+
           guides(size="none")+
