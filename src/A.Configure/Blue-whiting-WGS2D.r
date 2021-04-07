@@ -164,7 +164,7 @@ GAM.sdm.resources$thresholds <-
   list(april15=0.154,
        maximumProbability=0.208,
        meanProbability=0.113,
-       matchSurvey=0.25,
+       matchSurvey=0.3,
        larvae=GAM.sdm.resources$model$threshold)
 GAM.sdm.resources$doys <-seq(30,180,by=3)
 GAM.sdm.resources$WGS2D <- TRUE
