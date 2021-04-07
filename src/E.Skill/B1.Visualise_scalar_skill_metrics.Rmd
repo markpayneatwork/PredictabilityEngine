@@ -244,20 +244,24 @@ for(this.sp in sp.names) {
           y.rng <- range(pretty(c(0,met.dat$value)))
         }
         
-        #Plot
-        g <- ggplot(mapping=aes(x=lead/12,y=value,
-                                group=type.name,
-                                colour=type.name,
-                                size=highlight))+
-          geom_line(data=met.persis.dat)+
-          geom_line(data=met.dat)+
-          facet_wrap(~calibrationMethod,scales = "free_y")+
-          coord_cartesian(ylim=y.rng)+
-          scale_size_manual(values=c(0.25,1))+
-          guides(size="none")+
-          labs(x="Lead (years)",y=this.met,colour="Forecast System")
-        print(g)
-
+        #Plot - but only if there is something in the met.dat. For example, it is not 
+        #possible to calculate a crps metric for a stat_mean or stat_median -  this would
+        #require a bit more developed code
+        if(nrow(met.dat)!=0) {
+          g <- ggplot(mapping=aes(x=lead/12,y=value,
+                                  group=type.name,
+                                  colour=type.name,
+                                  size=highlight))+
+            geom_line(data=met.persis.dat)+
+            geom_line(data=met.dat)+
+            facet_wrap(~calibrationMethod,scales = "free_y")+
+            coord_cartesian(ylim=y.rng)+
+            scale_size_manual(values=c(0.25,1))+
+            guides(size="none")+
+            labs(x="Lead (years)",y=this.met,colour="Forecast System")
+          print(g)
+        }
+        
       }  #Plot  
     } 
   }
