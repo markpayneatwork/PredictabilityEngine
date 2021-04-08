@@ -223,17 +223,23 @@ for(this.sp in sp.names) {
                  metric==this.met,
                  realization %in% c("realmean","ensmean","grandens") | srcType=="Persistence") %>% 
           collect() %>%
-          mutate(type.name=paste(srcType,srcName,sep="/"),
+          mutate(type.name=paste(srcType,srcName,sep=" / "),
                  highlight=realization %in% c("ensmean","grandens")|srcType=="Persistence") 
         
-        met.dat <- 
+        met.dat.indiv <- 
           all.met.dat %>%
-          filter(! srcType %in% c("Persistence","Climatology"))
+          filter(! srcType %in% c("Persistence","Climatology"),
+                 !realization %in% c("ensmean","grandens"))
         
+        met.dat.highlight <-
+          all.met.dat %>%
+          filter(! srcType %in% c("Persistence","Climatology"),
+                 realization %in% c("ensmean","grandens"))
+
         met.persis.dat <-
           all.met.dat %>%
           filter(srcType %in% c("Persistence","Climatology")) %>%
-          dplyr::select(-calibrationMethod)
+          dplyr::select(-calibrationMethod,-highlight)
         
         #Set y range accordingly
         if(this.met %in% c("pearson.correlation")) {
@@ -241,26 +247,41 @@ for(this.sp in sp.names) {
         } else if(this.met %in% c("MSSS","crpss")) {
           y.rng <- c(-1,1) 
         } else {
-          y.rng <- range(pretty(c(0,met.dat$value)))
+          y.rng <- range(pretty(c(0,all.met.dat$value)))
         }
         
         #Plot - but only if there is something in the met.dat. For example, it is not 
         #possible to calculate a crps metric for a stat_mean or stat_median -  this would
         #require a bit more developed code
-        if(nrow(met.dat)!=0) {
+        if(nrow(all.met.dat)!=0) {
           g <- ggplot(mapping=aes(x=lead/12,y=value,
-                                  group=type.name,
-                                  colour=type.name,
-                                  size=highlight))+
-            geom_line(data=met.persis.dat)+
-            geom_line(data=met.dat)+
-            facet_wrap(~calibrationMethod,scales = "free_y")+
+                                  group=type.name))+
+            geom_line(data=met.persis.dat,
+                      mapping=aes(colour=type.name),
+                      size=1)+
+            geom_point(data=met.dat.indiv,
+                      mapping=aes(shape=type.name))+
+            geom_line(data=met.dat.indiv,
+                      mapping=aes(linetype=type.name))+
+            geom_line(data=met.dat.highlight,
+                      mapping=aes(colour=type.name))+
+            # geom_point(data=met.dat.highlight,
+            #            mapping=aes(colour=type.name,
+            #                        shape=type.name))+
+            facet_wrap(highlight~calibrationMethod,scales = "free_y")+
             coord_cartesian(ylim=y.rng)+
             scale_size_manual(values=c(0.25,1))+
             guides(size="none")+
-            labs(x="Lead (years)",y=this.met,colour="Forecast System")
+            labs(x="Lead (years)",
+                 y=this.met,
+                 colour="Summary Method",
+                 shape="Forecast System",
+                 linetype="Forecast System")
           print(g)
         }
+        
+        
+        
         
       }  #Plot  
     } 

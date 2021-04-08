@@ -50,7 +50,6 @@ base.tbl <-
   filter(is.na(field),
          month(date) %in% !!pcfg@MOI,
          !resultName %like% "%RollMean%",   #Don't include the rolling means.
-         !resultName %like% "%stat_me%",
          !realization %in% c("grandens","realmean","ensmean"))
 
 #'First, the grand ensembles
@@ -66,9 +65,9 @@ grandens.smms<-
   ungroup() %>%
   #Now polish and massage
   pivot_longer(starts_with("stat_")) %>%
-  unite("resultName",c(resultName,name),sep = " / ") %>%
-  mutate(srcName="grandens",
-         realization="grandens")
+  mutate(srcName=sprintf("grandens / %s",name),
+         realization="grandens") %>%
+  dplyr::select(-name)
 
 #Then the individual models
 log_msg("Stat means / medians by individual data sources...\n")
@@ -77,14 +76,12 @@ realmean.smms<-
   #Group and summarise
   group_by(srcType,srcName,calibrationMethod,startDate,date,lead,
            spName,statName,resultName,.drop=TRUE) %>%
-  summarise(stat_median=median(value,na.rm=TRUE),
+  summarise(#stat_median=median(value,na.rm=TRUE),
             stat_mean=mean(value,na.rm=TRUE)) %>%
   collect() %>%
   ungroup() %>%
   #Now polish and massage
-  pivot_longer(starts_with("stat_")) %>%
-  unite("resultName",c(resultName,name),sep = " / ") %>%
-  mutate(realization="realmean")
+  pivot_longer(starts_with("stat_"),names_to = "statSumType") 
 
 #And we can now use this as the input to calculate ensmean metrics as
 #as well. Note that we don'y calculate medians in this case, as the 
@@ -92,7 +89,7 @@ realmean.smms<-
 log_msg("Ensemble mean - Stat means / medians...\n")
 ensmean.smms <- 
   realmean.smms %>%
-  filter(str_ends(resultName,"stat_mean")) %>%
+  #filter(str_ends(resultName,"stat_mean")) %>%
   #Group and summarise
   group_by(srcType,calibrationMethod,startDate,date,lead,
            spName,statName,resultName,.drop=TRUE) %>%
@@ -100,24 +97,7 @@ ensmean.smms <-
             .groups="drop") %>%
   #Now polish and massage
   mutate(realization="ensmean",
-         srcName="ensmean")
-
-#Observation data gets a direct passthrough, so that there is still something to compare against
-#for these new resultNames
-obs.dat <- 
-  stats.tbl  %>%
-  filter(is.na(field),
-         month(date) %in% !!pcfg@MOI,
-         !resultName %like% "%RollMean%",   #Don't include the rolling means.
-         !resultName %like% "%stat_me%",
-         realization=="realmean" & srcType=="Observations") %>%
-  select(-pKey) %>%
-  collect()
-  
-obs.smms <-
-  obs.dat %>%
-  mutate(resultName=map(resultName,~ paste(.x,c("stat_mean","stat_median"),sep=" / "))) %>%
-  unnest(resultName)
+         srcName="ensmean / stat_mean")
 
 #'========================================================================
 # Complete ####
@@ -128,7 +108,7 @@ this.query.time <-
   system.time({
     del.these.pKeys <-
       stats.tbl %>%
-      filter(resultName %like% "%stat_me%") %>%
+      filter(srcName %like% "%stat_me%") %>%
       pull(pKey)
   })
 log_msg("Complete in %0.3fs. \nDeleting...\n",this.query.time[3])
@@ -145,11 +125,9 @@ log_msg("Deleted %i rows in %0.3fs.\n\n",n,this.query.time[3])
 #Write back to table
 smms.out <- 
   bind_rows(grandens.smms,
-            realmean.smms,
-            ensmean.smms,
-            obs.smms) 
+          #  realmean.smms,
+            ensmean.smms) 
 PE.db.appendTable(pcfg,PE.cfg$db$stats,src=NULL,dat=smms.out)
-
 
 #Turn off the lights
 dbDisconnect(stats.tbl)
