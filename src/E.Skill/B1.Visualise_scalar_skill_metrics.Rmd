@@ -157,7 +157,7 @@ for(this.sp in sp.names) {
         collect() %>%
         mutate(date=ymd(date),
                lbl="Reference",
-               highlight=TRUE) %>%
+               is.ref=TRUE) %>%
         filter(month(date) %in% pcfg@MOI) %>%
         dplyr::select(-calibrationMethod,-srcType)
         
@@ -177,12 +177,12 @@ for(this.sp in sp.names) {
         mutate(type.name=paste(srcType,srcName,sep="."),
                date=ymd(date),
                lbl=paste(srcType,srcName,sep="/"),
-               highlight=realization %in% c("ensmean","grandens")) %>%
+               is.ref=FALSE) %>%
         ungroup()
 
       #Plot timeseries
       g <- 
-        ggplot(mapping=aes(x=date,y=value,colour=lbl,size=highlight))+
+        ggplot(mapping=aes(x=date,y=value,colour=lbl,size=is.ref))+
         annotate("rect",
                  xmin=as.Date(ISOdate(min(pcfg@comp.years),1,1)),
                  xmax=as.Date(ISOdate(max(pcfg@comp.years)+1,1,1)),
@@ -223,23 +223,24 @@ for(this.sp in sp.names) {
                  metric==this.met,
                  realization %in% c("realmean","ensmean","grandens") | srcType=="Persistence") %>% 
           collect() %>%
-          mutate(type.name=paste(srcType,srcName,sep=" / "),
-                 highlight=realization %in% c("ensmean","grandens")|srcType=="Persistence") 
+          mutate(type.name=paste(srcType,srcName,sep=" / ")) 
         
         met.dat.indiv <- 
           all.met.dat %>%
           filter(! srcType %in% c("Persistence","Climatology"),
-                 !realization %in% c("ensmean","grandens"))
+                 !realization %in% c("ensmean","grandens")) %>%
+          mutate(panel="Forecast System")
         
         met.dat.highlight <-
           all.met.dat %>%
           filter(! srcType %in% c("Persistence","Climatology"),
-                 realization %in% c("ensmean","grandens"))
+                 realization %in% c("ensmean","grandens")) %>%
+          mutate(panel="Summary Method")
 
         met.persis.dat <-
           all.met.dat %>%
           filter(srcType %in% c("Persistence","Climatology")) %>%
-          dplyr::select(-calibrationMethod,-highlight)
+          dplyr::select(-calibrationMethod)
         
         #Set y range accordingly
         if(this.met %in% c("pearson.correlation")) {
@@ -268,7 +269,7 @@ for(this.sp in sp.names) {
             # geom_point(data=met.dat.highlight,
             #            mapping=aes(colour=type.name,
             #                        shape=type.name))+
-            facet_wrap(highlight~calibrationMethod,scales = "free_y")+
+            facet_wrap(panel~calibrationMethod,scales = "free_y")+
             coord_cartesian(ylim=y.rng)+
             scale_size_manual(values=c(0.25,1))+
             guides(size="none")+
