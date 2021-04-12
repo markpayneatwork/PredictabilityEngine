@@ -372,7 +372,8 @@ if(have.mdl.dat) {
     summarise(pred.mean=mean(value),
               pred.sd=sd(value),
               pred.n=n(),
-              .groups="drop") 
+              .groups="drop") %>%
+    mutate(realization="realmean")  #Equivalent thereof
   
   #Cat on the grandens prediction as well
   dist.pred.grandens <- 
@@ -384,7 +385,8 @@ if(have.mdl.dat) {
               pred.sd=sd(value),
               pred.n=n(),
               .groups="drop") %>%
-    mutate(srcName="grandens")
+    mutate(srcName="grandens",
+           realization="grandens")
   
   dist.pred <- bind_rows(dist.pred.mdls,dist.pred.grandens)
   
@@ -406,7 +408,7 @@ if(have.mdl.dat) {
     #Tidy
     mutate(lead=month_diff(date,startDate)) %>%
     group_by(srcType,srcName,calibrationMethod,spName,
-             statName,resultName,lead,.drop=TRUE) %>%
+             statName,resultName,lead,realization,.drop=TRUE) %>%
     group_nest()
   
   #Skill functions
@@ -440,8 +442,7 @@ if(have.mdl.dat) {
                               .options = furrr_options(stdout=FALSE,
                                                        seed=TRUE))) %>%
     dplyr::select(-data) %>% 
-    unnest(metrics) %>%
-    mutate(realization="realmean")
+    unnest(metrics) 
   
   #Write these results
   dist.metrics %>%
