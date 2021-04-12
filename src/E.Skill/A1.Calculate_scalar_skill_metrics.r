@@ -363,7 +363,7 @@ if(have.mdl.dat) {
   # The crps requires that the forecasts be expressed in terms of a probability
   # distribution, ie the mean and standard deviation. This requires calculation
   # of these quantities first
-  dist.pred <- 
+  dist.pred.mdls <- 
     #Convert to probabilistic forecasts
     mdl.stats.dat %>%  #Don't include persistence
     filter(!(realization %in% c("realmean","ensmean","grandens"))) %>%   #Individual ens members only
@@ -373,6 +373,20 @@ if(have.mdl.dat) {
               pred.sd=sd(value),
               pred.n=n(),
               .groups="drop") 
+  
+  #Cat on the grandens prediction as well
+  dist.pred.grandens <- 
+    mdl.stats.dat %>%  #Don't include persistence
+    filter(!(realization %in% c("realmean","ensmean","grandens"))) %>%   #Individual ens members only
+    group_by(srcType,calibrationMethod,startDate,date,   #As before, but don't group by srcName
+             spName,statName,resultName,.drop=TRUE) %>%
+    summarise(pred.mean=mean(value),
+              pred.sd=sd(value),
+              pred.n=n(),
+              .groups="drop") %>%
+    mutate(srcName="grandens")
+  
+  dist.pred <- bind_rows(dist.pred.mdls,dist.pred.grandens)
   
   #Merge with observations and climatalogy
   dist.dat <-
