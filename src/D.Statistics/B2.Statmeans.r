@@ -108,7 +108,7 @@ this.query.time <-
   system.time({
     del.these.pKeys <-
       stats.tbl %>%
-      filter(srcName %like% "%stat_me%") %>%
+      filter(srcName %like% "%stat_me%"| resultName %like% "%stat_me%") %>%
       pull(pKey)
   })
 log_msg("Complete in %0.3fs. \nDeleting...\n",this.query.time[3])
