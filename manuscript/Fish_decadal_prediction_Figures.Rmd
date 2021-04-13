@@ -71,8 +71,7 @@ library(ggpattern)
 
 
 theme_set(theme_bw())
-theme_replace(strip.text = element_text(hjust=0),
-              strip.background = element_blank())
+theme_replace(strip.background = element_blank())
 
 ```
 
@@ -202,7 +201,7 @@ skill.dat <-
   select(lbl,mets.dat) %>%
   unnest(mets.dat) %>%
   filter(srcType %in% c("Decadal","Persistence","CMIP6"),
-         realization %in% c("grandens","realmean",NA))  %>%
+         realization %in% c("realmean",NA) | srcName=="grandens")  %>%
   mutate(lead.yrs=lead/12,
          highlight=srcType=="Decadal" & srcName=="grandens" | srcType=="Persistence" ,
          dispName=ifelse(srcType=="Persistence","Persistence",srcName),
@@ -218,18 +217,33 @@ decadal.leads <-
   pull()
 
 base.pal <- c("#e41a1c","#377eb8","#4daf4a","#984ea3","#ff7f00") #Set1
-base.pal <- pal_npg()(7)
+base.pal <- pal_npg()(6)
 plt.cfgs <-
   list(list(metric="pearson.correlation",
             ylab="Pearson correlation coefficient (r)",
-            ylim=c(0,1.1),
-            signif.y =1.05,
+            ylim=c(-0.1,1),
+            signif.band =c(-0.1,0),
+            show.signif=TRUE,
+            two.panel=FALSE,
+            panel.letters=c("a","b","c"),
             colour.pal=base.pal),
-#            colour.pal=c(base.pal[1],"grey",base.pal[3:5])),
+       #            colour.pal=c(base.pal[1],"grey",base.pal[3:5])),
        list(metric="MSSS",
-            ylab="Mean squared error skill score (MSESS)",
-            signif.y =1.1,
-            ylim=c(-1,1.2),
+            ttl="Mean Squared Error\nskill score (MSESS)",
+            ylab="",
+            signif.band=c(-1.2,-1),
+            ylim=c(-1.2,1),
+            show.signif=TRUE,
+            two.panel=TRUE,
+            panel.letters=c("a","c","e"),
+            colour.pal=base.pal),
+       list(metric="crpss",
+            ttl="Continuous Ranked Probability\nskill score (CRPSS)",
+            ylab="",
+            ylim=c(-1.2,1),
+            show.signif=FALSE,
+            two.panel=TRUE,
+            panel.letters=c("b","d","f"),
             colour.pal=base.pal))
 #            colour.pal=c(base.pal[2],"grey",base.pal[3:5])))
 
@@ -239,7 +253,8 @@ for(this.cfg in plt.cfgs) {
     skill.dat %>%
     filter(metric==this.cfg$metric) %>%
     unite(lbl.lead,lbl,lead,remove=FALSE) %>%
-    filter(lbl.lead %in% decadal.leads) 
+    filter(lbl.lead %in% decadal.leads) %>%
+    mutate(lbl2=str_extract(lbl,"^.*\\)"))
   
   #Now split into individuals models
   models.dat <- 
@@ -266,29 +281,17 @@ for(this.cfg in plt.cfgs) {
     cleaned.dat %>%
     filter(highlight) %>%
     mutate(upperCI=map_dbl(draws,quantile,probs=0.95),
-           lowerCI=map_dbl(draws,quantile,probs=0.05))
+           lowerCI=map_dbl(draws,quantile,probs=0.05),
+           dispName=factor(dispName,c("Grand Ens.","Persistence")))
   
-  signif.breaks <- c(-1,0.005,0.01,0.05,1)
-  signif.lbls <- c("p < 0.005","p < 0.01", "p < 0.05", "Not Signif.")
-  
-  signif.dat <- 
-    highlight.dat %>% 
-    select(lbl,lead.yrs,draws,dispName) %>%
-    pivot_wider(names_from="dispName",values_from = "draws") %>%
-    #Join in CMIP6 draws as well
- #   left_join(y=select(CMIP6.dat,lbl,CMIP6.draws=draws),by="lbl") %>%
-    #Calculate p.values
-    mutate(p.value=map2_dbl(`Grand Ens.`,Persistence, ~ mean(.x < .y)),
-        #   p.CMIP6=map2_dbl(`Ens. mean`,CMIP6.draws,~ mean(.x<.y)),
-           p.txt=cut(p.value,breaks=signif.breaks,
-                     labels=signif.lbls),
-           p.ns=ifelse(p.value>0.05,"ns",""))
 
-  met.plots[[this.cfg$metric]] <- 
+# Make plot -------------------------------------------------------------------------
+  this.plt <- 
     #Setup baseline
     ggplot()+
-    facet_wrap(~lbl,ncol=1)+
-    annotate("rect",xmin=0,xmax=10,ymin=1,ymax=this.cfg$ylim[2],fill="white",colour="black")+
+    facet_wrap(~lbl,
+               ncol=1,
+               strip.position = "right")+
     geom_hline(yintercept = 0)+
     scale_linetype_manual(values="dotted")+
     coord_cartesian(xlim=c(0,10),
@@ -306,6 +309,7 @@ for(this.cfg in plt.cfgs) {
                 data=highlight.dat,
                 alpha=0.25)+
     scale_fill_manual(values=this.cfg$colour.pal[1:2],
+                      drop=FALSE,
                       guide=guide_legend(title="Key Metrics",
                                          order=1,ncol=1,
                                          title.position = "top"))+
@@ -317,7 +321,8 @@ for(this.cfg in plt.cfgs) {
               size=0.5)+
     scale_colour_manual(values=this.cfg$colour.pal[-c(1:2)],
                         guide=guide_legend(order=2,ncol=1,
-                                           title="Individual Models",title.position = "top"))+
+                                           title="Individual Models",
+                                           title.position = "top"))+
     guides(linetype=guide_legend(title.position = "top"))+
     
     #Highlight plots
@@ -328,33 +333,117 @@ for(this.cfg in plt.cfgs) {
                           colour=dispName),
               size=1.5)+
     scale_colour_manual(values=this.cfg$colour.pal[1:2],
+                        drop=FALSE,
                         guide=guide_legend(order=1,ncol=1,
                                            title="Key Metrics",
-                                           title.position = "top"))+
-    #Significance band at top
-    geom_point(data=signif.dat,
-               mapping=aes(x=lead.yrs,shape=p.txt,size=p.txt),
-               y=this.cfg$signif.y)+
-    scale_shape_manual(values=c(16,8,3,16),
-                       drop=FALSE,
-                       guide=guide_legend(order=3,ncol=1,
-                                          title="Signif. test",
-                                          title.position = "top"))+
-    scale_size_manual(values=c(4,2,1,0.1),
-                      drop=FALSE,
-                      guide=guide_legend(order=3,ncol=1,
-                                         title="Signif. test",
-                                         title.position = "top")) 
+                                           title.position = "top"))
     #CMIP6 error bars
     # geom_errorbar(data=CMIP6.dat,
     #              mapping=aes(x=9.5,ymin=lowerCI,ymax=upperCI))+
     # geom_point(data=CMIP6.dat,
     #            mapping=aes(x=9.5,y=value))
-  
-}
 
-wrap_plots(met.plots,ncol=2)
-print(met.plots)
+    #Add significance (if appropriate)
+    if(this.cfg$show.signif) {
+      
+      signif.breaks <- c(-1,0.005,0.01,0.05,1)
+      signif.lbls <- c("p < 0.005","p < 0.01", "p < 0.05", "Not Signif.")
+      
+      signif.dat <- 
+        highlight.dat %>% 
+        select(lbl,lead.yrs,draws,dispName) %>%
+        pivot_wider(names_from="dispName",values_from = "draws") %>%
+        #Join in CMIP6 draws as well
+        #   left_join(y=select(CMIP6.dat,lbl,CMIP6.draws=draws),by="lbl") %>%
+        #Calculate p.values
+        mutate(p.value=map2_dbl(`Grand Ens.`,Persistence, ~ mean(.x < .y)),
+               #   p.CMIP6=map2_dbl(`Ens. mean`,CMIP6.draws,~ mean(.x<.y)),
+               p.txt=cut(p.value,breaks=signif.breaks,
+                         labels=signif.lbls),
+               p.ns=ifelse(p.value>0.05,"ns",""))
+      
+      this.plt <-
+        this.plt + 
+        #Significance band 
+        annotate("rect",xmin=0,xmax=10,
+                 ymin=min(this.cfg$signif.band),ymax=max(this.cfg$signif.band),
+                 fill="white",colour="black")+
+
+        geom_point(data=signif.dat,
+                   mapping=aes(x=lead.yrs,shape=p.txt,size=p.txt),
+                   y=mean(this.cfg$signif.band))+
+        scale_shape_manual(values=c(16,8,3,16),
+                           drop=FALSE,
+                           guide=guide_legend(order=3,ncol=1,
+                                              title="Signif. test",
+                                              title.position = "top"))+
+        scale_size_manual(values=c(4,2,1,0.1),
+                          drop=FALSE,
+                          guide=guide_legend(order=3,ncol=1,
+                                             title="Signif. test",
+                                             title.position = "top")) 
+    }  
+  
+  #Make tweaks for two panels
+  if(this.cfg$two.panel) {
+    panel.lbls <- 
+      cleaned.dat %>%
+      distinct(lbl) %>%
+      mutate(panel.lbl=sprintf("%s)",this.cfg$panel.letters))
+    this.plt <- 
+      this.plt + 
+      ggtitle(this.cfg$ttl)+
+      facet_wrap(~lbl,ncol=1,
+                 strip.position = "right",
+                 labeller = function(x) {
+                   x$lbl <- gsub("^.*) ","",x$lbl)
+                   return(x)} )  +
+      ylab(NULL) +
+      geom_text(panel.lbls,
+                x=-Inf,y=Inf,hjust=-1,vjust=2,
+                mapping=aes(label=panel.lbl))+
+      theme(strip.background = element_blank(),
+            strip.placement = "outside",
+            panel.spacing.y = unit(5,"mm"),
+            plot.title = element_text(size=10,hjust=0.5),
+            strip.text=element_text(hjust=0.5))
+  } else {
+    panel.lbls <- 
+      cleaned.dat %>%
+      distinct(lbl) %>%
+      mutate(panel.lbl=sprintf("%s)",this.cfg$panel.letters))
+    this.plt <- 
+      this.plt + 
+      facet_wrap(~lbl,ncol=1,
+                 strip.position = "right",
+                 labeller = function(x) {
+                   x$lbl <- str_remove(x$lbl,"^.*\\) ")
+                   return(x)} )  +
+      ylab(this.cfg$ylab) +
+      geom_text(panel.lbls,
+                x=-Inf,y=Inf,hjust=-1,vjust=2,
+                mapping=aes(label=panel.lbl))+
+      theme(strip.background = element_blank(),
+            strip.placement = "outside",
+            panel.spacing.y = unit(5,"mm"),
+            plot.title = element_text(size=10,hjust=0.5),
+            strip.text=element_text(hjust=0.5))    
+  }
+  
+  if(this.cfg$metric=="MSSS") {
+    this.plt <- 
+      this.plt +
+      theme(strip.text.y=element_blank())   
+  }
+  
+  met.plots[[this.cfg$metric]] <- this.plt  
+  
+  }
+
+print(met.plots[1])
+wrap_plots(met.plots[2:3],ncol=2,guides="collect")  & 
+  theme(legend.position = 'bottom')
+
 ```
 
 # Effect of smoothing
@@ -385,14 +474,14 @@ smooth.dat <-
   mutate(lead.yr=lead/12) %>%
 #  filter(metric %in% c("MSSS","pearson.correlation")) %>%
   filter(metric %in% c("pearson.correlation")) %>%
-  separate(resultName,c("resultName","smoothing"),sep="/",fill="right") %>%
+  separate(resultName,c("resultName","smoothing"),sep=" / ",fill="right") %>%
   mutate(smoothing=case_when(is.na(smoothing) ~ "1 year",
                              smoothing=="RollMean03" ~ "3 years",
                              smoothing=="RollMean05" ~ "5 years",
                              smoothing=="RollMean09" ~ "9 years"),
          dispName=ifelse(srcType=="Decadal","Grand Ens.",srcType),
          ylbl=case_when(metric=="pearson.correlation"~ "Pearson correlation coefficient(r)",
-                        metric=="MSSS"~ "MSESS")) %>%
+                        metric=="MSSS" ~ "MSESS")) %>%
   filter(!is.na(smoothing))  #Drop other windows
          # lbl=factor(lbl),
          # lbl=fct_relabel(lbl,function(x) gsub("^[a-c]) ","",x)))
@@ -417,18 +506,22 @@ end.points <-
   filter(lead==min(lead)| lead==max(lead)) %>%
   ungroup()
 
-# facet.lbls <-
-#   expand_grid(ylbl=levels(smooth.plt$ylbl),
-#               lbl=levels(smooth.plt$lbl)) %>%
-#   mutate(this.lbl=sprintf("%s)",letters[1:nrow(.)]),
-#          x=0.1,y=0.99,
-#          ylbl=factor(ylbl,levels(smooth.plt$ylbl)),
-#          lbl=factor(lbl,levels(smooth.plt$lbl)))
-
+#Panel labels
+panel.lbls <- 
+  smooth.dat %>%
+  distinct(lbl) %>%
+  mutate(panel.lbl=str_extract(lbl,"^.*\\)"))
+  
 g <- 
   #Setup baseline
   ggplot()+
-  facet_grid(ylbl~lbl,switch = "y")+
+  facet_grid(~lbl,
+             switch = "y",
+             labeller = function(x) {x$lbl <- str_remove(x$lbl,"^.*\\) "); x})+
+  geom_text(panel.lbls,
+            x=-Inf,y=Inf,hjust=-1,vjust=2,
+            mapping=aes(label=panel.lbl))+
+  
   # geom_text(data=facet.lbls, mapping=aes(x,y,label=this.lbl),
   #           hjust="left",vjust="top")+
   # #annotate("rect",xmin=0,xmax=10,ymin=1,ymax=c(1,1.2),fill="white",colour="black")+
@@ -439,11 +532,9 @@ g <-
   geom_hline(yintercept=0)+
   theme(legend.position="bottom",
         strip.placement = "outside",
-        panel.spacing.x = unit(4,"mm"),
-        strip.text.y = element_text(hjust=0.5),
-        strip.text.x= element_text(hjust=0))+
+        panel.spacing.x = unit(4,"mm"))+
   labs(x="Lead time (years)",
-       y="")+
+       y="Pearson correlation coefficient (r)")+
   #Lines
   geom_line(data=smooth.plt,
             mapping=aes(x=lead.yr,
@@ -479,8 +570,8 @@ tbl.dat <-
   select(lbl,dispName,lead.yr,draws,value,smoothing) %>%
   pivot_wider(names_from=c("dispName"),values_from=c("draws","value")) %>%
   filter(!is.na(smoothing)) %>%
-  mutate(p.value=map2_dbl(`draws_Ens. mean`,draws_Persistence,~ mean(.x <.y)),
-         "Ens.mean"=map_dbl(`value_Ens. mean`,~.x),
+  mutate(p.value=map2_dbl(`draws_Grand Ens.`,draws_Persistence,~ mean(.x <.y)),
+         "Grand Ens."=map_dbl(`value_Grand Ens.`,~.x),
          Persistence=map_dbl(value_Persistence,~.x)) %>%
   select(-starts_with("draws"),-starts_with("value"))
 
@@ -489,15 +580,131 @@ tbl.dat <-
       filter(round(lead.yr)==5)%>%
       select(Species=lbl,
              Smoothing=smoothing,
-             "Ens. mean"=Ens.mean,
+             "Grand Ens.",
              Persistence,
              "p value"=p.value),
     digits=3)
 ```
 
+# Fixed lead plot
+
+```{r}
+this.lead.idx <- 5
+
+#Import data
+fl.dat <-
+  these.cfg %>%
+  filter(fig=="skill") %>%
+  rowwise() %>%
+  group_split() %>%
+  map_dfr(function(this) {
+    this$dat <- 
+      this$stats.db[[1]] %>%
+      tbl(PE.cfg$db$stats) %>%
+      filter(srcType %in% c("Decadal","Observations"),
+             spName==!!this$spName,
+             statName==!!this$statName,
+             !srcName %like% "ensmean%",
+             !srcName %like% "grandens /%",
+             realization!="realmean" | is.na(realization),
+             calibrationMethod==!!this$calibrationMethod | calibrationMethod=="None",
+             resultName ==!!this$resultName,
+             month(date)==!!this$pcfg[[1]]@MOI,
+             year(date) %in% !!this$pcfg[[1]]@comp.years,
+             lead < this.lead.idx*12 & lead > (this.lead.idx-1)*12 | is.na(lead)) %>%
+      filter(!(srcType=="Observations" & calibrationMethod!="None")) %>%
+      select(-field) %>%
+      collect() %>%
+      list()
+    return(this)
+  }) %>%
+  select(lbl,dat) %>%
+  unnest(dat) %>%
+  mutate(year=year(date))
+
+fl.grandens <-
+  fl.dat %>%
+  filter(srcName=="grandens")
+
+fl.obs <-
+  fl.dat %>%
+  filter(srcType=="Observations") %>%
+  arrange(lbl,date) %>%
+  group_by(lbl) %>%
+  mutate(rollmean=roll_mean(value,n=3,fill=NA)) %>%
+  select(lbl,year,Habitat=value,"Rolling mean"=rollmean) %>%
+  pivot_longer(-c(lbl,year)) 
+
+fl.preds <-
+  fl.dat %>%
+  filter(srcName!="grandens",
+         srcType=="Decadal") %>%
+  dplyr::select(-startDate) %>%
+  group_by(lbl,date) %>%
+  summarise(ptile=c("lower","upper"),
+            value=quantile(value,probs=c(0.25,0.75)),
+            .groups="drop") %>%
+  pivot_wider(names_from=ptile,values_from = value)
+
+panel.lbls <- 
+  fl.grandens %>%
+  distinct(lbl) %>%
+  mutate(panel.lbl=str_extract(lbl,"^.*\\)"))
+
+
+fixed.lead.plt <-
+  ggplot()+
+  facet_wrap(~lbl,
+             ncol=1,
+             strip.position = "right",
+             scale="free_y",
+             labeller = function(x){x$lbl <- str_remove(x$lbl,"^.*\\) "); x})+
+  #Ribbon
+  geom_ribbon(data=fl.preds,
+              mapping=aes(x=year(date),ymax=upper,ymin=lower,
+                          fill=sprintf("%i year lead",this.lead.idx)),
+              alpha=0.25)+
+  #Observations
+  geom_line(data=fl.obs,
+            mapping=aes(year,value,linetype=name,col=name,size=name))+
+  geom_point(data=fl.obs,
+             mapping=aes(year,value,shape=name),size=2)+
+  scale_color_manual(values=c("black","black"))+
+  scale_shape_manual(values=c(17,NA))+
+  scale_size_manual(values=c(0.5,1))+
+  scale_linetype_manual(values=c("dotted","solid"))+
+  labs(col="Observations",
+       linetype="Observations",
+       size="Observations",
+       shape="Observations",
+       alpha="Observations")+
+  #Forecast line
+  new_scale_color()+
+  geom_line(data=fl.grandens,
+            aes(year,value,colour=sprintf("%i year lead",this.lead.idx)))+
+  scale_color_manual(values=c("red"))+
+  #Annotations
+  labs(x="Year",
+       y="Habitat area (kkm²)",
+       col="Forecast",
+       fill="Forecast")+
+  scale_y_continuous(labels=function(x) x/1000)+
+  geom_text(panel.lbls,
+            x=-Inf,y=Inf,hjust=-1,vjust=2,
+            mapping=aes(label=panel.lbl))
+
+
+print(fixed.lead.plt)
+
+```
+
 
 # Ability to forecast given years
 ```{r}
+#'========================================================================
+# Mackerel comparison ####
+#'========================================================================
+
 # Setup configuration -------------------------------------------------------------
 forecast.cfg.l <- list()
 forecast.cfg.l$"Mackerel-summer" <-
@@ -616,75 +823,16 @@ for(this.cfg in forecast.cfg) {
          size="Observations")+
     scale_x_continuous(limits=range(this.cfg$yr.rng[[1]]))+
     theme(legend.position = "bottom",
-          legend.direction = "vertical")
+          legend.direction = "vertical")+
+    annotate("text",x=-Inf,y=Inf,hjust=-1,vjust=2,label="a)")
   
 
-  # Fixed lead plot -----------------------------------------------------------------
-  # this.lead.idx <- 5
-  # fixed.realmean <-
-  #   this.model %>%
-  #   filter(realization=="realmean",
-  #          leadIdx==this.lead.idx) %>%
-  #   filter(year %in% this.cfg$yr.rng[[1]])
-  # 
-  # fixed.preds <-
-  #   this.model %>%
-  #   filter(realization!="realmean",
-  #          leadIdx==this.lead.idx) %>%
-  #   dplyr::select(-startDate) %>%
-  #   filter(year %in% this.cfg$yr.rng[[1]]) %>%
-  #   group_by(date) %>%
-  #   summarise(ptile=c("lower","upper"),
-  #             value=quantile(value,probs=c(0.25,0.75)),
-  #             .groups="drop") %>%
-  #   pivot_wider(names_from=ptile,values_from = value)
-  # 
-  # fixed.lead.plt[[this.cfg$name]] <-
-  #   ggplot()+
-  #   #Ribbon
-  #   geom_ribbon(data=fixed.preds,
-  #               mapping=aes(x=year(date),ymax=upper,ymin=lower,
-  #                           fill=sprintf("%i year lead",this.lead.idx)),
-  #               alpha=0.25)+
-  #   #Observations
-  #   geom_line(data=this.obs,
-  #             mapping=aes(year,value,linetype=name,col=name,size=name))+
-  #   geom_point(data=this.obs,
-  #              mapping=aes(year,value,shape=name),size=2)+
-  #   scale_color_manual(values=c("black","grey"))+
-  #   scale_shape_manual(values=c(16,NA))+
-  #   scale_size_manual(values=c(0.5,1.5))+
-  #   scale_linetype_manual(values=c("solid","solid"))+
-  #   labs(col="Observations",
-  #        linetype="Observations",
-  #        size="Observations",
-  #        shape="Observations",
-  #        alpha="Observations")+
-  #   #Forecast line
-  #   new_scale_color()+
-  #   geom_line(data=fixed.realmean,
-  #             aes(year,value,colour=sprintf("%i year lead",this.lead.idx)))+
-  #   scale_color_manual(values=c("red"))+
-  #   #Annotations
-  #   scale_x_continuous(limits=range(this.cfg$yr.rng[[1]])) +
-  #   labs(x="Year",
-  #        y=this.cfg$lbl2,
-  #        col="Forecast",
-  #        fill="Forecast")
+
 }
 
-#Merge together with patchwork
-wrap_plots(forecast.plt,ncol=1)+
-  plot_annotation(tag_levels = "a",tag_suffix = ")")
-
-# wrap_plots(fixed.lead.plt,ncol=1)+
-#   plot_annotation(tag_levels = "a",tag_suffix = ")")
-
-```
-
-# Blue whiting forecast comparison
-
-```{r}
+#'========================================================================
+# Blue Whiting forecast comparison ####
+#'========================================================================
 #Setup
 this.cfg <- 
   these.cfg %>%
@@ -700,7 +848,7 @@ surv.dat <-
   filter(name=="surv.area",
          src=="WGIPS") %>%
   mutate(value=value*this.cfg$scalar,
-         lbl="Survey\ndistribution")
+         lbl="Distribution (Survey)")
 
 library(icesSAG)
 SSB.dat <- 
@@ -733,7 +881,7 @@ this.obs <-
          month(date) ==this.cfg$pcfg[[1]]@MOI) %>%
   arrange(date) %>%
   mutate(rollmean=roll_mean(value,n=3,fill=NA)) %>%
-  select(year,Habitat=value,"Rolling mean"=rollmean) %>%
+  select(year,Habitat=value,"Habitat roll. mean"=rollmean) %>%
   pivot_longer(-year)
 
 this.model <- 
@@ -741,8 +889,8 @@ this.model <-
   filter(srcType=="Decadal",
          srcName=="CESM.DPLE",
          !realization %in% c("realmean","grandens","ensmean"),
-         year(startDate) %in% c(2004,2010,2016),
-         lead<74)  %>%
+         year(startDate) %in% c(2004,2011),
+         lead/12<7)  %>%
   mutate(startYear=factor(year(startDate)))
 
 forecast.mean <-
@@ -764,7 +912,7 @@ forecast.rng <-
 BW.plot <- 
   ggplot()+
   #Background fill
-  annotate("rect",xmin=-Inf,xmax=Inf,ymax=100,ymin=-Inf,fill="white",colour="black")+
+  annotate("rect",xmin=-Inf,xmax=Inf,ymax=0,ymin=-Inf,fill="white",colour="black")+
   #Forecasts
   geom_ribbon(data=forecast.rng,
               mapping=aes(x=year,ymax=upper,ymin=lower,fill=startYear),
@@ -781,9 +929,9 @@ BW.plot <-
             mapping=aes(year,value,linetype=name,col=name))+
   geom_line(data=surv.dat, #Blue whiting survey observations
             mapping=aes(x=year,y=value,col=lbl,linetype=lbl))+
-  scale_linetype_manual(values=c("dotted","longdash","dotdash"),
+  scale_linetype_manual(values=c("dotdash","dotted","longdash"),
                         guide=guide_legend(order=1))+
-  scale_color_manual(values=c("darkgrey","black","red"),
+  scale_color_manual(values=c("red","darkgrey","black"),
                      guide=guide_legend(order=1))+
   labs(colour="Observations",
        linetype="Observations")+  
@@ -793,13 +941,13 @@ BW.plot <-
              mapping=aes(year,value,col=name,shape=name),size=2)+
   geom_point(data=surv.dat,
              mapping=aes(x=year,y=value,col=lbl,shape=lbl),fill="white",size=2)+
-  scale_color_manual(values=c("black","black","red"),
+  scale_color_manual(values=c("red","black","black"),
                      guide=guide_legend(title="Observations",order=1))+
-  scale_shape_manual(values=c(17,NA,22),
+  scale_shape_manual(values=c(22,17,NA),
                      guide=guide_legend(title="Observations",order=1))+
   #SSB timeseries
   geom_point(data=SSB.dat,
-             mapping=aes(x=Year,y=90,size=SSB/1e6),shape=16)+
+             mapping=aes(x=Year,y=-10,size=SSB/1e6),shape=16)+
   scale_size_area(breaks=c(2,4,6),
                   labels=sprintf("%i Mt",c(2,4,6)),
                   guide=guide_legend(title="Biomass",order=3))+
@@ -807,18 +955,18 @@ BW.plot <-
   labs(x="Year",
        y=this.cfg$lbl2)+
   scale_x_continuous(limits=c(2004,2019))+
-  scale_y_continuous(limits=c(80,350),expand=c(0,0))+
+  scale_y_continuous(limits=c(-20,300),expand=c(0,0))+
   theme(legend.position = "bottom",
-        legend.direction = "vertical")
+        legend.direction = "vertical")+
+  annotate("text",x=-Inf,y=Inf,hjust=-1,vjust=2,label="b)")
 
 
-wrap_plots(c(forecast.plt,list(BW.plot)),nrow=1)+
-  plot_annotation(tag_levels = "a",tag_suffix = ")")
+wrap_plots(c(forecast.plt,list(BW.plot)),nrow=1)
 
 ```
 
 
-# Spatial Skill Maps ####
+# Spatial Skill Maps 
 
 ```{r}
 #Configuration
@@ -857,7 +1005,7 @@ sp.plt.cfg$msss <-
        fill.lims = c(-1e6,1),
        fill.lbls =  function(x) {ifelse(x<0,expression(-infinity),sprintf("%02.2f",x))},
        fill.pal = ggplot2:::binned_pal(scales::manual_pal(c("white",brewer.pal(5,"Blues")))),
-       fill.ttl = "MSSS",
+       fill.ttl = "MSESS",
        fill.even = TRUE)
 
 sp.plots <- list()
@@ -924,7 +1072,13 @@ for(plt.cfg in sp.plt.cfg) {
      bind_rows() %>%
      st_set_crs(crs(sp.polys)) %>%
      st_cast("POLYGON")
-    
+   
+   panel.lbls <- 
+     met.tbl %>%
+     distinct(var) %>%
+     mutate(panel.lbl=sprintf("%s)",letters[1:2]))
+     
+   
    #Make plot
   sp.plots[[plt.cfg$metric]] <-
     ggplot(met.sp)+
@@ -934,8 +1088,8 @@ for(plt.cfg in sp.plt.cfg) {
     annotation_map(map_data("world"),fill="black")+
     facet_wrap(~ var,
                ncol=2,
-               labeller = labeller(var=  c(SST="a) SST (August)",
-                                           Sal="b) Salinity (March, 250-600m)")))+
+               labeller = labeller(var=  c(SST="SST (August)",
+                                           Sal="Salinity (March, 250-600m)")))+
     #Raster
     geom_raster(aes(x,y,fill=value))+
     binned_scale("fill","foo",
@@ -976,7 +1130,10 @@ for(plt.cfg in sp.plt.cfg) {
                                  order=4,
                                  override.aes = list(size=0.5)))+
     coord_sf(expand=FALSE)+
-    labs(x="",y="")
+    labs(x="",y="")+
+    #Labels
+    geom_label(data=panel.lbls,mapping=aes(label=panel.lbl),
+               x=-80,y=80,hjust=0,vjust=1)
   
 
 }
