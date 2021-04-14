@@ -313,20 +313,6 @@ for(this.cfg in plt.cfgs) {
                       guide=guide_legend(title="Key Metrics",
                                          order=1,ncol=1,
                                          title.position = "top"))+
-    #Individual model plots
-    geom_line(data=models.dat,
-              mapping=aes(x=lead.yrs,
-                          y=value,
-                          colour=dispName),
-              size=0.5)+
-    scale_colour_manual(values=this.cfg$colour.pal[-c(1:2)],
-                        guide=guide_legend(order=2,ncol=1,
-                                           title="Individual Models",
-                                           title.position = "top"))+
-    guides(linetype=guide_legend(title.position = "top"))+
-    
-    #Highlight plots
-    new_scale_colour()+
     geom_line(data=highlight.dat,
               mapping=aes(x=lead.yrs,
                           y=value,
@@ -336,8 +322,34 @@ for(this.cfg in plt.cfgs) {
                         drop=FALSE,
                         guide=guide_legend(order=1,ncol=1,
                                            title="Key Metrics",
-                                           title.position = "top"))
-    #CMIP6 error bars
+                                           title.position = "top"))+
+
+    #Individual model plots
+    new_scale_colour()+
+    geom_line(data=models.dat,
+              mapping=aes(x=lead.yrs,
+                          y=value,
+                          colour=dispName),
+              size=0.5)+
+    scale_colour_manual(values=this.cfg$colour.pal[-c(1:2)],
+                        guide=guide_legend(order=2,ncol=1,
+                                           title="Individual Models",
+                                           title.position = "top"))+
+    guides(linetype=guide_legend(title.position = "top"))
+    
+    #Highlight plots
+    # new_scale_colour()+
+    # geom_line(data=highlight.dat,
+    #           mapping=aes(x=lead.yrs,
+    #                       y=value,
+    #                       colour=dispName),
+    #           size=1.5)+
+    # scale_colour_manual(values=this.cfg$colour.pal[1:2],
+    #                     drop=FALSE,
+    #                     guide=guide_legend(order=1,ncol=1,
+    #                                        title="Key Metrics",
+    #                                        title.position = "top"))
+    # #CMIP6 error bars
     # geom_errorbar(data=CMIP6.dat,
     #              mapping=aes(x=9.5,ymin=lowerCI,ymax=upperCI))+
     # geom_point(data=CMIP6.dat,
@@ -589,7 +601,7 @@ tbl.dat <-
 # Fixed lead plot
 
 ```{r}
-this.lead.idx <- 5
+this.lead.idx <- 6  #Corresponding to five years
 
 #Import data
 fl.dat <-
@@ -652,6 +664,7 @@ panel.lbls <-
   mutate(panel.lbl=str_extract(lbl,"^.*\\)"))
 
 
+forecast.lbl <- sprintf("Grand Ens.\n(%i year lead)",this.lead.idx-1)
 fixed.lead.plt <-
   ggplot()+
   facet_wrap(~lbl,
@@ -662,7 +675,7 @@ fixed.lead.plt <-
   #Ribbon
   geom_ribbon(data=fl.preds,
               mapping=aes(x=year(date),ymax=upper,ymin=lower,
-                          fill=sprintf("%i year lead",this.lead.idx)),
+                          fill=forecast.lbl),
               alpha=0.25)+
   #Observations
   geom_line(data=fl.obs,
@@ -681,7 +694,8 @@ fixed.lead.plt <-
   #Forecast line
   new_scale_color()+
   geom_line(data=fl.grandens,
-            aes(year,value,colour=sprintf("%i year lead",this.lead.idx)))+
+            aes(year,value,
+                colour=forecast.lbl))+
   scale_color_manual(values=c("red"))+
   #Annotations
   labs(x="Year",
@@ -709,8 +723,8 @@ print(fixed.lead.plt)
 this.cfg <-
   these.cfg %>%
   filter(name=="Mackerel-summer") %>%
-  mutate(yr.rng=list(1980:2020),
-         starts=list(c(1980,1990,2000,2010)),
+  mutate(yr.rng=list(1990:2020),
+         starts=list(c(1990,2000,2010)),
          scalar=1/1e3,
          lbl2="Mackerel habitat (kkm²)")
 
