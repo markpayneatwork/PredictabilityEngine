@@ -183,6 +183,32 @@ SST.Decadal$ECEarth3 <-
                 return(as.Date(ISOdate(as.numeric(syear)+1,1,1)))}, #Round  up to 1 Jan
               date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
 
+#HadGem3
+HadGEM3.fnames <-
+  dir(here(PE.cfg$dir$datasrc,"Decadal","HadGEM3-GC31-MM"),
+      pattern="*.nc$",recursive=TRUE,full.names=TRUE) %>%
+  CMIP6.filename.extr()
+
+SST.Decadal$HadGEM3 <- 
+  data.source(name="HadGEM3",
+              type="Decadal",
+              var="tos",
+              fields.are.2D=TRUE,
+              sources=filter(HadGEM3.fnames,
+                             field=="tos",
+                             table=="Omon",
+                             model=="HadGEM3-GC31-MM",
+                             experiment=="dcppA-hindcast",
+                             grid=="gn")$path,
+              realization.fn = function(f) {
+                gsub("^.*_s[[:digit:]]{4}-(r.*?)_.*$","\\1",basename(f))},
+              start.date=function(f){
+                syear <- gsub("^s([[:digit:]]{4})-r.*$",
+                              "\\1",
+                              underscore_field(basename(f),5))
+                return(as.Date(ISOdate(as.numeric(syear)+1,1,1)))}, #Round  up to 1 Jan
+              date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
+
 
 
 #'========================================================================
@@ -289,11 +315,6 @@ Sal.Decadal$NorCPM.sal.src <-
 #                           initialization=="i2")$path)
 
 #EC-Earth3
-ECEarth.fnames <-
-  dir(here(PE.cfg$dir$datasrc,"Decadal","EC-Earth3"),
-      pattern="*.nc$",recursive=TRUE,full.names=TRUE) %>%
-  CMIP6.filename.extr()
-
 Sal.Decadal$ECEarth3 <- 
   d<-new("data.source",
       SST.Decadal$ECEarth3,
@@ -311,6 +332,24 @@ Sal.Decadal$ECEarth3 <-
                      model=="EC-Earth3",
                      experiment=="dcppA-hindcast",
                      grid=="gn")$path) 
+#HadGEM3
+Sal.Decadal$HadGEM3 <- 
+  d<-new("data.source",
+         SST.Decadal$HadGEM3,
+         var="so",
+         fields.are.2D=FALSE,
+         z2idx=function(z,f) {
+           ncid <- nc_open(f)
+           lev_bnds <- ncvar_get(ncid,"lev_bnds")
+           nc_close(ncid)
+           idxs <- bounds.to.indices(z,lev_bnds[1,],lev_bnds[2,])
+           return(idxs)},
+         sources=filter(HadGEM3.fnames,
+                        field=="so",
+                        table=="Omon",
+                        model=="HadGEM3-GC31-MM",
+                        experiment=="dcppA-hindcast",
+                        grid=="gn")$path) 
 
 
 #'========================================================================
