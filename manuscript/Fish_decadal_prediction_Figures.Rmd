@@ -44,8 +44,8 @@ knitr::opts_chunk$set(
   include = TRUE,
   results = "markup",
   #dev="CairoSVG",
-  fig.width = 10,         #Old 4:3
-  fig.height=14/25*10,
+  # fig.width = 10,         #Old 4:3
+  # fig.height=14/25*10,
   fig.width = 10,         #New 16:9
   fig.height=15/32*10,
   fig.align="center",
@@ -453,10 +453,14 @@ for(this.cfg in plt.cfgs) {
   }
 
 print(met.plots[1])
-wrap_plots(met.plots[2:3],ncol=2,guides="collect")  & 
-  theme(legend.position = 'bottom')
 
 ```
+
+```{r, fig.height=10,fig.width=10}
+wrap_plots(met.plots[2:3],ncol=2,guides="collect")  & 
+  theme(legend.position = 'bottom')
+```
+
 
 # Effect of smoothing
 
