@@ -518,6 +518,7 @@ for(mdl.name in names(NMME.mdls)){
 # CMIP6 ####
 #'========================================================================
 log_msg("CMIP6...\n")
+
 #Setup CMIP6 database of filenames first
 #File naming convention, from https://docs.google.com/document/d/1h0r8RZr_f3-8egBMMh7aqLwy3snpD6_MrDz1q8n5XUk/edit
 #<variable_id>_<table_id>_<source_id>_<experiment_id >_<member_id>_<grid_label>[_<time_range>].nc
@@ -542,9 +543,15 @@ CMIP6.db.all %>%
   print(n=Inf)
 
 #Setup the CMIP6 template object
+#Note that here we define the name of the model as the realization - this is ok
+#when we are using one realizations per model, but obviously breaks down when we are
+#starting to use multiple realisations. We would therefore need to have two
+#different types of objects, one for dealing with multiple realisations and a
+#streamlined version otherwise. Also need to account for
+#different SSPs as well, at some point. But for now, one realisation.
 CMIP6.template <- 
   data.source(type="CMIP6",
-              name="historical",
+              name="CMIP6.uninit",
               z2idx=function(z,f) {
                 ncid <- nc_open(f)
                 lev_bnds <- ncvar_get(ncid,"lev_bnds")
@@ -552,14 +559,12 @@ CMIP6.template <-
                 idxs <- bounds.to.indices(z,lev_bnds[1,],lev_bnds[2,])
                 return(idxs)},
               realization.fn = function(f) {
-                gsub("^.*?_.*?_(.*?)_.*$","\\1",basename(f))},
+                sprintf("%s/%s",underscore_field(f,3),underscore_field(f,5))},  #Use model name for realization
               start.date=function(f){NA}, #No start date
               date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
 
 #Remove
-# * Partial files
 # * Only one type of grid - gn
-# * Only historical experiments
 # * Models on unstructured grids
 grid.ranking <- c("gn","gr","gr1")
 assert_that(all(CMIP6.db.all$grid %in% grid.ranking),
@@ -567,8 +572,7 @@ assert_that(all(CMIP6.db.all$grid %in% grid.ranking),
 unstructured.sources <- c("AWI-CM-1-1-MR","AWI-ESM-1-1-LR")
 CMIP6.db <- 
   CMIP6.db.all %>%
-  filter(experiment=="historical",
-         table=="Omon") %>%
+  filter(table=="Omon") %>%
   #Remove the native grid for sources running on unstructured grids
   #CDO can't interpolate on these
   filter(!(source %in% unstructured.sources),
@@ -609,7 +613,7 @@ src.list <-
        "Sal.Decadal"=Sal.Decadal,
        "SLP.Decadal"=SLP.Decadal,
        "SLP.obs"=SLP.obs,
-       "CMIP6"=CMIP6.datasrcs)
+       "CMIP6.uninit"=CMIP6.datasrcs)
 
 src.tb <- 
   enframe(src.list,name="group",value = "sources") %>%

@@ -60,8 +60,9 @@ pcfg@reference <- "HadISST"
 
 pcfg@data.sources <- 
   filter(these.srcs,
-         group=="SST.obs" &srcName=="HadISST" |
-         group=="SST.Decadal") %>%
+         group=="SST.obs" & srcName=="HadISST" |
+         group=="SST.Decadal" |
+         group=="CMIP6.uninit" & var=="tos") %>%
   pull(sources) %>%
   PElst()
 

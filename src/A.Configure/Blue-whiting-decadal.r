@@ -63,6 +63,7 @@ pcfg@reference <- "EN4"
 pcfg@data.sources <- 
   filter(these.srcs,
          group=="Sal.Decadal" |
+         group=="CMIP6.uninit" & var=="so" |
          group=="Sal.obs") %>%
   pull(sources) %>%
   PElst()
