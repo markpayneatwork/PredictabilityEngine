@@ -530,11 +530,10 @@ CMIP6.db.all <-
   separate(fname,sep="_",
            into=c("variable","table","source","experiment","member","grid","time_range")) %>%
   #Remove empty files
-  filter(file.size!=0)# %>%
-  # #Get grid info
-  # mutate(sinfo=map(path,~cdo("sinfo",.x)),
-  #        grid.info=map_chr(sinfo,~.x[which(grepl("Grid coordinates",.x))+1]),
-  #        grid.type=str_match(grid.info,"^.*?: (.*?) +:.*?$")[,2])
+  filter(file.size!=0) %>%
+  #Get grid info
+  mutate(zaxisdes=map(path,~cdo("-s","zaxisdes",.x)),
+         zaxistype=map_chr(zaxisdes,~gsub("^.*= ","",grep("zaxistype =",.x,value=TRUE))))
 
 #Print some summary data
 CMIP6.db.all %>%
