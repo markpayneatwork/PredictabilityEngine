@@ -9,6 +9,7 @@ PE.cfg$dir <- list(objects="objects",
 PE.cfg$path$config   <- file.path(PE.cfg$dir$objects,"configuration.rds")
 PE.cfg$path$datasrcs <- file.path(PE.cfg$dir$objects,"datasrcs.rds")
 PE.cfg$path$NAOmatching <- file.path(PE.cfg$dir$objects,"NAOmatching.rds")
+PE.cfg$path$CMIP.metadata <- file.path(PE.cfg$dir$objects,"CMIP.metadata.rds")
 
 #Filenames
 PE.cfg$file <- list(analysis.grid="analysis.grid",

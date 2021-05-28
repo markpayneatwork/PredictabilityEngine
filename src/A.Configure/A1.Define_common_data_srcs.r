@@ -30,6 +30,7 @@ cat(sprintf("Analysis performed %s\n\n",base::date()))
 #Source the common elements
 suppressPackageStartupMessages({
   library(PredEng)
+  library(pbapply)
 })
 
 #'========================================================================
@@ -518,22 +519,7 @@ for(mdl.name in names(NMME.mdls)){
 # CMIP6 ####
 #'========================================================================
 log_msg("CMIP6...\n")
-
-#Setup CMIP6 database of filenames first
-#File naming convention, from https://docs.google.com/document/d/1h0r8RZr_f3-8egBMMh7aqLwy3snpD6_MrDz1q8n5XUk/edit
-#<variable_id>_<table_id>_<source_id>_<experiment_id >_<member_id>_<grid_label>[_<time_range>].nc
-CMIP6.db.all <- 
-  tibble(path=dir(here(PE.cfg$dir$datasrc,"CMIP6"),
-                  recursive = TRUE,pattern="*.nc",full.names = TRUE)) %>%
-  mutate(file.size=file.size(path),
-         fname=basename(path)) %>%
-  separate(fname,sep="_",
-           into=c("variable","table","source","experiment","member","grid","time_range")) %>%
-  #Remove empty files
-  filter(file.size!=0) %>%
-  #Get grid info
-  mutate(zaxisdes=map(path,~cdo("-s","zaxisdes",.x)),
-         zaxistype=map_chr(zaxisdes,~gsub("^.*= ","",grep("zaxistype =",.x,value=TRUE))))
+CMIP6.db.all <- readRDS(file=PE.cfg$path$CMIP.metadata)
 
 #Print some summary data
 CMIP6.db.all %>%
