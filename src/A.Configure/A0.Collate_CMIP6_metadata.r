@@ -41,7 +41,7 @@ log_msg("CMIP6...\n")
 #Setup CMIP6 database of filenames first
 #File naming convention, from https://docs.google.com/document/d/1h0r8RZr_f3-8egBMMh7aqLwy3snpD6_MrDz1q8n5XUk/edit
 #<variable_id>_<table_id>_<source_id>_<experiment_id >_<member_id>_<grid_label>[_<time_range>].nc
-CMIP6.db.all <- 
+CMIP6.db <- 
   tibble(path=dir(here(PE.cfg$dir$datasrc,"CMIP6"),
                   recursive = TRUE,pattern="*.nc$",full.names = TRUE)) %>%
   mutate(file.size=file.size(path),
@@ -50,33 +50,28 @@ CMIP6.db.all <-
            into=c("variable","table","source","experiment","member","grid","time_range")) %>%
   #Remove empty files
   filter(file.size!=0) %>%
-  #Get grid info
-  mutate(zaxisdes=pblapply(path,cl=8,
+  #Get grid info and discard contents asap
+  mutate(sinfo=pblapply(path,cl=8,
                            function(x) {
-                             rtn <- cdo("-s -W zaxisdes",x)
-                             if(length(rtn)==0) {
-                               return(NA) 
-                             }else {
-                               return(rtn)
-                             }}),
-         zaxistype=map(zaxisdes,~gsub("^.*= ","",grep("zaxistype =",.x,value=TRUE))))
+                             rtn <- cdo("-s -W sinfo",x)}))
 
-
-stop()
-
-#Work through this systematically to first choose the right axis, then 
-  CMIP6.db.all %>%
-    mutate(n.zaxis=map_int(zaxistype,length)) %>%
-    filter(n.zaxis>1)
-    count(variable,n.zaxis)
+#Extract grid and axis metadata
+CMIP6.db <- 
+  CMIP6.db %>%
+  mutate(grid.meta=map(sinfo,~.x[(grep("Grid coordinates",.x)+1):(grep("Vertical coordinates",.x)-1)]),
+         vert.meta=map(sinfo,~.x[(grep("Vertical coordinates",.x)+1):(grep("Time coordinate",.x)-1)]),
+         gridtypes=map(grid.meta,~str_trim(str_match(grep("^ +[0-9]+ :",.x,value=TRUE),
+                                            "^.*?:(.*?):.*$")[,2])),
+         zaxstypes=map(vert.meta,~str_trim(str_match(grep("^ +[0-9]+ :",.x,value=TRUE),
+                                                     "^.*?:(.*?):.*$")[,2]))) 
 
 #Print some summary data
-CMIP6.db.all %>%
+CMIP6.db %>%
   count(variable,source,grid) %>%
   pivot_wider(names_from=c(grid),values_from=n) %>%
   print(n=Inf)
 
-saveRDS(CMIP6.db.all,file=PE.cfg$path$CMIP.metadata)
+saveRDS(CMIP6.db,file=PE.cfg$path$CMIP.metadata)
 
 #Turn off thte lights
 log_msg("\nConfiguration complete.\n")
