@@ -51,27 +51,43 @@ CMIP6.db <-
   #Remove empty files
   filter(file.size!=0) %>%
   #Get grid info and discard contents asap
-  mutate(sinfo=pblapply(path,cl=8,
-                           function(x) {
-                             rtn <- cdo("-s -W sinfo",x)}))
+  mutate(two.var=map2(path,variable,~list(path=.x,variable=.y)),
+         dim.meta=pblapply(two.var,cl=8,
+                        FUN=function(this) {
+                          ncid <- nc_open(this$path)
+                          rtn <- 
+                            tibble(dim=ncid$var[[this$variable]]$dim) %>% 
+                            mutate(atts=map(dim,~ncatt_get(ncid,.x$name))) %>%
+                            hoist(atts,"axis","units","standard_name","long_name","calendar") %>% 
+                            hoist(dim,dimname="name",length="len",values="val") %>% 
+                            select(-dim,-atts)
+                          nc_close(ncid)
+                          return(rtn)
+                        })) %>% 
+  select(-two.var)
 
 #Extract grid and axis metadata
-CMIP6.db <- 
-  CMIP6.db %>%
-  mutate(grid.meta=map(sinfo,~.x[(grep("Grid coordinates",.x)+1):(grep("Vertical coordinates",.x)-1)]),
-         vert.meta=map(sinfo,~.x[(grep("Vertical coordinates",.x)+1):(grep("Time coordinate",.x)-1)]),
-         gridtypes=map(grid.meta,~str_trim(str_match(grep("^ +[0-9]+ :",.x,value=TRUE),
-                                            "^.*?:(.*?):.*$")[,2])),
-         zaxstypes=map(vert.meta,~str_trim(str_match(grep("^ +[0-9]+ :",.x,value=TRUE),
-                                                     "^.*?:(.*?):.*$")[,2]))) 
+axis.meta <- 
+  CMIP6.db %>% 
+  mutate(max.xy.dim=map_dbl(dim.meta,~ .x %>% filter(!(axis %in% c("Z","T"))) %>% pull(length) %>% max()),
+         map_dfr(dim.meta,
+                 function(.x) {
+                   .x <- mutate(.x,
+                                name=ifelse(is.na(standard_name),long_name,standard_name))
+                   if("Z" %in% .x$axis | "Vertical T levels" %in% .x$long_name) {
+                     rtn <- .x %>% filter(axis=="Z")  
+                     if(nrow(rtn)==0){ 
+                       rtn <- 
+                         .x %>% 
+                         filter(is.na(axis),"Vertical T levels"==long_name) }
+                   }  else {
+                     rtn <- tibble(name=NA_character_,units=NA_character_)
+                   }
+                   return(select(rtn,zaxis.name=name,zaxis.units=units))}))
 
-#Print some summary data
-CMIP6.db %>%
-  count(variable,source,grid) %>%
-  pivot_wider(names_from=c(grid),values_from=n) %>%
-  print(n=Inf)
-
-saveRDS(CMIP6.db,file=PE.cfg$path$CMIP.metadata)
+axis.meta %>% 
+  select(-dim.meta) %>%
+  saveRDS(file=PE.cfg$path$CMIP.metadata)
 
 #Turn off thte lights
 log_msg("\nConfiguration complete.\n")
