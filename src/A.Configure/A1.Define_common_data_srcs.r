@@ -542,6 +542,8 @@ CMIP6.db.grid.sel <-
   #Remove irregular vertical layers from salinity variable
   #Particular, models on density layers
   filter(!(variable=="so" & zaxis.name %in% c("sea_water_potential_density","ocean_sigma_z"))) %>% 
+  #Drop vertical axes that are not in metres. This could be handled, but its more robust to leave it out
+  filter(!(variable=="so" & zaxis.units=="centimeters")) %>% 
   #Choose grid preferred grid
   mutate(grid.pref=as.numeric(factor(grid,grid.ranking)))  %>%
   group_by(variable,table,source) %>%
@@ -580,24 +582,19 @@ CMIP6.template <-
   data.source(type="CMIP6",
               name="CMIP6.uninit",
               z2idx=function(z,f) {
-                ncid <- nc_open(f)
-                lev_bnds <- ncvar_get(ncid,"lev_bnds")
-                units <- ncatt_get(ncid,"lev_bnds","units")$value
-                nc_close(ncid)
-                #Correct the units to metres, if necessary
-                unit.correction <- case_when(units=="m" ~ 1,
-                                        units=="cm" ~ 1/100,
-                                        stop(sprintf("Unknown units, %s.",units)))
-                lev_bnds <- lev_bnds*unit.correction
+                lvls.txt <- cdo("showlevel",f)
+                lvls.num <- scan(text=str_trim(lvls.txt),sep=" ",quiet=TRUE)
+                assert_that(!any(is.na(lvls.num)),
+                            msg=sprintf("Error in extracting levels from %s",f))
                 #Extract indices
-                idxs <- bounds.to.indices(z,lev_bnds[1,],lev_bnds[2,])
+                idxs <- which(lvls.num>=min(z) & lvls.num <= max(z))
+                assert_that(!any(is.na(idxs)),
+                            msg=sprintf("Error in extracting indicies from %s",f))
                 return(idxs)},
               realization.fn = function(f) {
                 sprintf("%s/%s",underscore_field(f,3),underscore_field(f,5))},  #Use model name for realization
               start.date=function(f){NA}, #No start date
               date.fn=function(f) {return(floor_date(ncdump.times(f),"month"))}) 
-
-
 
 CMIP6.datasrcs <-
   #Nest to make things easier to work with
