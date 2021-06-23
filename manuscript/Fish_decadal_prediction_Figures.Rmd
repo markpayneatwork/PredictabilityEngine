@@ -237,7 +237,7 @@ plt.cfgs <-
             ylim=c(-1.2,1),
             show.signif=TRUE,
             two.panel=TRUE,
-            panel.letters=c("a","c","e"),
+            panel.letters=letters[1:3],#c("a","c","e"),
             colour.pal=base.pal),
        list(metric="crpss",
             ttl="Continuous Ranked Probability\nskill score (CRPSS)",
@@ -245,7 +245,7 @@ plt.cfgs <-
             ylim=c(-1.2,1),
             show.signif=FALSE,
             two.panel=TRUE,
-            panel.letters=c("b","d","f"),
+            panel.letters=letters[4:6],#c("b","d","f"),
             colour.pal=base.pal))
 #            colour.pal=c(base.pal[2],"grey",base.pal[3:5])))
 
@@ -1270,21 +1270,6 @@ CMIP6.mdls %>%
 # Merged Figure 3 
 
 ```{r fig.width=8,fig.asp=1}
-#Modify fixed.lead plot
-this.fixed.lead <-
- fixed.lead.plt +
-    facet_wrap(~lbl,ncol=1,
-               scales="free_y")+
-               #labeller=function(x) {x$lbl <- ""; x}) +
-  theme(strip.text = element_blank(),
-        plot.margin=unit(c(5.5,10,5.5,5.5),"points"))+
-  labs(y="",title="Habitat area (kkm²)")+
-  scale_x_continuous(expand=c(0,0),limits=c(1960,2020))+
-  scale_y_continuous(expand=c(0,0),
-                     labels=function(x) {x/1000},
-                     limits=function(x) {range(pretty(x))})
-this.fixed.lead$layers[[5]]$data$panel.lbl <- sprintf("%s)",letters[c(1,3,5)])
-
 #Modify binned plot
 this.p.smooth <- 
   p.smooth +
@@ -1300,10 +1285,26 @@ this.p.smooth <-
          linetype=guide_legend(title="Mean window",
                                title.position = "top")) +
     labs(y="",title="Pearson correlation coefficient (r)")
-this.p.smooth$layers[[1]]$data$panel.lbl <- sprintf("%s)",letters[c(2,4,6)])
+#this.p.smooth$layers[[1]]$data$panel.lbl <- sprintf("%s)",letters[c(2,4,6)])
+
+#Modify fixed.lead plot
+this.fixed.lead <-
+ fixed.lead.plt +
+    facet_wrap(~lbl,ncol=1,
+               scales="free_y")+
+               #labeller=function(x) {x$lbl <- ""; x}) +
+  theme(strip.text = element_blank(),
+        plot.margin=unit(c(5.5,10,5.5,5.5),"points"))+
+  labs(y="",title="Habitat area (kkm²)")+
+  scale_x_continuous(expand=c(0,0),limits=c(1960,2020))+
+  scale_y_continuous(expand=c(0,0),
+                     labels=function(x) {x/1000},
+                     limits=function(x) {range(pretty(x))})
+this.fixed.lead$layers[[5]]$data$panel.lbl <- sprintf("%s)",letters[4:6])
+
 
 #Patchwork 
-wrap_plots(this.fixed.lead,this.p.smooth,ncol=2) +
+wrap_plots(this.p.smooth,this.fixed.lead,ncol=2) +
   plot_layout(guides="keep") &
   theme(legend.position = 'bottom',
         legend.direction = "vertical",
