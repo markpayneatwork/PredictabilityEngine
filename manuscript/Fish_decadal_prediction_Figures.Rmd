@@ -1278,7 +1278,11 @@ this.fixed.lead <-
                #labeller=function(x) {x$lbl <- ""; x}) +
   theme(strip.text = element_blank(),
         plot.margin=unit(c(5.5,10,5.5,5.5),"points"))+
-  labs(y="",title="Habitat area (kkm²)")
+  labs(y="",title="Habitat area (kkm²)")+
+  scale_x_continuous(expand=c(0,0),limits=c(1960,2020))+
+  scale_y_continuous(expand=c(0,0),
+                     labels=function(x) {x/1000},
+                     limits=function(x) {range(pretty(x))})
 this.fixed.lead$layers[[5]]$data$panel.lbl <- sprintf("%s)",letters[c(1,3,5)])
 
 #Modify binned plot
