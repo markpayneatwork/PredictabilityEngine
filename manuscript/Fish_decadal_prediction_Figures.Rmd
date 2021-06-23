@@ -3,7 +3,7 @@ title: "Fish_decadal_prediction_Figures"
 output:
   html_document: default
 editor_options: 
-  chunk_output_type: console
+  chunk_output_type: inline
 ---
 
 ```{r setup, include="FALSE"}
@@ -81,6 +81,8 @@ http://www.staff.dtu.dk/mpay  <br>
 Wed Jul  3 11:16:32 2019
 
 This notebook prepares figures for use in the manuscript "Skillful decadal-prediction of distributional shifts in North Atlantic pelagic fish".
+
+# Setup
 
 ```{r}
 #'========================================================================
@@ -217,7 +219,7 @@ decadal.leads <-
   pull()
 
 base.pal <- c("#e41a1c","#377eb8","#4daf4a","#984ea3","#ff7f00") #Set1
-base.pal <- pal_npg()(6)
+base.pal <- pal_npg()(7)
 plt.cfgs <-
   list(list(metric="pearson.correlation",
             ylab="Pearson correlation coefficient (r)",
@@ -297,7 +299,7 @@ for(this.cfg in plt.cfgs) {
     coord_cartesian(xlim=c(0,10),
                     ylim=this.cfg$ylim,
                     expand=FALSE)+
-    scale_x_continuous(breaks=0:10)+
+    scale_x_continuous(breaks=seq(0,10,by=2))+
     theme(legend.position="bottom")+
     labs(x="Lead time (years)",
          y=this.cfg$ylab)+
@@ -528,7 +530,7 @@ panel.lbls <-
   distinct(lbl) %>%
   mutate(panel.lbl=str_extract(lbl,"^.*\\)"))
   
-g <- 
+p.smooth <- 
   #Setup baseline
   ggplot()+
   facet_grid(~lbl,
@@ -544,10 +546,10 @@ g <-
   coord_cartesian(xlim=c(0,10),
                   ylim=c(0,1),
                   expand=FALSE)+
-  scale_x_continuous(breaks=0:10)+
+  scale_x_continuous(breaks=seq(0,10,by=2))+
   geom_hline(yintercept=0)+
   theme(legend.position="bottom",
-        strip.placement = "outside",
+        #strip.placement = "outside",
         panel.spacing.x = unit(4,"mm"))+
   labs(x="Lead time (years)",
        y="Pearson correlation coefficient (r)")+
@@ -573,7 +575,7 @@ g <-
          linetype=guide_legend(title="Mean window",
                                title.position = "left")) 
 
-print(g)
+print(p.smooth)
 
 
 ```
@@ -593,7 +595,7 @@ tbl.dat <-
 
   knitr::kable(
     tbl.dat %>%
-      filter(round(lead.yr)==5)%>%
+      filter(smoothing=="9 years")%>%
       select(Species=lbl,
              Smoothing=smoothing,
              "Grand Ens.",
@@ -1160,6 +1162,152 @@ print(sp.plots)
 
 ```
 
+# Skill versus uninit
+
+```{r}
+#Split out and remerge uninit metrics
+uninit.dat <-
+  skill.dat %>%
+  filter(srcType=="CMIP6",
+         srcName=="grandens")
+
+uninit.comp <- 
+  #Merge in data
+  skill.dat %>% 
+  filter(srcType=="Decadal",
+         srcName=="grandens") %>% 
+  left_join(y=uninit.dat,
+            by=c("lbl","calibrationMethod","spName","statName","resultName","metric"),
+            suffix=c(".decadal",".uninit")) %>% 
+  #Do comparison
+  mutate(p.value=map2_dbl(draws.decadal,draws.uninit,~mean(.x<.y))) %>% 
+  #Tidy for plotting
+  mutate(lead=lead.decadal/12,
+         species=fct_relabel(lbl,~gsub("^[a-c]) ","",.x))) %>%
+  filter(metric %in% c("pearson.correlation","MSSS","crpss")) %>% 
+  mutate(metric.lbl=case_when(metric=="pearson.correlation" ~ "a) Pearson correlation",
+                              metric=="MSSS"~ "b) MSESS",
+                              metric=="crpss"~"c) CRPSS")) %>%
+  #Ratchet lower value
+  mutate(sig.lev=oob_squish(1-p.value,range=c(0.01,0.99)))
+
+panel.lbls <- 
+  uninit.comp %>% 
+  distinct(metric.lbl) %>%
+  mutate(panel.lbl=str_remove(metric.lbl," .*$")) %>% 
+  mutate(x=-Inf,y=1)
+  
+
+#Make plot
+  ggplot(uninit.comp,
+       aes(x=lead,y=sig.lev,colour=species,shape=species,linetype=species))+
+  facet_wrap(~ metric.lbl ,
+             labeller = function(x) {x$metric.lbl <- str_remove(x$metric.lbl,"^.*\\) "); x})+
+  geom_text(data=panel.lbls,
+            hjust=-0.5,vjust=2,
+            mapping=aes(x,y,label=panel.lbl),
+            inherit.aes = FALSE)+
+  labs(x="Lead time (years)",
+       y="Significance level (Decadal skill > Uninit. skill)",
+       colour="Species",shape="Species",linetype="Species")+
+  theme(panel.spacing.x = unit(4,"mm"))+
+  coord_cartesian(ylim=c(0.00999,0.99),xlim=c(0,10),expand=FALSE,clip="off")+
+  # scale_y_log10(breaks=c(0.01,0.1,0.05,0.5,1),
+  #               labels=function(.x) {
+  #                 lbls <- sprintf("%2.0f%%",100*(1-.x))
+  #                 lbls[1] <- paste(">",lbls[1])
+  #                 return(lbls)},
+  #               minor_breaks=rev(c(seq(0.01,0.1,by=0.01),seq(0.2,1,by=0.1))))+
+  scale_y_continuous(trans=probit_trans(),
+                     breaks=c(0.01,0.05,seq(0.1,0.9,by=0.2),0.95,0.99),
+                     minor_breaks=c(seq(0.01,0.1,by=0.01),
+                                    seq(0.1,0.9,by=0.1),
+                                    seq(0.9,0.99,by=0.01)),
+                     labels=function(.x) {
+                       lbls <- sprintf("%2.0f%%",100*.x)
+                       lbls[1] <- paste("<",lbls[1])
+                       lbls[length(lbls)] <- paste(">",lbls[length(lbls)])
+                       return(lbls)})+
+    scale_x_continuous(breaks=seq(0,10,by=2))+
+  theme(panel.border = element_blank())+
+  geom_rect(xmin=-Inf,xmax=Inf,ymin=-Inf,ymax=Inf,fill=NA,
+            colour="grey20",size=0.25,show.legend = FALSE)+
+  geom_line()+
+  geom_point()
+
+
+```
+
+# Table of uninitialized models
+```{r}
+CMIP6.mdls <- 
+  these.cfg %>% 
+  filter(fig=="skill") %>%
+  mutate(path=map(pcfg, ~ .x@data.sources[["CMIP6.uninit"]]@sources)) %>% 
+  select(lbl,var,path) %>% 
+  unnest(path) %>%
+  mutate(fnames=basename(path)) %>% 
+  separate(fnames,c("variable","table","source_id","experiment",
+                    "variant_label","grid_label","dates"),sep="_") %>% 
+  distinct(variable,source_id,variant_label,grid_label) 
+
+CMIP6.mdls %>% 
+  count(variable)
+
+knitr::kable(
+CMIP6.mdls %>% 
+  mutate(exists="\U2713") %>% 
+  pivot_wider(names_from=variable,values_from = exists,values_fill = list(exists="")) %>%
+  arrange(source_id) %>%
+    select("Source ID"=source_id,
+           "Variant Label"=variant_label,
+           "Grid Label"=grid_label,
+           "SST"=tos,
+           "Salinity"=so))
+
+```
+
+# Merged Figure 3 
+
+```{r fig.width=8,fig.asp=1}
+#Modify fixed.lead plot
+this.fixed.lead <-
+ fixed.lead.plt +
+    facet_wrap(~lbl,ncol=1,
+               scales="free_y")+
+               #labeller=function(x) {x$lbl <- ""; x}) +
+  theme(strip.text = element_blank(),
+        plot.margin=unit(c(5.5,10,5.5,5.5),"points"))+
+  labs(y="",title="Habitat area (kkm²)")
+this.fixed.lead$layers[[5]]$data$panel.lbl <- sprintf("%s)",letters[c(1,3,5)])
+
+#Modify binned plot
+this.p.smooth <- 
+  p.smooth +
+  facet_wrap(~lbl,ncol=1,
+             strip.position = "right",
+             #switch = "y",
+             labeller = function(x) {x$lbl <- str_remove(x$lbl,"^.*\\) "); x}) +
+  guides(shape=guide_legend(title="Mean window"),
+         colour=guide_legend(title="Metrics",
+                             title.position = "top",
+                             order=1,
+                             override.aes = list(shape=NA)),
+         linetype=guide_legend(title="Mean window",
+                               title.position = "top")) +
+    labs(y="",title="Pearson correlation coefficient (r)")
+this.p.smooth$layers[[1]]$data$panel.lbl <- sprintf("%s)",letters[c(2,4,6)])
+
+#Patchwork 
+wrap_plots(this.fixed.lead,this.p.smooth,ncol=2) +
+  plot_layout(guides="keep") &
+  theme(legend.position = 'bottom',
+        legend.direction = "vertical",
+        legend.justification = "top",
+        panel.spacing.y = unit(4,"mm"),
+        plot.title = element_text(size=10,hjust=0.5))
+
+```
 
 
 ***
