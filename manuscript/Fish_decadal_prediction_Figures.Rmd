@@ -1240,6 +1240,20 @@ panel.lbls <-
 
 # Table of uninitialized models
 ```{r}
+#Load table of source IDs to get institution IDs
+#(this should be quicker than trying to get it directly from the metadata)
+#URL: https://raw.githubusercontent.com/WCRP-CMIP/CMIP6_CVs/master/CMIP6_source_id.json
+#See also  https://pcmdi.llnl.gov/CMIP6/TermsOfUse/TermsOfUse6-1.html
+CMIP6.tbl <- 
+  jsonlite::fromJSON(here("manuscript/CMIP6_source_id.json"),
+           flatten=TRUE) %>% 
+  extract2("source_id") %>% 
+  enframe(name="id") %>% 
+  unnest_wider(value) %>% 
+  select(source_id,institution_id) %>% 
+  mutate(institution_id=map_chr(institution_id,~paste(.x,collapse=", ")))
+
+#Merge in with model list
 CMIP6.mdls <- 
   these.cfg %>% 
   filter(fig=="skill") %>%
@@ -1249,7 +1263,8 @@ CMIP6.mdls <-
   mutate(fnames=basename(path)) %>% 
   separate(fnames,c("variable","table","source_id","experiment",
                     "variant_label","grid_label","dates"),sep="_") %>% 
-  distinct(variable,source_id,variant_label,grid_label) 
+  distinct(variable,source_id,variant_label,grid_label) %>% 
+  left_join(y=CMIP6.tbl)
 
 CMIP6.mdls %>% 
   count(variable)
@@ -1260,6 +1275,7 @@ CMIP6.mdls %>%
   pivot_wider(names_from=variable,values_from = exists,values_fill = list(exists="")) %>%
   arrange(source_id) %>%
     select("Source ID"=source_id,
+           "Institution ID"=institution_id,
            "Variant Label"=variant_label,
            "Grid Label"=grid_label,
            "SST"=tos,
@@ -1274,9 +1290,8 @@ CMIP6.mdls %>%
 this.p.smooth <- 
   p.smooth +
   facet_wrap(~lbl,ncol=1,
-             strip.position = "right",
-             #switch = "y",
-             labeller = function(x) {x$lbl <- str_remove(x$lbl,"^.*\\) "); x}) +
+             strip.position = "right") +
+  theme(strip.text = element_blank())+
   guides(shape=guide_legend(title="Mean window"),
          colour=guide_legend(title="Metrics",
                              title.position = "top",
@@ -1291,10 +1306,10 @@ this.p.smooth <-
 this.fixed.lead <-
  fixed.lead.plt +
     facet_wrap(~lbl,ncol=1,
-               scales="free_y")+
-               #labeller=function(x) {x$lbl <- ""; x}) +
-  theme(strip.text = element_blank(),
-        plot.margin=unit(c(5.5,10,5.5,5.5),"points"))+
+               strip.position="right",
+               scales="free_y",
+               labeller = function(x) {x$lbl <- str_remove(x$lbl,"^.*\\) "); x}) +
+  theme(plot.margin=unit(c(5.5,10,5.5,5.5),"points"))+
   labs(y="",title="Habitat area (kkm²)")+
   scale_x_continuous(expand=c(0,0),limits=c(1960,2020))+
   scale_y_continuous(expand=c(0,0),
