@@ -519,13 +519,57 @@ for(mdl.name in names(NMME.mdls)){
 # CMIP6 ####
 #'========================================================================
 log_msg("CMIP6...\n")
-CMIP6.db.all <- readRDS(file=PE.cfg$path$CMIP.metadata)
+#Tweak datasources
+CMIP6.db.all <- 
+  #Load metadata
+  readRDS(file=PE.cfg$path$CMIP.metadata)
 
-#Print some summary data
-CMIP6.db.all %>%
-  count(variable,source,grid) %>%
-  pivot_wider(names_from=c(grid),values_from=n) %>%
-  print(n=Inf)
+#Remove
+# * Only one type of grid - gn
+# * Models on unstructured grids
+grid.ranking <- c("gn","gr","gr1")
+assert_that(all(CMIP6.db.all$grid %in% grid.ranking),
+            msg="Unknown grid type found")
+assert_that(all(CMIP6.db.all$table=="Omon"),
+                msg="Non-monthly data has snuck in")
+
+CMIP6.db.grid.sel <- 
+  CMIP6.db.all %>%
+  #Remove unstructured grids, as CDO (remapbil etc) can't interpolate on these
+  #We define an unstructured grid based on the number of cells - anything greater
+  #than 10000 looks to be the cutoff at the moment
+  filter(max.xy.dim < 10000) %>% 
+  #Remove irregular vertical layers from salinity variable
+  #Particular, models on density layers
+  filter(!(variable=="so" & zaxis.name %in% c("sea_water_potential_density","ocean_sigma_z"))) %>% 
+  #Drop vertical axes that are not in metres. This could be handled, but its more robust to leave it out
+  filter(!(variable=="so" & zaxis.units=="centimeters")) %>% 
+  #Choose grid preferred grid
+  mutate(grid.pref=as.numeric(factor(grid,grid.ranking)))  %>%
+  group_by(variable,table,source) %>%
+  filter(grid.pref==min(grid.pref)) %>%  #Take the most preferrred option
+  ungroup() 
+
+
+#Only include models that we have the full coverage of the relevant time period
+#TODO: Could also check this against what is in the files
+time.range <- seq(ymd("1960-01-01"),ymd("2029-12-01"),by="month")
+CMIP6.db <-
+  #Split out time range and get months that (should be) in the files
+  CMIP6.db.grid.sel %>% 
+  separate(time_range,c("time_start","time_end"),sep="-") %>% 
+  mutate(time_start=ymd(paste0(time_start,"01")),
+         time_end=ymd(paste0(time_end,"01")),
+         months=map2(time_start,time_end, ~ seq(.x,.y,by="months"))) %>% 
+  #Group by souce and variable, and check for full coverage
+  nest(data=-c(variable,table,source)) %>%
+  hoist(data,months="months") %>%
+  mutate(months=map(months,~do.call(c,.x)),
+         time.range.ok=map_lgl(months,~all(time.range %in% .x))) %>% 
+  filter(time.range.ok) %>%
+  #Tidy up
+  select(-months,time.range.ok) %>% 
+  unnest(data)
 
 #Setup the CMIP6 template object
 #Note that here we define the name of the model as the realization - this is ok
@@ -538,35 +582,19 @@ CMIP6.template <-
   data.source(type="CMIP6",
               name="CMIP6.uninit",
               z2idx=function(z,f) {
-                ncid <- nc_open(f)
-                lev_bnds <- ncvar_get(ncid,"lev_bnds")
-                nc_close(ncid)
-                idxs <- bounds.to.indices(z,lev_bnds[1,],lev_bnds[2,])
+                lvls.txt <- cdo("showlevel",f)
+                lvls.num <- scan(text=str_trim(lvls.txt),sep=" ",quiet=TRUE)
+                assert_that(!any(is.na(lvls.num)),
+                            msg=sprintf("Error in extracting levels from %s",f))
+                #Extract indices
+                idxs <- which(lvls.num>=min(z) & lvls.num <= max(z))
+                assert_that(!any(is.na(idxs)),
+                            msg=sprintf("Error in extracting indicies from %s",f))
                 return(idxs)},
               realization.fn = function(f) {
                 sprintf("%s/%s",underscore_field(f,3),underscore_field(f,5))},  #Use model name for realization
               start.date=function(f){NA}, #No start date
-              date.fn=function(f) {return(floor_date(cdo.dates(f),"month"))}) 
-
-#Remove
-# * Only one type of grid - gn
-# * Models on unstructured grids
-grid.ranking <- c("gn","gr","gr1")
-assert_that(all(CMIP6.db.all$grid %in% grid.ranking),
-            msg="Unknown grid type found")
-unstructured.sources <- c("AWI-CM-1-1-MR","AWI-ESM-1-1-LR")
-CMIP6.db <- 
-  CMIP6.db.all %>%
-  filter(table=="Omon") %>%
-  #Remove the native grid for sources running on unstructured grids
-  #CDO can't interpolate on these
-  filter(!(source %in% unstructured.sources),
-         grid=="gn") %>%
-  #Choose grid preferred grid
-  mutate(grid.pref=as.numeric(factor(grid,grid.ranking)))  %>%
-  group_by(variable,table,source) %>%
-  filter(grid.pref==min(grid.pref)) %>%  #Take the most preferrred option
-  ungroup() 
+              date.fn=function(f) {return(floor_date(ncdump.times(f),"month"))}) 
 
 CMIP6.datasrcs <-
   #Nest to make things easier to work with
