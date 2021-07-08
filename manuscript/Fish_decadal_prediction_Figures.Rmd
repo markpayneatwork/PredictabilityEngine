@@ -208,7 +208,10 @@ skill.dat <-
          highlight=srcType=="Decadal" & srcName=="grandens" | srcType=="Persistence" ,
          dispName=ifelse(srcType=="Persistence","Persistence",srcName),
          dispName=fct_relevel(dispName,"grandens","Persistence"),
-         dispName=fct_recode(dispName,"Grand Ens."="grandens"))
+         dispName=fct_recode(dispName,
+                             "Grand Ens."="grandens",
+                             "CESM DPLE"="CESM.DPLE",
+                             "MPI-ESM1.2-HR"="MPI-ESM1-2-HER"))
 
 #Remove stray persistences
 decadal.leads <- 
@@ -218,8 +221,9 @@ decadal.leads <-
   unite(lbl.lead,lbl,lead) %>%
   pull()
 
-base.pal <- c("#e41a1c","#377eb8","#4daf4a","#984ea3","#ff7f00") #Set1
-base.pal <- pal_npg()(7)
+set1.pal <- c("#e41a1c","#377eb8","#4daf4a","#984ea3","#ff7f00","#a65628") #Set1
+npg.pal <- pal_npg()(7)
+base.pal <- c(npg.pal[1:2],set1.pal[-c(1:2)],"grey50")
 plt.cfgs <-
   list(list(metric="pearson.correlation",
             ylab="Pearson correlation coefficient (r)",
@@ -253,7 +257,8 @@ met.plots <- list()
 for(this.cfg in plt.cfgs) {
   cleaned.dat <- 
     skill.dat %>%
-    filter(metric==this.cfg$metric) %>%
+    filter(metric==this.cfg$metric,
+           lead.yrs <10) %>%   #Remove HadGEM3 models that have 10 yr, 3 m leads in them
     unite(lbl.lead,lbl,lead,remove=FALSE) %>%
     filter(lbl.lead %in% decadal.leads) %>%
     mutate(lbl2=str_extract(lbl,"^.*\\)"))
@@ -510,7 +515,11 @@ ensmean.metrics <-
   filter(dispName=="Grand Ens.",
          !is.na(value)) %>%
   select(lbl,ylbl,smoothing,lead) %>%
-  mutate(have.Ensmean=TRUE)
+  mutate(have.Ensmean=TRUE) %>% 
+  #Remove blue whiting forecasts at longest timescales - something odd here
+  group_by(smoothing) %>% 
+  filter(!(str_detect(lbl,"Blue whiting") & lead==max(lead))) %>% 
+  ungroup()
 
 smooth.plt <- 
   smooth.dat %>%
@@ -705,7 +714,7 @@ fixed.lead.plt <-
   scale_color_manual(values=c("red"))+
   #Annotations
   labs(x="Year",
-       y="Habitat area (kkm²)",
+       y="Habitat area (10³ km²)",
        col="Forecast",
        fill="Forecast")+
   scale_y_continuous(labels=function(x) x/1000)+
@@ -732,7 +741,7 @@ this.cfg <-
   mutate(yr.rng=list(1990:2020),
          starts=list(c(1990,2000,2010)),
          scalar=1/1e3,
-         lbl2="Mackerel habitat (kkm²)")
+         lbl2="Mackerel habitat (10³ km²)")
 
 #Import data
 stat.dat <- 
@@ -859,7 +868,7 @@ this.cfg <-
   mutate(yr.rng=list(2004:2019),
          starts=list(c(2010:2020)),
          scalar=1/1e3,
-         lbl2="Blue whiting spawning area (kkm²)")
+         lbl2="Blue whiting spawning area (10³ km²)")
 
 surv.dat <- 
   readRDS(here("manuscript/Distribution_metrics.rds")) %>%
@@ -907,6 +916,7 @@ this.model <-
   stat.dat %>%
   filter(srcType=="Decadal",
          srcName=="CESM.DPLE",
+         #srcName=="HadGEM3",
          !realization %in% c("realmean","grandens","ensmean"),
          year(startDate) %in% c(2004,2011),
          lead/12<7)  %>%
@@ -1310,7 +1320,7 @@ this.fixed.lead <-
                scales="free_y",
                labeller = function(x) {x$lbl <- str_remove(x$lbl,"^.*\\) "); x}) +
   theme(plot.margin=unit(c(5.5,10,5.5,5.5),"points"))+
-  labs(y="",title="Habitat area (kkm²)")+
+  labs(y="",title="Habitat area (10³ km²)")+
   scale_x_continuous(expand=c(0,0),limits=c(1960,2020))+
   scale_y_continuous(expand=c(0,0),
                      labels=function(x) {x/1000},
