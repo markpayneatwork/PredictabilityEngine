@@ -32,6 +32,7 @@ start.time <- proc.time()[3];
 suppressPackageStartupMessages({
   library(PredEng)
   library(furrr)
+  library(pbapply)
   #library(parallel)
 })
 pcfg <- PE.load.config()
@@ -43,8 +44,8 @@ pcfg <- PE.load.config()
 if(interactive() ) {
   set.cdo.defaults("--silent --no_warnings -O -f nc4")
   set.log_msg.silent()
-  this.srcType <- pcfg@Models[[2]]@type
-  this.srcName <-  pcfg@Models[[2]]@name
+  this.srcType <- pcfg@data.sources[[1]]@type
+  this.srcName <-  pcfg@data.sources[[1]]@name
   # this.srcType <- "Observations"
   # this.srcName <- "ORAS5"
 } else {  
@@ -85,15 +86,9 @@ PE.config.summary(pcfg,this.datasrc)
 #Setup
 #Note that we preassign tempfile filenames. This is probably not necessary,
 #but avoids the risk of duplication when we are dealing with parallelisation
-#We also drop files that don't contain the MOIs
 these.srcs <- 
   tibble(src.fname=this.datasrc@sources,
-         tmp.stem=tempfile(fileext = rep("",length(src.fname)))) %>%
-  mutate(dates=map(src.fname,this.datasrc@date.fn),
-         contains.MOI=map_lgl(dates, ~ any(month(.x) %in% pcfg@MOI ))) %>%
-  filter(contains.MOI) %>%
-  select(src.fname,tmp.stem)
-  
+         tmp.stem=tempfile(fileext = rep("",length(src.fname))))
 
 #Check configuration is sane
 assert_that(nrow(these.srcs)>0,msg="No source files provided")
@@ -131,7 +126,7 @@ extract.frags <- function(src.fname,tmp.stem,opts) {
     timebounds.to.time(this.datasrc,tmp.out)
   }
   
-  #Check that we actually have the Month of Interest
+  #Check that we actually have the Month of Interest in the file. If not, bail
   these.months <- this.datasrc@date.fn(tmp.out)
   if(!any(month(these.months) %in% pcfg@MOI)) {return(NULL)}
   
