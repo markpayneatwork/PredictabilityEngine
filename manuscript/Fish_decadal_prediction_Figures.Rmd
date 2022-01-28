@@ -3,7 +3,7 @@ title: "Fish_decadal_prediction_Figures"
 output:
   html_document: default
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 ```{r setup, include="FALSE"}
@@ -254,6 +254,7 @@ plt.cfgs <-
 #            colour.pal=c(base.pal[2],"grey",base.pal[3:5])))
 
 met.plots <- list()
+src.dat <- list() #Store data to be saved
 for(this.cfg in plt.cfgs) {
   cleaned.dat <- 
     skill.dat %>%
@@ -261,7 +262,9 @@ for(this.cfg in plt.cfgs) {
            lead.yrs <10) %>%   #Remove HadGEM3 models that have 10 yr, 3 m leads in them
     unite(lbl.lead,lbl,lead,remove=FALSE) %>%
     filter(lbl.lead %in% decadal.leads) %>%
-    mutate(lbl2=str_extract(lbl,"^.*\\)"))
+    mutate(lbl2=str_extract(lbl,"^.*\\)"),
+           upperCI=map_dbl(draws,quantile,probs=0.95),
+           lowerCI=map_dbl(draws,quantile,probs=0.05))
   
   #Now split into individuals models
   models.dat <- 
@@ -287,10 +290,17 @@ for(this.cfg in plt.cfgs) {
   highlight.dat <-
     cleaned.dat %>%
     filter(highlight) %>%
-    mutate(upperCI=map_dbl(draws,quantile,probs=0.95),
-           lowerCI=map_dbl(draws,quantile,probs=0.05),
-           dispName=factor(dispName,c("Grand Ens.","Persistence")))
+    mutate(dispName=factor(dispName,c("Grand Ens.","Persistence")))
   
+  #Store src data
+  src.dat[[this.cfg$metric]]$dat  <- 
+    cleaned.dat %>% 
+    select(metric,
+           stock=lbl,
+           model=dispName,
+           lead=lead.yrs,
+           mean=value,lowerCI, upperCI)  %>% 
+    pivot_longer(c(-metric,-stock,-model,-lead),names_to="statistic")
 
 # Make plot -------------------------------------------------------------------------
   this.plt <- 
@@ -370,7 +380,7 @@ for(this.cfg in plt.cfgs) {
       
       signif.dat <- 
         highlight.dat %>% 
-        select(lbl,lead.yrs,draws,dispName) %>%
+        select(lbl,lead.yrs,metric,draws,dispName) %>%
         pivot_wider(names_from="dispName",values_from = "draws") %>%
         #Join in CMIP6 draws as well
         #   left_join(y=select(CMIP6.dat,lbl,CMIP6.draws=draws),by="lbl") %>%
@@ -401,6 +411,16 @@ for(this.cfg in plt.cfgs) {
                           guide=guide_legend(order=3,ncol=1,
                                              title="Signif. test",
                                              title.position = "top")) 
+      
+      #Store significance source data
+      src.dat[[this.cfg$metric]]$signif  <-  
+        signif.dat %>% 
+        select(metric,
+               stock=lbl,
+               lead=lead.yrs,
+               value=p.value) %>% 
+        mutate(statistic="p.value")
+
     }  
   
   #Make tweaks for two panels
@@ -455,9 +475,12 @@ for(this.cfg in plt.cfgs) {
       theme(strip.text.y=element_blank())   
   }
   
+  #Store plot
   met.plots[[this.cfg$metric]] <- this.plt  
   
-  }
+  
+  
+}
 
 print(met.plots[1])
 
@@ -466,6 +489,15 @@ print(met.plots[1])
 ```{r, fig.height=10,fig.width=10}
 wrap_plots(met.plots[2:3],ncol=2,guides="collect")  & 
   theme(legend.position = 'bottom')
+
+#Write source data into a file
+src.dat %>% 
+  unlist(FALSE) %>% 
+  bind_rows() %>% 
+  arrange(metric, stock,model,lead,statistic) %>% 
+  write_csv2(file=here(this.dir,"source_data","Fig2_data.csv"))
+  
+
 ```
 
 
@@ -611,6 +643,11 @@ tbl.dat <-
              Persistence,
              "p value"=p.value),
     digits=3)
+  
+tbl.dat %>% 
+  select(-p.value) %>%
+  rename(species="lbl") %>% 
+  write_csv2(file=here("manuscript","source_data","Fig3a_smoothing.csv"))
 ```
 
 # Fixed lead plot
@@ -724,6 +761,31 @@ fixed.lead.plt <-
 
 
 print(fixed.lead.plt)
+
+#Write out source data
+src.dat.l <- list(grandens=  fl.grandens %>% 
+                    select(lbl,year,value) %>% 
+                    mutate(source="Grand Ens. mean"))
+src.dat.l$preds <- 
+  fl.preds %>% 
+  mutate(year=year(date)) %>% 
+  select(-date) %>% 
+  rename("Grand Ens. lowerCI"=lower,
+         "Grand Ens. upperCI"=upper) %>% 
+  pivot_longer(c(-lbl,-year),names_to="source")
+  
+src.dat.l$obs <-
+  fl.obs %>% 
+  ungroup() %>% 
+  rename(source="name") %>% 
+  mutate(source=fct_recode(source,
+                           "Obs. - Habitat"="Habitat",
+                           "Obs. - Roll. mean"="Rolling mean"))
+
+src.dat.l %>% 
+  bind_rows() %>% 
+  rename(species="lbl") %>% 
+  write_csv2(file=here("manuscript","source_data","Figure3b.csv"))
 
 ```
 
@@ -857,6 +919,30 @@ Mack.plt <- start.date.plt[[1]]
 #         dpi=300)
 # }
 
+src.l <- list()
+src.l$forecasts <-
+  forecast.real.rng %>% 
+  rename(source="startYear",
+         lowerCI="lower",upperCI ="upper") %>% 
+  mutate(source=paste(source, "forecast")) %>% 
+  pivot_longer(c(-source,-year),names_to="statistic")
+
+src.l$mean <- 
+  forecast.realmean %>% 
+  select(year,startYear,value) %>% 
+  mutate("statistic"="mean",
+         source=paste(startYear,"forecast")) %>% 
+  select(-startYear)
+
+src.l$obs <-
+  this.obs %>% 
+  filter(year>=1990) %>% 
+  rename(source="name")
+
+src.l %>% 
+  bind_rows() %>% 
+  arrange(source,year,`statistic`) %>% 
+  write_csv2(file=here("manuscript","source_data","Fig4_Mackerel.csv"))
 
 #'========================================================================
 # Blue Whiting forecast comparison ####
@@ -991,6 +1077,40 @@ BW.plot <-
 
 
 wrap_plots(Mack.plt,BW.plot,nrow=1)
+
+#Write out source data
+src.l <- list()
+src.l$forecast <- 
+  forecast.rng %>% 
+  mutate(source=paste(startYear,"forecast")) %>% 
+  rename(lowerCI="lower",upperCI="upper") %>% 
+  select(-startYear) %>% 
+  pivot_longer(c(-source,-year),names_to="statistic")
+src.l$mean <- 
+  forecast.mean %>% 
+  mutate(source=paste(startYear,"forecast"),
+         "statistic"="mean") %>% 
+  select(-startYear) 
+  
+src.l$obs <- 
+  this.obs %>% 
+  rename(source="name")
+src.l$surv <- 
+  surv.dat %>% 
+  select(source=lbl,year,value)
+src.l$SSB <- 
+  SSB.dat %>% 
+  mutate(source="Biomass") %>% 
+  rename(year="Year",value="SSB")
+
+
+src.l %>% 
+  bind_rows() %>% 
+  filter(year>=2004, year<=2020) %>% 
+  arrange(source,year,`statistic`) %>% 
+  relocate(source,.before=1) %>% 
+  write_csv2(file=here("manuscript","source_data","Fig4b_blue_Whiting.csv"))
+
 
 ```
 
@@ -1246,6 +1366,11 @@ panel.lbls <-
   geom_point()
 
 
+  #Write to source data
+  uninit.comp %>% 
+    select(metric=metric.lbl, species,lead,value=sig.lev) %>% 
+    write_csv2(file=here("manuscript","source_data","Ext.Fig.3.csv"))
+  
 ```
 
 # Table of uninitialized models
