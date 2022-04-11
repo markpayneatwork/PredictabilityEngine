@@ -3,6 +3,11 @@ Seasonal and Decadal Predictability Engine
 ==========================================
 Notes in Trello
 
+2021.05.27
+Problem with this file - it doesn't have lvl_bnds fields, but instead depthT.
+"/data/users/marpay/PredictabilityEngine/data_srcs/CMIP6/so_Omon_IPSL-CM5A2-INCA_historical_r1i1p1f1_gn_185001-201412.nc"
+This may be a sigma coordinate problem again?
+
 2020.08.18
 
 2020.08.14

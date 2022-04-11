@@ -39,7 +39,8 @@ library(devtools)
 library(here)
 
 install_github("markpayneatwork/ClimateOperators")
-install_git("git@gitlab.gbar.dtu.dk:PayneLab/ClimateTools.git",git="external")
+#install_git("git@gitlab.gbar.dtu.dk:PayneLab/ClimateTools.git",git="external")
+install_git("git@github.com:ThePayneLab/ClimateTools.git")
 install.packages(here("src/X.PredEng_Package"), repos = NULL, type="source")
 
 #Turn off thte lights
