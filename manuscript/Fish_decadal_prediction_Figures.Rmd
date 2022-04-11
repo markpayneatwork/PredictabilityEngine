@@ -43,6 +43,7 @@ knitr::opts_chunk$set(
   warning = FALSE,
   include = TRUE,
   results = "markup",
+  dev=c("png","pdf"),
   #dev="CairoSVG",
   # fig.width = 10,         #Old 4:3
   # fig.height=14/25*10,
@@ -72,6 +73,18 @@ library(ggpattern)
 
 theme_set(theme_bw())
 theme_replace(strip.background = element_blank())
+
+#SF Bug
+#Seems to be a bug here that I am encountering in sf 1.0.7. See this issue
+# https://github.com/r-spatial/sf/issues/1856
+#Error message is:
+      # Error in st_cast.POINT(x[[1]], to, ...) : 
+      #   cannot create MULTILINESTRING from POINT
+      # In addition: Warning message:
+      # In st_cast.GEOMETRYCOLLECTION(X[[i]], ...) :
+      #   only first part of geometrycollection is retained
+#One user mentioned that disabling s2 solved it for them. Also worked for me.
+sf_use_s2(FALSE) 
 
 ```
 
@@ -1248,7 +1261,7 @@ for(plt.cfg in sp.plt.cfg) {
                  labels=plt.cfg$fill.lbls,
                  limits=plt.cfg$fill.lims,
                  show.limits=TRUE)+
-    # #Significance
+    #Significance
     geom_sf_pattern(data=met.sig,
                     aes(pattern_fill="Not significant\n(p>0.05)"),
                     fill=NA,
@@ -1271,6 +1284,7 @@ for(plt.cfg in sp.plt.cfg) {
                                  title=plt.cfg$fill.ttl,
                                  ticks=TRUE,
                                  order=1,
+                                 ticks.colour="black",
                                  frame.colour="black"),
            pattern_fill=guide_legend(title=element_blank(),
                                      order=2),
@@ -1462,6 +1476,12 @@ wrap_plots(this.p.smooth,this.fixed.lead,ncol=2) +
         panel.spacing.y = unit(4,"mm"),
         plot.title = element_text(size=10,hjust=0.5))
 
+```
+
+## Session details
+
+```{r}
+sessionInfo()
 ```
 
 
